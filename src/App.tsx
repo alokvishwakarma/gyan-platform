@@ -31,9 +31,7 @@ export default function App() {
           title="Docs"
           icon="D"
           width={2}
-          color="#2d3e50"
-          variant="category"
-          onClick={() => console.log("Documents selected")}
+          variant="header"
         />
 
         {documentServices.map((service) => (
