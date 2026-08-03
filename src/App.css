@@ -6,10 +6,16 @@
   background: #f4f7f9;
 }
 
-.tile-grid {
+.app-content {
   width: min(100%, 430px);
   height: 100%;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tile-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   align-content: start;

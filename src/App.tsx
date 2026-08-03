@@ -1,4 +1,6 @@
+import { useState } from "react";
 import "./App.css";
+import AppHeader from "./components/AppHeader";
 import HubTile from "./components/HubTile";
 import Tile from "./components/Tile";
 
@@ -35,32 +37,44 @@ const documentServices = [
   },
 ];
 
-const visibleDocumentServices = documentServices.slice(0, 3);
-
 export default function App() {
+  const [categoriesExpanded, setCategoriesExpanded] = useState(true);
+
   return (
     <main className="app-shell">
-      <section className="tile-grid" aria-label="GYAN services">
-        <HubTile
-          id="documents-hub"
-          title="Docs"
-          icon="📄"
-          serviceCount={documentServices.length}
-          onClick={() => console.log("Open all document services")}
+      <div className="app-content">
+        <AppHeader
+          categoriesExpanded={categoriesExpanded}
+          onToggleCategories={() =>
+            setCategoriesExpanded((current) => !current)
+          }
+          onTrackOrder={() => console.log("Track order selected")}
         />
 
-        {visibleDocumentServices.map((service) => (
-          <Tile
-            key={service.id}
-            id={service.id}
-            title={service.title}
-            icon={service.icon}
-            width={3}
-            color={service.color}
-            onClick={() => console.log(`${service.title} selected`)}
-          />
-        ))}
-      </section>
+        {categoriesExpanded && (
+          <section className="tile-grid" aria-label="GYAN services">
+            <HubTile
+              id="documents-hub"
+              title="Docs"
+              icon="📄"
+              serviceCount={documentServices.length}
+              onClick={() => console.log("Open all document services")}
+            />
+
+            {documentServices.slice(0, 3).map((service) => (
+              <Tile
+                key={service.id}
+                id={service.id}
+                title={service.title}
+                icon={service.icon}
+                width={3}
+                color={service.color}
+                onClick={() => console.log(`${service.title} selected`)}
+              />
+            ))}
+          </section>
+        )}
+      </div>
     </main>
   );
 }
