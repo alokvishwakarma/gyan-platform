@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import "./CategoryRow.css";
 
 import HubTile from "./HubTile";
@@ -46,9 +47,15 @@ export default function CategoryRow({
     Math.ceil(displayedServices.length / visibleServiceCount),
   );
 
+  const categoryStyle = {
+    "--service-row-count": serviceRowCount,
+    gridRow: `span ${serviceRowCount}`,
+  } as CSSProperties;
+
   return (
     <section
       className="category-row"
+      style={categoryStyle}
       aria-label={`${title} services`}
     >
       <HubTile

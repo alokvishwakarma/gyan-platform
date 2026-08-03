@@ -28,6 +28,15 @@ export default function PrintOrderPanel({
     useState<PaperSize>("letter");
   const [instructions, setInstructions] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [customerName, setCustomerName] = useState("");
+const [phoneNumber, setPhoneNumber] = useState("");
+const [emailAddress, setEmailAddress] = useState("");
+const [whatsAppNumber, setWhatsAppNumber] = useState("");
+const [usePhoneForWhatsApp, setUsePhoneForWhatsApp] =
+  useState(true);
+const [whatsAppConsent, setWhatsAppConsent] =
+  useState(false);
+  
 
   const estimatedTotal = useMemo(() => {
     return (
@@ -36,6 +45,10 @@ export default function PrintOrderPanel({
       pricePerPage[colorMode]
     );
   }, [estimatedPages, copies, colorMode]);
+
+  const effectiveWhatsAppNumber = usePhoneForWhatsApp
+  ? phoneNumber
+  : whatsAppNumber;
 
   function handleFileChange(
     event: React.ChangeEvent<HTMLInputElement>,
@@ -186,6 +199,99 @@ export default function PrintOrderPanel({
             </div>
           )}
 
+<div className="print-panel__section">
+  <h3>Contact details</h3>
+
+  <label>
+    <span>Name</span>
+
+    <input
+      type="text"
+      value={customerName}
+      placeholder="Your name"
+      autoComplete="name"
+      required
+      onChange={(event) =>
+        setCustomerName(event.target.value)
+      }
+    />
+  </label>
+
+  <label>
+    <span>Mobile number</span>
+
+    <input
+      type="tel"
+      value={phoneNumber}
+      placeholder="+91 98765 43210"
+      autoComplete="tel"
+      required
+      onChange={(event) =>
+        setPhoneNumber(event.target.value)
+      }
+    />
+  </label>
+
+  <label>
+    <span>Email address — optional</span>
+
+    <input
+      type="email"
+      value={emailAddress}
+      placeholder="name@example.com"
+      autoComplete="email"
+      onChange={(event) =>
+        setEmailAddress(event.target.value)
+      }
+    />
+  </label>
+
+  <label className="print-panel__checkbox">
+    <input
+      type="checkbox"
+      checked={usePhoneForWhatsApp}
+      onChange={(event) =>
+        setUsePhoneForWhatsApp(event.target.checked)
+      }
+    />
+
+    <span>My WhatsApp number is the same</span>
+  </label>
+
+  {!usePhoneForWhatsApp && (
+    <label>
+      <span>WhatsApp number</span>
+
+      <input
+        type="tel"
+        value={whatsAppNumber}
+        placeholder="+91 98765 43210"
+        autoComplete="tel"
+        required
+        onChange={(event) =>
+          setWhatsAppNumber(event.target.value)
+        }
+      />
+    </label>
+  )}
+
+  <label className="print-panel__checkbox">
+    <input
+      type="checkbox"
+      checked={whatsAppConsent}
+      onChange={(event) =>
+        setWhatsAppConsent(event.target.checked)
+      }
+    />
+
+    <span>
+      Send print-request and pickup updates to
+      {effectiveWhatsAppNumber
+        ? ` ${effectiveWhatsAppNumber}`
+        : " my WhatsApp number"}
+    </span>
+  </label>
+</div>
           <div className="print-panel__field-grid">
             <label>
               <span>Estimated pages</span>

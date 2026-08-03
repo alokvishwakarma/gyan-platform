@@ -7,6 +7,10 @@ import CategoryRow, {
   type ServiceItem,
 } from "./components/CategoryRow";
 import PrintOrderPanel from "./components/PrintOrderPanel";
+import ShopBanner from "./components/ShopBanner";
+import ShopRegistrationPanel, {
+  type RegisteredShop,
+} from "./components/ShopRegistrationPanel";
 
 const documentServices: ServiceItem[] = [
   {
@@ -119,12 +123,128 @@ const governmentServices: ServiceItem[] = [
   },
 ];
 
+interface ShopProfile {
+  code: string;
+  name: string;
+  address: string;
+}
+
+function normalizeShopCode(
+  value: string | null | undefined,
+): string | null {
+  const normalizedValue = value
+    ?.trim()
+    .toUpperCase();
+
+  if (
+    !normalizedValue ||
+    !/^[A-Z0-9]{4}$/.test(normalizedValue)
+  ) {
+    return null;
+  }
+
+  return normalizedValue;
+}
+
+function getDetectedShopCode(): string | null {
+  /*
+   * First preference:
+   * https://gyan.cc/?shop=LKMV
+   */
+  const queryParameters = new URLSearchParams(
+    window.location.search,
+  );
+
+  const queryShopCode = normalizeShopCode(
+    queryParameters.get("shop"),
+  );
+
+  if (queryShopCode) {
+    return queryShopCode;
+  }
+
+  /*
+   * Backward compatibility:
+   * https://gyan.cc/LKMV
+   */
+  const pathSegments = window.location.pathname
+    .split("/")
+    .filter(Boolean);
+
+  if (pathSegments.length !== 1) {
+    return null;
+  }
+
+  return normalizeShopCode(pathSegments[0]);
+}
+
+function getShopProfile(): ShopProfile | null {
+  const detectedShopCode = getDetectedShopCode();
+
+  if (!detectedShopCode) {
+    return null;
+  }
+
+  /*
+   * Temporary built-in profile until shop information
+   * is stored in Cloudflare D1.
+   */
+  if (detectedShopCode === "LKMV") {
+    return {
+      code: "LKMV",
+      name: "Vishwakarma Cyber Cafe",
+      address: "Manas Nagar, Lucknow",
+    };
+  }
+
+  /*
+   * Registered shops are currently stored only in the
+   * browser where registration was completed.
+   */
+  const savedShop = localStorage.getItem(
+    `gyan-shop-${detectedShopCode}`,
+  );
+
+  if (!savedShop) {
+    return null;
+  }
+
+  try {
+    const parsedShop = JSON.parse(
+      savedShop,
+    ) as RegisteredShop;
+
+    return {
+      code: parsedShop.code,
+      name: parsedShop.name,
+      address: `${parsedShop.addressLine}, ${parsedShop.city}`,
+    };
+  } catch (error) {
+    console.error(
+      "Unable to read saved shop profile:",
+      error,
+    );
+
+    return null;
+  }
+}
+
 export default function App() {
+  const [shopProfile, setShopProfile] =
+    useState<ShopProfile | null>(() =>
+      getShopProfile(),
+    );
+
   const [expandedCategories, setExpandedCategories] =
     useState<Set<string>>(new Set());
 
   const [printPanelOpen, setPrintPanelOpen] =
     useState(false);
+
+  const [
+    registrationPanelOpen,
+    setRegistrationPanelOpen,
+  ] = useState(false);
 
   function toggleCategory(categoryId: string) {
     setExpandedCategories((current) => {
@@ -153,6 +273,34 @@ export default function App() {
     console.log(`${service.title} selected`);
   }
 
+  function handleRegisteredShop(
+    shop: RegisteredShop,
+  ) {
+    const profile: ShopProfile = {
+      code: shop.code,
+      name: shop.name,
+      address: `${shop.addressLine}, ${shop.city}`,
+    };
+
+    setShopProfile(profile);
+    setRegistrationPanelOpen(false);
+
+    /*
+     * Keep the application on the root route and pass the
+     * shop context through the query parameter.
+     */
+    const newUrl =
+      `/?shop=${encodeURIComponent(shop.code)}`;
+
+    window.history.pushState(
+      {
+        shopCode: shop.code,
+      },
+      "",
+      newUrl,
+    );
+  }
+
   return (
     <main className="app-shell">
       <div className="app-content">
@@ -160,11 +308,12 @@ export default function App() {
           hasExpandedCategories={
             expandedCategories.size > 0
           }
+          shopCode={shopProfile?.code}
           onCollapseExpandedCategories={
             collapseExpandedCategories
           }
-          onTrackOrder={() =>
-            console.log("Track order selected")
+          onRegisterShop={() =>
+            setRegistrationPanelOpen(true)
           }
         />
 
@@ -221,6 +370,14 @@ export default function App() {
           />
         </div>
 
+        <ShopBanner
+          shopName={shopProfile?.name}
+          address={shopProfile?.address}
+          onRegisterShop={() =>
+            setRegistrationPanelOpen(true)
+          }
+        />
+
         <AppFooter
           onContact={() =>
             console.log("Contact selected")
@@ -233,7 +390,18 @@ export default function App() {
 
       {printPanelOpen && (
         <PrintOrderPanel
-          onClose={() => setPrintPanelOpen(false)}
+          onClose={() =>
+            setPrintPanelOpen(false)
+          }
+        />
+      )}
+
+      {registrationPanelOpen && (
+        <ShopRegistrationPanel
+          onClose={() =>
+            setRegistrationPanelOpen(false)
+          }
+          onRegistered={handleRegisteredShop}
         />
       )}
     </main>

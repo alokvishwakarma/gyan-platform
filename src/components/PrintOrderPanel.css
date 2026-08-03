@@ -360,3 +360,58 @@
     grid-template-columns: 1fr;
   }
 }
+
+.print-panel__section {
+  padding: 0.85rem;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  background: #fff8ea;
+  border: 1px solid #e6d7c1;
+}
+
+.print-panel__section h3 {
+  margin: 0;
+
+  color: var(--chrome-text);
+
+  font-size: 0.9rem;
+}
+
+.print-panel input[type="text"],
+.print-panel input[type="tel"],
+.print-panel input[type="email"] {
+  width: 100%;
+
+  padding: 0.7rem;
+
+  border: 1px solid #cfc3b2;
+  border-radius: 0;
+
+  background: #ffffff;
+  color: #332317;
+
+  font: inherit;
+}
+
+.print-panel__checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+
+  cursor: pointer;
+}
+
+.print-panel__checkbox input {
+  margin-top: 0.15rem;
+}
+
+.print-panel__checkbox span {
+  margin: 0;
+
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.35;
+}

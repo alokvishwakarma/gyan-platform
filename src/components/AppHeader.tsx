@@ -2,14 +2,16 @@ import "./AppHeader.css";
 
 interface AppHeaderProps {
   hasExpandedCategories: boolean;
+  shopCode?: string | null;
   onCollapseExpandedCategories: () => void;
-  onTrackOrder: () => void;
+  onRegisterShop: () => void;
 }
 
 export default function AppHeader({
   hasExpandedCategories,
+  shopCode,
   onCollapseExpandedCategories,
-  onTrackOrder,
+  onRegisterShop,
 }: AppHeaderProps) {
   return (
     <header className="app-header">
@@ -21,12 +23,15 @@ export default function AppHeader({
         aria-label="Collapse all expanded categories"
         title={
           hasExpandedCategories
-            ? "Collapse all expanded categories"
-            : "No expanded categories"
+            ? "Collapse expanded categories"
+            : "Service categories"
         }
       >
-        <span className="app-header__icon" aria-hidden="true">
-          📖
+        <span
+          className="app-header__category-icon"
+          aria-hidden="true"
+        >
+          ▦
         </span>
       </button>
 
@@ -35,17 +40,27 @@ export default function AppHeader({
         <span>gyan.cc</span>
       </div>
 
-      <button
-        type="button"
-        className="app-header__action"
-        onClick={onTrackOrder}
-        aria-label="Track order"
-        title="Track order"
-      >
-        <span className="app-header__icon" aria-hidden="true">
-          📍
-        </span>
-      </button>
+      {shopCode ? (
+        <div
+          className="app-header__shop-code"
+          aria-label={`Current shop ${shopCode}`}
+          title={`Current shop: ${shopCode}`}
+        >
+          {shopCode}
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="app-header__action"
+          onClick={onRegisterShop}
+          aria-label="Register your shop with GYAN"
+          title="Register your shop"
+        >
+          <span className="app-header__icon" aria-hidden="true">
+            🏪
+          </span>
+        </button>
+      )}
     </header>
   );
 }

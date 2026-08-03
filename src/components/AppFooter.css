@@ -92,9 +92,9 @@
   min-width: 0;
 
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
 
   overflow: hidden;
 
@@ -103,14 +103,17 @@
 }
 
 .app-footer__status strong {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 650;
+  line-height: 1.05;
   white-space: nowrap;
 }
 
 .app-footer__status span {
-  color: var(--chrome-text-muted);
+  margin-top: 0.08rem;
 
-  font-size: 0.65rem;
+  color: var(--chrome-text-muted);
+  font-size: 0.6rem;
+  line-height: 1.05;
   white-space: nowrap;
 }

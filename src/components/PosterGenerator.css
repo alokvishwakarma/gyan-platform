@@ -1,0 +1,170 @@
+.poster-generator {
+  min-height: 100vh;
+  padding: 1rem;
+
+  background: #eee8df;
+  color: #4b2b17;
+
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.poster-generator__header {
+  width: min(100%, 1100px);
+  margin: 0 auto 1rem;
+  padding: 0.8rem 1rem;
+
+  background: #fff8e8;
+  border: 1px solid #d7bfa5;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.poster-generator__header span {
+  color: #80512f;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.poster-generator__header h1 {
+  margin: 0.15rem 0 0;
+  font-size: 1.35rem;
+}
+
+.poster-generator__home {
+  color: #5a3218;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.poster-generator__workspace {
+  width: min(100%, 1100px);
+  margin: 0 auto;
+
+  display: grid;
+  grid-template-columns: minmax(240px, 330px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.poster-generator__controls {
+  padding: 1rem;
+
+  background: #fff8e8;
+  border: 1px solid #d7bfa5;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.poster-generator__controls h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.poster-generator__controls label > span,
+.poster-generator__destination > span {
+  display: block;
+  margin-bottom: 0.3rem;
+
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.poster-generator__controls input {
+  width: 100%;
+  padding: 0.7rem;
+
+  border: 1px solid #c7ad91;
+  border-radius: 0;
+
+  background: #ffffff;
+  color: #332014;
+
+  font: inherit;
+}
+
+.poster-generator__controls input:focus {
+  outline: 3px solid rgb(128 81 47 / 20%);
+  border-color: #80512f;
+}
+
+.poster-generator__destination {
+  padding: 0.7rem;
+
+  background: #f4e4ce;
+  border: 1px solid #d7bfa5;
+}
+
+.poster-generator__destination strong {
+  overflow-wrap: anywhere;
+  font-size: 0.75rem;
+}
+
+.poster-generator__download {
+  min-height: 46px;
+  padding: 0.7rem;
+
+  border: 1px solid #472611;
+  background: #5a3218;
+  color: #ffffff;
+
+  font: inherit;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.poster-generator__download:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.poster-generator__note {
+  margin: 0;
+
+  color: #805f46;
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.poster-generator__error {
+  margin: 0;
+  color: #a32323;
+  font-size: 0.75rem;
+}
+
+.poster-generator__preview {
+  padding: 1rem;
+
+  background: #d8d0c5;
+  border: 1px solid #c4b9ab;
+
+  display: grid;
+  place-items: center;
+}
+
+.poster-generator__preview canvas {
+  display: block;
+
+  width: min(100%, 600px);
+  height: auto;
+
+  background: #fff8e8;
+  box-shadow: 0 16px 50px rgb(0 0 0 / 22%);
+}
+
+@media (max-width: 760px) {
+  .poster-generator__workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .poster-generator__header {
+    align-items: flex-start;
+  }
+}

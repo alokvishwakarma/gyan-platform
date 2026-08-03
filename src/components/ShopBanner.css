@@ -1,0 +1,88 @@
+.shop-banner {
+  min-height: 42px;
+  padding: 0.25rem 0.7rem;
+
+  background: var(--chrome-background);
+  border: 1px solid var(--chrome-border);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+
+  color: var(--chrome-text);
+  text-align: center;
+}
+
+.shop-banner__identity {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.shop-banner__identity strong {
+  max-width: 100%;
+
+  overflow: hidden;
+
+  font-size: clamp(0.62rem, 2.6vw, 0.78rem);
+  font-weight: 750;
+  letter-spacing: 0.025em;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-banner__identity span {
+  max-width: 100%;
+  margin-top: 0.08rem;
+
+  overflow: hidden;
+
+  color: var(--chrome-text-muted);
+  font-size: clamp(0.56rem, 2.2vw, 0.68rem);
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-banner__register {
+  width: 100%;
+  height: 100%;
+
+  padding: 0;
+
+  border: 0;
+  background: transparent;
+  color: var(--chrome-text);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  font: inherit;
+  cursor: pointer;
+
+  transition: background-color 180ms ease;
+}
+
+.shop-banner__register:hover {
+  background: rgb(255 255 255 / 35%);
+}
+
+.shop-banner__register strong {
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.shop-banner__register span {
+  margin-top: 0.08rem;
+
+  color: var(--chrome-text-muted);
+  font-size: 0.62rem;
+}
