@@ -6,7 +6,6 @@ import AppHeader from "./components/AppHeader";
 import CategoryRow, {
   type ServiceItem,
 } from "./components/CategoryRow";
-import InfoPanel from "./components/InfoPanel";
 
 const documentServices: ServiceItem[] = [
   {
@@ -148,15 +147,15 @@ export default function App() {
   return (
     <main className="app-shell">
       <div className="app-content">
-        <AppHeader
-          hasExpandedCategories={expandedCategories.size > 0}
-          onCollapseExpandedCategories={
-            collapseExpandedCategories
-          }
-          onTrackOrder={() =>
-            console.log("Track order selected")
-          }
-        />
+<AppHeader
+  hasExpandedCategories={expandedCategories.size > 0}
+  onCollapseExpandedCategories={
+    collapseExpandedCategories
+  }
+  onTrackOrder={() =>
+    console.log("Track order selected")
+  }
+/>
 
         <div className="category-list">
           <CategoryRow
@@ -198,8 +197,6 @@ export default function App() {
             onServiceClick={handleServiceClick}
           />
         </div>
-
-        <InfoPanel />
 
         <AppFooter
           onContact={() => console.log("Contact selected")}

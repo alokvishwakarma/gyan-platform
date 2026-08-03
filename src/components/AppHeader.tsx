@@ -18,15 +18,15 @@ export default function AppHeader({
         className="app-header__action"
         onClick={onCollapseExpandedCategories}
         disabled={!hasExpandedCategories}
-        aria-label="Collapse expanded categories"
+        aria-label="Collapse all expanded categories"
         title={
           hasExpandedCategories
-            ? "Collapse expanded categories"
+            ? "Collapse all expanded categories"
             : "No expanded categories"
         }
       >
         <span className="app-header__icon" aria-hidden="true">
-          {hasExpandedCategories ? "⌃" : "📖"}
+          📖
         </span>
       </button>
 
