@@ -1,14 +1,14 @@
 import "./AppHeader.css";
 
 interface AppHeaderProps {
-  categoriesExpanded: boolean;
-  onToggleCategories: () => void;
+  hasExpandedCategories: boolean;
+  onCollapseExpandedCategories: () => void;
   onTrackOrder: () => void;
 }
 
 export default function AppHeader({
-  categoriesExpanded,
-  onToggleCategories,
+  hasExpandedCategories,
+  onCollapseExpandedCategories,
   onTrackOrder,
 }: AppHeaderProps) {
   return (
@@ -16,18 +16,16 @@ export default function AppHeader({
       <button
         type="button"
         className="app-header__action"
-        onClick={onToggleCategories}
-        aria-expanded={categoriesExpanded}
-        aria-label={
-          categoriesExpanded ? "Collapse categories" : "Expand categories"
-        }
+        onClick={onCollapseExpandedCategories}
+        disabled={!hasExpandedCategories}
+        aria-label="Collapse expanded categories"
       >
         <span className="app-header__icon" aria-hidden="true">
           📖
         </span>
 
         <span className="app-header__label">
-          {categoriesExpanded ? "Collapse" : "Expand"}
+          {hasExpandedCategories ? "Collapse" : "Menu"}
         </span>
       </button>
 

@@ -1,6 +1,8 @@
 :root {
   --tile-unit: 56px;
+  --header-height: calc(var(--tile-unit) * 2);
   --tile-row-height: calc(var(--tile-unit) * 3);
+  --footer-height: var(--tile-unit);
 }
 
 .tile {

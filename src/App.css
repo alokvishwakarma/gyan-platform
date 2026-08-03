@@ -10,9 +10,14 @@
   width: min(100%, 430px);
   height: 100%;
   margin: 0 auto;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows:
+    var(--header-height)
+    auto
+    minmax(0, 1fr)
+    var(--footer-height);
   gap: 4px;
+  overflow: hidden;
 }
 
 .tile-grid {
@@ -20,4 +25,19 @@
   grid-template-columns: repeat(12, minmax(0, 1fr));
   align-content: start;
   gap: 4px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.tile-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tile-grid::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.tile-grid::-webkit-scrollbar-track {
+  background: transparent;
 }
