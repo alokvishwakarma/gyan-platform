@@ -1,7 +1,6 @@
 import "./Tile.css";
 
-export type TileWidth = 1 | 2 | 3 | 6 | 9 | 12;
-export type TileVariant = "service" | "header" | "more";
+export type TileWidth = 3 | 6 | 9 | 12;
 
 export interface TileProps {
   id: string;
@@ -9,8 +8,7 @@ export interface TileProps {
   icon: string;
   width?: TileWidth;
   color?: string;
-  variant?: TileVariant;
-  onClick?: () => void;
+  onClick: () => void;
 }
 
 export default function Tile({
@@ -19,37 +17,17 @@ export default function Tile({
   icon,
   width = 3,
   color = "#0078d4",
-  variant = "service",
   onClick,
 }: TileProps) {
-  const style = {
-    backgroundColor: variant === "header" ? "#ffffff" : color,
-    gridColumn: `span ${width}`,
-  };
-
-  if (variant === "header") {
-    return (
-      <div
-        id={id}
-        className="tile tile--header"
-        style={style}
-        aria-label={title}
-      >
-        <span className="tile__icon" aria-hidden="true">
-          {icon}
-        </span>
-
-        <span className="tile__title">{title}</span>
-      </div>
-    );
-  }
-
   return (
     <button
       id={id}
       type="button"
-      className={`tile tile--${variant}`}
-      style={style}
+      className="tile"
+      style={{
+        backgroundColor: color,
+        gridColumn: `span ${width}`,
+      }}
       onClick={onClick}
       aria-label={title}
     >
@@ -57,7 +35,7 @@ export default function Tile({
         {icon}
       </span>
 
-      {title && <span className="tile__title">{title}</span>}
+      <span className="tile__title">{title}</span>
     </button>
   );
 }

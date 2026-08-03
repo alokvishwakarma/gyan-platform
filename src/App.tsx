@@ -1,4 +1,5 @@
 import "./App.css";
+import HubTile from "./components/HubTile";
 import Tile from "./components/Tile";
 
 const documentServices = [
@@ -20,21 +21,35 @@ const documentServices = [
     icon: "📷",
     color: "#8764b8",
   },
+  {
+    id: "lamination",
+    title: "Lamination",
+    icon: "📄",
+    color: "#d83b01",
+  },
+  {
+    id: "binding",
+    title: "Binding",
+    icon: "📚",
+    color: "#5c2d91",
+  },
 ];
+
+const visibleDocumentServices = documentServices.slice(0, 3);
 
 export default function App() {
   return (
     <main className="app-shell">
       <section className="tile-grid" aria-label="GYAN services">
-        <Tile
-          id="documents-category"
+        <HubTile
+          id="documents-hub"
           title="Docs"
-          icon="D"
-          width={2}
-          variant="header"
+          icon="📄"
+          serviceCount={documentServices.length}
+          onClick={() => console.log("Open all document services")}
         />
 
-        {documentServices.map((service) => (
+        {visibleDocumentServices.map((service) => (
           <Tile
             key={service.id}
             id={service.id}
@@ -45,16 +60,6 @@ export default function App() {
             onClick={() => console.log(`${service.title} selected`)}
           />
         ))}
-
-        <Tile
-          id="documents-more"
-          title="More document services"
-          icon="⋮"
-          width={1}
-          color="#52616b"
-          variant="more"
-          onClick={() => console.log("More document services selected")}
-        />
       </section>
     </main>
   );
