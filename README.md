@@ -23,14 +23,15 @@ Enable customers to:
 
 ## Current Version
 
-**GYAN 0.1 – Genesis**
+## GYAN 0.1 — Genesis
 
-### Completed
+**Released:** August 3, 2026
 
-- ✅ Project initialized
-- ✅ React + TypeScript + Vite
-- ✅ Git & GitHub
-- ✅ Development environment
+- React + TypeScript + Vite foundation
+- GitHub-based source control
+- Cloudflare deployment
+- Custom domain and HTTPS
+- First public release at gyan.cc
 
 ### Next
 
