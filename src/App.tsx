@@ -6,6 +6,7 @@ import AppHeader from "./components/AppHeader";
 import CategoryRow, {
   type ServiceItem,
 } from "./components/CategoryRow";
+import PrintOrderPanel from "./components/PrintOrderPanel";
 
 const documentServices: ServiceItem[] = [
   {
@@ -122,6 +123,9 @@ export default function App() {
   const [expandedCategories, setExpandedCategories] =
     useState<Set<string>>(new Set());
 
+  const [printPanelOpen, setPrintPanelOpen] =
+    useState(false);
+
   function toggleCategory(categoryId: string) {
     setExpandedCategories((current) => {
       const next = new Set(current);
@@ -141,21 +145,28 @@ export default function App() {
   }
 
   function handleServiceClick(service: ServiceItem) {
+    if (service.id === "print") {
+      setPrintPanelOpen(true);
+      return;
+    }
+
     console.log(`${service.title} selected`);
   }
 
   return (
     <main className="app-shell">
       <div className="app-content">
-<AppHeader
-  hasExpandedCategories={expandedCategories.size > 0}
-  onCollapseExpandedCategories={
-    collapseExpandedCategories
-  }
-  onTrackOrder={() =>
-    console.log("Track order selected")
-  }
-/>
+        <AppHeader
+          hasExpandedCategories={
+            expandedCategories.size > 0
+          }
+          onCollapseExpandedCategories={
+            collapseExpandedCategories
+          }
+          onTrackOrder={() =>
+            console.log("Track order selected")
+          }
+        />
 
         <div className="category-list">
           <CategoryRow
@@ -163,11 +174,15 @@ export default function App() {
             title="Docs"
             icon="📄"
             services={documentServices}
-            expanded={expandedCategories.has("documents")}
+            expanded={expandedCategories.has(
+              "documents",
+            )}
             hubBackground="#eff6ff"
             hubTextColor="#17456f"
             hubAccentColor="#1976d2"
-            onToggle={() => toggleCategory("documents")}
+            onToggle={() =>
+              toggleCategory("documents")
+            }
             onServiceClick={handleServiceClick}
           />
 
@@ -176,11 +191,15 @@ export default function App() {
             title="Education"
             icon="🎓"
             services={educationServices}
-            expanded={expandedCategories.has("education")}
+            expanded={expandedCategories.has(
+              "education",
+            )}
             hubBackground="#effaf1"
             hubTextColor="#24562a"
             hubAccentColor="#43a047"
-            onToggle={() => toggleCategory("education")}
+            onToggle={() =>
+              toggleCategory("education")
+            }
             onServiceClick={handleServiceClick}
           />
 
@@ -189,20 +208,34 @@ export default function App() {
             title="Government"
             icon="🏛️"
             services={governmentServices}
-            expanded={expandedCategories.has("government")}
+            expanded={expandedCategories.has(
+              "government",
+            )}
             hubBackground="#fff4e8"
             hubTextColor="#7a3500"
             hubAccentColor="#ef6c00"
-            onToggle={() => toggleCategory("government")}
+            onToggle={() =>
+              toggleCategory("government")
+            }
             onServiceClick={handleServiceClick}
           />
         </div>
 
         <AppFooter
-          onContact={() => console.log("Contact selected")}
-          onLocation={() => console.log("Location selected")}
+          onContact={() =>
+            console.log("Contact selected")
+          }
+          onLocation={() =>
+            console.log("Location selected")
+          }
         />
       </div>
+
+      {printPanelOpen && (
+        <PrintOrderPanel
+          onClose={() => setPrintPanelOpen(false)}
+        />
+      )}
     </main>
   );
 }
