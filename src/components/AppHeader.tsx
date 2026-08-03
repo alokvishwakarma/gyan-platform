@@ -5,6 +5,7 @@ interface AppHeaderProps {
   shopCode?: string | null;
   onCollapseExpandedCategories: () => void;
   onRegisterShop: () => void;
+  onOpenShopQr: () => void;
 }
 
 export default function AppHeader({
@@ -12,6 +13,7 @@ export default function AppHeader({
   shopCode,
   onCollapseExpandedCategories,
   onRegisterShop,
+  onOpenShopQr,
 }: AppHeaderProps) {
   return (
     <header className="app-header">
@@ -35,19 +37,24 @@ export default function AppHeader({
         </span>
       </button>
 
-      <div className="app-header__brand" aria-label="GYAN">
+      <div
+        className="app-header__brand"
+        aria-label="GYAN"
+      >
         <strong>GYAN</strong>
         <span>gyan.cc</span>
       </div>
 
       {shopCode ? (
-        <div
+        <button
+          type="button"
           className="app-header__shop-code"
-          aria-label={`Current shop ${shopCode}`}
-          title={`Current shop: ${shopCode}`}
+          onClick={onOpenShopQr}
+          aria-label={`Open QR code for shop ${shopCode}`}
+          title="View or download shop QR"
         >
           {shopCode}
-        </div>
+        </button>
       ) : (
         <button
           type="button"
@@ -56,7 +63,10 @@ export default function AppHeader({
           aria-label="Register your shop with GYAN"
           title="Register your shop"
         >
-          <span className="app-header__icon" aria-hidden="true">
+          <span
+            className="app-header__icon"
+            aria-hidden="true"
+          >
             🏪
           </span>
         </button>

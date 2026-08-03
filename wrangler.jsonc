@@ -1,9 +1,23 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "gyan-platform",
+  "main": "./worker/index.ts",
   "compatibility_date": "2026-08-03",
+
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "single-page-application"
-  }
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/api/*"
+    ]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "gyan_registry",
+      "database_name": "gyan-registry",
+      "database_id": "f7313f00-d45b-418f-bb33-f8eb9f486f25"
+    }
+  ]
 }

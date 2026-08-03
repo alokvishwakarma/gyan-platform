@@ -223,7 +223,7 @@ const [whatsAppConsent, setWhatsAppConsent] =
     <input
       type="tel"
       value={phoneNumber}
-      placeholder="+91 98765 43210"
+      placeholder="+91 12345 67890"
       autoComplete="tel"
       required
       onChange={(event) =>
@@ -265,7 +265,7 @@ const [whatsAppConsent, setWhatsAppConsent] =
       <input
         type="tel"
         value={whatsAppNumber}
-        placeholder="+91 98765 43210"
+        placeholder="+91 12345 67890"
         autoComplete="tel"
         required
         onChange={(event) =>

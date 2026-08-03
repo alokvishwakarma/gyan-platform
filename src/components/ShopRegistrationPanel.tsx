@@ -87,6 +87,8 @@ export default function ShopRegistrationPanel({
   const [errorMessage, setErrorMessage] =
     useState<string | null>(null);
 
+  const [isSaving, setIsSaving] = useState(false);
+
   const effectiveWhatsAppNumber =
     sameWhatsAppNumber
       ? phoneNumber
@@ -268,28 +270,70 @@ export default function ShopRegistrationPanel({
     link.remove();
   }
 
-  function finishRegistration() {
-    const registeredShop: RegisteredShop = {
-      code: shopCode,
-      name: shopName.trim(),
-      ownerName: ownerName.trim(),
-      phoneNumber: phoneNumber.trim(),
-      whatsAppNumber:
-        effectiveWhatsAppNumber.trim(),
-      emailAddress: emailAddress.trim(),
-      addressLine: addressLine.trim(),
-      city: city.trim(),
-      state: state.trim(),
-      postalCode: postalCode.trim(),
+  async function finishRegistration() {
+  setIsSaving(true);
+  setErrorMessage(null);
+
+  const registeredShop: RegisteredShop = {
+    code: shopCode,
+    name: shopName.trim(),
+    ownerName: ownerName.trim(),
+    phoneNumber: phoneNumber.trim(),
+    whatsAppNumber:
+      effectiveWhatsAppNumber.trim(),
+    emailAddress: emailAddress.trim(),
+    addressLine: addressLine.trim(),
+    city: city.trim(),
+    state: state.trim(),
+    postalCode: postalCode.trim(),
+  };
+
+  try {
+    const response = await fetch("/api/shops", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(registeredShop),
+    });
+
+    const result = (await response.json()) as {
+      shop?: RegisteredShop;
+      error?: string;
     };
 
+    if (!response.ok || !result.shop) {
+      throw new Error(
+        result.error ??
+          "The shop could not be registered.",
+      );
+    }
+
+    /*
+     * Keep a local copy for convenience, but D1 is now
+     * the authoritative shared registry.
+     */
     localStorage.setItem(
-      `gyan-shop-${shopCode}`,
-      JSON.stringify(registeredShop),
+      `gyan-shop-${result.shop.code}`,
+      JSON.stringify(result.shop),
     );
 
-    onRegistered(registeredShop);
+    onRegistered(result.shop);
+  } catch (error) {
+    console.error(
+      "Cloud registration failed:",
+      error,
+    );
+
+    setErrorMessage(
+      error instanceof Error
+        ? error.message
+        : "The shop could not be registered.",
+    );
+  } finally {
+    setIsSaving(false);
   }
+}
 
   if (registrationComplete) {
     return (
@@ -348,6 +392,15 @@ export default function ShopRegistrationPanel({
               selected automatically.
             </p>
 
+{errorMessage && (
+  <p
+    className="registration-error"
+    role="alert"
+  >
+    {errorMessage}
+  </p>
+)}
+
             <div className="registration-result__actions">
               <button
                 type="button"
@@ -357,13 +410,18 @@ export default function ShopRegistrationPanel({
                 Download QR
               </button>
 
-              <button
-                type="button"
-                className="registration-button registration-button--primary"
-                onClick={finishRegistration}
-              >
-                Open registered shop
-              </button>
+<button
+  type="button"
+  className="registration-button registration-button--primary"
+  disabled={isSaving}
+  onClick={() => {
+    void finishRegistration();
+  }}
+>
+  {isSaving
+    ? "Saving shop…"
+    : "Save and open shop"}
+</button>
             </div>
           </div>
         </section>
@@ -414,7 +472,7 @@ export default function ShopRegistrationPanel({
               <input
                 type="text"
                 value={shopName}
-                placeholder="Vishwakarma Cyber Cafe"
+                placeholder="Brindawan Cyber Cafe"
                 autoComplete="organization"
                 required
                 onChange={(event) =>
@@ -465,7 +523,7 @@ export default function ShopRegistrationPanel({
               <input
                 type="tel"
                 value={phoneNumber}
-                placeholder="+91 98765 43210"
+                placeholder="+91 12345 67890"
                 autoComplete="tel"
                 required
                 onChange={(event) =>
@@ -501,7 +559,7 @@ export default function ShopRegistrationPanel({
                 <input
                   type="tel"
                   value={whatsAppNumber}
-                  placeholder="+91 98765 43210"
+                  placeholder="+91 12345 67890"
                   required
                   onChange={(event) =>
                     setWhatsAppNumber(
@@ -543,7 +601,7 @@ export default function ShopRegistrationPanel({
               <input
                 type="text"
                 value={addressLine}
-                placeholder="Manas Nagar"
+                placeholder="Brindawan Nagar"
                 autoComplete="street-address"
                 required
                 onChange={(event) =>
@@ -561,7 +619,7 @@ export default function ShopRegistrationPanel({
                 <input
                   type="text"
                   value={city}
-                  placeholder="Lucknow"
+                  placeholder="Bombay"
                   autoComplete="address-level2"
                   required
                   onChange={(event) =>
@@ -576,7 +634,7 @@ export default function ShopRegistrationPanel({
                 <input
                   type="text"
                   value={state}
-                  placeholder="Uttar Pradesh"
+                  placeholder="Maharashtra"
                   autoComplete="address-level1"
                   required
                   onChange={(event) =>
@@ -593,7 +651,7 @@ export default function ShopRegistrationPanel({
                 type="text"
                 inputMode="numeric"
                 value={postalCode}
-                placeholder="226023"
+                placeholder="123456"
                 autoComplete="postal-code"
                 required
                 onChange={(event) =>

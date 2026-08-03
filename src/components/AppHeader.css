@@ -119,18 +119,40 @@
 
 .app-header__shop-code {
   min-width: 0;
+  padding: 0;
 
+  border: 0;
   border-left: 1px solid var(--chrome-border);
+
+  background: transparent;
+  color: var(--chrome-text);
 
   display: grid;
   place-items: center;
 
-  color: var(--chrome-text);
-
-  font-family: monospace;
+  font-family: Consolas, monospace;
   font-size: clamp(0.76rem, 3.2vw, 1rem);
   font-weight: 800;
   letter-spacing: 0.08em;
+
+  cursor: pointer;
+
+  transition:
+    background-color 180ms ease,
+    transform 180ms ease;
+}
+
+.app-header__shop-code:hover {
+  background: rgb(255 255 255 / 45%);
+}
+
+.app-header__shop-code:active {
+  transform: scale(0.96);
+}
+
+.app-header__shop-code:focus-visible {
+  outline: 3px solid var(--chrome-accent);
+  outline-offset: -4px;
 }
 
 .app-header__category-icon {

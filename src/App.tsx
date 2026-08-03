@@ -1,5 +1,9 @@
-import { useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 import "./App.css";
+import ShopQrPanel from "./components/ShopQrPanel";
 
 import AppFooter from "./components/AppFooter";
 import AppHeader from "./components/AppHeader";
@@ -129,6 +133,16 @@ interface ShopProfile {
   address: string;
 }
 
+interface CloudShopResponse {
+  shop?: {
+    code: string;
+    name: string;
+    addressLine: string;
+    city: string;
+  };
+  error?: string;
+}
+
 function normalizeShopCode(
   value: string | null | undefined,
 ): string | null {
@@ -147,10 +161,6 @@ function normalizeShopCode(
 }
 
 function getDetectedShopCode(): string | null {
-  /*
-   * First preference:
-   * https://gyan.cc/?shop=LKMV
-   */
   const queryParameters = new URLSearchParams(
     window.location.search,
   );
@@ -164,7 +174,7 @@ function getDetectedShopCode(): string | null {
   }
 
   /*
-   * Backward compatibility:
+   * Backward compatibility for:
    * https://gyan.cc/LKMV
    */
   const pathSegments = window.location.pathname
@@ -178,62 +188,12 @@ function getDetectedShopCode(): string | null {
   return normalizeShopCode(pathSegments[0]);
 }
 
-function getShopProfile(): ShopProfile | null {
-  const detectedShopCode = getDetectedShopCode();
-
-  if (!detectedShopCode) {
-    return null;
-  }
-
-  /*
-   * Temporary built-in profile until shop information
-   * is stored in Cloudflare D1.
-   */
-  if (detectedShopCode === "LKMV") {
-    return {
-      code: "LKMV",
-      name: "Vishwakarma Cyber Cafe",
-      address: "Manas Nagar, Lucknow",
-    };
-  }
-
-  /*
-   * Registered shops are currently stored only in the
-   * browser where registration was completed.
-   */
-  const savedShop = localStorage.getItem(
-    `gyan-shop-${detectedShopCode}`,
-  );
-
-  if (!savedShop) {
-    return null;
-  }
-
-  try {
-    const parsedShop = JSON.parse(
-      savedShop,
-    ) as RegisteredShop;
-
-    return {
-      code: parsedShop.code,
-      name: parsedShop.name,
-      address: `${parsedShop.addressLine}, ${parsedShop.city}`,
-    };
-  } catch (error) {
-    console.error(
-      "Unable to read saved shop profile:",
-      error,
-    );
-
-    return null;
-  }
-}
-
 export default function App() {
   const [shopProfile, setShopProfile] =
-    useState<ShopProfile | null>(() =>
-      getShopProfile(),
-    );
+    useState<ShopProfile | null>(null);
+
+  const [shopLoading, setShopLoading] =
+    useState(false);
 
   const [expandedCategories, setExpandedCategories] =
     useState<Set<string>>(new Set());
@@ -245,6 +205,76 @@ export default function App() {
     registrationPanelOpen,
     setRegistrationPanelOpen,
   ] = useState(false);
+
+  const [shopQrPanelOpen, setShopQrPanelOpen] =
+  useState(false);
+
+  useEffect(() => {
+    const shopCode = getDetectedShopCode();
+
+    if (!shopCode) {
+      return;
+    }
+
+    const confirmedShopCode = shopCode;
+
+    const abortController = new AbortController();
+
+    async function loadShop() {
+      setShopLoading(true);
+
+      try {
+        const response = await fetch(
+          `/api/shops/${encodeURIComponent(
+            confirmedShopCode,
+          )}`,
+          {
+            signal: abortController.signal,
+          },
+        );
+
+        const result =
+          (await response.json()) as CloudShopResponse;
+
+        if (!response.ok || !result.shop) {
+          throw new Error(
+            result.error ?? "Shop not found.",
+          );
+        }
+
+        setShopProfile({
+          code: result.shop.code,
+          name: result.shop.name,
+          address:
+            `${result.shop.addressLine}, ${result.shop.city}`,
+        });
+      } catch (error) {
+        if (
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+
+        console.error(
+          "Unable to load shop:",
+          error,
+        );
+
+        setShopProfile(null);
+      } finally {
+        if (!abortController.signal.aborted) {
+          setShopLoading(false);
+        }
+      }
+    }
+
+    void loadShop();
+
+    return () => {
+      abortController.abort();
+    };
+  }, []);
 
   function toggleCategory(categoryId: string) {
     setExpandedCategories((current) => {
@@ -285,19 +315,12 @@ export default function App() {
     setShopProfile(profile);
     setRegistrationPanelOpen(false);
 
-    /*
-     * Keep the application on the root route and pass the
-     * shop context through the query parameter.
-     */
-    const newUrl =
-      `/?shop=${encodeURIComponent(shop.code)}`;
-
     window.history.pushState(
       {
         shopCode: shop.code,
       },
       "",
-      newUrl,
+      `/?shop=${encodeURIComponent(shop.code)}`,
     );
   }
 
@@ -305,17 +328,20 @@ export default function App() {
     <main className="app-shell">
       <div className="app-content">
         <AppHeader
-          hasExpandedCategories={
-            expandedCategories.size > 0
-          }
-          shopCode={shopProfile?.code}
-          onCollapseExpandedCategories={
-            collapseExpandedCategories
-          }
-          onRegisterShop={() =>
-            setRegistrationPanelOpen(true)
-          }
-        />
+  hasExpandedCategories={
+    expandedCategories.size > 0
+  }
+  shopCode={shopProfile?.code}
+  onCollapseExpandedCategories={
+    collapseExpandedCategories
+  }
+  onRegisterShop={() =>
+    setRegistrationPanelOpen(true)
+  }
+  onOpenShopQr={() =>
+    setShopQrPanelOpen(true)
+  }
+/>
 
         <div className="category-list">
           <CategoryRow
@@ -371,8 +397,16 @@ export default function App() {
         </div>
 
         <ShopBanner
-          shopName={shopProfile?.name}
-          address={shopProfile?.address}
+          shopName={
+            shopLoading
+              ? "Loading shop..."
+              : shopProfile?.name
+          }
+          address={
+            shopLoading
+              ? "Please wait"
+              : shopProfile?.address
+          }
           onRegisterShop={() =>
             setRegistrationPanelOpen(true)
           }
@@ -404,6 +438,17 @@ export default function App() {
           onRegistered={handleRegisteredShop}
         />
       )}
+
+      {shopQrPanelOpen && shopProfile && (
+  <ShopQrPanel
+    shopCode={shopProfile.code}
+    shopName={shopProfile.name}
+    address={shopProfile.address}
+    onClose={() =>
+      setShopQrPanelOpen(false)
+    }
+  />
+)}
     </main>
   );
 }
