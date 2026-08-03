@@ -4,14 +4,23 @@
   --header-height: var(--tile-unit);
   --tile-row-height: calc(var(--tile-unit) * 3);
   --footer-height: var(--tile-unit);
+
+  --chrome-background: #fffaf0;
+  --chrome-border: #eadfca;
+  --chrome-text: #5e3d20;
+  --chrome-text-muted: #876d50;
+  --chrome-accent: #8a5a2b;
 }
 
 .tile {
   min-width: 0;
   height: var(--tile-row-height);
+
   padding: 0.8rem;
+
   border: 0;
   border-radius: 0;
+
   color: #ffffff;
 
   display: flex;
@@ -20,8 +29,10 @@
   justify-content: space-between;
 
   overflow: hidden;
+
   font: inherit;
   text-align: left;
+
   cursor: pointer;
 
   transition:
@@ -32,8 +43,11 @@
 
 .tile:hover {
   z-index: 1;
+
   transform: translateY(-2px);
+
   box-shadow: 0 10px 20px rgb(0 0 0 / 16%);
+
   filter: brightness(1.04);
 }
 
@@ -53,10 +67,13 @@
 
 .tile__title {
   width: 100%;
+
   overflow: hidden;
+
   font-size: clamp(0.7rem, 2.8vw, 0.98rem);
   font-weight: 500;
   line-height: 1.15;
+
   text-overflow: ellipsis;
   white-space: nowrap;
 }
