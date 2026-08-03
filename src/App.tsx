@@ -1,87 +1,127 @@
 import { useState } from "react";
 import "./App.css";
-import AppHeader from "./components/AppHeader";
+
 import AppFooter from "./components/AppFooter";
-import HubTile from "./components/HubTile";
-import Tile from "./components/Tile";
+import AppHeader from "./components/AppHeader";
+import CategoryRow, {
+  type ServiceItem,
+} from "./components/CategoryRow";
 import InfoPanel from "./components/InfoPanel";
 
-const documentServices = [
+const documentServices: ServiceItem[] = [
   {
     id: "print",
     title: "Print",
     icon: "🖨️",
-    color: "#0078d4",
+    color: "#1565c0",
   },
   {
     id: "scan",
     title: "Scan",
     icon: "📠",
-    color: "#10893e",
+    color: "#1976d2",
   },
   {
     id: "photo",
     title: "Photo",
     icon: "📷",
-    color: "#8764b8",
+    color: "#1e88e5",
   },
   {
     id: "lamination",
     title: "Lamination",
     icon: "📄",
-    color: "#d83b01",
+    color: "#2196f3",
   },
   {
     id: "binding",
     title: "Binding",
     icon: "📚",
-    color: "#5c2d91",
+    color: "#42a5f5",
   },
   {
     id: "pdf",
     title: "PDF Tools",
     icon: "📑",
-    color: "#ca5010",
+    color: "#64b5f6",
   },
 ];
 
-const educationServices = [
+const educationServices: ServiceItem[] = [
   {
     id: "forms",
     title: "Forms",
     icon: "📝",
-    color: "#038387",
+    color: "#2e7d32",
   },
   {
     id: "resume",
     title: "Resume",
     icon: "📋",
-    color: "#e3008c",
+    color: "#388e3c",
   },
   {
     id: "certificates",
     title: "Certificates",
     icon: "🎓",
-    color: "#498205",
+    color: "#43a047",
   },
   {
     id: "admit-card",
     title: "Admit Card",
     icon: "🪪",
-    color: "#8e562e",
+    color: "#4caf50",
   },
   {
     id: "applications",
     title: "Applications",
     icon: "✍️",
-    color: "#4f6bed",
+    color: "#66bb6a",
+  },
+];
+
+const governmentServices: ServiceItem[] = [
+  {
+    id: "pan",
+    title: "PAN Help",
+    icon: "🪪",
+    color: "#e65100",
+  },
+  {
+    id: "aadhaar",
+    title: "Aadhaar Help",
+    icon: "👤",
+    color: "#ef6c00",
+  },
+  {
+    id: "passport",
+    title: "Passport",
+    icon: "🛂",
+    color: "#f57c00",
+  },
+  {
+    id: "bill-payment",
+    title: "Bill Payment",
+    icon: "🧾",
+    color: "#fb8c00",
+  },
+  {
+    id: "insurance",
+    title: "Insurance",
+    icon: "🛡️",
+    color: "#ff9800",
+  },
+  {
+    id: "government-forms",
+    title: "Govt Forms",
+    icon: "🏛️",
+    color: "#ffa726",
   },
 ];
 
 export default function App() {
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(),
-  );
+  const [expandedCategories, setExpandedCategories] =
+    useState<Set<string>>(new Set());
 
   function toggleCategory(categoryId: string) {
     setExpandedCategories((current) => {
@@ -101,52 +141,8 @@ export default function App() {
     setExpandedCategories(new Set());
   }
 
-  function renderCategory(
-    categoryId: string,
-    title: string,
-    icon: string,
-    services: typeof documentServices,
-  ) {
-    const visibleServices = services.slice(0, 3);
-    const extraServices = services.slice(3);
-    const isExpanded = expandedCategories.has(categoryId);
-
-    return (
-      <>
-        <HubTile
-          id={`${categoryId}-hub`}
-          title={title}
-          icon={icon}
-          serviceCount={services.length}
-          onClick={() => toggleCategory(categoryId)}
-        />
-
-        {visibleServices.map((service) => (
-          <Tile
-            key={service.id}
-            id={service.id}
-            title={service.title}
-            icon={service.icon}
-            width={3}
-            color={service.color}
-            onClick={() => console.log(`${service.title} selected`)}
-          />
-        ))}
-
-        {isExpanded &&
-          extraServices.map((service) => (
-            <Tile
-              key={service.id}
-              id={service.id}
-              title={service.title}
-              icon={service.icon}
-              width={3}
-              color={service.color}
-              onClick={() => console.log(`${service.title} selected`)}
-            />
-          ))}
-      </>
-    );
+  function handleServiceClick(service: ServiceItem) {
+    console.log(`${service.title} selected`);
   }
 
   return (
@@ -154,25 +150,54 @@ export default function App() {
       <div className="app-content">
         <AppHeader
           hasExpandedCategories={expandedCategories.size > 0}
-          onCollapseExpandedCategories={collapseExpandedCategories}
-          onTrackOrder={() => console.log("Track order selected")}
+          onCollapseExpandedCategories={
+            collapseExpandedCategories
+          }
+          onTrackOrder={() =>
+            console.log("Track order selected")
+          }
         />
 
-        <section className="tile-grid" aria-label="GYAN services">
-          {renderCategory(
-            "documents",
-            "Docs",
-            "📄",
-            documentServices,
-          )}
+        <div className="category-list">
+          <CategoryRow
+            id="documents"
+            title="Docs"
+            icon="📄"
+            services={documentServices}
+            expanded={expandedCategories.has("documents")}
+            hubBackground="#eff6ff"
+            hubTextColor="#17456f"
+            hubAccentColor="#1976d2"
+            onToggle={() => toggleCategory("documents")}
+            onServiceClick={handleServiceClick}
+          />
 
-          {renderCategory(
-            "education",
-            "Education",
-            "🎓",
-            educationServices,
-          )}
-        </section>
+          <CategoryRow
+            id="education"
+            title="Education"
+            icon="🎓"
+            services={educationServices}
+            expanded={expandedCategories.has("education")}
+            hubBackground="#effaf1"
+            hubTextColor="#24562a"
+            hubAccentColor="#43a047"
+            onToggle={() => toggleCategory("education")}
+            onServiceClick={handleServiceClick}
+          />
+
+          <CategoryRow
+            id="government"
+            title="Government"
+            icon="🏛️"
+            services={governmentServices}
+            expanded={expandedCategories.has("government")}
+            hubBackground="#fff4e8"
+            hubTextColor="#7a3500"
+            hubAccentColor="#ef6c00"
+            onToggle={() => toggleCategory("government")}
+            onServiceClick={handleServiceClick}
+          />
+        </div>
 
         <InfoPanel />
 

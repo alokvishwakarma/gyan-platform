@@ -19,17 +19,18 @@ export default function AppHeader({
         onClick={onCollapseExpandedCategories}
         disabled={!hasExpandedCategories}
         aria-label="Collapse expanded categories"
+        title={
+          hasExpandedCategories
+            ? "Collapse expanded categories"
+            : "No expanded categories"
+        }
       >
         <span className="app-header__icon" aria-hidden="true">
-          📖
-        </span>
-
-        <span className="app-header__label">
-          {hasExpandedCategories ? "Collapse" : "Menu"}
+          {hasExpandedCategories ? "⌃" : "📖"}
         </span>
       </button>
 
-      <div className="app-header__brand">
+      <div className="app-header__brand" aria-label="GYAN">
         <strong>GYAN</strong>
         <span>gyan.cc</span>
       </div>
@@ -39,12 +40,11 @@ export default function AppHeader({
         className="app-header__action"
         onClick={onTrackOrder}
         aria-label="Track order"
+        title="Track order"
       >
         <span className="app-header__icon" aria-hidden="true">
           📍
         </span>
-
-        <span className="app-header__label">Track</span>
       </button>
     </header>
   );

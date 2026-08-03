@@ -1,6 +1,7 @@
 :root {
-  --tile-unit: 56px;
-  --header-height: calc(var(--tile-unit) * 2);
+  --tile-unit: 48px;
+
+  --header-height: var(--tile-unit);
   --tile-row-height: calc(var(--tile-unit) * 3);
   --footer-height: var(--tile-unit);
 }
@@ -8,18 +9,21 @@
 .tile {
   min-width: 0;
   height: var(--tile-row-height);
-  padding: 1rem;
+  padding: 0.8rem;
   border: 0;
   border-radius: 0;
   color: #ffffff;
+
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: space-between;
+
   overflow: hidden;
   font: inherit;
   text-align: left;
   cursor: pointer;
+
   transition:
     transform 180ms ease,
     box-shadow 180ms ease,
@@ -28,8 +32,8 @@
 
 .tile:hover {
   z-index: 1;
-  transform: translateY(-3px);
-  box-shadow: 0 12px 24px rgb(0 0 0 / 18%);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgb(0 0 0 / 16%);
   filter: brightness(1.04);
 }
 
@@ -43,14 +47,14 @@
 }
 
 .tile__icon {
-  font-size: clamp(2rem, 8vw, 3.25rem);
+  font-size: clamp(1.75rem, 7vw, 2.8rem);
   line-height: 1;
 }
 
 .tile__title {
   width: 100%;
   overflow: hidden;
-  font-size: clamp(0.75rem, 3vw, 1.05rem);
+  font-size: clamp(0.7rem, 2.8vw, 0.98rem);
   font-weight: 500;
   line-height: 1.15;
   text-overflow: ellipsis;

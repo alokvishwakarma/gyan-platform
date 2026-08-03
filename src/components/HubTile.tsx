@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import "./HubTile.css";
 
 export interface HubTileProps {
@@ -6,6 +7,11 @@ export interface HubTileProps {
   icon: string;
   serviceCount: number;
   visibleServiceCount?: number;
+  expanded?: boolean;
+  rowSpan?: number;
+  backgroundColor?: string;
+  textColor?: string;
+  accentColor?: string;
   onClick: () => void;
 }
 
@@ -15,6 +21,11 @@ export default function HubTile({
   icon,
   serviceCount,
   visibleServiceCount = 3,
+  expanded = false,
+  rowSpan = 1,
+  backgroundColor = "#eff6ff",
+  textColor = "#1e3a5f",
+  accentColor = "#0078d4",
   onClick,
 }: HubTileProps) {
   const extraServiceCount = Math.max(
@@ -22,13 +33,28 @@ export default function HubTile({
     0,
   );
 
+  const style = {
+    "--hub-background": backgroundColor,
+    "--hub-text": textColor,
+    "--hub-accent": accentColor,
+    gridRow: `span ${rowSpan}`,
+  } as CSSProperties;
+
   return (
     <button
       id={id}
       type="button"
-      className="hub-tile"
+      className={`hub-tile ${
+        expanded ? "hub-tile--expanded" : ""
+      }`}
+      style={style}
       onClick={onClick}
-      aria-label={`Open ${title} services`}
+      aria-expanded={extraServiceCount > 0 ? expanded : undefined}
+      aria-label={
+        extraServiceCount > 0
+          ? `${expanded ? "Collapse" : "Expand"} ${title} services`
+          : `Open ${title} services`
+      }
     >
       <span className="hub-tile__icon" aria-hidden="true">
         {icon}
@@ -37,12 +63,8 @@ export default function HubTile({
       <span className="hub-tile__title">{title}</span>
 
       {extraServiceCount > 0 && (
-        <span
-          className="hub-tile__more"
-          aria-hidden="true"
-          title={`${extraServiceCount} more services`}
-        >
-          ⋮
+        <span className="hub-tile__more" aria-hidden="true">
+          {expanded ? "⌃" : "⋮"}
         </span>
       )}
     </button>
