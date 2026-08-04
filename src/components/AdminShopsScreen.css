@@ -1,0 +1,165 @@
+.admin-shops {
+  width: min(100%, 760px);
+  min-height: 100vh;
+  margin: 0 auto;
+
+  background: #fffdf8;
+  color: var(--chrome-text);
+}
+
+.admin-shops__header {
+  min-height: 64px;
+  padding: 0.45rem;
+
+  display: grid;
+  grid-template-columns:
+    64px minmax(0, 1fr) 72px;
+
+  align-items: stretch;
+
+  background:
+    var(--chrome-background);
+
+  border-bottom:
+    1px solid
+      var(--chrome-border);
+}
+
+.admin-shops__header button {
+  border: 0;
+  background: transparent;
+
+  color:
+    var(--chrome-text);
+
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.admin-shops__header > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+}
+
+.admin-shops__header strong {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+}
+
+.admin-shops__header span {
+  color:
+    var(--chrome-text-muted);
+
+  font-size: 0.68rem;
+}
+
+.admin-shops__toolbar {
+  padding: 0.7rem;
+
+  border-bottom:
+    1px solid #eadfce;
+}
+
+.admin-shops__toolbar input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0.65rem;
+
+  border:
+    1px solid #cdbda8;
+
+  background: #ffffff;
+  font: inherit;
+}
+
+.admin-shops__content {
+  padding: 0.7rem;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.admin-shops__error {
+  color: #a32323;
+}
+
+.admin-shop-card {
+  padding: 0.7rem;
+
+  display: grid;
+  grid-template-columns:
+    64px minmax(0, 1fr) auto;
+
+  align-items: center;
+  gap: 0.65rem;
+
+  border:
+    1px solid #e2d4c1;
+
+  background: #ffffff;
+}
+
+.admin-shop-card__code {
+  min-height: 46px;
+
+  display: grid;
+  place-items: center;
+
+  background:
+    var(--chrome-background);
+
+  color:
+    var(--chrome-text);
+
+  font-family:
+    Consolas,
+    monospace;
+
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.admin-shop-card__details {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-shop-card__details strong {
+  font-size: 0.78rem;
+}
+
+.admin-shop-card__details span {
+  margin-top: 0.18rem;
+
+  color:
+    var(--chrome-text-muted);
+
+  font-size: 0.64rem;
+}
+
+.admin-shop-card > button {
+  min-height: 40px;
+  padding: 0.55rem 0.75rem;
+
+  border:
+    1px solid #4c2914;
+
+  background: #5a3218;
+  color: #ffffff;
+
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+
+  cursor: pointer;
+}

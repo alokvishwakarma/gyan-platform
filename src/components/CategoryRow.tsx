@@ -1,4 +1,7 @@
-import type { CSSProperties } from "react";
+import type {
+  CSSProperties,
+} from "react";
+
 import "./CategoryRow.css";
 
 import HubTile from "./HubTile";
@@ -9,19 +12,28 @@ export interface ServiceItem {
   title: string;
   icon: string;
   color: string;
+  enabled: boolean;
 }
 
 interface CategoryRowProps {
   id: string;
   title: string;
   icon: string;
+
   services: ServiceItem[];
+
   expanded: boolean;
+
   hubBackground: string;
   hubTextColor: string;
   hubAccentColor: string;
+
   onToggle: () => void;
-  onServiceClick: (service: ServiceItem) => void;
+
+  onServiceClick:
+    (service: ServiceItem) =>
+      void;
+
   visibleServiceCount?: number;
 }
 
@@ -31,25 +43,40 @@ export default function CategoryRow({
   icon,
   services,
   expanded,
+
   hubBackground,
   hubTextColor,
   hubAccentColor,
+
   onToggle,
   onServiceClick,
+
   visibleServiceCount = 3,
 }: CategoryRowProps) {
-  const displayedServices = expanded
-    ? services
-    : services.slice(0, visibleServiceCount);
+  const displayedServices =
+    expanded
+      ? services
+      : services.slice(
+          0,
+          visibleServiceCount,
+        );
 
-  const serviceRowCount = Math.max(
-    1,
-    Math.ceil(displayedServices.length / visibleServiceCount),
-  );
+  const serviceRowCount =
+    Math.max(
+      1,
+
+      Math.ceil(
+        displayedServices.length /
+          visibleServiceCount,
+      ),
+    );
 
   const categoryStyle = {
-    "--service-row-count": serviceRowCount,
-    gridRow: `span ${serviceRowCount}`,
+    "--service-row-count":
+      serviceRowCount,
+
+    gridRow:
+      `span ${serviceRowCount}`,
   } as CSSProperties;
 
   return (
@@ -62,27 +89,76 @@ export default function CategoryRow({
         id={`${id}-hub`}
         title={title}
         icon={icon}
-        serviceCount={services.length}
-        visibleServiceCount={visibleServiceCount}
+
+        serviceCount={
+          services.length
+        }
+
+        visibleServiceCount={
+          visibleServiceCount
+        }
+
         expanded={expanded}
-        rowSpan={serviceRowCount}
-        backgroundColor={hubBackground}
-        textColor={hubTextColor}
-        accentColor={hubAccentColor}
+
+        rowSpan={
+          serviceRowCount
+        }
+
+        backgroundColor={
+          hubBackground
+        }
+
+        textColor={
+          hubTextColor
+        }
+
+        accentColor={
+          hubAccentColor
+        }
+
         onClick={onToggle}
       />
 
-      {displayedServices.map((service) => (
-        <Tile
-          key={service.id}
-          id={service.id}
-          title={service.title}
-          icon={service.icon}
-          width={3}
-          color={service.color}
-          onClick={() => onServiceClick(service)}
-        />
-      ))}
+      {displayedServices.map(
+        (service) => (
+          <div
+            key={service.id}
+            className={
+              service.enabled
+                ? "category-row__service"
+                : [
+                    "category-row__service",
+                    "category-row__service--unavailable",
+                  ].join(" ")
+            }
+            aria-disabled={
+              !service.enabled
+            }
+          >
+            <Tile
+              id={service.id}
+              title={service.title}
+              icon={service.icon}
+              width={3}
+              color={service.color}
+              onClick={() =>
+                onServiceClick(
+                  service,
+                )
+              }
+            />
+
+            {!service.enabled && (
+              <span
+                className="category-row__service-status"
+                aria-hidden="true"
+              >
+                Unavailable
+              </span>
+            )}
+          </div>
+        ),
+      )}
     </section>
   );
 }

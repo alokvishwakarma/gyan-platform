@@ -6,6 +6,7 @@ interface AppHeaderProps {
   onCollapseExpandedCategories: () => void;
   onRegisterShop: () => void;
   onOpenShopQr: () => void;
+  onOpenAbout: () => void;
 }
 
 export default function AppHeader({
@@ -14,6 +15,7 @@ export default function AppHeader({
   onCollapseExpandedCategories,
   onRegisterShop,
   onOpenShopQr,
+  onOpenAbout,
 }: AppHeaderProps) {
   return (
     <header className="app-header">
@@ -37,12 +39,17 @@ export default function AppHeader({
         </span>
       </button>
 
-      <div
-        className="app-header__brand"
-        aria-label="GYAN"
-      >
-        <strong>GYAN</strong>
-        <span>gyan.cc</span>
+      <div>
+        <button
+  type="button"
+  className="app-header__brand app-header__brand-button"
+  onClick={onOpenAbout}
+  aria-label="About GYAN"
+  title="About GYAN"
+>
+  <strong>GYAN</strong>
+  <span>gyan.cc</span>
+</button>
       </div>
 
       {shopCode ? (

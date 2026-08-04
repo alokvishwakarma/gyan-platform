@@ -1,0 +1,181 @@
+.admin-shop-services {
+  width: min(100%, 760px);
+  min-height: 100vh;
+  margin: 0 auto;
+
+  background: #fffdf8;
+  color: var(--chrome-text);
+}
+
+.admin-shop-services__header {
+  min-height: 64px;
+  padding: 0.45rem;
+
+  display: grid;
+  grid-template-columns:
+    64px minmax(0, 1fr) 72px;
+
+  align-items: stretch;
+
+  background:
+    var(--chrome-background);
+
+  border-bottom:
+    1px solid
+      var(--chrome-border);
+}
+
+.admin-shop-services__header button {
+  border: 0;
+  background: transparent;
+
+  color:
+    var(--chrome-text);
+
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.admin-shop-services__header button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.admin-shop-services__header > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+}
+
+.admin-shop-services__header strong {
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+}
+
+.admin-shop-services__header span {
+  color:
+    var(--chrome-text-muted);
+
+  font-size: 0.66rem;
+}
+
+.admin-shop-services__content {
+  padding: 0.7rem;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.admin-shop-services__error {
+  color: #a32323;
+}
+
+.admin-shop-services__success {
+  color: #2e7d32;
+  font-weight: 700;
+}
+
+.admin-shop-service {
+  padding: 0.6rem;
+
+  display: grid;
+
+  grid-template-columns:
+    46px
+    minmax(0, 1fr)
+    minmax(130px, 180px)
+    64px;
+
+  align-items: center;
+  gap: 0.55rem;
+
+  background: #ffffff;
+
+  border:
+    1px solid #e2d4c1;
+}
+
+.admin-shop-service__icon {
+  width: 42px;
+  height: 42px;
+
+  display: grid;
+  place-items: center;
+
+  color: #ffffff;
+  font-size: 1.15rem;
+}
+
+.admin-shop-service__details {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-shop-service__details strong {
+  font-size: 0.76rem;
+}
+
+.admin-shop-service__details span {
+  margin-top: 0.15rem;
+
+  color:
+    var(--chrome-text-muted);
+
+  font-size: 0.6rem;
+}
+
+.admin-shop-service select,
+.admin-shop-service input {
+  width: 100%;
+  min-height: 38px;
+
+  border:
+    1px solid #cdbda8;
+
+  background: #ffffff;
+  color:
+    var(--chrome-text);
+
+  font: inherit;
+  font-size: 0.65rem;
+}
+
+.admin-shop-service label span {
+  display: block;
+  margin-bottom: 0.15rem;
+
+  color:
+    var(--chrome-text-muted);
+
+  font-size: 0.55rem;
+}
+
+.admin-shop-service input {
+  text-align: center;
+  font-weight: 700;
+}
+
+@media (
+  max-width: 600px
+) {
+  .admin-shop-service {
+    grid-template-columns:
+      42px
+      minmax(0, 1fr)
+      62px;
+  }
+
+  .admin-shop-service select {
+    grid-column:
+      2 / -1;
+  }
+}

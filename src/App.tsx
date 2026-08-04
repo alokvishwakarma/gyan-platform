@@ -1,10 +1,12 @@
 import {
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import "./App.css";
-import ShopQrPanel from "./components/ShopQrPanel";
 
+import AboutAdminPanel from "./components/AboutAdminPanel";
+import AdminServicesScreen from "./components/AdminServicesScreen";
 import AppFooter from "./components/AppFooter";
 import AppHeader from "./components/AppHeader";
 import CategoryRow, {
@@ -12,120 +14,16 @@ import CategoryRow, {
 } from "./components/CategoryRow";
 import PrintOrderPanel from "./components/PrintOrderPanel";
 import ShopBanner from "./components/ShopBanner";
+import ShopQrPanel from "./components/ShopQrPanel";
 import ShopRegistrationPanel, {
   type RegisteredShop,
 } from "./components/ShopRegistrationPanel";
+import UnavailableServicePanel from "./components/UnavailableServicePanel";
+import AdminShopsScreen
+  from "./components/AdminShopsScreen";
 
-const documentServices: ServiceItem[] = [
-  {
-    id: "print",
-    title: "Print",
-    icon: "🖨️",
-    color: "#1565c0",
-  },
-  {
-    id: "scan",
-    title: "Scan",
-    icon: "📠",
-    color: "#1976d2",
-  },
-  {
-    id: "photo",
-    title: "Photo",
-    icon: "📷",
-    color: "#1e88e5",
-  },
-  {
-    id: "lamination",
-    title: "Lamination",
-    icon: "📄",
-    color: "#2196f3",
-  },
-  {
-    id: "binding",
-    title: "Binding",
-    icon: "📚",
-    color: "#42a5f5",
-  },
-  {
-    id: "pdf",
-    title: "PDF Tools",
-    icon: "📑",
-    color: "#64b5f6",
-  },
-];
-
-const educationServices: ServiceItem[] = [
-  {
-    id: "forms",
-    title: "Forms",
-    icon: "📝",
-    color: "#2e7d32",
-  },
-  {
-    id: "resume",
-    title: "Resume",
-    icon: "📋",
-    color: "#388e3c",
-  },
-  {
-    id: "certificates",
-    title: "Certificates",
-    icon: "🎓",
-    color: "#43a047",
-  },
-  {
-    id: "admit-card",
-    title: "Admit Card",
-    icon: "🪪",
-    color: "#4caf50",
-  },
-  {
-    id: "applications",
-    title: "Applications",
-    icon: "✍️",
-    color: "#66bb6a",
-  },
-];
-
-const governmentServices: ServiceItem[] = [
-  {
-    id: "pan",
-    title: "PAN Help",
-    icon: "🪪",
-    color: "#e65100",
-  },
-  {
-    id: "aadhaar",
-    title: "Aadhaar Help",
-    icon: "👤",
-    color: "#ef6c00",
-  },
-  {
-    id: "passport",
-    title: "Passport",
-    icon: "🛂",
-    color: "#f57c00",
-  },
-  {
-    id: "bill-payment",
-    title: "Bill Payment",
-    icon: "🧾",
-    color: "#fb8c00",
-  },
-  {
-    id: "insurance",
-    title: "Insurance",
-    icon: "🛡️",
-    color: "#ff9800",
-  },
-  {
-    id: "government-forms",
-    title: "Govt Forms",
-    icon: "🏛️",
-    color: "#ffa726",
-  },
-];
+import AdminShopServicesScreen
+  from "./components/AdminShopServicesScreen";
 
 interface ShopProfile {
   code: string;
@@ -142,6 +40,80 @@ interface CloudShopResponse {
   };
   error?: string;
 }
+
+interface CloudService {
+  id: number;
+  code: string;
+  type: "system" | "custom";
+
+  category: string;
+  subCategory: string | null;
+
+  name: string;
+  catalogName: string;
+  description: string;
+
+  icon: string;
+  color: string;
+  workflowType: string;
+
+  enabled: boolean;
+
+  priceType: string;
+  priceAmountPaise: number | null;
+  priceNote: string;
+
+  sortOrder: number;
+  custom: boolean;
+}
+
+interface CloudServicesResponse {
+  shopCode?: string;
+  services?: CloudService[];
+  error?: string;
+}
+
+interface LoadedServices {
+  key: string;
+  items: CloudService[];
+}
+
+interface CategoryConfiguration {
+  id: string;
+  title: string;
+  icon: string;
+
+  hubBackground: string;
+  hubTextColor: string;
+  hubAccentColor: string;
+}
+
+const categoryConfigurations: CategoryConfiguration[] = [
+  {
+    id: "documents",
+    title: "Docs",
+    icon: "📄",
+    hubBackground: "#eff6ff",
+    hubTextColor: "#17456f",
+    hubAccentColor: "#1976d2",
+  },
+  {
+    id: "education",
+    title: "Education",
+    icon: "🎓",
+    hubBackground: "#effaf1",
+    hubTextColor: "#24562a",
+    hubAccentColor: "#43a047",
+  },
+  {
+    id: "government",
+    title: "Government",
+    icon: "🏛️",
+    hubBackground: "#fff4e8",
+    hubTextColor: "#7a3500",
+    hubAccentColor: "#ef6c00",
+  },
+];
 
 function normalizeShopCode(
   value: string | null | undefined,
@@ -174,7 +146,7 @@ function getDetectedShopCode(): string | null {
   }
 
   /*
-   * Backward compatibility for:
+   * Backward compatibility:
    * https://gyan.cc/LKMV
    */
   const pathSegments = window.location.pathname
@@ -188,12 +160,29 @@ function getDetectedShopCode(): string | null {
   return normalizeShopCode(pathSegments[0]);
 }
 
+function mapCloudServiceToTile(
+  service: CloudService,
+): ServiceItem {
+  return {
+    id: service.code,
+    title: service.name,
+    icon: service.icon || "🧩",
+    color: service.color || "#607d8b",
+    enabled: service.enabled,
+  };
+}
+
 export default function App() {
+  const [activeShopCode, setActiveShopCode] =
+    useState<string | null>(() =>
+      getDetectedShopCode(),
+    );
+
   const [shopProfile, setShopProfile] =
     useState<ShopProfile | null>(null);
 
-  const [shopLoading, setShopLoading] =
-    useState(false);
+  const [loadedServices, setLoadedServices] =
+    useState<LoadedServices | null>(null);
 
   const [expandedCategories, setExpandedCategories] =
     useState<Set<string>>(new Set());
@@ -207,39 +196,121 @@ export default function App() {
   ] = useState(false);
 
   const [shopQrPanelOpen, setShopQrPanelOpen] =
-  useState(false);
+    useState(false);
 
+  const [aboutPanelOpen, setAboutPanelOpen] =
+    useState(false);
+
+  const [
+    adminServicesOpen,
+    setAdminServicesOpen,
+  ] = useState(
+    () =>
+      window.location.pathname ===
+      "/admin/services",
+  );
+
+  const [
+    unavailableService,
+    setUnavailableService,
+  ] = useState<ServiceItem | null>(null);
+
+  const [adminShopsOpen, setAdminShopsOpen] =
+  useState(
+    () =>
+      window.location.pathname ===
+      "/admin/shops",
+  );
+
+const [
+  managedShopCode,
+  setManagedShopCode,
+] = useState<string | null>(() => {
+  const match =
+    window.location.pathname.match(
+      /^\/admin\/shops\/([A-Za-z0-9]{4})\/services$/,
+    );
+
+  return match
+    ? match[1].toUpperCase()
+    : null;
+});
+
+  /*
+   * This key identifies which service request
+   * the currently loaded service data belongs to.
+   */
+  const serviceRequestKey =
+    activeShopCode ?? "GLOBAL";
+
+  /*
+   * Do not display a previously loaded shop while
+   * another shop is being loaded.
+   */
+  const visibleShopProfile =
+    activeShopCode &&
+    shopProfile?.code === activeShopCode
+      ? shopProfile
+      : null;
+
+  const shopLoading =
+    Boolean(activeShopCode) &&
+    visibleShopProfile === null;
+
+  /*
+   * Do not display previously loaded services while
+   * another shop's service list is being loaded.
+   */
+  const services =
+    loadedServices?.key === serviceRequestKey
+      ? loadedServices.items
+      : [];
+
+  const servicesLoading =
+    loadedServices?.key !== serviceRequestKey;
+
+  /*
+   * Load the selected shop profile from D1.
+   */
   useEffect(() => {
-    const shopCode = getDetectedShopCode();
-
-    if (!shopCode) {
+    if (!activeShopCode) {
       return;
     }
 
-    const confirmedShopCode = shopCode;
-
-    const abortController = new AbortController();
+    const confirmedShopCode = activeShopCode;
+    const abortController =
+      new AbortController();
 
     async function loadShop() {
-      setShopLoading(true);
-
       try {
         const response = await fetch(
           `/api/shops/${encodeURIComponent(
             confirmedShopCode,
           )}`,
           {
-            signal: abortController.signal,
+            signal:
+              abortController.signal,
           },
         );
 
         const result =
-          (await response.json()) as CloudShopResponse;
+          (await response.json()) as
+            CloudShopResponse;
 
-        if (!response.ok || !result.shop) {
+        if (
+          !response.ok ||
+          !result.shop
+        ) {
           throw new Error(
-            result.error ?? "Shop not found.",
+            result.error ??
+              "Shop not found.",
           );
+        }
+
+        if (
+          abortController.signal.aborted
+        ) {
+          return;
         }
 
         setShopProfile({
@@ -261,10 +332,10 @@ export default function App() {
           error,
         );
 
-        setShopProfile(null);
-      } finally {
-        if (!abortController.signal.aborted) {
-          setShopLoading(false);
+        if (
+          !abortController.signal.aborted
+        ) {
+          setShopProfile(null);
         }
       }
     }
@@ -274,33 +345,220 @@ export default function App() {
     return () => {
       abortController.abort();
     };
-  }, []);
+  }, [activeShopCode]);
 
-  function toggleCategory(categoryId: string) {
-    setExpandedCategories((current) => {
-      const next = new Set(current);
+  /*
+   * Load services from D1.
+   *
+   * No selected shop:
+   *   GET /api/services
+   *
+   * Selected shop:
+   *   GET /api/shops/:code/services
+   *
+   * Important:
+   * Do not filter disabled services here.
+   * They remain visible but unavailable.
+   */
+  useEffect(() => {
+    const confirmedShopCode =
+      activeShopCode;
 
-      if (next.has(categoryId)) {
-        next.delete(categoryId);
-      } else {
-        next.add(categoryId);
+    const requestKey =
+      confirmedShopCode ?? "GLOBAL";
+
+    const abortController =
+      new AbortController();
+
+    async function loadServices() {
+      try {
+        const endpoint =
+          confirmedShopCode
+            ? `/api/shops/${encodeURIComponent(
+                confirmedShopCode,
+              )}/services`
+            : "/api/services";
+
+        const response = await fetch(
+          endpoint,
+          {
+            signal:
+              abortController.signal,
+          },
+        );
+
+        const result =
+          (await response.json()) as
+            CloudServicesResponse;
+
+        if (
+          !response.ok ||
+          !result.services
+        ) {
+          throw new Error(
+            result.error ??
+              "Services could not be loaded.",
+          );
+        }
+
+        if (
+          abortController.signal.aborted
+        ) {
+          return;
+        }
+
+        const catalogServices =
+          [...result.services].sort(
+            (first, second) => {
+              const categoryComparison =
+                first.category.localeCompare(
+                  second.category,
+                );
+
+              if (
+                categoryComparison !== 0
+              ) {
+                return categoryComparison;
+              }
+
+              const orderComparison =
+                first.sortOrder -
+                second.sortOrder;
+
+              if (
+                orderComparison !== 0
+              ) {
+                return orderComparison;
+              }
+
+              return first.name.localeCompare(
+                second.name,
+              );
+            },
+          );
+
+        setLoadedServices({
+          key: requestKey,
+          items: catalogServices,
+        });
+      } catch (error) {
+        if (
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+
+        console.error(
+          "Unable to load services:",
+          error,
+        );
+
+        if (
+          !abortController.signal.aborted
+        ) {
+          setLoadedServices({
+            key: requestKey,
+            items: [],
+          });
+        }
       }
+    }
 
-      return next;
-    });
+    void loadServices();
+
+    return () => {
+      abortController.abort();
+    };
+  }, [activeShopCode]);
+
+  const categoryRows = useMemo(
+    () =>
+      categoryConfigurations
+        .map((category) => {
+          const categoryServices =
+            services
+              .filter(
+                (service) =>
+                  service.category ===
+                  category.id,
+              )
+              .sort(
+                (first, second) => {
+                  const orderComparison =
+                    first.sortOrder -
+                    second.sortOrder;
+
+                  if (
+                    orderComparison !== 0
+                  ) {
+                    return orderComparison;
+                  }
+
+                  return first.name.localeCompare(
+                    second.name,
+                  );
+                },
+              )
+              .map(
+                mapCloudServiceToTile,
+              );
+
+          return {
+            ...category,
+            services:
+              categoryServices,
+          };
+        })
+        .filter(
+          (category) =>
+            category.services.length >
+            0,
+        ),
+    [services],
+  );
+
+  function toggleCategory(
+    categoryId: string,
+  ) {
+    setExpandedCategories(
+      (current) => {
+        const next =
+          new Set(current);
+
+        if (next.has(categoryId)) {
+          next.delete(categoryId);
+        } else {
+          next.add(categoryId);
+        }
+
+        return next;
+      },
+    );
   }
 
   function collapseExpandedCategories() {
-    setExpandedCategories(new Set());
+    setExpandedCategories(
+      new Set(),
+    );
   }
 
-  function handleServiceClick(service: ServiceItem) {
-    if (service.id === "print") {
+  function handleServiceClick(
+    service: ServiceItem,
+  ) {
+    if (!service.enabled) {
+      setUnavailableService(service);
+      return;
+    }
+
+    if (service.id === "PRINT") {
       setPrintPanelOpen(true);
       return;
     }
 
-    console.log(`${service.title} selected`);
+    console.log(
+      `${service.title} selected`,
+    );
   }
 
   function handleRegisteredShop(
@@ -309,10 +567,12 @@ export default function App() {
     const profile: ShopProfile = {
       code: shop.code,
       name: shop.name,
-      address: `${shop.addressLine}, ${shop.city}`,
+      address:
+        `${shop.addressLine}, ${shop.city}`,
     };
 
     setShopProfile(profile);
+    setActiveShopCode(shop.code);
     setRegistrationPanelOpen(false);
 
     window.history.pushState(
@@ -320,104 +580,224 @@ export default function App() {
         shopCode: shop.code,
       },
       "",
-      `/?shop=${encodeURIComponent(shop.code)}`,
+      `/?shop=${encodeURIComponent(
+        shop.code,
+      )}`,
     );
   }
+
+  function openAdminServices() {
+    setAboutPanelOpen(false);
+    setAdminServicesOpen(true);
+
+    window.history.pushState(
+      {},
+      "",
+      "/admin/services",
+    );
+  }
+
+  function exitAdminServices() {
+    setAdminServicesOpen(false);
+
+    window.history.pushState(
+      {},
+      "",
+      activeShopCode
+        ? `/?shop=${encodeURIComponent(
+            activeShopCode,
+          )}`
+        : "/",
+    );
+
+    /*
+     * Force the public catalog to reload after the
+     * administrator may have changed global services.
+     */
+    setLoadedServices(null);
+  }
+
+  /*
+   * Admin Control Center replaces the customer
+   * application while this route is active.
+   */
+ if (adminServicesOpen) {
+  return (
+    <AdminServicesScreen
+      onExit={exitAdminServices}
+      onOpenShops={() => {
+        setAdminServicesOpen(false);
+        setAdminShopsOpen(true);
+
+        window.history.pushState(
+          {},
+          "",
+          "/admin/shops",
+        );
+      }}
+    />
+  );
+}
+
+  if (managedShopCode) {
+  return (
+    <AdminShopServicesScreen
+      shopCode={managedShopCode}
+      onBack={() => {
+        setManagedShopCode(null);
+        setAdminShopsOpen(true);
+
+        window.history.pushState(
+          {},
+          "",
+          "/admin/shops",
+        );
+      }}
+    />
+  );
+}
+
+if (adminShopsOpen) {
+  return (
+    <AdminShopsScreen
+      onBack={() => {
+        setAdminShopsOpen(false);
+        setAdminServicesOpen(true);
+
+        window.history.pushState(
+          {},
+          "",
+          "/admin/services",
+        );
+      }}
+      onManageShop={(shopCode) => {
+        setAdminShopsOpen(false);
+        setManagedShopCode(shopCode);
+
+        window.history.pushState(
+          {},
+          "",
+          `/admin/shops/${encodeURIComponent(
+            shopCode,
+          )}/services`,
+        );
+      }}
+      onLogout={() => {
+        void fetch(
+          "/api/admin/logout",
+          {
+            method: "POST",
+            credentials: "include",
+          },
+        ).finally(() => {
+          setAdminShopsOpen(false);
+          setManagedShopCode(null);
+
+          window.history.pushState(
+            {},
+            "",
+            "/",
+          );
+        });
+      }}
+    />
+  );
+}
 
   return (
     <main className="app-shell">
       <div className="app-content">
         <AppHeader
-  hasExpandedCategories={
-    expandedCategories.size > 0
-  }
-  shopCode={shopProfile?.code}
-  onCollapseExpandedCategories={
-    collapseExpandedCategories
-  }
-  onRegisterShop={() =>
-    setRegistrationPanelOpen(true)
-  }
-  onOpenShopQr={() =>
-    setShopQrPanelOpen(true)
-  }
-/>
+          hasExpandedCategories={
+            expandedCategories.size >
+            0
+          }
+          shopCode={
+            visibleShopProfile?.code
+          }
+          onCollapseExpandedCategories={
+            collapseExpandedCategories
+          }
+          onRegisterShop={() =>
+            setRegistrationPanelOpen(
+              true,
+            )
+          }
+          onOpenShopQr={() =>
+            setShopQrPanelOpen(true)
+          }
+          onOpenAbout={() =>
+            setAboutPanelOpen(true)
+          }
+        />
 
         <div className="category-list">
-          <CategoryRow
-            id="documents"
-            title="Docs"
-            icon="📄"
-            services={documentServices}
-            expanded={expandedCategories.has(
-              "documents",
+          {!servicesLoading &&
+            categoryRows.map(
+              (category) => (
+                <CategoryRow
+                  key={category.id}
+                  id={category.id}
+                  title={
+                    category.title
+                  }
+                  icon={category.icon}
+                  services={
+                    category.services
+                  }
+                  expanded={expandedCategories.has(
+                    category.id,
+                  )}
+                  hubBackground={
+                    category.hubBackground
+                  }
+                  hubTextColor={
+                    category.hubTextColor
+                  }
+                  hubAccentColor={
+                    category.hubAccentColor
+                  }
+                  onToggle={() =>
+                    toggleCategory(
+                      category.id,
+                    )
+                  }
+                  onServiceClick={
+                    handleServiceClick
+                  }
+                />
+              ),
             )}
-            hubBackground="#eff6ff"
-            hubTextColor="#17456f"
-            hubAccentColor="#1976d2"
-            onToggle={() =>
-              toggleCategory("documents")
-            }
-            onServiceClick={handleServiceClick}
-          />
-
-          <CategoryRow
-            id="education"
-            title="Education"
-            icon="🎓"
-            services={educationServices}
-            expanded={expandedCategories.has(
-              "education",
-            )}
-            hubBackground="#effaf1"
-            hubTextColor="#24562a"
-            hubAccentColor="#43a047"
-            onToggle={() =>
-              toggleCategory("education")
-            }
-            onServiceClick={handleServiceClick}
-          />
-
-          <CategoryRow
-            id="government"
-            title="Government"
-            icon="🏛️"
-            services={governmentServices}
-            expanded={expandedCategories.has(
-              "government",
-            )}
-            hubBackground="#fff4e8"
-            hubTextColor="#7a3500"
-            hubAccentColor="#ef6c00"
-            onToggle={() =>
-              toggleCategory("government")
-            }
-            onServiceClick={handleServiceClick}
-          />
         </div>
 
         <ShopBanner
           shopName={
             shopLoading
               ? "Loading shop..."
-              : shopProfile?.name
+              : visibleShopProfile?.name
           }
           address={
             shopLoading
               ? "Please wait"
-              : shopProfile?.address
+              : visibleShopProfile?.address
           }
           onRegisterShop={() =>
-            setRegistrationPanelOpen(true)
+            setRegistrationPanelOpen(
+              true,
+            )
           }
         />
 
         <AppFooter
           onContact={() =>
-            console.log("Contact selected")
+            console.log(
+              "Contact selected",
+            )
           }
           onLocation={() =>
-            console.log("Location selected")
+            console.log(
+              "Location selected",
+            )
           }
         />
       </div>
@@ -433,22 +813,60 @@ export default function App() {
       {registrationPanelOpen && (
         <ShopRegistrationPanel
           onClose={() =>
-            setRegistrationPanelOpen(false)
+            setRegistrationPanelOpen(
+              false,
+            )
           }
-          onRegistered={handleRegisteredShop}
+          onRegistered={
+            handleRegisteredShop
+          }
         />
       )}
 
-      {shopQrPanelOpen && shopProfile && (
-  <ShopQrPanel
-    shopCode={shopProfile.code}
-    shopName={shopProfile.name}
-    address={shopProfile.address}
-    onClose={() =>
-      setShopQrPanelOpen(false)
-    }
-  />
-)}
+      {shopQrPanelOpen &&
+        visibleShopProfile && (
+          <ShopQrPanel
+            shopCode={
+              visibleShopProfile.code
+            }
+            shopName={
+              visibleShopProfile.name
+            }
+            address={
+              visibleShopProfile.address
+            }
+            onClose={() =>
+              setShopQrPanelOpen(
+                false,
+              )
+            }
+          />
+        )}
+
+      {aboutPanelOpen && (
+        <AboutAdminPanel
+          onClose={() =>
+            setAboutPanelOpen(false)
+          }
+          onAdminAuthenticated={
+            openAdminServices
+          }
+        />
+      )}
+
+      {unavailableService && (
+        <UnavailableServicePanel
+          serviceName={
+            unavailableService.title
+          }
+          shopName={
+            visibleShopProfile?.name
+          }
+          onClose={() =>
+            setUnavailableService(null)
+          }
+        />
+      )}
     </main>
   );
 }

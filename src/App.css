@@ -88,3 +88,56 @@
 .category-list::-webkit-scrollbar-track {
   background: transparent;
 }
+
+
+
+
+
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgb(255 255 255 / 3%) 0,
+      rgb(255 255 255 / 3%) 1px,
+      rgb(0 0 0 / 2%) 2px,
+      rgb(0 0 0 / 2%) 4px
+    ),
+    #aeb4b8;
+
+  color: var(--steel-text);
+}
+
+.app-shell {
+  min-height: 100vh;
+
+  background:
+    linear-gradient(
+      180deg,
+      #d7dbdd,
+      #aab1b5
+    );
+}
+
+.app-content {
+  background:
+    var(--steel-brushed);
+
+  border-right:
+    1px solid var(--steel-edge);
+
+  border-left:
+    1px solid var(--steel-edge);
+
+  box-shadow:
+    0 0 24px rgb(25 30 33 / 28%);
+}
+

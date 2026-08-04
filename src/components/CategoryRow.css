@@ -3,25 +3,118 @@
   min-height: 0;
 
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
+
+  grid-template-columns:
+    repeat(
+      12,
+      minmax(0, 1fr)
+    );
+
   grid-template-rows:
-    repeat(var(--service-row-count), minmax(0, 1fr));
+    repeat(
+      var(--service-row-count),
+      minmax(0, 1fr)
+    );
 
   gap: 4px;
-}
-
-/*
-  Tile.css originally gives every tile a fixed height.
-
-  Inside CategoryRow, the available row height is calculated
-  by the parent layout, so tiles must fill that computed space.
-*/
-.category-row .tile {
-  height: 100%;
-  min-height: 0;
 }
 
 .category-row .hub-tile {
   height: 100%;
   min-height: 0;
+}
+
+.category-row__service {
+  position: relative;
+
+  min-width: 0;
+  min-height: 0;
+
+  grid-column: span 3;
+}
+
+.category-row__service .tile {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.category-row__service--unavailable {
+  cursor: not-allowed;
+}
+
+/*
+ * Only the visual tile is faded.
+ * The wrapper still receives pointer events,
+ * allowing the unavailable message to open.
+ */
+.category-row__service--unavailable
+  .tile {
+  filter:
+    grayscale(0.9)
+    saturate(0.25);
+
+  opacity: 0.38;
+}
+
+.category-row__service--unavailable:hover
+  .tile {
+  filter:
+    grayscale(0.75)
+    saturate(0.35);
+
+  opacity: 0.52;
+}
+
+.category-row__service--unavailable::after {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+
+  border:
+    1px solid
+      rgb(80 70 60 / 12%);
+
+  background:
+    rgb(255 255 255 / 9%);
+
+  content: "";
+
+  pointer-events: none;
+}
+
+.category-row__service-status {
+  position: absolute;
+  z-index: 3;
+
+  right: 0.15rem;
+  bottom: 0.15rem;
+  left: 0.15rem;
+
+  padding:
+    0.12rem 0.08rem;
+
+  overflow: hidden;
+
+  background:
+    rgb(45 38 32 / 70%);
+
+  color: #ffffff;
+
+  font-size:
+    clamp(
+      0.38rem,
+      1.55vw,
+      0.54rem
+    );
+
+  font-weight: 800;
+  letter-spacing: 0.015em;
+  line-height: 1.05;
+
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  pointer-events: none;
 }

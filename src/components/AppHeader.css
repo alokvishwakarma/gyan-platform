@@ -162,3 +162,22 @@
   font-weight: 700;
   line-height: 1;
 }
+
+.app-header__brand-button {
+  width: 100%;
+
+  border: 0;
+  background: transparent;
+
+  font: inherit;
+  cursor: pointer;
+}
+
+.app-header__brand-button:hover {
+  background: rgb(255 255 255 / 40%);
+}
+
+.app-header__brand-button:focus-visible {
+  outline: 3px solid var(--chrome-accent);
+  outline-offset: -4px;
+}
