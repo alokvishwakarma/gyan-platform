@@ -163,3 +163,54 @@
 
   cursor: pointer;
 }
+
+.admin-shop-card__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.admin-shop-card__details small {
+  color: var(--chrome-text-muted);
+  font-size: 0.68rem;
+}
+
+.admin-shop-card__status {
+  padding: 0.16rem 0.35rem;
+
+  font-size: 0.55rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.admin-shop-card__status--active {
+  background: #e7f5e9;
+  color: #24652b;
+}
+
+.admin-shop-card__status--inactive {
+  background: #f3e8e6;
+  color: #8a3228;
+}
+
+.admin-shop-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.admin-shop-card__actions button {
+  min-height: 34px;
+  padding: 0.4rem 0.6rem;
+
+  border: 1px solid var(--chrome-border);
+  background: #ffffff;
+  color: var(--chrome-text);
+
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 700;
+
+  cursor: pointer;
+}

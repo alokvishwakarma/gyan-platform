@@ -1,0 +1,153 @@
+.admin-storage-overlay {
+  position: fixed;
+  z-index: 1900;
+  inset: 0;
+
+  padding: 1rem;
+
+  display: grid;
+  place-items: center;
+
+  background:
+    rgb(15 23 42 / 65%);
+}
+
+.admin-storage-panel {
+  width: min(100%, 390px);
+  padding: 1rem;
+
+  background: #fffdf8;
+  color: var(--chrome-text);
+
+  border:
+    1px solid var(--chrome-border);
+
+  box-shadow:
+    0 24px 70px
+      rgb(0 0 0 / 30%);
+}
+
+.admin-storage-panel header {
+  margin-bottom: 1rem;
+
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-storage-panel header span {
+  color:
+    var(--chrome-text-muted);
+
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.admin-storage-panel h2 {
+  margin: 0.15rem 0 0;
+}
+
+.admin-storage-panel header button {
+  width: 32px;
+  height: 32px;
+
+  border: 0;
+  background: transparent;
+
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.admin-storage-panel__status {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.admin-storage-panel__status--normal {
+  background: #e8f5e9;
+  color: #245d29;
+}
+
+.admin-storage-panel__status--warning {
+  background: #fff4d8;
+  color: #714a12;
+}
+
+.admin-storage-panel__status--stopped {
+  background: #ffebe8;
+  color: #982d22;
+}
+
+.admin-storage-panel label {
+  display: block;
+  margin-top: 0.75rem;
+}
+
+.admin-storage-panel label span {
+  display: block;
+  margin-bottom: 0.3rem;
+
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.admin-storage-panel input {
+  width: 100%;
+  padding: 0.65rem;
+
+  border:
+    1px solid #cfc3b2;
+
+  background: #ffffff;
+  font: inherit;
+}
+
+.admin-storage-panel__note {
+  color:
+    var(--chrome-text-muted);
+
+  font-size: 0.66rem;
+}
+
+.admin-storage-panel__error {
+  color: #a32323;
+}
+
+.admin-storage-panel__success {
+  color: #2e7d32;
+  font-weight: 700;
+}
+
+.admin-storage-panel__actions {
+  margin-top: 1rem;
+
+  display: grid;
+  grid-template-columns:
+    1fr 2fr;
+
+  gap: 0.5rem;
+}
+
+.admin-storage-panel__actions button {
+  min-height: 42px;
+
+  border:
+    1px solid #cfc3b2;
+
+  background: #ffffff;
+  font: inherit;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.admin-storage-panel__actions button:last-child {
+  border-color: #145da0;
+  background: #1565c0;
+  color: #ffffff;
+}

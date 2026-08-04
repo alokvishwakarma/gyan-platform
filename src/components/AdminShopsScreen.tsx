@@ -7,17 +7,30 @@ import "./AdminShopsScreen.css";
 
 interface AdminShopsScreenProps {
   onBack: () => void;
-  onManageShop:
+
+  onManageInformation:
     (shopCode: string) =>
       void;
+
+  onManageServices:
+    (shopCode: string) =>
+      void;
+
   onLogout: () => void;
 }
 
 interface AdminShop {
   code: string;
   name: string;
+  ownerName: string;
+  phoneNumber: string;
+  whatsAppNumber: string;
+  emailAddress: string;
   addressLine: string;
   city: string;
+  state: string;
+  postalCode: string;
+  status: string;
 }
 
 interface ShopsResponse {
@@ -27,20 +40,31 @@ interface ShopsResponse {
 
 export default function AdminShopsScreen({
   onBack,
-  onManageShop,
+  onManageInformation,
+  onManageServices,
   onLogout,
 }: AdminShopsScreenProps) {
-  const [shops, setShops] =
-    useState<AdminShop[]>([]);
+  const [
+    shops,
+    setShops,
+  ] = useState<
+    AdminShop[]
+  >([]);
 
-  const [searchText, setSearchText] =
-    useState("");
+  const [
+    searchText,
+    setSearchText,
+  ] = useState("");
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [error, setError] =
-    useState("");
+  const [
+    error,
+    setError,
+  ] = useState("");
 
   useEffect(() => {
     const controller =
@@ -119,8 +143,14 @@ export default function AdminShopsScreen({
       return [
         shop.code,
         shop.name,
+        shop.ownerName,
+        shop.phoneNumber,
+        shop.emailAddress,
         shop.addressLine,
         shop.city,
+        shop.state,
+        shop.postalCode,
+        shop.status,
       ]
         .join(" ")
         .toLowerCase()
@@ -133,6 +163,7 @@ export default function AdminShopsScreen({
         <button
           type="button"
           onClick={onBack}
+          aria-label="Back"
         >
           ←
         </button>
@@ -170,7 +201,9 @@ export default function AdminShopsScreen({
 
       <section className="admin-shops__content">
         {loading && (
-          <p>Loading shops…</p>
+          <p>
+            Loading shops…
+          </p>
         )}
 
         {error && (
@@ -199,9 +232,17 @@ export default function AdminShopsScreen({
               </div>
 
               <div className="admin-shop-card__details">
-                <strong>
-                  {shop.name}
-                </strong>
+                <div className="admin-shop-card__title">
+                  <strong>
+                    {shop.name}
+                  </strong>
+
+                  <span
+                    className={`admin-shop-card__status admin-shop-card__status--${shop.status}`}
+                  >
+                    {shop.status}
+                  </span>
+                </div>
 
                 <span>
                   {shop.addressLine}
@@ -209,18 +250,38 @@ export default function AdminShopsScreen({
                     ? `, ${shop.city}`
                     : ""}
                 </span>
+
+                <small>
+                  {shop.ownerName}
+                  {shop.phoneNumber
+                    ? ` · ${shop.phoneNumber}`
+                    : ""}
+                </small>
               </div>
 
-              <button
-                type="button"
-                onClick={() =>
-                  onManageShop(
-                    shop.code,
-                  )
-                }
-              >
-                Manage
-              </button>
+              <div className="admin-shop-card__actions">
+                <button
+                  type="button"
+                  onClick={() =>
+                    onManageInformation(
+                      shop.code,
+                    )
+                  }
+                >
+                  Information
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    onManageServices(
+                      shop.code,
+                    )
+                  }
+                >
+                  Services
+                </button>
+              </div>
             </article>
           ),
         )}

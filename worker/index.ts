@@ -11,8 +11,20 @@ import {
 } from "./adminShops";
 
 import {
+  handlePrintRequestsRoute,
+} from "./printRequests";
+
+import {
   handleServiceCatalogRoute,
 } from "./serviceCatalog";
+
+import {
+  reconcileExpiredStorage,
+} from "./storageGuard";
+
+import {
+  handleAdminStorageRoute,
+} from "./adminStorage";
 
 interface RegisterShopRequest {
   code?: unknown;
@@ -51,7 +63,6 @@ function createJsonResponse(
     JSON.stringify(data),
     {
       status,
-
       headers: {
         "content-type":
           "application/json; charset=utf-8",
@@ -66,13 +77,16 @@ function createJsonResponse(
 function normalizeShopCode(
   value: unknown,
 ): string | null {
-  if (typeof value !== "string") {
+  if (
+    typeof value !== "string"
+  ) {
     return null;
   }
 
-  const normalized = value
-    .trim()
-    .toUpperCase();
+  const normalized =
+    value
+      .trim()
+      .toUpperCase();
 
   return /^[A-Z0-9]{4}$/.test(
     normalized,
@@ -84,7 +98,9 @@ function normalizeShopCode(
 function normalizeRequiredText(
   value: unknown,
 ): string | null {
-  if (typeof value !== "string") {
+  if (
+    typeof value !== "string"
+  ) {
     return null;
   }
 
@@ -99,7 +115,9 @@ function normalizeRequiredText(
 function normalizeOptionalText(
   value: unknown,
 ): string | null {
-  if (typeof value !== "string") {
+  if (
+    typeof value !== "string"
+  ) {
     return null;
   }
 
@@ -217,7 +235,9 @@ async function handleGetShop(
     );
   }
 
-  if (shop.status !== "active") {
+  if (
+    shop.status !== "active"
+  ) {
     return createJsonResponse(
       {
         error:
@@ -444,8 +464,7 @@ async function handleApiRequest(
   url: URL,
 ): Promise<Response> {
   /*
-   * Authentication routes:
-   * login, session and logout.
+   * Administrator authentication.
    */
   const adminAuthResponse =
     await handleAdminAuthRoute(
@@ -459,7 +478,7 @@ async function handleApiRequest(
   }
 
   /*
-   * Global service-administration routes.
+   * Global service administration.
    */
   const adminServicesResponse =
     await handleAdminServicesRoute(
@@ -473,8 +492,7 @@ async function handleApiRequest(
   }
 
   /*
-   * Registered-shop administration and
-   * shop-specific service overrides.
+   * Shop administration and overrides.
    */
   const adminShopsResponse =
     await handleAdminShopsRoute(
@@ -487,9 +505,19 @@ async function handleApiRequest(
     return adminShopsResponse;
   }
 
+  const adminStorageResponse =
+  await handleAdminStorageRoute(
+    request,
+    env,
+    url,
+  );
+
+if (adminStorageResponse) {
+  return adminStorageResponse;
+}
+
   /*
-   * Public global and shop-specific
-   * service catalog routes.
+   * Public service catalogs.
    */
   const serviceCatalogResponse =
     await handleServiceCatalogRoute(
@@ -500,6 +528,20 @@ async function handleApiRequest(
 
   if (serviceCatalogResponse) {
     return serviceCatalogResponse;
+  }
+
+  /*
+   * Print-order creation.
+   */
+  const printRequestsResponse =
+    await handlePrintRequestsRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (printRequestsResponse) {
+    return printRequestsResponse;
   }
 
   if (
@@ -559,6 +601,13 @@ export default {
       new URL(request.url);
 
     try {
+      /*
+       * API routes must be handled before
+       * the static-asset fallback.
+       *
+       * Otherwise /api/services may receive
+       * index.html from the SPA fallback.
+       */
       if (
         url.pathname.startsWith(
           "/api/",
@@ -588,5 +637,40 @@ export default {
         500,
       );
     }
+  },
+
+  async scheduled(
+    controller:
+      ScheduledController,
+    env: Env,
+    context:
+      ExecutionContext,
+  ): Promise<void> {
+    context.waitUntil(
+      reconcileExpiredStorage(
+        env,
+      )
+        .then((result) => {
+          console.log(
+            "Storage reconciliation completed:",
+            {
+              cron:
+                controller.cron,
+
+              expiredFileCount:
+                result.expiredFileCount,
+
+              removedBytes:
+                result.removedBytes,
+            },
+          );
+        })
+        .catch((error) => {
+          console.error(
+            "Storage reconciliation failed:",
+            error,
+          );
+        }),
+    );
   },
 };

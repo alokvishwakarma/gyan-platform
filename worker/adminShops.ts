@@ -5,8 +5,17 @@ import {
 interface ShopRow {
   code: string;
   name: string;
+  owner_name: string;
+  phone_number: string;
+  whatsapp_number: string | null;
+  email_address: string | null;
   address_line: string;
   city: string;
+  state: string;
+  postal_code: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface ShopServiceRow {
@@ -19,7 +28,10 @@ interface ShopServiceRow {
   icon: string | null;
   color: string | null;
 
-  global_enabled: number | boolean;
+  global_enabled:
+    | number
+    | boolean;
+
   global_sort_order: number;
 
   override_enabled:
@@ -42,10 +54,27 @@ interface UpdateShopServicesRequest {
   services?: unknown;
 }
 
+interface UpdateShopInformationRequest {
+  name?: unknown;
+  ownerName?: unknown;
+  phoneNumber?: unknown;
+  whatsAppNumber?: unknown;
+  emailAddress?: unknown;
+  addressLine?: unknown;
+  city?: unknown;
+  state?: unknown;
+  postalCode?: unknown;
+  status?: unknown;
+}
+
 type ShopServiceMode =
   | "inherit"
   | "enabled"
   | "disabled";
+
+type ShopStatus =
+  | "active"
+  | "inactive";
 
 function createJsonResponse(
   data: unknown,
@@ -55,6 +84,7 @@ function createJsonResponse(
     JSON.stringify(data),
     {
       status,
+
       headers: {
         "content-type":
           "application/json; charset=utf-8",
@@ -70,7 +100,9 @@ function normalizeShopCode(
   value: string,
 ): string | null {
   const normalized =
-    value.trim().toUpperCase();
+    value
+      .trim()
+      .toUpperCase();
 
   return /^[A-Z0-9]{4}$/.test(
     normalized,
@@ -79,15 +111,114 @@ function normalizeShopCode(
     : null;
 }
 
-function normalizeServiceCode(
+function normalizeRequiredText(
   value: unknown,
+  maximumLength: number,
 ): string | null {
-  if (typeof value !== "string") {
+  if (
+    typeof value !== "string"
+  ) {
     return null;
   }
 
   const normalized =
-    value.trim().toUpperCase();
+    value.trim();
+
+  if (
+    normalized.length === 0 ||
+    normalized.length >
+      maximumLength
+  ) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function normalizeOptionalText(
+  value: unknown,
+  maximumLength: number,
+): string | null | "invalid" {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return null;
+  }
+
+  if (
+    typeof value !== "string"
+  ) {
+    return "invalid";
+  }
+
+  const normalized =
+    value.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  if (
+    normalized.length >
+    maximumLength
+  ) {
+    return "invalid";
+  }
+
+  return normalized;
+}
+
+function normalizeEmail(
+  value: unknown,
+): string | null | "invalid" {
+  const normalized =
+    normalizeOptionalText(
+      value,
+      254,
+    );
+
+  if (
+    normalized === null ||
+    normalized === "invalid"
+  ) {
+    return normalized;
+  }
+
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+    normalized,
+  )
+    ? normalized
+    : "invalid";
+}
+
+function normalizeStatus(
+  value: unknown,
+): ShopStatus | null {
+  if (
+    value === "active" ||
+    value === "inactive"
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function normalizeServiceCode(
+  value: unknown,
+): string | null {
+  if (
+    typeof value !== "string"
+  ) {
+    return null;
+  }
+
+  const normalized =
+    value
+      .trim()
+      .toUpperCase();
 
   return /^[A-Z0-9_]{2,50}$/.test(
     normalized,
@@ -133,6 +264,46 @@ function normalizeSortOrder(
   return value;
 }
 
+function mapShop(
+  shop: ShopRow,
+) {
+  return {
+    code: shop.code,
+    name: shop.name,
+
+    ownerName:
+      shop.owner_name,
+
+    phoneNumber:
+      shop.phone_number,
+
+    whatsAppNumber:
+      shop.whatsapp_number ??
+      "",
+
+    emailAddress:
+      shop.email_address ??
+      "",
+
+    addressLine:
+      shop.address_line,
+
+    city: shop.city,
+    state: shop.state,
+
+    postalCode:
+      shop.postal_code,
+
+    status: shop.status,
+
+    createdAt:
+      shop.created_at,
+
+    updatedAt:
+      shop.updated_at,
+  };
+}
+
 async function requireAdmin(
   request: Request,
   env: Env,
@@ -166,10 +337,22 @@ async function loadShop(
         SELECT
           code,
           name,
+          owner_name,
+          phone_number,
+          whatsapp_number,
+          email_address,
           address_line,
-          city
+          city,
+          state,
+          postal_code,
+          status,
+          created_at,
+          updated_at
+
         FROM shops
+
         WHERE code = ?
+
         LIMIT 1
       `,
     )
@@ -219,10 +402,12 @@ async function loadShopServices(
 
           ORDER BY
             s.category ASC,
+
             COALESCE(
               ss.sort_order,
               s.sort_order
             ) ASC,
+
             s.name ASC
         `,
       )
@@ -232,7 +417,8 @@ async function loadShopServices(
   return result.results.map(
     (row) => {
       const hasOverride =
-        row.override_enabled !== null;
+        row.override_enabled !==
+        null;
 
       const overrideEnabled =
         hasOverride
@@ -241,17 +427,19 @@ async function loadShopServices(
             )
           : null;
 
-      const mode: ShopServiceMode =
-        overrideEnabled === null
-          ? "inherit"
-          : overrideEnabled
-            ? "enabled"
-            : "disabled";
+      const mode:
+        ShopServiceMode =
+          overrideEnabled === null
+            ? "inherit"
+            : overrideEnabled
+              ? "enabled"
+              : "disabled";
 
       return {
         id: row.id,
         code: row.service_code,
         category: row.category,
+
         subCategory:
           row.sub_category,
 
@@ -264,7 +452,8 @@ async function loadShopServices(
           row.icon ?? "🧩",
 
         color:
-          row.color ?? "#607d8b",
+          row.color ??
+          "#607d8b",
 
         globalEnabled:
           Boolean(
@@ -275,7 +464,6 @@ async function loadShopServices(
           row.global_sort_order,
 
         mode,
-
         overrideEnabled,
 
         overrideSortOrder:
@@ -316,9 +504,20 @@ async function handleGetShops(
           SELECT
             code,
             name,
+            owner_name,
+            phone_number,
+            whatsapp_number,
+            email_address,
             address_line,
-            city
+            city,
+            state,
+            postal_code,
+            status,
+            created_at,
+            updated_at
+
           FROM shops
+
           ORDER BY
             name ASC,
             code ASC
@@ -329,16 +528,236 @@ async function handleGetShops(
   return createJsonResponse({
     shops:
       result.results.map(
-        (shop) => ({
-          code: shop.code,
-          name: shop.name,
-
-          addressLine:
-            shop.address_line,
-
-          city: shop.city,
-        }),
+        mapShop,
       ),
+  });
+}
+
+async function handleGetShopInformation(
+  request: Request,
+  env: Env,
+  shopCode: string,
+): Promise<Response> {
+  const unauthorized =
+    await requireAdmin(
+      request,
+      env,
+    );
+
+  if (unauthorized) {
+    return unauthorized;
+  }
+
+  const shop =
+    await loadShop(
+      env,
+      shopCode,
+    );
+
+  if (!shop) {
+    return createJsonResponse(
+      {
+        error:
+          "Shop not found.",
+      },
+      404,
+    );
+  }
+
+  return createJsonResponse({
+    shop:
+      mapShop(shop),
+  });
+}
+
+async function handleUpdateShopInformation(
+  request: Request,
+  env: Env,
+  shopCode: string,
+): Promise<Response> {
+  const unauthorized =
+    await requireAdmin(
+      request,
+      env,
+    );
+
+  if (unauthorized) {
+    return unauthorized;
+  }
+
+  const existingShop =
+    await loadShop(
+      env,
+      shopCode,
+    );
+
+  if (!existingShop) {
+    return createJsonResponse(
+      {
+        error:
+          "Shop not found.",
+      },
+      404,
+    );
+  }
+
+  let body:
+    UpdateShopInformationRequest;
+
+  try {
+    body =
+      (await request.json()) as
+        UpdateShopInformationRequest;
+  } catch {
+    return createJsonResponse(
+      {
+        error:
+          "Request body must be valid JSON.",
+      },
+      400,
+    );
+  }
+
+  const name =
+    normalizeRequiredText(
+      body.name,
+      150,
+    );
+
+  const ownerName =
+    normalizeRequiredText(
+      body.ownerName,
+      150,
+    );
+
+  const phoneNumber =
+    normalizeRequiredText(
+      body.phoneNumber,
+      40,
+    );
+
+  const whatsAppNumber =
+    normalizeOptionalText(
+      body.whatsAppNumber,
+      40,
+    );
+
+  const emailAddress =
+    normalizeEmail(
+      body.emailAddress,
+    );
+
+  const addressLine =
+    normalizeRequiredText(
+      body.addressLine,
+      250,
+    );
+
+  const city =
+    normalizeRequiredText(
+      body.city,
+      100,
+    );
+
+  const state =
+    normalizeRequiredText(
+      body.state,
+      100,
+    );
+
+  const postalCode =
+    normalizeRequiredText(
+      body.postalCode,
+      30,
+    );
+
+  const status =
+    normalizeStatus(
+      body.status,
+    );
+
+  if (
+    !name ||
+    !ownerName ||
+    !phoneNumber ||
+    whatsAppNumber ===
+      "invalid" ||
+    emailAddress ===
+      "invalid" ||
+    !addressLine ||
+    !city ||
+    !state ||
+    !postalCode ||
+    !status
+  ) {
+    return createJsonResponse(
+      {
+        error:
+          "Please provide valid shop, owner, contact, address and status information.",
+      },
+      400,
+    );
+  }
+
+  await env.gyan_registry
+    .prepare(
+      `
+        UPDATE shops
+
+        SET
+          name = ?,
+          owner_name = ?,
+          phone_number = ?,
+          whatsapp_number = ?,
+          email_address = ?,
+          address_line = ?,
+          city = ?,
+          state = ?,
+          postal_code = ?,
+          status = ?,
+          updated_at =
+            CURRENT_TIMESTAMP
+
+        WHERE code = ?
+      `,
+    )
+    .bind(
+      name,
+      ownerName,
+      phoneNumber,
+      whatsAppNumber,
+      emailAddress,
+      addressLine,
+      city,
+      state,
+      postalCode,
+      status,
+      shopCode,
+    )
+    .run();
+
+  const updatedShop =
+    await loadShop(
+      env,
+      shopCode,
+    );
+
+  if (!updatedShop) {
+    return createJsonResponse(
+      {
+        error:
+          "The shop was updated but could not be reloaded.",
+      },
+      500,
+    );
+  }
+
+  return createJsonResponse({
+    message:
+      "Shop information saved.",
+
+    shop:
+      mapShop(updatedShop),
   });
 }
 
@@ -366,7 +785,8 @@ async function handleGetShopServices(
   if (!shop) {
     return createJsonResponse(
       {
-        error: "Shop not found.",
+        error:
+          "Shop not found.",
       },
       404,
     );
@@ -379,15 +799,8 @@ async function handleGetShopServices(
     );
 
   return createJsonResponse({
-    shop: {
-      code: shop.code,
-      name: shop.name,
-
-      addressLine:
-        shop.address_line,
-
-      city: shop.city,
-    },
+    shop:
+      mapShop(shop),
 
     services,
   });
@@ -417,7 +830,8 @@ async function handleUpdateShopServices(
   if (!shop) {
     return createJsonResponse(
       {
-        error: "Shop not found.",
+        error:
+          "Shop not found.",
       },
       404,
     );
@@ -483,7 +897,8 @@ async function handleUpdateShopServices(
     }
 
     const change =
-      rawChange as ShopServiceChange;
+      rawChange as
+        ShopServiceChange;
 
     const code =
       normalizeServiceCode(
@@ -503,7 +918,8 @@ async function handleUpdateShopServices(
     if (
       !code ||
       !mode ||
-      sortOrder === "invalid"
+      sortOrder ===
+        "invalid"
     ) {
       return createJsonResponse(
         {
@@ -529,6 +945,7 @@ async function handleUpdateShopServices(
     normalizedChanges.push({
       code,
       mode,
+
       sortOrder:
         mode === "inherit"
           ? null
@@ -544,8 +961,12 @@ async function handleUpdateShopServices(
             id,
             service_code,
             sort_order
+
           FROM services
-          WHERE service_type = 'system'
+
+          WHERE
+            service_type =
+              'system'
         `,
       )
       .all<{
@@ -594,7 +1015,9 @@ async function handleUpdateShopServices(
         env.gyan_registry
           .prepare(
             `
-              DELETE FROM shop_services
+              DELETE FROM
+                shop_services
+
               WHERE
                 shop_code = ?
                 AND service_id = ?
@@ -610,7 +1033,8 @@ async function handleUpdateShopServices(
     }
 
     const enabled =
-      change.mode === "enabled"
+      change.mode ===
+      "enabled"
         ? 1
         : 0;
 
@@ -666,17 +1090,11 @@ async function handleUpdateShopServices(
   );
 
   return createJsonResponse({
-    message: "Changes saved.",
+    message:
+      "Changes saved.",
 
-    shop: {
-      code: shop.code,
-      name: shop.name,
-
-      addressLine:
-        shop.address_line,
-
-      city: shop.city,
-    },
+    shop:
+      mapShop(shop),
 
     services:
       await loadShopServices(
@@ -702,18 +1120,68 @@ export async function handleAdminShopsRoute(
     );
   }
 
-  const match =
+  const servicesMatch =
     url.pathname.match(
       /^\/api\/admin\/shops\/([A-Za-z0-9]{4})\/services$/,
     );
 
-  if (!match) {
+  if (servicesMatch) {
+    const shopCode =
+      normalizeShopCode(
+        servicesMatch[1],
+      );
+
+    if (!shopCode) {
+      return createJsonResponse(
+        {
+          error:
+            "Invalid shop code.",
+        },
+        400,
+      );
+    }
+
+    if (
+      request.method === "GET"
+    ) {
+      return handleGetShopServices(
+        request,
+        env,
+        shopCode,
+      );
+    }
+
+    if (
+      request.method === "PUT"
+    ) {
+      return handleUpdateShopServices(
+        request,
+        env,
+        shopCode,
+      );
+    }
+
+    return createJsonResponse(
+      {
+        error:
+          "Method not allowed.",
+      },
+      405,
+    );
+  }
+
+  const informationMatch =
+    url.pathname.match(
+      /^\/api\/admin\/shops\/([A-Za-z0-9]{4})$/,
+    );
+
+  if (!informationMatch) {
     return null;
   }
 
   const shopCode =
     normalizeShopCode(
-      match[1],
+      informationMatch[1],
     );
 
   if (!shopCode) {
@@ -726,16 +1194,20 @@ export async function handleAdminShopsRoute(
     );
   }
 
-  if (request.method === "GET") {
-    return handleGetShopServices(
+  if (
+    request.method === "GET"
+  ) {
+    return handleGetShopInformation(
       request,
       env,
       shopCode,
     );
   }
 
-  if (request.method === "PUT") {
-    return handleUpdateShopServices(
+  if (
+    request.method === "PUT"
+  ) {
+    return handleUpdateShopInformation(
       request,
       env,
       shopCode,

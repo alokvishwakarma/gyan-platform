@@ -1,78 +1,668 @@
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
 import "./PrintOrderPanel.css";
 
 interface PrintOrderPanelProps {
+  shopCode?:
+    | string
+    | null;
+
+  shopName?:
+    | string
+    | null;
+
   onClose: () => void;
+
+  onIncreaseLimit:
+    () => void;
 }
 
-type ColorMode = "black-white" | "color";
-type PrintSides = "single" | "double";
-type PaperSize = "letter" | "a4" | "legal";
+type ColorMode =
+  | "black-white"
+  | "color";
 
-const pricePerPage: Record<ColorMode, number> = {
-  "black-white": 0.1,
-  color: 0.5,
-};
+type PrintSides =
+  | "single"
+  | "double";
 
-export default function PrintOrderPanel({
-  onClose,
-}: PrintOrderPanelProps) {
-  const [files, setFiles] = useState<File[]>([]);
-  const [copies, setCopies] = useState(1);
-  const [estimatedPages, setEstimatedPages] = useState(1);
-  const [colorMode, setColorMode] =
-    useState<ColorMode>("black-white");
-  const [printSides, setPrintSides] =
-    useState<PrintSides>("single");
-  const [paperSize, setPaperSize] =
-    useState<PaperSize>("letter");
-  const [instructions, setInstructions] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [customerName, setCustomerName] = useState("");
-const [phoneNumber, setPhoneNumber] = useState("");
-const [emailAddress, setEmailAddress] = useState("");
-const [whatsAppNumber, setWhatsAppNumber] = useState("");
-const [usePhoneForWhatsApp, setUsePhoneForWhatsApp] =
-  useState(true);
-const [whatsAppConsent, setWhatsAppConsent] =
-  useState(false);
-  
+type PaperSize =
+  | "a4"
+  | "letter"
+  | "legal";
 
-  const estimatedTotal = useMemo(() => {
-    return (
-      estimatedPages *
-      copies *
-      pricePerPage[colorMode]
-    );
-  }, [estimatedPages, copies, colorMode]);
+type StorageState =
+  | "normal"
+  | "warning"
+  | "stopped";
 
-  const effectiveWhatsAppNumber = usePhoneForWhatsApp
-  ? phoneNumber
-  : whatsAppNumber;
+interface CreatePrintOrderResponse {
+  order?: {
+    orderNumber: string;
+    status: string;
+    createdAt: string;
+    fileCount?: number;
+  };
 
-  function handleFileChange(
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) {
-    const selectedFiles = Array.from(
-      event.target.files ?? [],
-    );
+  storage?: {
+    state: StorageState;
+    warningActive?: boolean;
+    usedBytes?: number;
+    projectedBytes?: number;
+    stopBytes?: number;
+  };
 
-    setFiles(selectedFiles);
+  error?: string;
+}
+
+const MAX_TOTAL_FILE_SIZE =
+  25 * 1024 * 1024;
+
+const allowedExtensions =
+  new Set([
+    "pdf",
+    "doc",
+    "docx",
+    "txt",
+    "rtf",
+    "jpg",
+    "jpeg",
+    "png",
+  ]);
+
+const pricePerPageRupees:
+  Record<ColorMode, number> = {
+    "black-white": 2,
+    color: 10,
+  };
+
+function getFileExtension(
+  fileName: string,
+): string {
+  const extension =
+    fileName
+      .split(".")
+      .pop()
+      ?.toLowerCase();
+
+  return extension ?? "";
+}
+
+function formatFileSize(
+  bytes: number,
+): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
   }
 
-  function handleSubmit(
-    event: React.FormEvent<HTMLFormElement>,
+  if (
+    bytes <
+    1024 * 1024
   ) {
-    event.preventDefault();
+    return `${(
+      bytes / 1024
+    ).toFixed(1)} KB`;
+  }
 
-    if (files.length === 0) {
+  return `${(
+    bytes /
+    (1024 * 1024)
+  ).toFixed(1)} MB`;
+}
+
+function normalizePhoneNumber(
+  value: string,
+): string {
+  return value.replace(
+    /[^\d+]/g,
+    "",
+  );
+}
+
+export default function PrintOrderPanel({
+  shopCode,
+  shopName,
+  onClose,
+  onIncreaseLimit,
+}: PrintOrderPanelProps) {
+  const fileInputRef =
+    useRef<HTMLInputElement | null>(
+      null,
+    );
+
+  const [
+    files,
+    setFiles,
+  ] = useState<File[]>([]);
+
+  const [
+    copies,
+    setCopies,
+  ] = useState(1);
+
+  const [
+    estimatedPages,
+    setEstimatedPages,
+  ] = useState(1);
+
+  const [
+    colorMode,
+    setColorMode,
+  ] = useState<ColorMode>(
+    "black-white",
+  );
+
+  const [
+    printSides,
+    setPrintSides,
+  ] = useState<PrintSides>(
+    "single",
+  );
+
+  const [
+    paperSize,
+    setPaperSize,
+  ] = useState<PaperSize>(
+    "a4",
+  );
+
+  const [
+    instructions,
+    setInstructions,
+  ] = useState("");
+
+  const [
+    customerName,
+    setCustomerName,
+  ] = useState("");
+
+  const [
+    phoneNumber,
+    setPhoneNumber,
+  ] = useState("");
+
+  const [
+    emailAddress,
+    setEmailAddress,
+  ] = useState("");
+
+  const [
+    whatsAppNumber,
+    setWhatsAppNumber,
+  ] = useState("");
+
+  const [
+    usePhoneForWhatsApp,
+    setUsePhoneForWhatsApp,
+  ] = useState(true);
+
+  const [
+    whatsAppConsent,
+    setWhatsAppConsent,
+  ] = useState(true);
+
+  const [
+    submitting,
+    setSubmitting,
+  ] = useState(false);
+
+  const [
+    submissionError,
+    setSubmissionError,
+  ] = useState("");
+
+  const [
+    fileError,
+    setFileError,
+  ] = useState("");
+
+  const [
+    createdOrderNumber,
+    setCreatedOrderNumber,
+  ] = useState<
+    string | null
+  >(null);
+
+  const [
+    storageState,
+    setStorageState,
+  ] = useState<StorageState>(
+    "normal",
+  );
+
+  const effectiveWhatsAppNumber =
+    usePhoneForWhatsApp
+      ? phoneNumber
+      : whatsAppNumber;
+
+  const totalFileSize =
+    useMemo(
+      () =>
+        files.reduce(
+          (
+            total,
+            file,
+          ) =>
+            total +
+            file.size,
+          0,
+        ),
+      [files],
+    );
+
+  const estimatedTotal =
+    useMemo(
+      () =>
+        estimatedPages *
+        copies *
+        pricePerPageRupees[
+          colorMode
+        ],
+      [
+        estimatedPages,
+        copies,
+        colorMode,
+      ],
+    );
+
+  const customerNameValid =
+    customerName
+      .trim()
+      .length >= 2;
+
+  const phoneNumberValid =
+    normalizePhoneNumber(
+      phoneNumber,
+    )
+      .replace(/\D/g, "")
+      .length >= 10;
+
+  const whatsAppNumberValid =
+    usePhoneForWhatsApp ||
+    normalizePhoneNumber(
+      whatsAppNumber,
+    )
+      .replace(/\D/g, "")
+      .length >= 10;
+
+  const canSubmit =
+    Boolean(shopCode) &&
+    files.length > 0 &&
+    totalFileSize <=
+      MAX_TOTAL_FILE_SIZE &&
+    customerNameValid &&
+    phoneNumberValid &&
+    whatsAppNumberValid &&
+    storageState !==
+      "stopped" &&
+    !submitting;
+
+  function addFiles(
+    selectedFiles: File[],
+  ) {
+    setFileError("");
+    setSubmissionError("");
+
+    const invalidFiles =
+      selectedFiles.filter(
+        (file) =>
+          !allowedExtensions.has(
+            getFileExtension(
+              file.name,
+            ),
+          ),
+      );
+
+    if (
+      invalidFiles.length > 0
+    ) {
+      setFileError(
+        "Only PDF, Word, TXT, RTF, JPG and PNG files are supported.",
+      );
+
       return;
     }
 
-    setSubmitted(true);
+    const combinedFiles = [
+      ...files,
+      ...selectedFiles,
+    ];
+
+    const uniqueFiles =
+      combinedFiles.filter(
+        (
+          file,
+          index,
+          allFiles,
+        ) =>
+          allFiles.findIndex(
+            (candidate) =>
+              candidate.name ===
+                file.name &&
+              candidate.size ===
+                file.size &&
+              candidate.lastModified ===
+                file.lastModified,
+          ) === index,
+      );
+
+    const combinedSize =
+      uniqueFiles.reduce(
+        (
+          total,
+          file,
+        ) =>
+          total +
+          file.size,
+        0,
+      );
+
+    if (
+      combinedSize >
+      MAX_TOTAL_FILE_SIZE
+    ) {
+      setFileError(
+        "The total upload size cannot exceed 25 MB.",
+      );
+
+      return;
+    }
+
+    setFiles(
+      uniqueFiles,
+    );
   }
 
-  if (submitted) {
+  function handleFileChange(
+    event:
+      React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const selectedFiles =
+      Array.from(
+        event.target.files ??
+          [],
+      );
+
+    addFiles(
+      selectedFiles,
+    );
+
+    event.target.value = "";
+  }
+
+  function removeFile(
+    fileToRemove: File,
+  ) {
+    setFiles(
+      (currentFiles) =>
+        currentFiles.filter(
+          (file) =>
+            !(
+              file.name ===
+                fileToRemove.name &&
+              file.size ===
+                fileToRemove.size &&
+              file.lastModified ===
+                fileToRemove.lastModified
+            ),
+        ),
+    );
+
+    setFileError("");
+    setSubmissionError("");
+  }
+
+  async function handleSubmit(
+    event:
+      React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    setSubmissionError("");
+
+    if (!shopCode) {
+      setSubmissionError(
+        "A shop could not be identified from the URL. Please open GYAN using ?shop=LKMV.",
+      );
+
+      return;
+    }
+
+    if (
+      !customerNameValid
+    ) {
+      setSubmissionError(
+        "Please enter your name.",
+      );
+
+      return;
+    }
+
+    if (!phoneNumberValid) {
+      setSubmissionError(
+        "Please enter a valid mobile number.",
+      );
+
+      return;
+    }
+
+    if (
+      !whatsAppNumberValid
+    ) {
+      setSubmissionError(
+        "Please enter a valid WhatsApp number.",
+      );
+
+      return;
+    }
+
+    if (
+      files.length === 0
+    ) {
+      setSubmissionError(
+        "Please add at least one file.",
+      );
+
+      return;
+    }
+
+    const formData =
+      new FormData();
+
+    for (
+      const file
+      of files
+    ) {
+      formData.append(
+        "files",
+        file,
+        file.name,
+      );
+    }
+
+    formData.append(
+      "customerName",
+      customerName.trim(),
+    );
+
+    formData.append(
+      "phoneNumber",
+      normalizePhoneNumber(
+        phoneNumber,
+      ),
+    );
+
+    formData.append(
+      "emailAddress",
+      emailAddress.trim(),
+    );
+
+    formData.append(
+      "whatsAppNumber",
+      normalizePhoneNumber(
+        effectiveWhatsAppNumber,
+      ),
+    );
+
+    formData.append(
+      "whatsAppConsent",
+      String(
+        whatsAppConsent,
+      ),
+    );
+
+    formData.append(
+      "estimatedPages",
+      String(
+        estimatedPages,
+      ),
+    );
+
+    formData.append(
+      "copies",
+      String(copies),
+    );
+
+    formData.append(
+      "colorMode",
+      colorMode,
+    );
+
+    formData.append(
+      "printSides",
+      printSides,
+    );
+
+    formData.append(
+      "paperSize",
+      paperSize,
+    );
+
+    formData.append(
+      "instructions",
+      instructions.trim(),
+    );
+
+    formData.append(
+      "estimatedAmountRupees",
+      String(
+        estimatedTotal,
+      ),
+    );
+
+    setSubmitting(true);
+
+    try {
+      const response =
+        await fetch(
+          `/api/shops/${encodeURIComponent(
+            shopCode,
+          )}/print-requests`,
+          {
+            method: "POST",
+            body: formData,
+          },
+        );
+
+      const result =
+        (await response.json()) as
+          CreatePrintOrderResponse;
+
+      setStorageState(
+        result.storage?.state ??
+          "normal",
+      );
+
+      if (
+        !response.ok ||
+        !result.order
+      ) {
+        throw new Error(
+          result.error ??
+            "The print request could not be submitted.",
+        );
+      }
+
+      setCreatedOrderNumber(
+        result.order.orderNumber,
+      );
+    } catch (error) {
+      setSubmissionError(
+        error instanceof Error
+          ? error.message
+          : "The print request could not be submitted.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function renderStorageMessage() {
+    if (
+      storageState ===
+      "warning"
+    ) {
+      return (
+        <div className="print-panel__storage-warning">
+          <strong>
+            ⚠ Storage warning
+          </strong>
+
+          <span>
+            GYAN storage is approaching
+            its current limit. Uploads are
+            still being accepted.
+          </span>
+
+          <button
+            type="button"
+            onClick={
+              onIncreaseLimit
+            }
+          >
+            Increase limit
+          </button>
+        </div>
+      );
+    }
+
+    if (
+      storageState ===
+      "stopped"
+    ) {
+      return (
+        <div className="print-panel__storage-stop">
+          <strong>
+            ⛔ Uploads paused
+          </strong>
+
+          <span>
+            New print requests cannot be
+            accepted because the configured
+            storage limit has been reached.
+          </span>
+
+          <button
+            type="button"
+            onClick={
+              onIncreaseLimit
+            }
+          >
+            Increase limit
+          </button>
+        </div>
+      );
+    }
+
+    return null;
+  }
+
+  if (
+    createdOrderNumber
+  ) {
     return (
       <div
         className="print-panel-overlay"
@@ -85,33 +675,67 @@ const [whatsAppConsent, setWhatsAppConsent] =
           aria-labelledby="print-success-title"
         >
           <div className="print-panel__success-icon">
-            ✅
+            ✓
           </div>
 
+          <span className="print-panel__eyebrow">
+            GYAN Print
+          </span>
+
           <h2 id="print-success-title">
-            Print request prepared
+            Print request submitted
           </h2>
 
           <p>
-            Your order is ready for backend submission.
-            No document has been uploaded yet.
+            Your request has been
+            sent
+            {shopName
+              ? ` to ${shopName}`
+              : " to the selected shop"}
+            .
           </p>
+
+          <div className="print-panel__order-number">
+            <span>
+              Order number
+            </span>
+
+            <strong>
+              {createdOrderNumber}
+            </strong>
+          </div>
 
           <div className="print-panel__summary">
             <span>
               {files.length} file
-              {files.length === 1 ? "" : "s"}
+              {files.length === 1
+                ? ""
+                : "s"}
             </span>
 
             <span>
               {copies} cop
-              {copies === 1 ? "y" : "ies"}
+              {copies === 1
+                ? "y"
+                : "ies"}
             </span>
 
             <span>
-              Estimated ${estimatedTotal.toFixed(2)}
+              Approx. ₹
+              {estimatedTotal.toFixed(
+                0,
+              )}
             </span>
           </div>
+
+          <p className="print-panel__success-note">
+            The shop will review
+            the files and confirm
+            the final amount before
+            printing.
+          </p>
+
+          {renderStorageMessage()}
 
           <button
             type="button"
@@ -143,8 +767,21 @@ const [whatsAppConsent, setWhatsAppConsent] =
             </span>
 
             <h2 id="print-order-title">
-              Prepare print order
+              Send documents for printing
             </h2>
+
+            {shopName && (
+              <small className="print-panel__shop">
+                {shopName}
+              </small>
+            )}
+
+            {!shopName &&
+              shopCode && (
+                <small className="print-panel__shop">
+                  Shop {shopCode}
+                </small>
+              )}
           </div>
 
           <button
@@ -159,300 +796,590 @@ const [whatsAppConsent, setWhatsAppConsent] =
 
         <form
           className="print-panel__form"
-          onSubmit={handleSubmit}
+          onSubmit={
+            handleSubmit
+          }
         >
-          <label className="print-panel__upload">
-            <span className="print-panel__upload-icon">
-              📤
-            </span>
-
-            <strong>Select documents</strong>
-
-            <span>
-              PDF, Word, JPG or PNG
-            </span>
-
-            <input
-              type="file"
-              multiple
-              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-              onChange={handleFileChange}
-            />
-          </label>
-
-          {files.length > 0 && (
-            <div className="print-panel__files">
-              {files.map((file) => (
-                <div
-                  key={`${file.name}-${file.size}`}
-                  className="print-panel__file"
-                >
-                  <span>📄</span>
-
-                  <span>{file.name}</span>
-
-                  <small>
-                    {(file.size / 1024).toFixed(1)} KB
-                  </small>
-                </div>
-              ))}
+          {!shopCode && (
+            <div className="print-panel__notice">
+              A shop could not be
+              identified. Open GYAN
+              using a URL such as
+              <strong>
+                {" "}
+                ?shop=LKMV
+              </strong>
+              .
             </div>
           )}
 
-<div className="print-panel__section">
-  <h3>Contact details</h3>
+          <section className="print-panel__section">
+            <div className="print-panel__section-heading">
+              <div>
+                <span className="print-panel__step">
+                  1
+                </span>
 
-  <label>
-    <span>Name</span>
+                <h3>
+                  Add documents
+                </h3>
+              </div>
 
-    <input
-      type="text"
-      value={customerName}
-      placeholder="Your name"
-      autoComplete="name"
-      required
-      onChange={(event) =>
-        setCustomerName(event.target.value)
-      }
-    />
-  </label>
+              <small>
+                Maximum 25 MB
+              </small>
+            </div>
 
-  <label>
-    <span>Mobile number</span>
+            <label className="print-panel__upload">
+              <span className="print-panel__upload-icon">
+                📤
+              </span>
 
-    <input
-      type="tel"
-      value={phoneNumber}
-      placeholder="+91 12345 67890"
-      autoComplete="tel"
-      required
-      onChange={(event) =>
-        setPhoneNumber(event.target.value)
-      }
-    />
-  </label>
+              <strong>
+                Select print files
+              </strong>
 
-  <label>
-    <span>Email address — optional</span>
-
-    <input
-      type="email"
-      value={emailAddress}
-      placeholder="name@example.com"
-      autoComplete="email"
-      onChange={(event) =>
-        setEmailAddress(event.target.value)
-      }
-    />
-  </label>
-
-  <label className="print-panel__checkbox">
-    <input
-      type="checkbox"
-      checked={usePhoneForWhatsApp}
-      onChange={(event) =>
-        setUsePhoneForWhatsApp(event.target.checked)
-      }
-    />
-
-    <span>My WhatsApp number is the same</span>
-  </label>
-
-  {!usePhoneForWhatsApp && (
-    <label>
-      <span>WhatsApp number</span>
-
-      <input
-        type="tel"
-        value={whatsAppNumber}
-        placeholder="+91 12345 67890"
-        autoComplete="tel"
-        required
-        onChange={(event) =>
-          setWhatsAppNumber(event.target.value)
-        }
-      />
-    </label>
-  )}
-
-  <label className="print-panel__checkbox">
-    <input
-      type="checkbox"
-      checked={whatsAppConsent}
-      onChange={(event) =>
-        setWhatsAppConsent(event.target.checked)
-      }
-    />
-
-    <span>
-      Send print-request and pickup updates to
-      {effectiveWhatsAppNumber
-        ? ` ${effectiveWhatsAppNumber}`
-        : " my WhatsApp number"}
-    </span>
-  </label>
-</div>
-          <div className="print-panel__field-grid">
-            <label>
-              <span>Estimated pages</span>
+              <span>
+                PDF, Word, TXT, RTF,
+                JPG or PNG
+              </span>
 
               <input
-                type="number"
-                min="1"
-                max="1000"
-                value={estimatedPages}
-                onChange={(event) =>
-                  setEstimatedPages(
-                    Math.max(
-                      1,
-                      Number(event.target.value),
+                ref={
+                  fileInputRef
+                }
+                type="file"
+                multiple
+                accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png"
+                onChange={
+                  handleFileChange
+                }
+              />
+            </label>
+
+            {fileError && (
+              <p
+                className="print-panel__error"
+                role="alert"
+              >
+                {fileError}
+              </p>
+            )}
+
+            {files.length > 0 && (
+              <>
+                <div className="print-panel__files">
+                  {files.map(
+                    (file) => (
+                      <div
+                        key={`${file.name}-${file.size}-${file.lastModified}`}
+                        className="print-panel__file"
+                      >
+                        <span
+                          aria-hidden="true"
+                        >
+                          📄
+                        </span>
+
+                        <div>
+                          <strong>
+                            {file.name}
+                          </strong>
+
+                          <small>
+                            {formatFileSize(
+                              file.size,
+                            )}
+                          </small>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeFile(
+                              file,
+                            )
+                          }
+                          aria-label={`Remove ${file.name}`}
+                          title="Remove file"
+                        >
+                          ×
+                        </button>
+                      </div>
                     ),
+                  )}
+                </div>
+
+                <div className="print-panel__file-total">
+                  <span>
+                    {files.length} file
+                    {files.length ===
+                    1
+                      ? ""
+                      : "s"}
+                  </span>
+
+                  <strong>
+                    {formatFileSize(
+                      totalFileSize,
+                    )}
+                  </strong>
+                </div>
+
+                <button
+                  type="button"
+                  className="print-panel__add-files"
+                  onClick={() =>
+                    fileInputRef.current?.click()
+                  }
+                >
+                  + Add more files
+                </button>
+              </>
+            )}
+          </section>
+
+          <section className="print-panel__section">
+            <div className="print-panel__section-heading">
+              <div>
+                <span className="print-panel__step">
+                  2
+                </span>
+
+                <h3>
+                  Contact details
+                </h3>
+              </div>
+            </div>
+
+            <label>
+              <span>Name</span>
+
+              <input
+                type="text"
+                value={
+                  customerName
+                }
+                placeholder="Your name"
+                autoComplete="name"
+                required
+                minLength={2}
+                onChange={(
+                  event,
+                ) =>
+                  setCustomerName(
+                    event.target.value,
                   )
                 }
               />
             </label>
 
             <label>
-              <span>Copies</span>
+              <span>
+                Mobile number
+              </span>
 
               <input
-                type="number"
-                min="1"
-                max="100"
-                value={copies}
-                onChange={(event) =>
-                  setCopies(
-                    Math.max(
-                      1,
-                      Number(event.target.value),
-                    ),
+                type="tel"
+                value={
+                  phoneNumber
+                }
+                placeholder="+91 98765 43210"
+                autoComplete="tel"
+                required
+                onChange={(
+                  event,
+                ) =>
+                  setPhoneNumber(
+                    event.target.value,
                   )
                 }
               />
             </label>
-          </div>
 
-          <fieldset>
-            <legend>Color</legend>
+            <label>
+              <span>
+                Email address
+                <small>
+                  Optional
+                </small>
+              </span>
 
-            <div className="print-panel__choice-row">
+              <input
+                type="email"
+                value={
+                  emailAddress
+                }
+                placeholder="name@example.com"
+                autoComplete="email"
+                onChange={(
+                  event,
+                ) =>
+                  setEmailAddress(
+                    event.target.value,
+                  )
+                }
+              />
+            </label>
+
+            <label className="print-panel__checkbox">
+              <input
+                type="checkbox"
+                checked={
+                  usePhoneForWhatsApp
+                }
+                onChange={(
+                  event,
+                ) =>
+                  setUsePhoneForWhatsApp(
+                    event.target
+                      .checked,
+                  )
+                }
+              />
+
+              <span>
+                My WhatsApp number
+                is the same as my
+                mobile number
+              </span>
+            </label>
+
+            {!usePhoneForWhatsApp && (
               <label>
+                <span>
+                  WhatsApp number
+                </span>
+
                 <input
-                  type="radio"
-                  name="color-mode"
-                  checked={colorMode === "black-white"}
-                  onChange={() =>
-                    setColorMode("black-white")
+                  type="tel"
+                  value={
+                    whatsAppNumber
+                  }
+                  placeholder="+91 98765 43210"
+                  autoComplete="tel"
+                  required
+                  onChange={(
+                    event,
+                  ) =>
+                    setWhatsAppNumber(
+                      event.target
+                        .value,
+                    )
                   }
                 />
+              </label>
+            )}
 
-                <span>Black & white</span>
+            <label className="print-panel__checkbox">
+              <input
+                type="checkbox"
+                checked={
+                  whatsAppConsent
+                }
+                onChange={(
+                  event,
+                ) =>
+                  setWhatsAppConsent(
+                    event.target
+                      .checked,
+                  )
+                }
+              />
+
+              <span>
+                Send order and pickup
+                updates through
+                WhatsApp
+              </span>
+            </label>
+          </section>
+
+          <section className="print-panel__section">
+            <div className="print-panel__section-heading">
+              <div>
+                <span className="print-panel__step">
+                  3
+                </span>
+
+                <h3>
+                  Print preferences
+                </h3>
+              </div>
+            </div>
+
+            <div className="print-panel__field-grid">
+              <label>
+                <span>
+                  Estimated pages
+                </span>
+
+                <input
+                  type="number"
+                  min="1"
+                  max="1000"
+                  value={
+                    estimatedPages
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setEstimatedPages(
+                      Math.min(
+                        1000,
+                        Math.max(
+                          1,
+                          Number(
+                            event.target
+                              .value,
+                          ) || 1,
+                        ),
+                      ),
+                    )
+                  }
+                />
               </label>
 
               <label>
+                <span>
+                  Copies
+                </span>
+
                 <input
-                  type="radio"
-                  name="color-mode"
-                  checked={colorMode === "color"}
-                  onChange={() =>
-                    setColorMode("color")
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={
+                    copies
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setCopies(
+                      Math.min(
+                        100,
+                        Math.max(
+                          1,
+                          Number(
+                            event.target
+                              .value,
+                          ) || 1,
+                        ),
+                      ),
+                    )
                   }
                 />
-
-                <span>Color</span>
               </label>
             </div>
-          </fieldset>
 
-          <fieldset>
-            <legend>Sides</legend>
+            <fieldset>
+              <legend>
+                Color
+              </legend>
 
-            <div className="print-panel__choice-row">
-              <label>
-                <input
-                  type="radio"
-                  name="print-sides"
-                  checked={printSides === "single"}
-                  onChange={() =>
-                    setPrintSides("single")
-                  }
-                />
+              <div className="print-panel__choice-row">
+                <label>
+                  <input
+                    type="radio"
+                    name="color-mode"
+                    checked={
+                      colorMode ===
+                      "black-white"
+                    }
+                    onChange={() =>
+                      setColorMode(
+                        "black-white",
+                      )
+                    }
+                  />
 
-                <span>Single-sided</span>
-              </label>
+                  <span>
+                    Black & white
+                  </span>
+                </label>
 
-              <label>
-                <input
-                  type="radio"
-                  name="print-sides"
-                  checked={printSides === "double"}
-                  onChange={() =>
-                    setPrintSides("double")
-                  }
-                />
+                <label>
+                  <input
+                    type="radio"
+                    name="color-mode"
+                    checked={
+                      colorMode ===
+                      "color"
+                    }
+                    onChange={() =>
+                      setColorMode(
+                        "color",
+                      )
+                    }
+                  />
 
-                <span>Double-sided</span>
-              </label>
-            </div>
-          </fieldset>
+                  <span>
+                    Color
+                  </span>
+                </label>
+              </div>
+            </fieldset>
 
-          <label>
-            <span>Paper size</span>
+            <fieldset>
+              <legend>
+                Sides
+              </legend>
 
-            <select
-              value={paperSize}
-              onChange={(event) =>
-                setPaperSize(
-                  event.target.value as PaperSize,
-                )
-              }
-            >
-              <option value="letter">
-                Letter — 8.5 × 11 in
-              </option>
+              <div className="print-panel__choice-row">
+                <label>
+                  <input
+                    type="radio"
+                    name="print-sides"
+                    checked={
+                      printSides ===
+                      "single"
+                    }
+                    onChange={() =>
+                      setPrintSides(
+                        "single",
+                      )
+                    }
+                  />
 
-              <option value="a4">
-                A4 — 210 × 297 mm
-              </option>
+                  <span>
+                    Single-sided
+                  </span>
+                </label>
 
-              <option value="legal">
-                Legal — 8.5 × 14 in
-              </option>
-            </select>
-          </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="print-sides"
+                    checked={
+                      printSides ===
+                      "double"
+                    }
+                    onChange={() =>
+                      setPrintSides(
+                        "double",
+                      )
+                    }
+                  />
 
-          <label>
-            <span>Special instructions</span>
+                  <span>
+                    Double-sided
+                  </span>
+                </label>
+              </div>
+            </fieldset>
 
-            <textarea
-              rows={3}
-              value={instructions}
-              placeholder="Page ranges, stapling, paper preference, pickup notes..."
-              onChange={(event) =>
-                setInstructions(event.target.value)
-              }
-            />
-          </label>
+            <label>
+              <span>
+                Paper size
+              </span>
+
+              <select
+                value={
+                  paperSize
+                }
+                onChange={(
+                  event,
+                ) =>
+                  setPaperSize(
+                    event.target
+                      .value as
+                      PaperSize,
+                  )
+                }
+              >
+                <option value="a4">
+                  A4 — 210 × 297 mm
+                </option>
+
+                <option value="letter">
+                  Letter — 8.5 × 11 in
+                </option>
+
+                <option value="legal">
+                  Legal — 8.5 × 14 in
+                </option>
+              </select>
+            </label>
+
+            <label>
+              <span>
+                Special instructions
+                <small>
+                  Optional
+                </small>
+              </span>
+
+              <textarea
+                rows={3}
+                value={
+                  instructions
+                }
+                maxLength={1000}
+                placeholder="Page ranges, stapling, paper preference or pickup notes..."
+                onChange={(
+                  event,
+                ) =>
+                  setInstructions(
+                    event.target.value,
+                  )
+                }
+              />
+            </label>
+          </section>
 
           <div className="print-panel__estimate">
             <div>
-              <span>Estimated total</span>
+              <span>
+                Approximate amount
+              </span>
 
               <small>
-                Final price may change after file review
+                The shop will confirm
+                the final amount after
+                reviewing the files.
               </small>
             </div>
 
             <strong>
-              ${estimatedTotal.toFixed(2)}
+              ₹
+              {estimatedTotal.toFixed(
+                0,
+              )}
             </strong>
           </div>
+
+          {renderStorageMessage()}
+
+          {!canSubmit &&
+            files.length > 0 &&
+            storageState !==
+              "stopped" && (
+              <p className="print-panel__helper">
+                Enter your name and a
+                valid mobile number to
+                submit the request.
+              </p>
+            )}
+
+          {submissionError && (
+            <p
+              className="print-panel__error print-panel__error--submission"
+              role="alert"
+            >
+              {submissionError}
+            </p>
+          )}
 
           <div className="print-panel__actions">
             <button
               type="button"
               className="print-panel__secondary"
-              onClick={onClose}
+              disabled={
+                submitting
+              }
+              onClick={
+                onClose
+              }
             >
               Cancel
             </button>
@@ -460,9 +1387,16 @@ const [whatsAppConsent, setWhatsAppConsent] =
             <button
               type="submit"
               className="print-panel__primary"
-              disabled={files.length === 0}
+              disabled={
+                !canSubmit
+              }
             >
-              Submit print request
+              {submitting
+                ? "Submitting…"
+                : storageState ===
+                    "stopped"
+                  ? "Uploads paused"
+                  : "Submit print request"}
             </button>
           </div>
         </form>

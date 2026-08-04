@@ -1,7 +1,8 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
+  "$schema": "./node_modules/wrangler/config-schema.json",
+
   "name": "gyan-platform",
-  "main": "./worker/index.ts",
+  "main": "worker/index.ts",
   "compatibility_date": "2026-08-03",
 
   "assets": {
@@ -19,5 +20,20 @@
       "database_name": "gyan-registry",
       "database_id": "f7313f00-d45b-418f-bb33-f8eb9f486f25"
     }
-  ]
+  ],
+
+  "r2_buckets": [
+    {
+      "binding": "GYAN_PRINT_FILES",
+      "bucket_name": "gyan-print-files"
+    }
+  ],
+
+  "triggers": {
+    "crons": [
+      "17 3 * * *"
+    ]
+  },
+
+  "vars": {}
 }
