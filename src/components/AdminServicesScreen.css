@@ -1,12 +1,11 @@
 .admin-services {
-  width: min(100%, 760px);
-  min-height: 100vh;
-  margin: 0 auto;
+  height: 100dvh;
+  min-height: 0;
 
-  padding-bottom: 88px;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
 
-  background: #fffdf8;
-  color: var(--chrome-text);
+  overflow: hidden;
 }
 
 .admin-services__header {
@@ -125,11 +124,34 @@
 }
 
 .admin-services__content {
-  padding: 0.7rem;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color:
+    var(--chrome-border)
+    transparent;
+}
 
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
+.admin-services__content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.admin-services__content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-services__content::-webkit-scrollbar-thumb {
+  background: var(--chrome-border);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.admin-services__content::-webkit-scrollbar-thumb:hover {
+  background: var(--chrome-text-muted);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .admin-services__state {
@@ -439,4 +461,30 @@
     display: grid;
     grid-template-columns: 1fr 2fr;
   }
+}
+
+.admin-service-row__configure {
+  width: 100%;
+  min-height: 30px;
+  margin-top: 0.3rem;
+  padding: 0.3rem 0.45rem;
+
+  border: 1px solid var(--chrome-border);
+  background: #ffffff;
+  color: var(--chrome-text);
+
+  font: inherit;
+  font-size: 0.6rem;
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.admin-service-row__configure:hover {
+  background: var(--chrome-background);
+}
+
+.admin-service-row__configure:focus-visible {
+  outline: 2px solid var(--chrome-accent);
+  outline-offset: 1px;
 }

@@ -181,3 +181,36 @@
   outline: 3px solid var(--chrome-accent);
   outline-offset: -4px;
 }
+
+.app-header__brand-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  border: 0;
+  background: transparent;
+
+  cursor: pointer;
+}
+
+.app-header__brand-icon {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.app-header__brand-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.app-header__brand-text strong {
+  color: #1976d2;
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+}
+
+.app-header__brand-text span {
+  color: #64748b;
+  font-size: 0.62rem;
+}

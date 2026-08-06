@@ -16,6 +16,8 @@ interface ServiceCatalogRow {
 
   owner_shop_code: string | null;
 
+  homepage_order: number | null;
+
   effective_enabled: number | boolean;
   effective_sort_order: number;
 
@@ -45,7 +47,6 @@ function createJsonResponse(
       headers: {
         "content-type":
           "application/json; charset=utf-8",
-
         "cache-control":
           "no-store",
       },
@@ -79,6 +80,7 @@ function mapServiceRow(
     type: row.service_type,
 
     category: row.category,
+
     subCategory:
       row.sub_category,
 
@@ -123,7 +125,16 @@ function mapServiceRow(
       row.price_note ?? "",
 
     sortOrder:
-      row.effective_sort_order,
+      Number(
+        row.effective_sort_order,
+      ),
+
+    homepageOrder:
+      row.homepage_order == null
+        ? null
+        : Number(
+            row.homepage_order,
+          ),
 
     custom:
       row.service_type ===
@@ -155,6 +166,8 @@ async function getGlobalServices(
             s.workflow_type,
             s.owner_shop_code,
 
+            s.homepage_order,
+
             CAST(
               s.enabled AS INTEGER
             ) AS effective_enabled,
@@ -179,6 +192,14 @@ async function getGlobalServices(
 
           ORDER BY
             s.category ASC,
+
+            CASE
+              WHEN s.homepage_order IS NULL
+                THEN 1
+              ELSE 0
+            END ASC,
+
+            s.homepage_order ASC,
             s.sort_order ASC,
             s.name ASC
         `,
@@ -256,6 +277,8 @@ async function getShopServices(
             s.workflow_type,
             s.owner_shop_code,
 
+            s.homepage_order,
+
             CAST(
               COALESCE(
                 ss.enabled,
@@ -296,6 +319,14 @@ async function getShopServices(
 
           ORDER BY
             s.category ASC,
+
+            CASE
+              WHEN s.homepage_order IS NULL
+                THEN 1
+              ELSE 0
+            END ASC,
+
+            s.homepage_order ASC,
             effective_sort_order ASC,
             s.name ASC
         `,

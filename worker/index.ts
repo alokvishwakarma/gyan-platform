@@ -26,6 +26,30 @@ import {
   handleAdminStorageRoute,
 } from "./adminStorage";
 
+import {
+  handleAdminServiceFormsRoute,
+} from "./adminServiceForms";
+
+import {
+  handleServiceFormsRoute,
+} from "./serviceForms";
+
+import {
+  handleServiceRequestsRoute,
+} from "./serviceRequests";
+
+import {
+  handleSharedRequestsRoute,
+} from "./sharedRequests";
+
+import {
+  handleNearbyShopsRoute,
+} from "./nearbyShops";
+
+import {
+  handleLocationHintRoute,
+} from "./locationHint";
+
 interface RegisterShopRequest {
   code?: unknown;
   name?: unknown;
@@ -491,6 +515,17 @@ async function handleApiRequest(
     return adminServicesResponse;
   }
 
+  const adminServiceFormsResponse =
+  await handleAdminServiceFormsRoute(
+    request,
+    env,
+    url,
+  );
+
+if (adminServiceFormsResponse) {
+  return adminServiceFormsResponse;
+}
+
   /*
    * Shop administration and overrides.
    */
@@ -530,6 +565,65 @@ if (adminStorageResponse) {
     return serviceCatalogResponse;
   }
 
+  /*
+ * Browser location hint.
+ */
+const locationHintResponse =
+  handleLocationHintRoute(
+    request,
+    url,
+  );
+
+if (locationHintResponse) {
+  return locationHintResponse;
+}
+
+/*
+ * Nearby registered shops.
+ */
+const nearbyShopsResponse =
+  await handleNearbyShopsRoute(
+    request,
+    env,
+    url,
+  );
+
+if (nearbyShopsResponse) {
+  return nearbyShopsResponse;
+}
+
+  const serviceFormResponse =
+  await handleServiceFormsRoute(
+    request,
+    env,
+    url,
+  );
+
+if (serviceFormResponse) {
+  return serviceFormResponse;
+}
+
+const serviceRequestResponse =
+  await handleServiceRequestsRoute(
+    request,
+    env,
+    url,
+  );
+
+if (serviceRequestResponse) {
+  return serviceRequestResponse;
+}
+
+const sharedRequestResponse =
+  await handleSharedRequestsRoute(
+    request,
+    env,
+    url,
+  );
+
+if (sharedRequestResponse) {
+  return sharedRequestResponse;
+}
   /*
    * Print-order creation.
    */

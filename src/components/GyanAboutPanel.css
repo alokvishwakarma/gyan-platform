@@ -1,0 +1,305 @@
+.gyan-about-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+
+  display: grid;
+  place-items: center;
+
+  padding: 14px;
+
+  background:
+    rgba(15, 23, 42, 0.62);
+}
+
+.gyan-about-panel {
+  width: min(100%, 520px);
+  max-height: 92vh;
+
+  overflow: hidden;
+
+  border-radius: 20px;
+
+  background: #fff;
+
+  box-shadow:
+    0 24px 80px
+    rgba(15, 23, 42, 0.30);
+}
+
+.gyan-about-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+
+  padding: 16px 18px;
+
+  border-bottom:
+    1px solid #e4eaf1;
+}
+
+.gyan-about-panel__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gyan-about-panel__brand
+  > span {
+  font-size: 1.9rem;
+}
+
+.gyan-about-panel__brand
+  div {
+  display: grid;
+  gap: 1px;
+}
+
+.gyan-about-panel__brand
+  strong {
+  color: #0f4c81;
+  font-size: 1.08rem;
+  letter-spacing: 0.04em;
+}
+
+.gyan-about-panel__brand
+  small {
+  color: #64748b;
+}
+
+.gyan-about-panel__header
+  > button {
+  width: 34px;
+  height: 34px;
+
+  border: 0;
+  border-radius: 50%;
+
+  background: #eef3f8;
+
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.gyan-about-panel__content {
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 0.8fr)
+    minmax(0, 1.2fr);
+  gap: 18px;
+
+  overflow-y: auto;
+
+  padding: 18px;
+}
+
+.gyan-about-panel__qr {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 7px;
+
+  padding: 14px;
+
+  border: 1px solid #dbe5ef;
+  border-radius: 16px;
+
+  background: #f8fbff;
+
+  text-align: center;
+}
+
+.gyan-about-panel__qr img {
+  width: min(100%, 220px);
+  aspect-ratio: 1;
+
+  border-radius: 10px;
+
+  background: #fff;
+}
+
+.gyan-about-panel__qr p {
+  margin: 0;
+
+  color: #64748b;
+  font-size: 0.76rem;
+}
+
+.gyan-about-panel__qr
+  strong {
+  font-size: 0.82rem;
+}
+
+.gyan-about-panel__qr
+  small {
+  color: #1976d2;
+  font-weight: 750;
+}
+
+.gyan-about-panel__details {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.gyan-about-panel__details
+  article {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+
+  padding: 12px;
+
+  border: 1px solid #e0e7ef;
+  border-radius: 14px;
+}
+
+.gyan-about-panel__details
+  article > span {
+  display: grid;
+  place-items: center;
+
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+
+  border-radius: 11px;
+
+  background: #eef6ff;
+}
+
+.gyan-about-panel__details
+  article div {
+  display: grid;
+  gap: 3px;
+}
+
+.gyan-about-panel__details
+  strong {
+  font-size: 0.8rem;
+}
+
+.gyan-about-panel__details
+  p {
+  margin: 0;
+
+  color: #5f6b78;
+
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.gyan-about-panel__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+
+  padding: 13px 18px;
+
+  border-top:
+    1px solid #e4eaf1;
+}
+
+.gyan-about-panel__footer
+  a,
+.gyan-about-panel__footer
+  button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 40px;
+  padding: 8px 14px;
+
+  border-radius: 10px;
+
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 750;
+
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.gyan-about-panel__footer
+  a {
+  border: 0;
+
+  background: #1976d2;
+  color: #fff;
+}
+
+.gyan-about-panel__footer
+  button {
+  border: 1px solid #cad5e1;
+
+  background: #fff;
+  color: #334155;
+}
+
+@media (max-width: 520px) {
+  .gyan-about-panel__content {
+    grid-template-columns: 1fr;
+  }
+
+  .gyan-about-panel__qr {
+    grid-template-columns:
+      auto minmax(0, 1fr);
+    justify-items: start;
+    align-items: center;
+
+    text-align: left;
+  }
+
+  .gyan-about-panel__qr img {
+    grid-row: 1 / 3;
+
+    width: 112px;
+  }
+
+  .gyan-about-panel__footer {
+    display: grid;
+    grid-template-columns:
+      1fr 1fr;
+  }
+}
+
+.gyan-about-panel__download-button {
+  border: 0 !important;
+  background: #1976d2 !important;
+  color: #ffffff !important;
+}
+
+.gyan-about-panel__download-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Three About-panel actions: Download QR, Admin, Close. */
+.gyan-about-panel__footer {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.gyan-about-panel__admin-button {
+  border: 1px solid #cbd7e4 !important;
+  background: #f5f8fc !important;
+  color: #294361 !important;
+}
+
+@media (max-width: 380px) {
+  .gyan-about-panel__footer {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .gyan-about-panel__footer button {
+    min-width: 0;
+    padding-inline: 7px;
+    font-size: 0.68rem;
+  }
+}

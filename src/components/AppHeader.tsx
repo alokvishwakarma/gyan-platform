@@ -47,8 +47,29 @@ export default function AppHeader({
   aria-label="About GYAN"
   title="About GYAN"
 >
-  <strong>GYAN</strong>
-  <span>gyan.cc</span>
+<button
+  type="button"
+  className="app-header__brand app-header__brand-button"
+  onClick={onOpenAbout}
+  aria-label="About GYAN"
+  title="About GYAN"
+>
+  <span
+    className="app-header__brand-icon"
+    aria-hidden="true"
+  >
+    📖
+  </span>
+
+  <div className="app-header__brand-text">
+    <strong>GYAN</strong>
+
+    <span>
+      Your Digital Seva Partner
+    </span>
+  </div>
+</button>
+
 </button>
       </div>
 

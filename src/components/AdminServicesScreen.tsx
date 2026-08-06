@@ -3,20 +3,32 @@ import {
   useMemo,
   useState,
 } from "react";
+
 import "./AdminServicesScreen.css";
 
 interface AdminServicesScreenProps {
   onExit: () => void;
   onOpenShops: () => void;
+
+  onConfigureService: (
+    serviceCode: string,
+    serviceName: string,
+  ) => void;
 }
 
 interface AdminService {
   id: number;
   code: string;
-  type: "system" | "custom";
+
+  type:
+    | "system"
+    | "custom";
 
   category: string;
-  subCategory: string | null;
+
+  subCategory:
+    | string
+    | null;
 
   name: string;
   description: string;
@@ -56,8 +68,11 @@ function createEditableService(
   return {
     original: service,
     enabled: service.enabled,
+
     sortOrderText:
-      String(service.sortOrder),
+      String(
+        service.sortOrder,
+      ),
   };
 }
 
@@ -66,15 +81,23 @@ function getCategoryTitle(
 ): string {
   const knownTitles:
     Record<string, string> = {
-      documents: "Documents",
-      education: "Education",
-      government: "Government",
+      documents:
+        "Documents",
+
+      education:
+        "Education",
+
+      government:
+        "Government",
     };
 
   return (
     knownTitles[category] ??
     category
-      .replace(/[_-]+/g, " ")
+      .replace(
+        /[_-]+/g,
+        " ",
+      )
       .replace(
         /\b\w/g,
         (character) =>
@@ -86,27 +109,46 @@ function getCategoryTitle(
 export default function AdminServicesScreen({
   onExit,
   onOpenShops,
+  onConfigureService,
 }: AdminServicesScreenProps) {
-  const [editableServices, setEditableServices] =
-    useState<EditableService[]>([]);
+  const [
+    editableServices,
+    setEditableServices,
+  ] = useState<
+    EditableService[]
+  >([]);
 
-  const [searchText, setSearchText] =
-    useState("");
+  const [
+    searchText,
+    setSearchText,
+  ] = useState("");
 
-  const [filter, setFilter] =
-    useState<ServiceFilter>("all");
+  const [
+    filter,
+    setFilter,
+  ] = useState<ServiceFilter>(
+    "all",
+  );
 
-  const [isLoading, setIsLoading] =
-    useState(true);
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
 
-  const [isSaving, setIsSaving] =
-    useState(false);
+  const [
+    isSaving,
+    setIsSaving,
+  ] = useState(false);
 
-  const [statusMessage, setStatusMessage] =
-    useState("");
+  const [
+    statusMessage,
+    setStatusMessage,
+  ] = useState("");
 
-  const [errorMessage, setErrorMessage] =
-    useState("");
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
 
   useEffect(() => {
     const abortController =
@@ -114,21 +156,25 @@ export default function AdminServicesScreen({
 
     async function loadServices() {
       try {
-        const response = await fetch(
-          "/api/admin/services",
-          {
-            credentials: "include",
-            signal:
-              abortController.signal,
-          },
-        );
+        const response =
+          await fetch(
+            "/api/admin/services",
+            {
+              credentials:
+                "include",
+
+              signal:
+                abortController.signal,
+            },
+          );
 
         const result =
           (await response.json()) as
             AdminServicesResponse;
 
         if (
-          response.status === 401
+          response.status ===
+          401
         ) {
           onExit();
           return;
@@ -151,8 +197,10 @@ export default function AdminServicesScreen({
         );
       } catch (error) {
         if (
-          error instanceof DOMException &&
-          error.name === "AbortError"
+          error instanceof
+            DOMException &&
+          error.name ===
+            "AbortError"
         ) {
           return;
         }
@@ -164,9 +212,13 @@ export default function AdminServicesScreen({
         );
       } finally {
         if (
-          !abortController.signal.aborted
+          !abortController
+            .signal
+            .aborted
         ) {
-          setIsLoading(false);
+          setIsLoading(
+            false,
+          );
         }
       }
     }
@@ -178,158 +230,221 @@ export default function AdminServicesScreen({
     };
   }, [onExit]);
 
-  const changedServices = useMemo(
-    () =>
-      editableServices.filter(
-        (service) => {
-          const parsedOrder =
-            Number(
-              service.sortOrderText,
-            );
+  const changedServices =
+    useMemo(
+      () =>
+        editableServices.filter(
+          (service) => {
+            const parsedOrder =
+              Number(
+                service
+                  .sortOrderText,
+              );
 
-          return (
-            service.enabled !==
-              service.original.enabled ||
-            parsedOrder !==
-              service.original.sortOrder
-          );
-        },
-      ),
-    [editableServices],
-  );
+            return (
+              service.enabled !==
+                service.original
+                  .enabled ||
+              parsedOrder !==
+                service.original
+                  .sortOrder
+            );
+          },
+        ),
+      [editableServices],
+    );
 
   const hasInvalidOrders =
     editableServices.some(
       (service) => {
         if (
-          service.sortOrderText.trim() ===
-          ""
+          service
+            .sortOrderText
+            .trim() === ""
         ) {
           return true;
         }
 
-        const order = Number(
-          service.sortOrderText,
-        );
+        const order =
+          Number(
+            service
+              .sortOrderText,
+          );
 
         return (
-          !Number.isInteger(order) ||
+          !Number.isInteger(
+            order,
+          ) ||
           order < 0 ||
           order > 9999
         );
       },
     );
 
-  const groupedServices = useMemo(
-    () => {
-      const normalizedSearch =
-        searchText
-          .trim()
-          .toLowerCase();
+  const groupedServices =
+    useMemo(
+      () => {
+        const normalizedSearch =
+          searchText
+            .trim()
+            .toLowerCase();
 
-      const filtered =
-        editableServices
-          .filter((service) => {
-            if (
-              filter === "active" &&
-              !service.enabled
-            ) {
-              return false;
-            }
+        const filtered =
+          editableServices
+            .filter(
+              (service) => {
+                if (
+                  filter ===
+                    "active" &&
+                  !service.enabled
+                ) {
+                  return false;
+                }
 
-            if (
-              filter === "inactive" &&
-              service.enabled
-            ) {
-              return false;
-            }
+                if (
+                  filter ===
+                    "inactive" &&
+                  service.enabled
+                ) {
+                  return false;
+                }
 
-            if (!normalizedSearch) {
-              return true;
-            }
+                if (
+                  !normalizedSearch
+                ) {
+                  return true;
+                }
 
-            const searchableText = [
-              service.original.name,
-              service.original.code,
-              service.original.category,
-              service.original
-                .subCategory ?? "",
-              service.original
-                .description,
-            ]
-              .join(" ")
-              .toLowerCase();
+                const searchableText =
+                  [
+                    service
+                      .original
+                      .name,
 
-            return searchableText.includes(
-              normalizedSearch,
-            );
-          })
-          .sort((first, second) => {
-            const categoryComparison =
-              first.original.category
-                .localeCompare(
-                  second.original.category,
+                    service
+                      .original
+                      .code,
+
+                    service
+                      .original
+                      .category,
+
+                    service
+                      .original
+                      .subCategory ??
+                      "",
+
+                    service
+                      .original
+                      .description,
+                  ]
+                    .join(" ")
+                    .toLowerCase();
+
+                return searchableText.includes(
+                  normalizedSearch,
                 );
+              },
+            )
+            .sort(
+              (
+                first,
+                second,
+              ) => {
+                const categoryComparison =
+                  first
+                    .original
+                    .category
+                    .localeCompare(
+                      second
+                        .original
+                        .category,
+                    );
 
-            if (
-              categoryComparison !== 0
-            ) {
-              return categoryComparison;
-            }
+                if (
+                  categoryComparison !==
+                  0
+                ) {
+                  return categoryComparison;
+                }
 
-            const firstOrder = Number(
-              first.sortOrderText,
+                const firstOrder =
+                  Number(
+                    first
+                      .sortOrderText,
+                  );
+
+                const secondOrder =
+                  Number(
+                    second
+                      .sortOrderText,
+                  );
+
+                const orderComparison =
+                  firstOrder -
+                  secondOrder;
+
+                if (
+                  Number.isFinite(
+                    orderComparison,
+                  ) &&
+                  orderComparison !==
+                    0
+                ) {
+                  return orderComparison;
+                }
+
+                return first
+                  .original
+                  .name
+                  .localeCompare(
+                    second
+                      .original
+                      .name,
+                  );
+              },
             );
 
-            const secondOrder = Number(
-              second.sortOrderText,
-            );
+        const groups =
+          new Map<
+            string,
+            EditableService[]
+          >();
 
-            const orderComparison =
-              firstOrder -
-              secondOrder;
+        for (
+          const service
+          of filtered
+        ) {
+          const category =
+            service
+              .original
+              .category;
 
-            if (
-              Number.isFinite(
-                orderComparison,
-              ) &&
-              orderComparison !== 0
-            ) {
-              return orderComparison;
-            }
+          const existing =
+            groups.get(
+              category,
+            ) ?? [];
 
-            return first.original.name
-              .localeCompare(
-                second.original.name,
-              );
-          });
+          existing.push(
+            service,
+          );
 
-      const groups = new Map<
-        string,
-        EditableService[]
-      >();
+          groups.set(
+            category,
+            existing,
+          );
+        }
 
-      for (const service of filtered) {
-        const category =
-          service.original.category;
-
-        const existing =
-          groups.get(category) ?? [];
-
-        existing.push(service);
-        groups.set(category, existing);
-      }
-
-      return Array.from(
-        groups.entries(),
-      );
-    },
-    [
-      editableServices,
-      searchText,
-      filter,
-    ],
-  );
+        return Array.from(
+          groups.entries(),
+        );
+      },
+      [
+        editableServices,
+        searchText,
+        filter,
+      ],
+    );
 
   function updateEnabled(
     serviceCode: string,
@@ -337,14 +452,17 @@ export default function AdminServicesScreen({
   ) {
     setEditableServices(
       (current) =>
-        current.map((service) =>
-          service.original.code ===
-          serviceCode
-            ? {
-                ...service,
-                enabled,
-              }
-            : service,
+        current.map(
+          (service) =>
+            service
+              .original
+              .code ===
+            serviceCode
+              ? {
+                  ...service,
+                  enabled,
+                }
+              : service,
         ),
     );
 
@@ -357,22 +475,29 @@ export default function AdminServicesScreen({
     value: string,
   ) {
     const numericValue =
-      value.replace(/\D/g, "");
+      value.replace(
+        /\D/g,
+        "",
+      );
 
     setEditableServices(
       (current) =>
-        current.map((service) =>
-          service.original.code ===
-          serviceCode
-            ? {
-                ...service,
-                sortOrderText:
-                  numericValue.slice(
-                    0,
-                    4,
-                  ),
-              }
-            : service,
+        current.map(
+          (service) =>
+            service
+              .original
+              .code ===
+            serviceCode
+              ? {
+                  ...service,
+
+                  sortOrderText:
+                    numericValue.slice(
+                      0,
+                      4,
+                    ),
+                }
+              : service,
         ),
     );
 
@@ -383,10 +508,11 @@ export default function AdminServicesScreen({
   function discardChanges() {
     setEditableServices(
       (current) =>
-        current.map((service) =>
-          createEditableService(
-            service.original,
-          ),
+        current.map(
+          (service) =>
+            createEditableService(
+              service.original,
+            ),
         ),
     );
 
@@ -399,7 +525,8 @@ export default function AdminServicesScreen({
 
   async function saveChanges() {
     if (
-      changedServices.length === 0
+      changedServices.length ===
+      0
     ) {
       return;
     }
@@ -417,45 +544,52 @@ export default function AdminServicesScreen({
     setStatusMessage("");
 
     try {
-      const response = await fetch(
-        "/api/admin/services",
-        {
-          method: "PUT",
-          credentials: "include",
+      const response =
+        await fetch(
+          "/api/admin/services",
+          {
+            method: "PUT",
 
-          headers: {
-            "content-type":
-              "application/json",
+            credentials:
+              "include",
+
+            headers: {
+              "content-type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                services:
+                  changedServices.map(
+                    (service) => ({
+                      code:
+                        service
+                          .original
+                          .code,
+
+                      enabled:
+                        service
+                          .enabled,
+
+                      sortOrder:
+                        Number(
+                          service
+                            .sortOrderText,
+                        ),
+                    }),
+                  ),
+              }),
           },
-
-          body: JSON.stringify({
-            services:
-              changedServices.map(
-                (service) => ({
-                  code:
-                    service.original
-                      .code,
-
-                  enabled:
-                    service.enabled,
-
-                  sortOrder:
-                    Number(
-                      service
-                        .sortOrderText,
-                    ),
-                }),
-              ),
-          }),
-        },
-      );
+        );
 
       const result =
         (await response.json()) as
           AdminServicesResponse;
 
       if (
-        response.status === 401
+        response.status ===
+        401
       ) {
         onExit();
         return;
@@ -498,7 +632,9 @@ export default function AdminServicesScreen({
         "/api/admin/logout",
         {
           method: "POST",
-          credentials: "include",
+
+          credentials:
+            "include",
         },
       );
     } finally {
@@ -579,7 +715,9 @@ export default function AdminServicesScreen({
                 : ""
             }
             onClick={() =>
-              setFilter("active")
+              setFilter(
+                "active",
+              )
             }
           >
             Active
@@ -593,19 +731,22 @@ export default function AdminServicesScreen({
                 : ""
             }
             onClick={() =>
-              setFilter("inactive")
+              setFilter(
+                "inactive",
+              )
             }
           >
             Inactive
           </button>
 
           <button
-  type="button"
-  onClick={onOpenShops}
->
-  Manage Shops
-</button>
-
+            type="button"
+            onClick={
+              onOpenShops
+            }
+          >
+            Manage Shops
+          </button>
         </div>
       </section>
 
@@ -618,7 +759,8 @@ export default function AdminServicesScreen({
 
         {!isLoading &&
           errorMessage &&
-          editableServices.length === 0 && (
+          editableServices.length ===
+            0 && (
             <div className="admin-services__state admin-services__state--error">
               {errorMessage}
             </div>
@@ -626,7 +768,8 @@ export default function AdminServicesScreen({
 
         {!isLoading &&
           !errorMessage &&
-          groupedServices.length === 0 && (
+          groupedServices.length ===
+            0 && (
             <div className="admin-services__state">
               No matching services.
             </div>
@@ -670,7 +813,8 @@ export default function AdminServicesScreen({
                       (service) => (
                         <article
                           key={
-                            service.original
+                            service
+                              .original
                               .code
                           }
                           className={
@@ -683,7 +827,8 @@ export default function AdminServicesScreen({
                             <input
                               type="checkbox"
                               checked={
-                                service.enabled
+                                service
+                                  .enabled
                               }
                               onChange={(
                                 event,
@@ -749,7 +894,8 @@ export default function AdminServicesScreen({
                                 : ""}
                             </span>
 
-                            {service.original
+                            {service
+                              .original
                               .description && (
                               <p>
                                 {
@@ -761,7 +907,7 @@ export default function AdminServicesScreen({
                             )}
                           </div>
 
-                          <label className="admin-service-row__order">
+                          <div className="admin-service-row__order">
                             <span>
                               Order
                             </span>
@@ -788,7 +934,25 @@ export default function AdminServicesScreen({
                                 )
                               }
                             />
-                          </label>
+
+                            <button
+                              type="button"
+                              className="admin-service-row__configure"
+                              onClick={() =>
+                                onConfigureService(
+                                  service
+                                    .original
+                                    .code,
+
+                                  service
+                                    .original
+                                    .name,
+                                )
+                              }
+                            >
+                              Configure
+                            </button>
+                          </div>
                         </article>
                       ),
                     )}
@@ -817,7 +981,9 @@ export default function AdminServicesScreen({
           {!errorMessage &&
             !statusMessage && (
               <span className="admin-services__change-count">
-                {changedServices.length}
+                {
+                  changedServices.length
+                }
                 {" unsaved "}
                 {changedServices.length ===
                 1
@@ -833,9 +999,12 @@ export default function AdminServicesScreen({
             className="admin-services__discard"
             disabled={
               isSaving ||
-              changedServices.length === 0
+              changedServices.length ===
+                0
             }
-            onClick={discardChanges}
+            onClick={
+              discardChanges
+            }
           >
             Discard
           </button>
@@ -845,7 +1014,8 @@ export default function AdminServicesScreen({
             className="admin-services__save"
             disabled={
               isSaving ||
-              changedServices.length === 0 ||
+              changedServices.length ===
+                0 ||
               hasInvalidOrders
             }
             onClick={() => {

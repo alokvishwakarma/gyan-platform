@@ -1,30 +1,36 @@
 import {
   useEffect,
-  useMemo,
   useState,
 } from "react";
 
 import "./App.css";
 
 import AboutAdminPanel from "./components/AboutAdminPanel";
+import AdminServiceFormScreen from "./components/AdminServiceFormScreen";
 import AdminServicesScreen from "./components/AdminServicesScreen";
+import AdminServiceStudioScreen from "./components/AdminServiceStudioScreen";
 import AdminShopInfoScreen from "./components/AdminShopInfoScreen";
 import AdminShopsScreen from "./components/AdminShopsScreen";
 import AdminShopServicesScreen from "./components/AdminShopServicesScreen";
 import AdminStoragePanel from "./components/AdminStoragePanel";
-import AppFooter from "./components/AppFooter";
-import AppHeader from "./components/AppHeader";
-import CategoryRow, {
-  type ServiceItem,
-} from "./components/CategoryRow";
+import CustomerHomePage from "./components/CustomerHomePage";
+import PlatformDashboardPage from "./components/PlatformDashboardPage";
+import PublicHomePage from "./components/PublicHomePage";
+import ShopDashboardPage from "./components/ShopDashboardPage";
+import type { ServiceItem } from "./components/CategoryRow";
 import PrintOrderPanel from "./components/PrintOrderPanel";
-import ShopBanner from "./components/ShopBanner";
 import ShopQrPanel from "./components/ShopQrPanel";
 import ShopRegistrationPanel, {
   type RegisteredShop,
 } from "./components/ShopRegistrationPanel";
 import UnavailableServicePanel from "./components/UnavailableServicePanel";
-
+import DynamicServiceRequestPanel
+  from "./components/DynamicServiceRequestPanel";
+import NearbyServicePanel
+  from "./components/NearbyServicePanel";
+import SharedRequestScreen
+  from "./components/SharedRequestScreen";
+  
 interface ShopProfile {
   code: string;
   name: string;
@@ -75,6 +81,11 @@ interface CloudService {
   priceNote: string;
 
   sortOrder: number;
+
+  homepageOrder:
+    | number
+    | null;
+
   custom: boolean;
 }
 
@@ -89,65 +100,17 @@ interface LoadedServices {
   items: CloudService[];
 }
 
-interface CategoryConfiguration {
-  id: string;
-  title: string;
-  icon: string;
-
-  hubBackground: string;
-  hubTextColor: string;
-  hubAccentColor: string;
-}
 
 type AdminDestination =
   | "services"
-  | "storage";
+  | "storage"
+  | "platformDashboard"
+  | "shopDashboard";
 
-const categoryConfigurations:
-  CategoryConfiguration[] = [
-    {
-      id: "documents",
-      title: "Docs",
-      icon: "📄",
-
-      hubBackground:
-        "#eff6ff",
-
-      hubTextColor:
-        "#17456f",
-
-      hubAccentColor:
-        "#1976d2",
-    },
-    {
-      id: "education",
-      title: "Education",
-      icon: "🎓",
-
-      hubBackground:
-        "#effaf1",
-
-      hubTextColor:
-        "#24562a",
-
-      hubAccentColor:
-        "#43a047",
-    },
-    {
-      id: "government",
-      title: "Government",
-      icon: "🏛️",
-
-      hubBackground:
-        "#fff4e8",
-
-      hubTextColor:
-        "#7a3500",
-
-      hubAccentColor:
-        "#ef6c00",
-    },
-  ];
+type DashboardView =
+  | "platform"
+  | "shop"
+  | null;
 
 function normalizeShopCode(
   value:
@@ -163,6 +126,29 @@ function normalizeShopCode(
   if (
     !normalizedValue ||
     !/^[A-Z0-9]{4}$/.test(
+      normalizedValue,
+    )
+  ) {
+    return null;
+  }
+
+  return normalizedValue;
+}
+
+function normalizeServiceCode(
+  value:
+    | string
+    | null
+    | undefined,
+): string | null {
+  const normalizedValue =
+    value
+      ?.trim()
+      .toUpperCase();
+
+  if (
+    !normalizedValue ||
+    !/^[A-Z0-9_]{2,50}$/.test(
       normalizedValue,
     )
   ) {
@@ -212,27 +198,108 @@ function getInitialShopInfoCode():
     : null;
 }
 
-function mapCloudServiceToTile(
-  service: CloudService,
-): ServiceItem {
+function getInitialServiceFormCode():
+  string | null {
+  const match =
+    window.location.pathname.match(
+      /^\/admin\/services\/([A-Za-z0-9_]{2,50})\/form$/,
+    );
+
+  return match
+    ? normalizeServiceCode(
+        match[1],
+      )
+    : null;
+}
+
+function getInitialServiceStudioCode():
+  string | null {
+  const match =
+    window.location.pathname.match(
+      /^\/admin\/services\/([A-Za-z0-9_]{2,50})$/,
+    );
+
+  return match
+    ? normalizeServiceCode(
+        match[1],
+      )
+    : null;
+}
+
+function getInitialSharedRequest():
+  {
+    requestNumber: string;
+    token: string;
+  } | null {
+  const match =
+    window.location.pathname.match(
+      /^\/shared\/requests\/([A-Za-z0-9_-]{8,120})$/,
+    );
+
+  if (!match) {
+    return null;
+  }
+
+  const token =
+    new URLSearchParams(
+      window.location.search,
+    ).get("token");
+
+  if (!token) {
+    return null;
+  }
+
   return {
-    id: service.code,
-    title: service.name,
+    requestNumber:
+      match[1].toUpperCase(),
 
-    icon:
-      service.icon ||
-      "🧩",
-
-    color:
-      service.color ||
-      "#607d8b",
-
-    enabled:
-      service.enabled,
+    token,
   };
 }
 
+
+function getInitialDashboardView(): DashboardView {
+  if (window.location.pathname === "/admin") {
+    return "platform";
+  }
+
+  if (window.location.pathname === "/shop-admin") {
+    return "shop";
+  }
+
+  return null;
+}
+
+const SUPPORT_INTAKE_SHOP_CODE =
+  "SUPP";
+
+const SUPPORT_INTAKE_SHOP_NAME =
+  "GYAN Support";
+
 export default function App() {
+
+  const [
+  sharedRequest,
+  setSharedRequest,
+] = useState(
+  () =>
+    getInitialSharedRequest(),
+);
+
+  const [
+    dashboardView,
+    setDashboardView,
+  ] = useState<DashboardView>(
+    () => getInitialDashboardView(),
+  );
+
+  const initialServiceFormCode =
+    getInitialServiceFormCode();
+
+  const initialServiceStudioCode =
+    getInitialServiceStudioCode() ??
+    initialServiceFormCode;
+
   const [
     activeShopCode,
     setActiveShopCode,
@@ -251,18 +318,35 @@ export default function App() {
   >(null);
 
   const [
+    dynamicServiceRequest,
+    setDynamicServiceRequest,
+  ] = useState<{
+    code: string;
+    name: string;
+
+    shopCode:
+      | string
+      | null;
+
+    shopName:
+      | string
+      | null;
+  } | null>(null);
+
+  const [
+    nearbyServiceRequest,
+    setNearbyServiceRequest,
+  ] = useState<{
+    code: string;
+    name: string;
+  } | null>(null);
+
+  const [
     loadedServices,
     setLoadedServices,
   ] = useState<
     LoadedServices | null
   >(null);
-
-  const [
-    expandedCategories,
-    setExpandedCategories,
-  ] = useState<
-    Set<string>
-  >(new Set());
 
   const [
     printPanelOpen,
@@ -323,6 +407,32 @@ export default function App() {
   );
 
   const [
+    managedServiceStudioCode,
+    setManagedServiceStudioCode,
+  ] = useState<
+    string | null
+  >(
+    initialServiceStudioCode,
+  );
+
+  const [
+    managedServiceStudioName,
+    setManagedServiceStudioName,
+  ] = useState(
+    initialServiceStudioCode ??
+      "",
+  );
+
+  const [
+    managedServiceFormCode,
+    setManagedServiceFormCode,
+  ] = useState<
+    string | null
+  >(
+    initialServiceFormCode,
+  );
+
+  const [
     adminStorageOpen,
     setAdminStorageOpen,
   ] = useState(false);
@@ -353,7 +463,9 @@ export default function App() {
       : null;
 
   const shopLoading =
-    Boolean(activeShopCode) &&
+    Boolean(
+      activeShopCode,
+    ) &&
     visibleShopProfile ===
       null;
 
@@ -482,6 +594,24 @@ export default function App() {
             },
           );
 
+        const contentType =
+          response.headers.get(
+            "content-type",
+          ) ?? "";
+
+        if (
+          !contentType.includes(
+            "application/json",
+          )
+        ) {
+          throw new Error(
+            `Expected JSON from ${endpoint}, but received ${
+              contentType ||
+              "an unknown content type"
+            }.`,
+          );
+        }
+
         const result =
           (await response.json()) as
             CloudServicesResponse;
@@ -579,91 +709,6 @@ export default function App() {
     };
   }, [activeShopCode]);
 
-  const categoryRows =
-    useMemo(
-      () =>
-        categoryConfigurations
-          .map((category) => {
-            const categoryServices =
-              services
-                .filter(
-                  (service) =>
-                    service.category ===
-                    category.id,
-                )
-                .sort(
-                  (
-                    first,
-                    second,
-                  ) => {
-                    const orderComparison =
-                      first.sortOrder -
-                      second.sortOrder;
-
-                    if (
-                      orderComparison !==
-                      0
-                    ) {
-                      return orderComparison;
-                    }
-
-                    return first.name.localeCompare(
-                      second.name,
-                    );
-                  },
-                )
-                .map(
-                  mapCloudServiceToTile,
-                );
-
-            return {
-              ...category,
-
-              services:
-                categoryServices,
-            };
-          })
-          .filter(
-            (category) =>
-              category.services
-                .length > 0,
-          ),
-      [services],
-    );
-
-  function toggleCategory(
-    categoryId: string,
-  ) {
-    setExpandedCategories(
-      (current) => {
-        const next =
-          new Set(current);
-
-        if (
-          next.has(
-            categoryId,
-          )
-        ) {
-          next.delete(
-            categoryId,
-          );
-        } else {
-          next.add(
-            categoryId,
-          );
-        }
-
-        return next;
-      },
-    );
-  }
-
-  function collapseExpandedCategories() {
-    setExpandedCategories(
-      new Set(),
-    );
-  }
-
   function handleServiceClick(
     service: ServiceItem,
   ) {
@@ -685,6 +730,18 @@ export default function App() {
 
       return;
     }
+
+    setDynamicServiceRequest({
+      code: service.id,
+      name: service.title,
+
+      shopCode:
+        activeShopCode,
+
+      shopName:
+        visibleShopProfile?.name ??
+        null,
+    });
 
     console.log(
       `${service.title} selected`,
@@ -731,6 +788,8 @@ export default function App() {
   }
 
   function openAdminServices() {
+    setDashboardView(null);
+
     setAboutPanelOpen(
       false,
     );
@@ -751,6 +810,18 @@ export default function App() {
       null,
     );
 
+    setManagedServiceFormCode(
+      null,
+    );
+
+    setManagedServiceStudioCode(
+      null,
+    );
+
+    setManagedServiceStudioName(
+      "",
+    );
+
     setAdminServicesOpen(
       true,
     );
@@ -763,8 +834,22 @@ export default function App() {
   }
 
   function exitAdminServices() {
+    setDashboardView(null);
+
     setAdminServicesOpen(
       false,
+    );
+
+    setManagedServiceFormCode(
+      null,
+    );
+
+    setManagedServiceStudioCode(
+      null,
+    );
+
+    setManagedServiceStudioName(
+      "",
     );
 
     window.history.pushState(
@@ -795,6 +880,8 @@ export default function App() {
         },
       );
     } finally {
+      setDashboardView(null);
+
       setAdminServicesOpen(
         false,
       );
@@ -815,6 +902,18 @@ export default function App() {
         null,
       );
 
+      setManagedServiceFormCode(
+        null,
+      );
+
+      setManagedServiceStudioCode(
+        null,
+      );
+
+      setManagedServiceStudioName(
+        "",
+      );
+
       window.history.pushState(
         {},
         "",
@@ -827,7 +926,122 @@ export default function App() {
     }
   }
 
-  if (managedShopInfoCode) {
+if (sharedRequest) {
+  return (
+    <SharedRequestScreen
+      requestNumber={
+        sharedRequest.requestNumber
+      }
+      token={
+        sharedRequest.token
+      }
+      onClose={() => {
+        setSharedRequest(
+          null,
+        );
+
+        window.history.pushState(
+          {},
+          "",
+          "/",
+        );
+      }}
+    />
+  );
+}
+
+  if (
+    managedServiceFormCode
+  ) {
+    return (
+      <AdminServiceFormScreen
+        serviceCode={
+          managedServiceFormCode
+        }
+        onBack={() => {
+          setManagedServiceFormCode(
+            null,
+          );
+
+          if (
+            managedServiceStudioCode
+          ) {
+            window.history.pushState(
+              {},
+              "",
+              `/admin/services/${encodeURIComponent(
+                managedServiceStudioCode,
+              )}`,
+            );
+
+            return;
+          }
+
+          setAdminServicesOpen(
+            true,
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            "/admin/services",
+          );
+        }}
+      />
+    );
+  }
+
+  if (
+    managedServiceStudioCode
+  ) {
+    return (
+      <AdminServiceStudioScreen
+        serviceCode={
+          managedServiceStudioCode
+        }
+        serviceName={
+          managedServiceStudioName ||
+          managedServiceStudioCode
+        }
+        onBack={() => {
+          setManagedServiceStudioCode(
+            null,
+          );
+
+          setManagedServiceStudioName(
+            "",
+          );
+
+          setAdminServicesOpen(
+            true,
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            "/admin/services",
+          );
+        }}
+        onOpenForm={() => {
+          setManagedServiceFormCode(
+            managedServiceStudioCode,
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            `/admin/services/${encodeURIComponent(
+              managedServiceStudioCode,
+            )}/form`,
+          );
+        }}
+      />
+    );
+  }
+
+  if (
+    managedShopInfoCode
+  ) {
     return (
       <AdminShopInfoScreen
         shopCode={
@@ -851,11 +1065,6 @@ export default function App() {
             "/admin/shops",
           );
 
-          /*
-           * Force the public shop profile
-           * to reload if the administrator
-           * edited the currently selected shop.
-           */
           if (
             activeShopCode ===
             editedShopCode
@@ -978,6 +1187,124 @@ export default function App() {
             "/admin/shops",
           );
         }}
+        onConfigureService={(
+          serviceCode,
+          serviceName,
+        ) => {
+          setAdminServicesOpen(
+            false,
+          );
+
+          setManagedServiceStudioCode(
+            serviceCode,
+          );
+
+          setManagedServiceStudioName(
+            serviceName,
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            `/admin/services/${encodeURIComponent(
+              serviceCode,
+            )}`,
+          );
+        }}
+      />
+    );
+  }
+
+  if (dashboardView === "platform") {
+    return (
+      <PlatformDashboardPage
+        onBack={() => {
+          setDashboardView(null);
+          window.history.pushState({}, "", activeShopCode
+            ? `/?shop=${encodeURIComponent(activeShopCode)}`
+            : "/");
+        }}
+        onAddShop={() =>
+          setRegistrationPanelOpen(true)
+        }
+        onOpenShops={() => {
+          setDashboardView(null);
+          setAdminShopsOpen(true);
+          window.history.pushState({}, "", "/admin/shops");
+        }}
+        onOpenServices={() => {
+          setDashboardView(null);
+          openAdminServices();
+        }}
+        onOpenStorage={() => {
+          setDashboardView(null);
+          setAdminStorageOpen(true);
+        }}
+      />
+    );
+  }
+
+  if (
+    dashboardView === "shop" &&
+    activeShopCode
+  ) {
+    return (
+      <ShopDashboardPage
+        shopCode={activeShopCode}
+        shopName={
+          visibleShopProfile?.name ??
+          "Your GYAN Shop"
+        }
+        address={
+          visibleShopProfile?.address ??
+          "Shop information"
+        }
+        activeServiceCount={
+          services.filter(
+            (service) => service.enabled,
+          ).length
+        }
+        onBack={() => {
+          setDashboardView(null);
+          window.history.pushState(
+            {},
+            "",
+            `/?shop=${encodeURIComponent(activeShopCode)}`,
+          );
+        }}
+        onManageServices={() => {
+          setDashboardView(null);
+          setManagedShopCode(activeShopCode);
+          window.history.pushState(
+            {},
+            "",
+            `/admin/shops/${encodeURIComponent(
+              activeShopCode,
+            )}/services`,
+          );
+        }}
+        onOpenRequests={() => {
+          console.log(
+            `Open requests for ${activeShopCode}`,
+          );
+        }}
+        onOpenQr={() =>
+          setShopQrPanelOpen(true)
+        }
+        onOpenInformation={() => {
+          setDashboardView(null);
+          setManagedShopInfoCode(activeShopCode);
+          window.history.pushState(
+            {},
+            "",
+            `/admin/shops/${encodeURIComponent(
+              activeShopCode,
+            )}/information`,
+          );
+        }}
+        
+
+        
       />
     );
   }
@@ -985,16 +1312,90 @@ export default function App() {
   return (
     <main className="app-shell">
       <div className="app-content">
-        <AppHeader
-          hasExpandedCategories={
-            expandedCategories.size >
-            0
-          }
+        {!activeShopCode ? (
+          
+          <PublicHomePage
+  services={services}
+  loading={servicesLoading}
+  onOpenShop={(shopCode) => {
+    setActiveShopCode(shopCode);
+
+    window.history.pushState(
+      { shopCode },
+      "",
+      `/?shop=${encodeURIComponent(shopCode)}`,
+    );
+  }}
+  onClaimShop={() => {
+    setRegistrationPanelOpen(true);
+  }}
+  onOpenAdmin={() => {
+    setPendingAdminDestination(
+      "platformDashboard",
+    );
+
+    setAboutPanelOpen(true);
+  }}
+  onStartOnlineService={(
+    serviceCode: string,
+    serviceName: string,
+  ) => {
+    setDynamicServiceRequest({
+      code: serviceCode,
+      name: serviceName,
+
+      shopCode:
+        SUPPORT_INTAKE_SHOP_CODE,
+
+      shopName:
+        SUPPORT_INTAKE_SHOP_NAME,
+    });
+  }}
+  onOpenOnlineServices={() => {
+    console.log(
+      "Open online service search wizard",
+    );
+  }}
+  onOpenNearbyService={(
+    serviceCode: string,
+    serviceName: string,
+  ) => {
+    setNearbyServiceRequest({
+      code: serviceCode,
+      name: serviceName,
+    });
+  }}
+/>
+        ) : (
+        <CustomerHomePage
           shopCode={
             visibleShopProfile?.code
           }
-          onCollapseExpandedCategories={
-            collapseExpandedCategories
+          shopName={
+            shopLoading
+              ? "Loading shop..."
+              : visibleShopProfile?.name
+          }
+          address={
+            shopLoading
+              ? "Please wait"
+              : visibleShopProfile?.address
+          }
+          services={services}
+          loading={servicesLoading}
+          onServiceSelect={(service) =>
+            handleServiceClick({
+              id: service.code,
+              title: service.name,
+              icon:
+                service.icon ||
+                "🧩",
+              color:
+                service.color ||
+                "#607d8b",
+              enabled:
+                service.enabled,
+            })
           }
           onRegisterShop={() =>
             setRegistrationPanelOpen(
@@ -1006,9 +1407,9 @@ export default function App() {
               true,
             )
           }
-          onOpenAbout={() => {
+          onOpenAdmin={() => {
             setPendingAdminDestination(
-              "services",
+              "shopDashboard",
             );
 
             setAboutPanelOpen(
@@ -1016,82 +1417,7 @@ export default function App() {
             );
           }}
         />
-
-        <div className="category-list">
-          {!servicesLoading &&
-            categoryRows.map(
-              (category) => (
-                <CategoryRow
-                  key={
-                    category.id
-                  }
-                  id={
-                    category.id
-                  }
-                  title={
-                    category.title
-                  }
-                  icon={
-                    category.icon
-                  }
-                  services={
-                    category.services
-                  }
-                  expanded={expandedCategories.has(
-                    category.id,
-                  )}
-                  hubBackground={
-                    category.hubBackground
-                  }
-                  hubTextColor={
-                    category.hubTextColor
-                  }
-                  hubAccentColor={
-                    category.hubAccentColor
-                  }
-                  onToggle={() =>
-                    toggleCategory(
-                      category.id,
-                    )
-                  }
-                  onServiceClick={
-                    handleServiceClick
-                  }
-                />
-              ),
-            )}
-        </div>
-
-        <ShopBanner
-          shopName={
-            shopLoading
-              ? "Loading shop..."
-              : visibleShopProfile?.name
-          }
-          address={
-            shopLoading
-              ? "Please wait"
-              : visibleShopProfile?.address
-          }
-          onRegisterShop={() =>
-            setRegistrationPanelOpen(
-              true,
-            )
-          }
-        />
-
-        <AppFooter
-          onContact={() =>
-            console.log(
-              "Contact selected",
-            )
-          }
-          onLocation={() =>
-            console.log(
-              "Location selected",
-            )
-          }
-        />
+        )}
       </div>
 
       {printPanelOpen && (
@@ -1118,6 +1444,71 @@ export default function App() {
 
             setAboutPanelOpen(
               true,
+            );
+          }}
+        />
+      )}
+
+      {dynamicServiceRequest &&
+        dynamicServiceRequest
+          .shopCode && (
+          <DynamicServiceRequestPanel
+            shopCode={
+              dynamicServiceRequest
+                .shopCode
+            }
+            shopName={
+              dynamicServiceRequest
+                .shopName
+            }
+            serviceCode={
+              dynamicServiceRequest
+                .code
+            }
+            serviceName={
+              dynamicServiceRequest
+                .name
+            }
+            onClose={() =>
+              setDynamicServiceRequest(
+                null,
+              )
+            }
+          />
+        )}
+
+      {nearbyServiceRequest && (
+        <NearbyServicePanel
+          serviceCode={
+            nearbyServiceRequest.code
+          }
+          serviceName={
+            nearbyServiceRequest.name
+          }
+          onClose={() =>
+            setNearbyServiceRequest(
+              null,
+            )
+          }
+          onOpenShop={(
+            shopCode,
+          ) => {
+            setNearbyServiceRequest(
+              null,
+            );
+
+            setActiveShopCode(
+              shopCode,
+            );
+
+            window.history.pushState(
+              {
+                shopCode,
+              },
+              "",
+              `/?shop=${encodeURIComponent(
+                shopCode,
+              )}`,
             );
           }}
         />
@@ -1176,10 +1567,34 @@ export default function App() {
               pendingAdminDestination ===
               "storage"
             ) {
-              setAdminStorageOpen(
-                true,
-              );
+              setAdminStorageOpen(true);
+              return;
+            }
 
+            if (
+              pendingAdminDestination ===
+              "platformDashboard"
+            ) {
+              setDashboardView("platform");
+              window.history.pushState(
+                {},
+                "",
+                "/admin",
+              );
+              return;
+            }
+
+            if (
+              pendingAdminDestination ===
+              "shopDashboard" &&
+              activeShopCode
+            ) {
+              setDashboardView("shop");
+              window.history.pushState(
+                {},
+                "",
+                "/shop-admin",
+              );
               return;
             }
 
