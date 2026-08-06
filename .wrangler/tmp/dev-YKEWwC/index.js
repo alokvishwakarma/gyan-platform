@@ -5175,6 +5175,28 @@ function normalizeKey2(value) {
   ) ? normalized : null;
 }
 __name(normalizeKey2, "normalizeKey");
+function normalizeFieldIdentity(field) {
+  return `${field.field_key} ${field.label}`.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ");
+}
+__name(normalizeFieldIdentity, "normalizeFieldIdentity");
+function isCustomerNameField(field) {
+  const identity = normalizeFieldIdentity(field);
+  return field.field_key === "customer_name" || identity.includes("customer name") || identity === "name";
+}
+__name(isCustomerNameField, "isCustomerNameField");
+function isContactField(field) {
+  const identity = normalizeFieldIdentity(field);
+  return field.field_key === "phone_number" || field.field_key === "whatsapp_number" || field.field_key === "email_address" || identity.includes("phone") || identity.includes("whatsapp") || identity.includes("email");
+}
+__name(isContactField, "isContactField");
+function isRequestDescriptionField(field) {
+  if (field.field_type !== "textarea" && field.field_type !== "text") {
+    return false;
+  }
+  const identity = normalizeFieldIdentity(field);
+  return field.field_key === "request_details" || field.field_key === "service_details" || field.field_key === "description" || field.field_key === "notes" || identity.includes("what do you need") || identity.includes("describe") || identity.includes("request details") || identity.includes("service details") || identity.includes("help needed");
+}
+__name(isRequestDescriptionField, "isRequestDescriptionField");
 function safelyParseJson3(value) {
   if (!value) {
     return null;
@@ -5336,6 +5358,8 @@ async function loadService3(env, shopCode, serviceCode) {
           s.id,
           s.service_code,
           s.name,
+          s.category,
+          s.workflow_type,
 
           CAST(
             s.enabled AS INTEGER
@@ -6032,12 +6056,19 @@ async function handleCreateServiceRequest(request, env, shopCode, serviceCode) {
     }
     answers[answerKey] = value;
   }
+  const isOnlineRequest = service.workflow_type?.trim().toLowerCase() === "online" || service.workflow_type?.trim().toLowerCase() === "remote" || service.category?.trim().toLowerCase() === "online" || service.category?.trim().toLowerCase() === "digital";
   for (const [
     answerKey,
     field
   ] of fieldMap) {
+    const validationField = isOnlineRequest ? {
+      ...field,
+      requirement: isCustomerNameField(
+        field
+      ) ? "mandatory" : "optional"
+    } : field;
     const validationError = validateAnswer(
-      field,
+      validationField,
       answers[answerKey]
     );
     if (validationError) {
@@ -6094,6 +6125,58 @@ async function handleCreateServiceRequest(request, env, shopCode, serviceCode) {
       file: formValue
     });
   }
+  if (isOnlineRequest) {
+    const fieldEntries = [...fieldMap.entries()];
+    const nameEntry = fieldEntries.find(
+      ([, field]) => isCustomerNameField(
+        field
+      )
+    );
+    const descriptionEntry = fieldEntries.find(
+      ([, field]) => isRequestDescriptionField(
+        field
+      )
+    );
+    const contactEntries = fieldEntries.filter(
+      ([, field]) => isContactField(
+        field
+      )
+    );
+    const nameValue = nameEntry ? answers[nameEntry[0]] : void 0;
+    if (typeof nameValue !== "string" || !nameValue.trim()) {
+      return createJsonResponse9(
+        {
+          error: "Your name is required."
+        },
+        400
+      );
+    }
+    const descriptionValue = descriptionEntry ? answers[descriptionEntry[0]] : void 0;
+    const hasDescription = typeof descriptionValue === "string" && descriptionValue.trim().length > 0;
+    const hasAttachment = submittedFiles.length > 0;
+    if (!hasDescription && !hasAttachment) {
+      return createJsonResponse9(
+        {
+          error: "Describe what you need or attach at least one file."
+        },
+        400
+      );
+    }
+    const hasContact = contactEntries.some(
+      ([answerKey]) => {
+        const value = answers[answerKey];
+        return typeof value === "string" && value.trim().length > 0;
+      }
+    );
+    if (!hasContact) {
+      return createJsonResponse9(
+        {
+          error: "Provide a phone number, WhatsApp number, or email address."
+        },
+        400
+      );
+    }
+  }
   if (submittedFiles.length > MAX_FILES) {
     return createJsonResponse9(
       {
@@ -6106,7 +6189,7 @@ async function handleCreateServiceRequest(request, env, shopCode, serviceCode) {
     answerKey,
     field
   ] of fieldMap) {
-    if (field.field_type !== "file" || field.requirement !== "mandatory") {
+    if (field.field_type !== "file" || field.requirement !== "mandatory" || isOnlineRequest) {
       continue;
     }
     const [
@@ -6362,7 +6445,6 @@ async function handleCreateServiceRequest(request, env, shopCode, serviceCode) {
       error
     );
   }
-  const notificationEmail = shop.email_address?.trim() || "admin@gyan.cc";
   let notificationResults = [];
   try {
     notificationResults = await sendServiceRequestNotifications(
@@ -6371,7 +6453,7 @@ async function handleCreateServiceRequest(request, env, shopCode, serviceCode) {
         shop: {
           code: shop.code,
           name: shop.name,
-          email: notificationEmail
+          email: shop.email_address
         },
         service: {
           code: service.service_code,
@@ -8115,7 +8197,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-AE19f2/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-psbbRy/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -8147,7 +8229,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-AE19f2/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-psbbRy/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

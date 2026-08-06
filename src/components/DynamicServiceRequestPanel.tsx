@@ -267,6 +267,225 @@ function getStringSelections(
   );
 }
 
+
+function normalizeFieldIdentity(
+  field: DynamicServiceField,
+): string {
+  return `${field.key} ${field.label}`
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ");
+}
+
+function isCustomerNameField(
+  field: DynamicServiceField,
+): boolean {
+  const identity =
+    normalizeFieldIdentity(field);
+
+  return (
+    field.key === "customer_name" ||
+    identity.includes("customer name") ||
+    identity === "name"
+  );
+}
+
+function isContactField(
+  field: DynamicServiceField,
+): boolean {
+  const identity =
+    normalizeFieldIdentity(field);
+
+  return (
+    field.key === "phone_number" ||
+    field.key === "whatsapp_number" ||
+    field.key === "email_address" ||
+    identity.includes("phone") ||
+    identity.includes("whatsapp") ||
+    identity.includes("email")
+  );
+}
+
+function isRequestDescriptionField(
+  field: DynamicServiceField,
+): boolean {
+  if (
+    field.type !== "textarea" &&
+    field.type !== "text"
+  ) {
+    return false;
+  }
+
+  const identity =
+    normalizeFieldIdentity(field);
+
+  return (
+    field.key === "request_details" ||
+    field.key === "service_details" ||
+    field.key === "description" ||
+    field.key === "notes" ||
+    identity.includes("what do you need") ||
+    identity.includes("describe") ||
+    identity.includes("request details") ||
+    identity.includes("service details") ||
+    identity.includes("help needed")
+  );
+}
+
+
+function inferBrowserLocationHint():
+  LocationHintResponse {
+  const timezone =
+    Intl.DateTimeFormat()
+      .resolvedOptions()
+      .timeZone;
+
+  const normalizedTimezone =
+    timezone
+      ?.toLowerCase() ??
+    "";
+
+  const languages =
+    (
+      navigator.languages ??
+      [navigator.language]
+    )
+      .join(",")
+      .toLowerCase();
+
+  const countryCode:
+    "IN" | "US" | "OTHER" =
+      normalizedTimezone ===
+        "asia/kolkata" ||
+      normalizedTimezone ===
+        "asia/calcutta" ||
+      languages.includes(
+        "en-in",
+      ) ||
+      languages.includes(
+        "hi-in",
+      )
+        ? "IN"
+        : normalizedTimezone
+              .startsWith(
+                "america/",
+              ) ||
+            languages.includes(
+              "en-us",
+            )
+          ? "US"
+          : "OTHER";
+
+  return {
+    countryCode,
+
+    country:
+      countryCode === "IN"
+        ? "India"
+        : countryCode === "US"
+          ? "United States"
+          : "Other",
+
+    currencyCode:
+      countryCode === "IN"
+        ? "INR"
+        : countryCode === "US"
+          ? "USD"
+          : undefined,
+
+    currencySymbol:
+      countryCode === "IN"
+        ? "₹"
+        : countryCode === "US"
+          ? "$"
+          : undefined,
+
+    timezone,
+
+    source:
+      "browser",
+
+    approximate: true,
+  };
+}
+
+function applyLocationDefaults(
+  current:
+    FormValues,
+  hint:
+    LocationHintResponse,
+): FormValues {
+  const countryValue =
+    hint.countryCode === "IN"
+      ? "IN"
+      : hint.countryCode === "US"
+        ? "US"
+        : hint.countryCode
+          ? "OTHER"
+          : "";
+
+  const defaults: Array<
+    [string, string | undefined]
+  > = [
+    [
+      "address.country",
+      countryValue,
+    ],
+    [
+      "address.state_region",
+      hint.region,
+    ],
+    [
+      "address.city",
+      hint.city,
+    ],
+    [
+      "address.postal_code",
+      hint.postalCode,
+    ],
+  ];
+
+  let changed = false;
+
+  const next = {
+    ...current,
+  };
+
+  for (
+    const [
+      fieldId,
+      suggestedValue,
+    ]
+    of defaults
+  ) {
+    if (
+      !suggestedValue ||
+      !(fieldId in next)
+    ) {
+      continue;
+    }
+
+    const currentValue =
+      next[fieldId];
+
+    if (
+      typeof currentValue ===
+        "string" &&
+      currentValue.trim() ===
+        ""
+    ) {
+      next[fieldId] =
+        suggestedValue;
+
+      changed = true;
+    }
+  }
+
+  return changed
+    ? next
+    : current;
+}
+
 export default function DynamicServiceRequestPanel({
   shopCode,
   serviceCode,
@@ -345,8 +564,9 @@ export default function DynamicServiceRequestPanel({
     locationHint,
     setLocationHint,
   ] =
-    useState<LocationHintResponse | null>(
-      null,
+    useState<LocationHintResponse>(
+      () =>
+        inferBrowserLocationHint(),
     );
 
   useEffect(() => {
@@ -411,7 +631,10 @@ export default function DynamicServiceRequestPanel({
         );
 
         setValues(
-          initialValues,
+          applyLocationDefaults(
+            initialValues,
+            inferBrowserLocationHint(),
+          ),
         );
       } catch (error) {
         if (
@@ -453,91 +676,6 @@ export default function DynamicServiceRequestPanel({
   useEffect(() => {
     const controller =
       new AbortController();
-
-    function inferBrowserCountry():
-      "IN" | "US" | "OTHER" {
-      const timezone =
-        Intl.DateTimeFormat()
-          .resolvedOptions()
-          .timeZone
-          ?.toLowerCase() ??
-        "";
-
-      const languages =
-        (
-          navigator.languages ??
-          [navigator.language]
-        )
-          .join(",")
-          .toLowerCase();
-
-      if (
-        timezone ===
-          "asia/kolkata" ||
-        timezone ===
-          "asia/calcutta" ||
-        languages.includes(
-          "en-in",
-        ) ||
-        languages.includes(
-          "hi-in",
-        )
-      ) {
-        return "IN";
-      }
-
-      if (
-        timezone.startsWith(
-          "america/",
-        ) ||
-        languages.includes(
-          "en-us",
-        )
-      ) {
-        return "US";
-      }
-
-      return "OTHER";
-    }
-
-    const browserCountry =
-      inferBrowserCountry();
-
-    setLocationHint({
-      countryCode:
-        browserCountry,
-
-      country:
-        browserCountry === "IN"
-          ? "India"
-          : browserCountry === "US"
-            ? "United States"
-            : "Other",
-
-      currencyCode:
-        browserCountry === "IN"
-          ? "INR"
-          : browserCountry === "US"
-            ? "USD"
-            : undefined,
-
-      currencySymbol:
-        browserCountry === "IN"
-          ? "₹"
-          : browserCountry === "US"
-            ? "$"
-            : undefined,
-
-      timezone:
-        Intl.DateTimeFormat()
-          .resolvedOptions()
-          .timeZone,
-
-      source:
-        "browser",
-
-      approximate: true,
-    });
 
     async function loadLocationHint() {
       try {
@@ -599,6 +737,14 @@ export default function DynamicServiceRequestPanel({
           setLocationHint(
             result,
           );
+
+          setValues(
+            (current) =>
+              applyLocationDefaults(
+                current,
+                result,
+              ),
+          );
         }
       } catch (error) {
         if (
@@ -624,89 +770,6 @@ export default function DynamicServiceRequestPanel({
     };
   }, []);
 
-  useEffect(() => {
-    if (!locationHint) {
-      return;
-    }
-
-    const countryValue =
-      locationHint.countryCode ===
-      "IN"
-        ? "IN"
-        : locationHint.countryCode ===
-            "US"
-          ? "US"
-          : locationHint.countryCode
-            ? "OTHER"
-            : "";
-
-    setValues(
-      (current) => {
-        const next = {
-          ...current,
-        };
-
-        const defaults: Array<
-          [string, string | undefined]
-        > = [
-          [
-            "address.country",
-            countryValue,
-          ],
-          [
-            "address.state_region",
-            locationHint.region,
-          ],
-          [
-            "address.city",
-            locationHint.city,
-          ],
-          [
-            "address.postal_code",
-            locationHint.postalCode,
-          ],
-        ];
-
-        let changed = false;
-
-        for (
-          const [
-            fieldId,
-            suggestedValue,
-          ] of defaults
-        ) {
-          if (
-            !suggestedValue ||
-            !(fieldId in next)
-          ) {
-            continue;
-          }
-
-          const currentValue =
-            next[fieldId];
-
-          if (
-            typeof currentValue ===
-              "string" &&
-            currentValue.trim() ===
-              ""
-          ) {
-            next[fieldId] =
-              suggestedValue;
-
-            changed = true;
-          }
-        }
-
-        return changed
-          ? next
-          : current;
-      },
-    );
-  }, [
-    locationHint,
-    responseData,
-  ]);
 
   const sections =
     useMemo(
@@ -728,6 +791,131 @@ export default function DynamicServiceRequestPanel({
         ),
       [responseData],
     );
+
+  const compactOnlineFieldIds =
+    useMemo(
+      () => {
+        const allFields =
+          sections.flatMap(
+            (section) =>
+              section.fields.map(
+                (field) => ({
+                  section,
+                  field,
+                  fieldId:
+                    createFieldId(
+                      section.key,
+                      field.key,
+                    ),
+                }),
+              ),
+          );
+
+        const descriptionField =
+          allFields.find(
+            ({ field }) =>
+              isRequestDescriptionField(
+                field,
+              ),
+          );
+
+        const fileField =
+          allFields.find(
+            ({ field }) =>
+              field.type === "file",
+          );
+
+        const nameField =
+          allFields.find(
+            ({ field }) =>
+              isCustomerNameField(
+                field,
+              ),
+          );
+
+        const phoneField =
+          allFields.find(
+            ({ field }) =>
+              field.key ===
+                "phone_number" ||
+              normalizeFieldIdentity(
+                field,
+              ).includes(
+                "phone",
+              ),
+          );
+
+        const whatsAppField =
+          allFields.find(
+            ({ field }) =>
+              field.key ===
+                "whatsapp_number" ||
+              normalizeFieldIdentity(
+                field,
+              ).includes(
+                "whatsapp",
+              ),
+          );
+
+        const emailField =
+          allFields.find(
+            ({ field }) =>
+              field.key ===
+                "email_address" ||
+              normalizeFieldIdentity(
+                field,
+              ).includes(
+                "email",
+              ),
+          );
+
+        const contactField =
+          phoneField ??
+          whatsAppField ??
+          emailField;
+
+        return new Set(
+          [
+            descriptionField
+              ?.fieldId,
+            fileField
+              ?.fieldId,
+            nameField
+              ?.fieldId,
+            contactField
+              ?.fieldId,
+          ].filter(
+            (
+              fieldId,
+            ): fieldId is string =>
+              Boolean(fieldId),
+          ),
+        );
+      },
+      [sections],
+    );
+
+  const isOnlineRequest =
+    responseData
+      ?.service
+      ?.workflowType
+      ?.trim()
+      .toLowerCase() === "online" ||
+    responseData
+      ?.service
+      ?.workflowType
+      ?.trim()
+      .toLowerCase() === "remote" ||
+    responseData
+      ?.service
+      ?.category
+      ?.trim()
+      .toLowerCase() === "online" ||
+    responseData
+      ?.service
+      ?.category
+      ?.trim()
+      .toLowerCase() === "digital";
 
   const totalFileCount =
     useMemo(
@@ -951,42 +1139,161 @@ export default function DynamicServiceRequestPanel({
     const nextErrors:
       FieldErrors = {};
 
+    const allFields =
+      sections.flatMap(
+        (section) =>
+          section.fields.map(
+            (field) => ({
+              section,
+              field,
+              fieldId:
+                createFieldId(
+                  section.key,
+                  field.key,
+                ),
+            }),
+          ),
+      );
+
     for (
-      const section
-      of sections
+      const {
+        field,
+        fieldId,
+      }
+      of allFields
     ) {
-      for (
-        const field
-        of section.fields
-      ) {
-        const fieldId =
-          createFieldId(
-            section.key,
-            field.key,
-          );
+      const validationField =
+        isOnlineRequest
+          ? {
+              ...field,
+              required:
+                isCustomerNameField(field),
+            }
+          : field;
 
-        const error =
-          validateField(
-            field,
-            values[fieldId],
-          );
+      const error =
+        validateField(
+          validationField,
+          values[fieldId],
+        );
 
-        if (error) {
-          nextErrors[
-            fieldId
-          ] = error;
-        }
+      if (error) {
+        nextErrors[fieldId] =
+          error;
       }
     }
 
-    setFieldErrors(
-      nextErrors,
-    );
+    if (isOnlineRequest) {
+      const nameItem =
+        allFields.find(
+          ({ field }) =>
+            isCustomerNameField(field),
+        );
+
+      const descriptionItem =
+        allFields.find(
+          ({ field }) =>
+            isRequestDescriptionField(field),
+        );
+
+      const fileItems =
+        allFields.filter(
+          ({ field }) =>
+            field.type === "file",
+        );
+
+      const contactItems =
+        allFields.filter(
+          ({ field }) =>
+            isContactField(field),
+        );
+
+      const nameValue =
+        nameItem
+          ? values[nameItem.fieldId]
+          : "";
+
+      if (
+        !nameItem ||
+        typeof nameValue !== "string" ||
+        !nameValue.trim()
+      ) {
+        if (nameItem) {
+          nextErrors[nameItem.fieldId] =
+            "Your name is required.";
+        } else {
+          nextErrors.__online_name =
+            "The form must include a name field.";
+        }
+      }
+
+      const descriptionValue =
+        descriptionItem
+          ? values[
+              descriptionItem.fieldId
+            ]
+          : "";
+
+      const hasDescription =
+        typeof descriptionValue ===
+          "string" &&
+        descriptionValue.trim()
+          .length > 0;
+
+      const hasAttachment =
+        fileItems.some(
+          ({ fieldId }) =>
+            getFiles(
+              values[fieldId],
+            ).length > 0,
+        );
+
+      if (
+        !hasDescription &&
+        !hasAttachment
+      ) {
+        const targetId =
+          descriptionItem
+            ?.fieldId ??
+          fileItems[0]
+            ?.fieldId ??
+          "__online_request";
+
+        nextErrors[targetId] =
+          "Describe what you need or attach at least one file.";
+      }
+
+      const hasContact =
+        contactItems.some(
+          ({ fieldId }) => {
+            const value =
+              values[fieldId];
+
+            return (
+              typeof value ===
+                "string" &&
+              value.trim()
+                .length > 0
+            );
+          },
+        );
+
+      if (!hasContact) {
+        const targetId =
+          contactItems[0]
+            ?.fieldId ??
+          "__online_contact";
+
+        nextErrors[targetId] =
+          "Provide a phone number, WhatsApp number, or email address.";
+      }
+    }
+
+    setFieldErrors(nextErrors);
 
     return (
-      Object.keys(
-        nextErrors,
-      ).length === 0
+      Object.keys(nextErrors)
+        .length === 0
     );
   }
 
@@ -1266,17 +1573,21 @@ export default function DynamicServiceRequestPanel({
     const error =
       fieldErrors[fieldId];
 
-    const commonLabel = (
-      <span>
-        {field.label}
+    const commonLabel =
+      isOnlineRequest &&
+      !showOptionalDetails
+        ? null
+        : (
+          <span>
+            {field.label}
 
-        {!field.required && (
-          <small>
-            Optional
-          </small>
-        )}
-      </span>
-    );
+            {!field.required && (
+              <small>
+                Optional
+              </small>
+            )}
+          </span>
+        );
 
     if (
       field.type ===
@@ -1290,7 +1601,12 @@ export default function DynamicServiceRequestPanel({
           {commonLabel}
 
           <textarea
-            rows={4}
+            rows={
+              isOnlineRequest &&
+              !showOptionalDetails
+                ? 2
+                : 4
+            }
             value={
               typeof value ===
               "string"
@@ -1314,7 +1630,11 @@ export default function DynamicServiceRequestPanel({
             }
           />
 
-          {field.helpText && (
+          {field.helpText &&
+            (
+              !isOnlineRequest ||
+              showOptionalDetails
+            ) && (
             <small className="dynamic-service-request__help">
               {field.helpText}
             </small>
@@ -1381,7 +1701,11 @@ export default function DynamicServiceRequestPanel({
             )}
           </select>
 
-          {field.helpText && (
+          {field.helpText &&
+            (
+              !isOnlineRequest ||
+              showOptionalDetails
+            ) && (
             <small className="dynamic-service-request__help">
               {field.helpText}
             </small>
@@ -1449,7 +1773,11 @@ export default function DynamicServiceRequestPanel({
             )}
           </div>
 
-          {field.helpText && (
+          {field.helpText &&
+            (
+              !isOnlineRequest ||
+              showOptionalDetails
+            ) && (
             <small className="dynamic-service-request__help">
               {field.helpText}
             </small>
@@ -1495,7 +1823,11 @@ export default function DynamicServiceRequestPanel({
             </span>
           </label>
 
-          {field.helpText && (
+          {field.helpText &&
+            (
+              !isOnlineRequest ||
+              showOptionalDetails
+            ) && (
             <small className="dynamic-service-request__help">
               {field.helpText}
             </small>
@@ -1584,7 +1916,11 @@ export default function DynamicServiceRequestPanel({
             )}
           </div>
 
-          {field.helpText && (
+          {field.helpText &&
+            (
+              !isOnlineRequest ||
+              showOptionalDetails
+            ) && (
             <small className="dynamic-service-request__help">
               {field.helpText}
             </small>
@@ -1617,7 +1953,10 @@ export default function DynamicServiceRequestPanel({
 
           <div className="dynamic-service-request__file">
             <strong>
-              Choose files
+              {isOnlineRequest &&
+              !showOptionalDetails
+                ? "Attach file"
+                : "Choose files"}
             </strong>
 
             <span>
@@ -1647,7 +1986,11 @@ export default function DynamicServiceRequestPanel({
             />
           </div>
 
-          {field.helpText && (
+          {field.helpText &&
+            (
+              !isOnlineRequest ||
+              showOptionalDetails
+            ) && (
             <small className="dynamic-service-request__help">
               {field.helpText}
             </small>
@@ -1742,6 +2085,21 @@ export default function DynamicServiceRequestPanel({
     );
   }
 
+  function isCompactOnlineField(
+    section:
+      DynamicServiceSection,
+
+    field:
+      DynamicServiceField,
+  ): boolean {
+    return compactOnlineFieldIds.has(
+      createFieldId(
+        section.key,
+        field.key,
+      ),
+    );
+  }
+
   function isAlwaysVisibleField(
     section:
       DynamicServiceSection,
@@ -1749,6 +2107,13 @@ export default function DynamicServiceRequestPanel({
     field:
       DynamicServiceField,
   ): boolean {
+    if (isOnlineRequest) {
+      return isCompactOnlineField(
+        section,
+        field,
+      );
+    }
+
     if (field.required) {
       return true;
     }
@@ -1788,9 +2153,73 @@ export default function DynamicServiceRequestPanel({
       return true;
     }
 
-    return getVisibleFields(
-      section,
-    ).length > 0;
+    return getVisibleFields(section)
+      .length > 0;
+  }
+
+  function createCompactOnlineField(
+    field:
+      DynamicServiceField,
+  ): DynamicServiceField {
+    if (
+      isRequestDescriptionField(
+        field,
+      )
+    ) {
+      return {
+        ...field,
+        label:
+          "What do you need?",
+        placeholder:
+          "What do you need?",
+        required: false,
+      };
+    }
+
+    if (
+      isCustomerNameField(
+        field,
+      )
+    ) {
+      return {
+        ...field,
+        label: "Name",
+        placeholder:
+          "Name",
+        required: true,
+      };
+    }
+
+    if (
+      isContactField(
+        field,
+      )
+    ) {
+      return {
+        ...field,
+        label:
+          "Phone or WhatsApp number",
+        placeholder:
+          "Phone or WhatsApp number",
+        type: "tel",
+        required: true,
+      };
+    }
+
+    if (
+      field.type === "file"
+    ) {
+      return {
+        ...field,
+        label: "Files",
+        required: false,
+      };
+    }
+
+    return {
+      ...field,
+      required: false,
+    };
   }
 
   const shownServiceName =
@@ -1894,19 +2323,29 @@ export default function DynamicServiceRequestPanel({
         aria-labelledby="dynamic-service-request-title"
       >
         <header className="dynamic-service-request__header">
+          
           <div>
-            <span>
-              GYAN SERVICE
-            </span>
+  {isOnlineRequest &&
+  !showOptionalDetails ? (
+    <h2 id="dynamic-service-request-title">
+      {shownServiceName}
+    </h2>
+  ) : (
+    <>
+      <span>
+        GYAN SERVICE
+      </span>
 
-            <h2 id="dynamic-service-request-title">
-              {shownServiceName}
-            </h2>
+      <h2 id="dynamic-service-request-title">
+        {shownServiceName}
+      </h2>
 
-            <small>
-              {shownShopName}
-            </small>
-          </div>
+      <small>
+        {shownShopName}
+      </small>
+    </>
+  )}
+</div>
 
           <button
             type="button"
@@ -1948,14 +2387,23 @@ export default function DynamicServiceRequestPanel({
               ?.form
               ?.hasConfiguration && (
               <form
-                className="dynamic-service-request__form"
+                className={
+                  isOnlineRequest &&
+                  !showOptionalDetails
+                    ? "dynamic-service-request__form dynamic-service-request__form--compact"
+                    : "dynamic-service-request__form"
+                }
                 onSubmit={
                   handleSubmit
                 }
               >
                 {responseData
                   .service
-                  ?.description && (
+                  ?.description &&
+                  (
+                    !isOnlineRequest ||
+                    showOptionalDetails
+                  ) && (
                   <p className="dynamic-service-request__description">
                     {
                       responseData
@@ -1965,8 +2413,9 @@ export default function DynamicServiceRequestPanel({
                   </p>
                 )}
 
-                {locationHint
-                  ?.countryCode && (
+                {!isOnlineRequest &&
+                  locationHint
+                    ?.countryCode && (
                   <div className="dynamic-service-request__location-hint">
                     <span
                       aria-hidden="true"
@@ -1996,6 +2445,24 @@ export default function DynamicServiceRequestPanel({
                   </div>
                 )}
 
+                {fieldErrors.__online_name && (
+                  <p className="dynamic-service-request__error">
+                    {fieldErrors.__online_name}
+                  </p>
+                )}
+
+                {fieldErrors.__online_request && (
+                  <p className="dynamic-service-request__error">
+                    {fieldErrors.__online_request}
+                  </p>
+                )}
+
+                {fieldErrors.__online_contact && (
+                  <p className="dynamic-service-request__error">
+                    {fieldErrors.__online_contact}
+                  </p>
+                )}
+
                 {sections
                   .filter(
                     shouldShowSection,
@@ -2006,7 +2473,12 @@ export default function DynamicServiceRequestPanel({
                       key={
                         section.key
                       }
-                      className="dynamic-service-request__section"
+                      className={
+                        isOnlineRequest &&
+                        !showOptionalDetails
+                          ? "dynamic-service-request__section dynamic-service-request__section--compact"
+                          : "dynamic-service-request__section"
+                      }
                     >
                       <header>
                         <h3>
@@ -2042,7 +2514,12 @@ export default function DynamicServiceRequestPanel({
                             (field) =>
                               renderField(
                                 section,
-                                field,
+                                isOnlineRequest &&
+                                !showOptionalDetails
+                                  ? createCompactOnlineField(
+                                      field,
+                                    )
+                                  : field,
                               ),
                           )}
                       </div>

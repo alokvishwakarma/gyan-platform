@@ -627,3 +627,229 @@
   font-size: 1rem;
   line-height: 1;
 }
+
+.dynamic-service-request__compact-note {
+  display: grid;
+  gap: 3px;
+  padding: 9px 11px;
+  border: 1px solid #dbe8f5;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.dynamic-service-request__compact-note strong {
+  color: #0f4c81;
+  font-size: 0.78rem;
+}
+
+.dynamic-service-request__compact-note span {
+  color: #526277;
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.dynamic-service-request__form {
+  gap: 10px;
+}
+
+.dynamic-service-request__section {
+  padding: 10px 12px;
+}
+
+.dynamic-service-request__fields {
+  gap: 9px;
+}
+
+.dynamic-service-request__field textarea {
+  min-height: 72px;
+}
+
+/* Ultra-compact online request form */
+.dynamic-service-request__form--compact {
+  gap: 7px;
+}
+
+.dynamic-service-request__form--compact
+  .dynamic-service-request__section {
+  margin: 0;
+}
+
+.dynamic-service-request__section--compact {
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+.dynamic-service-request__section--compact
+  > header {
+  margin-bottom: 6px;
+}
+
+.dynamic-service-request__section--compact
+  > header h3 {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.15;
+}
+
+.dynamic-service-request__section--compact
+  > header p {
+  display: none;
+}
+
+.dynamic-service-request__form--compact
+  .dynamic-service-request__fields {
+  gap: 7px;
+}
+
+.dynamic-service-request__form--compact
+  .dynamic-service-request__field {
+  gap: 4px;
+}
+
+.dynamic-service-request__form--compact
+  .dynamic-service-request__field
+  > span,
+.dynamic-service-request__form--compact
+  .dynamic-service-request__field
+  > legend {
+  font-size: 0.72rem;
+  line-height: 1.1;
+}
+
+.dynamic-service-request__form--compact
+  .dynamic-service-request__field
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.dynamic-service-request__form--compact
+  .dynamic-service-request__field
+  textarea,
+.dynamic-service-request__form--compact
+  .dynamic-service-request__field
+  select {
+  min-height: 38px;
+  padding: 7px 9px;
+  font-size: 0.78rem;
+}
+
+.dynamic-service-request__form--compact
+  .dynamic-service-request__field
+  textarea {
+  min-height: 54px;
+  max-height: 72px;
+  resize: vertical;
+}
+
+.dynamic-service-request__form--compact
+  .dynamic-service-request__file {
+  min-height: 40px;
+  padding: 7px 9px;
+}
+
+.dynamic-service-request__form--compact
+  .dynamic-service-request__help {
+  display: none;
+}
+
+.dynamic-service-request__form--compact
+  .dynamic-service-request__optional-toggle {
+  min-height: 36px;
+  margin-top: 0;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+}
+
+.dynamic-service-request__form--compact
+  .dynamic-service-request__retention-notice {
+  display: none;
+}
+
+.dynamic-service-request__form--compact
+  .dynamic-service-request__actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: 0;
+  padding-top: 6px;
+  background: #ffffff;
+}
+
+.dynamic-service-request__form--compact
+  .dynamic-service-request__actions
+  button {
+  min-height: 40px;
+  padding: 7px 10px;
+  font-size: 0.76rem;
+}
+
+@media (max-height: 720px) {
+  .dynamic-service-request__form--compact
+    .dynamic-service-request__section--compact {
+    padding-block: 6px;
+  }
+
+  .dynamic-service-request__form--compact
+    .dynamic-service-request__field
+    textarea {
+    min-height: 46px;
+  }
+}
+
+/* Placeholder-only compact form */
+.dynamic-service-request__form--compact
+  .dynamic-service-request__field
+  > span,
+.dynamic-service-request__form--compact
+  .dynamic-service-request__field
+  > legend {
+  display: none;
+}
+
+.dynamic-service-request__form--compact
+  .dynamic-service-request__field
+  textarea {
+  min-height: 44px;
+  max-height: 56px;
+  line-height: 1.35;
+}
+
+.dynamic-service-request__form--compact
+  .dynamic-service-request__file {
+  min-height: 38px;
+  padding: 6px 9px;
+}
+
+.dynamic-service-request__form--compact
+  .dynamic-service-request__file
+  strong {
+  font-size: 0.74rem;
+}
+
+.dynamic-service-request__form--compact
+  .dynamic-service-request__file
+  span {
+  font-size: 0.68rem;
+}
+
+.dynamic-service-request__form--compact
+  input::placeholder,
+.dynamic-service-request__form--compact
+  textarea::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+.dynamic-service-request__header h2 {
+  margin: 0;
+}
+
+.dynamic-service-request__header
+  > div:has(h2):not(:has(span)) {
+  display: flex;
+  align-items: center;
+}
+
+.dynamic-service-request__header
+  > div:has(h2):not(:has(span))
+  h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
