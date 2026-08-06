@@ -255,19 +255,70 @@ function isCustomerNameField(
   );
 }
 
-function isContactField(
+function isEmailField(
   field: FieldRow,
 ): boolean {
   const identity =
-    normalizeFieldIdentity(field);
+    normalizeFieldIdentity(
+      field,
+    );
 
   return (
-    field.field_key === "phone_number" ||
-    field.field_key === "whatsapp_number" ||
-    field.field_key === "email_address" ||
-    identity.includes("phone") ||
-    identity.includes("whatsapp") ||
-    identity.includes("email")
+    field.field_key ===
+      "email" ||
+    field.field_key ===
+      "email_address" ||
+    identity.includes(
+      "email",
+    )
+  );
+}
+
+function isPhoneLikeField(
+  field: FieldRow,
+): boolean {
+  const identity =
+    normalizeFieldIdentity(
+      field,
+    );
+
+  return (
+    field.field_key ===
+      "phone" ||
+    field.field_key ===
+      "phone_number" ||
+    field.field_key ===
+      "phone_or_whatsapp" ||
+    field.field_key ===
+      "whatsapp" ||
+    field.field_key ===
+      "whatsapp_number" ||
+    field.field_key ===
+      "mobile" ||
+    field.field_key ===
+      "mobile_number" ||
+    identity.includes(
+      "phone",
+    ) ||
+    identity.includes(
+      "whatsapp",
+    ) ||
+    identity.includes(
+      "mobile",
+    )
+  );
+}
+
+function isContactField(
+  field: FieldRow,
+): boolean {
+  return (
+    isPhoneLikeField(
+      field,
+    ) ||
+    isEmailField(
+      field,
+    )
   );
 }
 
@@ -344,6 +395,63 @@ function normalizeAnswerValue(
       (item) =>
         item.trim(),
     );
+  }
+
+  return null;
+}
+
+
+function getStringAnswerByFieldKeys(
+  answers:
+    Record<string, FieldAnswer>,
+
+  fieldKeys:
+    string[],
+): string | null {
+  const wanted =
+    new Set(
+      fieldKeys.map(
+        (key) =>
+          key
+            .trim()
+            .toLowerCase(),
+      ),
+    );
+
+  for (
+    const [
+      answerKey,
+      value,
+    ]
+    of Object.entries(
+      answers,
+    )
+  ) {
+    if (
+      typeof value !==
+        "string"
+    ) {
+      continue;
+    }
+
+    const fieldKey =
+      answerKey
+        .split(".")
+        .at(-1)
+        ?.trim()
+        .toLowerCase();
+
+    if (
+      fieldKey &&
+      wanted.has(fieldKey)
+    ) {
+      const normalized =
+        value.trim();
+
+      if (normalized) {
+        return normalized;
+      }
+    }
   }
 
   return null;
@@ -1812,7 +1920,36 @@ async function handleCreateServiceRequest(
     service.category
       ?.trim()
       .toLowerCase() ===
-      "digital";
+      "digital" ||
+    service.category
+      ?.trim()
+      .toLowerCase() ===
+      "nearby";
+
+  const compactEmailEntry =
+    isOnlineRequest
+      ? [...fieldMap.entries()]
+          .find(
+            ([, field]) =>
+              isEmailField(
+                field,
+              ),
+          )
+      : undefined;
+
+  const compactEmailValue =
+    compactEmailEntry
+      ? answers[
+          compactEmailEntry[0]
+        ]
+      : undefined;
+
+  const compactHasValidEmail =
+    typeof compactEmailValue ===
+      "string" &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+      compactEmailValue.trim(),
+    );
 
   for (
     const [
@@ -1825,12 +1962,22 @@ async function handleCreateServiceRequest(
       isOnlineRequest
         ? {
             ...field,
+
             requirement:
               isCustomerNameField(
                 field,
               )
                 ? "mandatory"
                 : "optional",
+
+            validation_json:
+              compactHasValidEmail &&
+              isPhoneLikeField(
+                field,
+              )
+                ? null
+                : field
+                    .validation_json,
           }
         : field;
 
@@ -2024,9 +2171,20 @@ async function handleCreateServiceRequest(
       );
     }
 
-    const hasContact =
+    const hasValidEmail =
       contactEntries.some(
-        ([answerKey]) => {
+        ([
+          answerKey,
+          field,
+        ]) => {
+          if (
+            !isEmailField(
+              field,
+            )
+          ) {
+            return false;
+          }
+
           const value =
             answers[
               answerKey
@@ -2035,17 +2193,60 @@ async function handleCreateServiceRequest(
           return (
             typeof value ===
               "string" &&
-            value.trim()
-              .length > 0
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+              value.trim(),
+            )
           );
         },
       );
 
-    if (!hasContact) {
+    const hasUsablePhone =
+      contactEntries.some(
+        ([
+          answerKey,
+          field,
+        ]) => {
+          if (
+            !isPhoneLikeField(
+              field,
+            )
+          ) {
+            return false;
+          }
+
+          const value =
+            answers[
+              answerKey
+            ];
+
+          if (
+            typeof value !==
+              "string"
+          ) {
+            return false;
+          }
+
+          const digits =
+            value.replace(
+              /\D/g,
+              "",
+            );
+
+          return (
+            digits.length >=
+            7
+          );
+        },
+      );
+
+    if (
+      !hasValidEmail &&
+      !hasUsablePhone
+    ) {
       return createJsonResponse(
         {
           error:
-            "Provide a phone number, WhatsApp number, or email address.",
+            "Provide a valid phone / WhatsApp number or email address.",
         },
         400,
       );
@@ -2168,45 +2369,67 @@ async function handleCreateServiceRequest(
   }
 
   const customerName =
-    typeof answers[
-      "customer.customer_name"
-    ] === "string"
-      ? answers[
-          "customer.customer_name"
-        ]
-      : null;
+    getStringAnswerByFieldKeys(
+      answers,
+      [
+        "customer_name",
+        "name",
+      ],
+    );
+
+  const phoneOrWhatsApp =
+    getStringAnswerByFieldKeys(
+      answers,
+      [
+        "phone_or_whatsapp",
+      ],
+    );
 
   const phoneNumber =
-    typeof answers[
-      "customer.phone_number"
-    ] === "string"
-      ? answers[
-          "customer.phone_number"
-        ]
-      : null;
+    getStringAnswerByFieldKeys(
+      answers,
+      [
+        "phone_number",
+        "phone",
+        "mobile_number",
+        "mobile",
+      ],
+    ) ??
+    phoneOrWhatsApp;
 
   const emailAddress =
-    typeof answers[
-      "customer.email_address"
-    ] === "string"
-      ? answers[
-          "customer.email_address"
-        ]
-      : null;
+    getStringAnswerByFieldKeys(
+      answers,
+      [
+        "email_address",
+        "email",
+      ],
+    );
 
   const whatsAppNumber =
-    typeof answers[
-      "customer.whatsapp_number"
-    ] === "string"
-      ? answers[
-          "customer.whatsapp_number"
-        ]
-      : null;
+    getStringAnswerByFieldKeys(
+      answers,
+      [
+        "whatsapp_number",
+        "whatsapp",
+      ],
+    ) ??
+    phoneOrWhatsApp;
 
   const whatsAppConsent =
-    answers[
-      "customer.whatsapp_consent"
-    ] === true;
+    Object.entries(
+      answers,
+    ).some(
+      ([
+        answerKey,
+        value,
+      ]) =>
+        answerKey
+          .split(".")
+          .at(-1) ===
+          "whatsapp_consent" &&
+        value === true,
+    );
 
   const requestNumber =
     generateRequestNumber(
@@ -2545,6 +2768,10 @@ async function handleCreateServiceRequest(
               createdRequest
                 .request_number,
 
+            status:
+              createdRequest
+                .status,
+
             createdAt:
               createdRequest
                 .created_at,
@@ -2580,6 +2807,30 @@ async function handleCreateServiceRequest(
 
           customerActions:
             notificationActions.customer,
+
+          adminActions: [
+            {
+              label:
+                "All Requests",
+
+              url:
+                `${publicOrigin}/admin`,
+            },
+            {
+              label:
+                "All Shops",
+
+              url:
+                `${publicOrigin}/admin/shops`,
+            },
+            {
+              label:
+                "Manage Services",
+
+              url:
+                `${publicOrigin}/admin/services`,
+            },
+          ],
 
           retentionDays:
             FILE_RETENTION_DAYS,

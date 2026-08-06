@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -9,130 +10,331 @@ import "./NearbyServicePanel.css";
 interface NearbyServicePanelProps {
   serviceCode: string;
   serviceName: string;
-
   onClose: () => void;
-
-  onOpenShop: (
-    shopCode: string,
-  ) => void;
 }
 
 interface LocationHint {
   countryCode?: string;
-  country?: string;
   region?: string;
   city?: string;
-  postalCode?: string;
 }
 
 interface RegisteredShop {
   code: string;
   name: string;
   address: string;
-
-  phoneNumber: string;
-  whatsappNumber:
-    | string
-    | null;
-
-  distanceKm:
-    | number
-    | null;
-
-  matchingServiceCount: number;
-  serviceNames: string[];
+  distanceKm: number | null;
 }
 
-interface NearbyShopsResponse {
+interface ExternalPlace {
+  id: string;
+  name: string;
+  address: string;
+  distanceKm: number | null;
+}
+
+interface NearbyResponse {
   registeredShops?: RegisteredShop[];
+  externalPlaces?: ExternalPlace[];
   error?: string;
 }
 
-type LocationStatus =
-  | "idle"
-  | "requesting"
-  | "precise"
-  | "approximate"
-  | "denied"
-  | "unavailable";
+interface SubmitResponse {
+  request?: {
+    requestNumber?: string;
+  };
+
+  requestNumber?: string;
+  error?: string;
+}
+
+type SelectedBusiness =
+  | {
+      kind: "support";
+      shopCode: "SUPP";
+      name: "GYAN Support";
+      address: "";
+    }
+  | {
+      kind: "registered";
+      shopCode: string;
+      name: string;
+      address: string;
+    }
+  | {
+      kind: "external";
+      shopCode: "SUPP";
+      name: string;
+      address: string;
+    };
+
+const SUPPORT_BUSINESS:
+  SelectedBusiness = {
+    kind: "support",
+    shopCode: "SUPP",
+    name: "GYAN Support",
+    address: "",
+  };
+
+function formatDistance(
+  distanceKm: number | null,
+): string {
+  if (distanceKm == null) {
+    return "";
+  }
+
+  return ` — ${distanceKm.toFixed(
+    1,
+  )} km`;
+}
+
+function sanitizePhone(
+  value: string,
+): string {
+  let sanitized =
+    value.replace(
+      /[^0-9+()\-\s]/g,
+      "",
+    );
+
+  if (
+    sanitized.startsWith("+")
+  ) {
+    sanitized =
+      "+" +
+      sanitized
+        .slice(1)
+        .replace(/\+/g, "");
+  } else {
+    sanitized =
+      sanitized.replace(
+        /\+/g,
+        "",
+      );
+  }
+
+  return sanitized;
+}
+
+function getDialCode(
+  countryCode?: string,
+): string {
+  switch (
+    countryCode
+      ?.trim()
+      .toUpperCase()
+  ) {
+    case "US":
+    case "CA":
+      return "+1 ";
+
+    case "IN":
+      return "+91 ";
+
+    case "GB":
+      return "+44 ";
+
+    case "AU":
+      return "+61 ";
+
+    default:
+      return "";
+  }
+}
+
+function getRequiredLocalDigits(
+  countryCode?: string,
+): number {
+  switch (
+    countryCode
+      ?.trim()
+      .toUpperCase()
+  ) {
+    case "US":
+    case "CA":
+    case "IN":
+      return 10;
+
+    default:
+      return 7;
+  }
+}
+
+function hasValidPhoneForCountry(
+  value: string,
+  countryCode?: string,
+): boolean {
+  const digits =
+    value.replace(
+      /\D/g,
+      "",
+    );
+
+  const dialCodeDigits =
+    getDialCode(
+      countryCode,
+    ).replace(
+      /\D/g,
+      "",
+    );
+
+  const localDigits =
+    dialCodeDigits &&
+    digits.startsWith(
+      dialCodeDigits,
+    )
+      ? digits.slice(
+          dialCodeDigits.length,
+        )
+      : digits;
+
+  return (
+    localDigits.length >=
+    getRequiredLocalDigits(
+      countryCode,
+    )
+  );
+}
 
 export default function NearbyServicePanel({
   serviceCode,
   serviceName,
   onClose,
-  onOpenShop,
 }: NearbyServicePanelProps) {
   const [
-    locationStatus,
-    setLocationStatus,
-  ] =
-    useState<LocationStatus>(
-      "idle",
-    );
+    locationOpen,
+    setLocationOpen,
+  ] = useState(false);
 
   const [
-    latitude,
-    setLatitude,
-  ] =
-    useState<number | null>(
-      null,
-    );
-
-  const [
-    longitude,
-    setLongitude,
-  ] =
-    useState<number | null>(
-      null,
-    );
-
-  const [
-    stateRegion,
-    setStateRegion,
-  ] =
-    useState("");
+    detectedCountryCode,
+    setDetectedCountryCode,
+  ] = useState<string | undefined>(
+    undefined,
+  );
 
   const [
     city,
     setCity,
-  ] =
-    useState("");
+  ] = useState("");
 
   const [
-    shops,
-    setShops,
-  ] =
-    useState<RegisteredShop[]>(
-      [],
-    );
+    stateRegion,
+    setStateRegion,
+  ] = useState("");
 
   const [
-    loading,
-    setLoading,
-  ] =
-    useState(false);
+    latitude,
+    setLatitude,
+  ] = useState<number | null>(
+    null,
+  );
+
+  const [
+    longitude,
+    setLongitude,
+  ] = useState<number | null>(
+    null,
+  );
+
+  const [
+    registeredShops,
+    setRegisteredShops,
+  ] = useState<RegisteredShop[]>(
+    [],
+  );
+
+  const [
+    externalPlaces,
+    setExternalPlaces,
+  ] = useState<ExternalPlace[]>(
+    [],
+  );
+
+  const [
+    selectedBusiness,
+    setSelectedBusiness,
+  ] = useState<SelectedBusiness>(
+    SUPPORT_BUSINESS,
+  );
+
+  const [
+    requestDetails,
+    setRequestDetails,
+  ] = useState("");
+
+  const [
+    customerName,
+    setCustomerName,
+  ] = useState("");
+
+  const [
+    phoneOrWhatsApp,
+    setPhoneOrWhatsApp,
+  ] = useState("");
+
+  const [
+    email,
+    setEmail,
+  ] = useState("");
+
+  const [
+    preferredDate,
+    setPreferredDate,
+  ] = useState("");
+
+  const [
+    serviceAddress,
+    setServiceAddress,
+  ] = useState("");
+
+  const [
+    additionalNotes,
+    setAdditionalNotes,
+  ] = useState("");
+
+  const [
+    showMore,
+    setShowMore,
+  ] = useState(false);
+
+  const [
+    files,
+    setFiles,
+  ] = useState<File[]>([]);
+
+  const [
+    searching,
+    setSearching,
+  ] = useState(false);
+
+  const [
+    submitting,
+    setSubmitting,
+  ] = useState(false);
 
   const [
     error,
     setError,
-  ] =
-    useState("");
+  ] = useState("");
+
+  const [
+    successNumber,
+    setSuccessNumber,
+  ] = useState("");
+
+  const fileInputRef =
+    useRef<HTMLInputElement | null>(
+      null,
+    );
 
   useEffect(() => {
     const controller =
       new AbortController();
 
-    async function loadHint() {
+    async function loadHint():
+      Promise<void> {
       try {
-        const browserTimezone =
-          Intl.DateTimeFormat()
-            .resolvedOptions()
-            .timeZone;
-
-        const browserLanguages =
-          navigator.languages ??
-          [navigator.language];
-
         const response =
           await fetch(
             "/api/location-hint",
@@ -142,12 +344,15 @@ export default function NearbyServicePanel({
 
               headers: {
                 "x-gyan-timezone":
-                  browserTimezone,
+                  Intl.DateTimeFormat()
+                    .resolvedOptions()
+                    .timeZone,
 
                 "x-gyan-languages":
-                  browserLanguages.join(
-                    ",",
-                  ),
+                  (
+                    navigator.languages ??
+                    [navigator.language]
+                  ).join(","),
               },
             },
           );
@@ -166,30 +371,42 @@ export default function NearbyServicePanel({
           return;
         }
 
-        setStateRegion(
-          hint.region ?? "",
-        );
-
         setCity(
           hint.city ?? "",
         );
 
-        setLocationStatus(
-          "approximate",
+        setStateRegion(
+          hint.region ?? "",
+        );
+
+        setDetectedCountryCode(
+          hint.countryCode,
+        );
+
+        setPhoneOrWhatsApp(
+          (current) =>
+            current.trim()
+              ? current
+              : getDialCode(
+                  hint.countryCode,
+                ),
         );
       } catch {
-        // Manual location entry remains available.
+        // Location entry remains optional.
       }
     }
 
     void loadHint();
 
-    return () => {
+    return () =>
       controller.abort();
-    };
   }, []);
 
-  const locationDescription =
+  const resultCount =
+    registeredShops.length +
+    externalPlaces.length;
+
+  const locationSummary =
     useMemo(
       () =>
         [
@@ -204,7 +421,7 @@ export default function NearbyServicePanel({
       ],
     );
 
-  async function loadNearbyShops(
+  async function searchNearby(
     nextLatitude:
       | number
       | null = latitude,
@@ -213,7 +430,7 @@ export default function NearbyServicePanel({
       | number
       | null = longitude,
   ): Promise<void> {
-    setLoading(true);
+    setSearching(true);
     setError("");
 
     try {
@@ -222,14 +439,18 @@ export default function NearbyServicePanel({
           serviceCode,
         });
 
-      if (nextLatitude != null) {
+      if (
+        nextLatitude != null
+      ) {
         parameters.set(
           "lat",
           String(nextLatitude),
         );
       }
 
-      if (nextLongitude != null) {
+      if (
+        nextLongitude != null
+      ) {
         parameters.set(
           "lng",
           String(nextLongitude),
@@ -243,7 +464,9 @@ export default function NearbyServicePanel({
         );
       }
 
-      if (stateRegion.trim()) {
+      if (
+        stateRegion.trim()
+      ) {
         parameters.set(
           "state",
           stateRegion.trim(),
@@ -257,21 +480,26 @@ export default function NearbyServicePanel({
 
       const result =
         (await response.json()) as
-          NearbyShopsResponse;
+          NearbyResponse;
 
-      if (
-        !response.ok ||
-        !result.registeredShops
-      ) {
+      if (!response.ok) {
         throw new Error(
           result.error ??
             "Nearby shops could not be loaded.",
         );
       }
 
-      setShops(
-        result.registeredShops,
+      setRegisteredShops(
+        result.registeredShops ??
+          [],
       );
+
+      setExternalPlaces(
+        result.externalPlaces ??
+          [],
+      );
+
+      setLocationOpen(false);
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
@@ -279,36 +507,35 @@ export default function NearbyServicePanel({
           : "Nearby shops could not be loaded.",
       );
     } finally {
-      setLoading(false);
+      setSearching(false);
     }
   }
 
-  function requestPreciseLocation():
+  function useMyLocation():
     void {
     if (
       !navigator.geolocation
     ) {
-      setLocationStatus(
-        "unavailable",
+      setError(
+        "Location is not available in this browser.",
       );
-
-      void loadNearbyShops();
 
       return;
     }
 
-    setLocationStatus(
-      "requesting",
-    );
+    setSearching(true);
+    setError("");
 
     navigator.geolocation
       .getCurrentPosition(
         (position) => {
           const nextLatitude =
-            position.coords.latitude;
+            position.coords
+              .latitude;
 
           const nextLongitude =
-            position.coords.longitude;
+            position.coords
+              .longitude;
 
           setLatitude(
             nextLatitude,
@@ -318,25 +545,18 @@ export default function NearbyServicePanel({
             nextLongitude,
           );
 
-          setLocationStatus(
-            "precise",
-          );
-
-          void loadNearbyShops(
+          void searchNearby(
             nextLatitude,
             nextLongitude,
           );
         },
 
-        (positionError) => {
-          setLocationStatus(
-            positionError.code ===
-              positionError.PERMISSION_DENIED
-              ? "denied"
-              : "unavailable",
-          );
+        () => {
+          setSearching(false);
 
-          void loadNearbyShops();
+          setError(
+            "Location permission was not available. Enter a city or state instead.",
+          );
         },
 
         {
@@ -351,135 +571,745 @@ export default function NearbyServicePanel({
       );
   }
 
+  function selectBusiness(
+    value: string,
+  ): void {
+    if (value === "support") {
+      setSelectedBusiness(
+        SUPPORT_BUSINESS,
+      );
+
+      return;
+    }
+
+    if (
+      value.startsWith(
+        "gyan:",
+      )
+    ) {
+      const shopCode =
+        value.slice(5);
+
+      const shop =
+        registeredShops.find(
+          (item) =>
+            item.code ===
+              shopCode,
+        );
+
+      if (shop) {
+        setSelectedBusiness({
+          kind:
+            "registered",
+
+          shopCode:
+            shop.code,
+
+          name:
+            shop.name,
+
+          address:
+            shop.address,
+        });
+      }
+
+      return;
+    }
+
+    if (
+      value.startsWith(
+        "external:",
+      )
+    ) {
+      const placeId =
+        value.slice(9);
+
+      const place =
+        externalPlaces.find(
+          (item) =>
+            item.id ===
+              placeId,
+        );
+
+      if (place) {
+        setSelectedBusiness({
+          kind:
+            "external",
+
+          shopCode:
+            "SUPP",
+
+          name:
+            place.name,
+
+          address:
+            place.address,
+        });
+
+        if (
+          !serviceAddress.trim()
+        ) {
+          setServiceAddress(
+            place.address,
+          );
+        }
+      }
+    }
+  }
+
+  function getSelectedValue():
+    string {
+    if (
+      selectedBusiness.kind ===
+      "support"
+    ) {
+      return "support";
+    }
+
+    if (
+      selectedBusiness.kind ===
+      "registered"
+    ) {
+      return `gyan:${selectedBusiness.shopCode}`;
+    }
+
+    const matchingPlace =
+      externalPlaces.find(
+        (place) =>
+          place.name ===
+            selectedBusiness.name &&
+          place.address ===
+            selectedBusiness.address,
+      );
+
+    return matchingPlace
+      ? `external:${matchingPlace.id}`
+      : "support";
+  }
+
+  function validate():
+    string | null {
+    if (
+      !requestDetails.trim() &&
+      files.length === 0
+    ) {
+      return "Describe what you need or attach a file.";
+    }
+
+    if (!customerName.trim()) {
+      return "Please enter your name.";
+    }
+
+    const hasEmail =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        email.trim(),
+      );
+
+    const hasPhone =
+      hasValidPhoneForCountry(
+        phoneOrWhatsApp,
+        detectedCountryCode,
+      );
+
+    if (
+      !hasPhone &&
+      !hasEmail
+    ) {
+      return (
+        detectedCountryCode ===
+          "US" ||
+        detectedCountryCode ===
+          "CA" ||
+        detectedCountryCode ===
+          "IN"
+          ? "Enter a 10-digit phone / WhatsApp number or a valid email address."
+          : "Enter a valid phone / WhatsApp number or email address."
+      );
+    }
+
+    if (
+      email.trim() &&
+      !hasEmail
+    ) {
+      return "Please enter a valid email address.";
+    }
+
+    return null;
+  }
+
+  async function submitRequest():
+    Promise<void> {
+    const validationError =
+      validate();
+
+    if (validationError) {
+      setError(
+        validationError,
+      );
+
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+
+    try {
+      const businessContext =
+        selectedBusiness.kind ===
+          "external"
+          ? `Preferred local business: ${selectedBusiness.name}${
+              selectedBusiness.address
+                ? ` (${selectedBusiness.address})`
+                : ""
+            }`
+          : "";
+
+      const combinedNotes =
+        [
+          businessContext,
+          additionalNotes.trim(),
+        ]
+          .filter(Boolean)
+          .join("\n");
+
+      const submittedAnswers = [
+        {
+          sectionKey:
+            "service_details",
+
+          fieldKey:
+            "request_details",
+
+          value:
+            requestDetails.trim(),
+        },
+        {
+          sectionKey:
+            "customer_details",
+
+          fieldKey:
+            "customer_name",
+
+          value:
+            customerName.trim(),
+        },
+        {
+          sectionKey:
+            "customer_details",
+
+          fieldKey:
+            "phone_or_whatsapp",
+
+          value:
+            phoneOrWhatsApp.trim(),
+        },
+        {
+          sectionKey:
+            "customer_details",
+
+          fieldKey:
+            "email_address",
+
+          value:
+            email.trim(),
+        },
+        {
+          sectionKey:
+            "additional_details",
+
+          fieldKey:
+            "preferred_date",
+
+          value:
+            preferredDate,
+        },
+        {
+          sectionKey:
+            "additional_details",
+
+          fieldKey:
+            "service_address",
+
+          value:
+            serviceAddress.trim(),
+        },
+        {
+          sectionKey:
+            "additional_details",
+
+          fieldKey:
+            "additional_notes",
+
+          value:
+            combinedNotes,
+        },
+      ];
+
+      const formData =
+        new FormData();
+
+      formData.set(
+        "metadata",
+        JSON.stringify({
+          answers:
+            submittedAnswers,
+        }),
+      );
+
+      for (
+        const file
+        of files
+      ) {
+        formData.append(
+          "file:service_details:attachments",
+          file,
+          file.name,
+        );
+      }
+
+      const endpoint =
+        `/api/shops/${encodeURIComponent(
+          selectedBusiness.shopCode,
+        )}/services/${encodeURIComponent(
+          serviceCode,
+        )}/requests`;
+
+      const response =
+        await fetch(
+          endpoint,
+          {
+            method: "POST",
+            body: formData,
+          },
+        );
+
+      const result =
+        (await response.json()) as
+          SubmitResponse;
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ??
+            "The request could not be submitted.",
+        );
+      }
+
+      const requestNumber =
+        result.request
+          ?.requestNumber ??
+        result.requestNumber ??
+        "Submitted";
+
+      setSuccessNumber(
+        requestNumber,
+      );
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "The request could not be submitted.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (successNumber) {
+    return (
+      <div className="nearby-service-overlay">
+        <section
+          className="nearby-service-panel nearby-service-panel--compact"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="nearby-success-title"
+        >
+          <header className="nearby-service-panel__header nearby-service-panel__header--compact">
+            <h2 id="nearby-success-title">
+              Request submitted
+            </h2>
+
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </header>
+
+          <div className="nearby-service-panel__success">
+            <span
+              aria-hidden="true"
+            >
+              ✓
+            </span>
+
+            <strong>
+              {successNumber}
+            </strong>
+
+            <p>
+              Your request has been received.
+              You will be contacted by phone,
+              WhatsApp, or email.
+            </p>
+
+            <button
+              type="button"
+              onClick={onClose}
+            >
+              Done
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="nearby-service-overlay">
       <section
-        className="nearby-service-panel"
+        className="nearby-service-panel nearby-service-panel--compact"
         role="dialog"
         aria-modal="true"
         aria-labelledby="nearby-service-title"
       >
-        <header className="nearby-service-panel__header">
-          <div>
-            <span>
-              NEARBY SERVICE
-            </span>
-
-            <h2 id="nearby-service-title">
-              {serviceName}
-            </h2>
-
-            <small>
-              Registered GYAN shops are
-              shown first.
-            </small>
-          </div>
+        <header className="nearby-service-panel__header nearby-service-panel__header--compact">
+          <h2 id="nearby-service-title">
+            {serviceName}
+          </h2>
 
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close nearby services"
+            aria-label="Close nearby request"
           >
             ×
           </button>
         </header>
 
-        <div className="nearby-service-panel__content">
-          <section className="nearby-service-panel__location">
-            <div>
-              <strong>
-                Find services near you
-              </strong>
-
-              <small>
-                Precise location is used
-                only after you allow it.
-              </small>
-            </div>
-
-            <button
-              type="button"
-              disabled={
-                locationStatus ===
-                "requesting"
+        <div className="nearby-service-panel__content nearby-service-panel__content--compact">
+          <div className="nearby-service-panel__shop-row">
+            <select
+              aria-label="Select shop"
+              value={
+                getSelectedValue()
               }
-              onClick={
-                requestPreciseLocation
+              onChange={(event) =>
+                selectBusiness(
+                  event.target.value,
+                )
               }
             >
-              {locationStatus ===
-              "requesting"
-                ? "Getting location…"
-                : "Use my location"}
-            </button>
-          </section>
+              <option value="support">
+                GYAN Support
+              </option>
 
-          {(
-            locationStatus ===
-              "denied" ||
-            locationStatus ===
-              "unavailable"
-          ) && (
-            <p className="nearby-service-panel__notice">
-              Location was not available.
-              Enter your city or state
-              below to continue.
-            </p>
-          )}
+              {registeredShops.length >
+                0 && (
+                <optgroup label="Participating GYAN shops">
+                  {registeredShops.map(
+                    (shop) => (
+                      <option
+                        key={
+                          shop.code
+                        }
+                        value={
+                          `gyan:${shop.code}`
+                        }
+                      >
+                        ⭐{" "}
+                        {shop.name}
+                        {formatDistance(
+                          shop.distanceKm,
+                        )}
+                      </option>
+                    ),
+                  )}
+                </optgroup>
+              )}
 
-          <div className="nearby-service-panel__manual-location">
-            <label>
-              <span>
-                State or region
-              </span>
-
-              <input
-                value={stateRegion}
-                placeholder="State or region"
-                onChange={(event) =>
-                  setStateRegion(
-                    event.target.value,
-                  )
-                }
-              />
-            </label>
-
-            <label>
-              <span>
-                City
-              </span>
-
-              <input
-                value={city}
-                placeholder="City or town"
-                onChange={(event) =>
-                  setCity(
-                    event.target.value,
-                  )
-                }
-              />
-            </label>
+              {externalPlaces.length >
+                0 && (
+                <optgroup label="Other nearby businesses">
+                  {externalPlaces.map(
+                    (place) => (
+                      <option
+                        key={
+                          place.id
+                        }
+                        value={
+                          `external:${place.id}`
+                        }
+                      >
+                        {place.name}
+                        {formatDistance(
+                          place.distanceKm,
+                        )}
+                      </option>
+                    ),
+                  )}
+                </optgroup>
+              )}
+            </select>
 
             <button
               type="button"
-              disabled={loading}
+              className="nearby-service-panel__map-button"
+              aria-label="Find nearby shops"
+              title="Find nearby shops"
+              aria-expanded={
+                locationOpen
+              }
               onClick={() =>
-                void loadNearbyShops()
+                setLocationOpen(
+                  (current) =>
+                    !current,
+                )
               }
             >
-              {loading
-                ? "Searching…"
-                : "Search registered shops"}
+              🗺️
             </button>
           </div>
 
-          {locationDescription && (
-            <p className="nearby-service-panel__location-summary">
-              Searching near{" "}
-              <strong>
-                {locationDescription}
-              </strong>
-            </p>
+          {locationOpen && (
+            <section className="nearby-service-panel__location-box">
+              <button
+                type="button"
+                className="nearby-service-panel__use-location"
+                disabled={
+                  searching
+                }
+                onClick={
+                  useMyLocation
+                }
+              >
+                {searching
+                  ? "Searching…"
+                  : "Use my location"}
+              </button>
+
+              <div className="nearby-service-panel__manual-location">
+                <input
+                  value={city}
+                  placeholder="City"
+                  aria-label="City"
+                  onChange={(event) =>
+                    setCity(
+                      event.target.value,
+                    )
+                  }
+                />
+
+                <input
+                  value={
+                    stateRegion
+                  }
+                  placeholder="State"
+                  aria-label="State"
+                  onChange={(event) =>
+                    setStateRegion(
+                      event.target.value,
+                    )
+                  }
+                />
+
+                <button
+                  type="button"
+                  disabled={
+                    searching ||
+                    (
+                      !city.trim() &&
+                      !stateRegion.trim()
+                    )
+                  }
+                  onClick={() =>
+                    void searchNearby()
+                  }
+                >
+                  Search
+                </button>
+              </div>
+            </section>
+          )}
+
+          {resultCount > 0 &&
+            locationSummary && (
+            <small className="nearby-service-panel__summary">
+              {resultCount}
+              {" nearby result"}
+              {resultCount === 1
+                ? ""
+                : "s"}
+              {" • "}
+              {locationSummary}
+            </small>
+          )}
+
+          <textarea
+            className="nearby-service-panel__request"
+            rows={2}
+            value={requestDetails}
+            placeholder="What do you need?"
+            aria-label="What do you need?"
+            onChange={(event) =>
+              setRequestDetails(
+                event.target.value,
+              )
+            }
+          />
+
+          <button
+            type="button"
+            className="nearby-service-panel__file-button"
+            onClick={() =>
+              fileInputRef.current
+                ?.click()
+            }
+          >
+            <span>
+              📎
+            </span>
+
+            <strong>
+              {files.length > 0
+                ? `${files.length} file${
+                    files.length === 1
+                      ? ""
+                      : "s"
+                  } attached`
+                : "Attach file"}
+            </strong>
+          </button>
+
+          <input
+            ref={fileInputRef}
+            className="nearby-service-panel__hidden-file"
+            type="file"
+            multiple
+            onChange={(event) =>
+              setFiles(
+                Array.from(
+                  event.target.files ??
+                    [],
+                ),
+              )
+            }
+          />
+
+          <input
+            value={customerName}
+            placeholder="Name"
+            aria-label="Name"
+            autoComplete="name"
+            onChange={(event) =>
+              setCustomerName(
+                event.target.value,
+              )
+            }
+          />
+
+          <div className="nearby-service-panel__contact-row">
+            <input
+              value={
+                phoneOrWhatsApp
+              }
+              placeholder="Phone / WhatsApp"
+              aria-label="Phone or WhatsApp"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              onChange={(event) =>
+                setPhoneOrWhatsApp(
+                  sanitizePhone(
+                    event.target.value,
+                  ),
+                )
+              }
+            />
+
+            <input
+              value={email}
+              placeholder="Email"
+              aria-label="Email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              onChange={(event) =>
+                setEmail(
+                  event.target.value,
+                )
+              }
+            />
+          </div>
+
+          <button
+            type="button"
+            className="nearby-service-panel__more-button"
+            onClick={() =>
+              setShowMore(
+                (current) =>
+                  !current,
+              )
+            }
+          >
+            {showMore
+              ? "− Hide details"
+              : "+ Add more details"}
+          </button>
+
+          {showMore && (
+            <section className="nearby-service-panel__more-fields">
+              <input
+                type="date"
+                value={
+                  preferredDate
+                }
+                aria-label="Preferred date"
+                onChange={(event) =>
+                  setPreferredDate(
+                    event.target.value,
+                  )
+                }
+              />
+
+              <input
+                value={
+                  serviceAddress
+                }
+                placeholder="Service address or landmark"
+                aria-label="Service address or landmark"
+                onChange={(event) =>
+                  setServiceAddress(
+                    event.target.value,
+                  )
+                }
+              />
+
+              <textarea
+                rows={2}
+                value={
+                  additionalNotes
+                }
+                placeholder="Additional notes"
+                aria-label="Additional notes"
+                onChange={(event) =>
+                  setAdditionalNotes(
+                    event.target.value,
+                  )
+                }
+              />
+            </section>
+          )}
+
+          {selectedBusiness.kind ===
+            "external" && (
+            <small className="nearby-service-panel__external-note">
+              {selectedBusiness.name} is
+              not a participating GYAN
+              shop. GYAN Support will
+              receive this request.
+            </small>
           )}
 
           {error && (
@@ -491,95 +1321,30 @@ export default function NearbyServicePanel({
             </p>
           )}
 
-          {!loading &&
-            shops.length === 0 && (
-              <div className="nearby-service-panel__empty">
-                <span
-                  aria-hidden="true"
-                >
-                  📍
-                </span>
+          <div className="nearby-service-panel__actions">
+            <button
+              type="button"
+              onClick={onClose}
+            >
+              Cancel
+            </button>
 
-                <strong>
-                  No registered shops shown yet
-                </strong>
-
-                <p>
-                  Share your location or
-                  enter a city to search.
-                  External map results can
-                  be added in the next
-                  phase.
-                </p>
-              </div>
-            )}
-
-          {shops.length > 0 && (
-            <div className="nearby-service-panel__shops">
-              <h3>
-                Registered GYAN shops
-              </h3>
-
-              {shops.map(
-                (shop) => (
-                  <article
-                    key={shop.code}
-                    className="nearby-service-panel__shop"
-                  >
-                    <div>
-                      <strong>
-                        {shop.name}
-                      </strong>
-
-                      <small>
-                        {shop.address}
-                      </small>
-
-                      {shop.distanceKm !=
-                        null && (
-                        <small>
-                          {shop.distanceKm.toFixed(
-                            1,
-                          )}
-                          {" km away"}
-                        </small>
-                      )}
-
-                      {shop.serviceNames
-                        .length > 0 && (
-                        <small>
-                          {shop.serviceNames
-                            .slice(0, 4)
-                            .join(" • ")}
-                        </small>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onOpenShop(
-                          shop.code,
-                        )
-                      }
-                    >
-                      Open shop
-                    </button>
-                  </article>
-                ),
-              )}
-            </div>
-          )}
+            <button
+              type="button"
+              className="nearby-service-panel__submit"
+              disabled={
+                submitting
+              }
+              onClick={() =>
+                void submitRequest()
+              }
+            >
+              {submitting
+                ? "Submitting…"
+                : "Submit request"}
+            </button>
+          </div>
         </div>
-
-        <footer className="nearby-service-panel__footer">
-          <button
-            type="button"
-            onClick={onClose}
-          >
-            Close
-          </button>
-        </footer>
       </section>
     </div>
   );

@@ -29,10 +29,12 @@ export interface ServiceEmailAction {
 export interface ServiceRequestEmailInput {
   recipient:
     | "shop"
-    | "customer";
+    | "customer"
+    | "admin";
 
   serviceName: string;
   requestNumber: string;
+  status: string;
 
   shopName: string;
   shopCode: string;
@@ -126,9 +128,11 @@ function calculateExpirationDate(
 }
 
 function renderCustomerRows(
-  customer: ServiceEmailCustomer,
+  customer:
+    ServiceEmailCustomer,
 ): ServiceEmailRow[] {
-  const rows: ServiceEmailRow[] = [];
+  const rows:
+    ServiceEmailRow[] = [];
 
   if (customer.name) {
     rows.push({
@@ -172,7 +176,7 @@ function renderHtmlRows(
             style="
               width:38%;
               padding:7px 8px 7px 0;
-              color:#7d6a54;
+              color:#6b7b8d;
               vertical-align:top;
             "
           >
@@ -182,7 +186,7 @@ function renderHtmlRows(
           <td
             style="
               padding:7px 0;
-              color:#332317;
+              color:#17365d;
               font-weight:600;
               vertical-align:top;
               overflow-wrap:anywhere;
@@ -197,7 +201,8 @@ function renderHtmlRows(
 }
 
 function renderHtmlSection(
-  section: ServiceEmailSection,
+  section:
+    ServiceEmailSection,
 ): string {
   if (
     section.rows.length === 0
@@ -206,12 +211,20 @@ function renderHtmlSection(
   }
 
   return `
-    <section style="margin-top:22px;">
+    <section
+      style="
+        margin-top:18px;
+        padding:16px;
+        background:#ffffff;
+        border:1px solid #dbe5ef;
+        border-radius:10px;
+      "
+    >
       <h2
         style="
           margin:0 0 8px;
-          color:#332317;
-          font-size:17px;
+          color:#17365d;
+          font-size:16px;
         "
       >
         ${escapeHtml(section.label)}
@@ -231,7 +244,8 @@ function renderHtmlSection(
 }
 
 function renderTextSection(
-  section: ServiceEmailSection,
+  section:
+    ServiceEmailSection,
 ): string {
   if (
     section.rows.length === 0
@@ -241,7 +255,9 @@ function renderTextSection(
 
   return [
     section.label,
-    "-".repeat(section.label.length),
+    "-".repeat(
+      section.label.length,
+    ),
 
     ...section.rows.map(
       (row) =>
@@ -267,8 +283,7 @@ function renderActions(
   return `
     <div
       style="
-        margin-top:24px;
-        display:block;
+        margin-top:20px;
       "
     >
       ${actions
@@ -278,13 +293,15 @@ function renderActions(
               href="${escapeHtml(action.url)}"
               style="
                 display:inline-block;
+                min-width:130px;
                 margin:0 8px 8px 0;
                 padding:11px 16px;
                 border:1px solid ${
                   action.primary
                     ? "#145da0"
-                    : "#cfc3b2"
+                    : "#b8c7d8"
                 };
+                border-radius:8px;
                 background:${
                   action.primary
                     ? "#1565c0"
@@ -293,11 +310,12 @@ function renderActions(
                 color:${
                   action.primary
                     ? "#ffffff"
-                    : "#50361e"
+                    : "#24415f"
                 };
                 text-decoration:none;
                 font-size:13px;
                 font-weight:700;
+                text-align:center;
               "
             >
               ${escapeHtml(action.label)}
@@ -309,8 +327,119 @@ function renderActions(
   `;
 }
 
+
+function formatStatus(
+  value: string,
+): string {
+  const normalized =
+    value
+      .trim()
+      .replace(
+        /[_-]+/g,
+        " ",
+      );
+
+  return normalized
+    .replace(
+      /\b\w/g,
+      (character) =>
+        character.toUpperCase(),
+    );
+}
+
+function getRecipientSubjectLabel(
+  recipient:
+    ServiceRequestEmailInput[
+      "recipient"
+    ],
+): string {
+  if (
+    recipient === "shop"
+  ) {
+    return "Shop";
+  }
+
+  if (
+    recipient === "admin"
+  ) {
+    return "Admin";
+  }
+
+  return "User";
+}
+
+function getRecipientCopy(
+  input:
+    ServiceRequestEmailInput,
+): {
+  eyebrow: string;
+  title: string;
+  introduction: string;
+  subject: string;
+} {
+  const status =
+    formatStatus(
+      input.status,
+    );
+
+  const subject =
+    `${getRecipientSubjectLabel(
+      input.recipient,
+    )} - ${input.serviceName} - ${status} - ${input.requestNumber}`;
+
+  if (
+    input.recipient ===
+    "shop"
+  ) {
+    return {
+      eyebrow:
+        "GYAN SHOP REQUEST",
+
+      title:
+        `${input.serviceName} request`,
+
+      introduction:
+        `A ${input.serviceName} request has been assigned to ${input.shopName}. Please review it and contact the customer.`,
+
+      subject,
+    };
+  }
+
+  if (
+    input.recipient ===
+    "admin"
+  ) {
+    return {
+      eyebrow:
+        "GYAN ADMIN",
+
+      title:
+        `${input.serviceName} request`,
+
+      introduction:
+        `A ${input.serviceName} request was submitted and routed to ${input.shopName}.`,
+
+      subject,
+    };
+  }
+
+  return {
+    eyebrow:
+      "GYAN SERVICE",
+
+    title:
+      `${input.serviceName} request`,
+
+    introduction:
+      `Your ${input.serviceName} request has been received. A GYAN team member will review it and contact you by phone, WhatsApp, or email.`,
+
+    subject,
+  };
+}
+
 export function renderServiceRequestEmail(
-  input: ServiceRequestEmailInput,
+  input:
+    ServiceRequestEmailInput,
 ): RenderedServiceEmail {
   const expirationDate =
     calculateExpirationDate(
@@ -323,30 +452,33 @@ export function renderServiceRequestEmail(
       expirationDate,
     );
 
+  const copy =
+    getRecipientCopy(
+      input,
+    );
+
   const customerRows =
     renderCustomerRows(
       input.customer,
     );
 
-  const recipientTitle =
-    input.recipient === "shop"
-      ? `New ${input.serviceName} request`
-      : `${input.serviceName} request received`;
-
-  const introduction =
-    input.recipient === "shop"
-      ? `A new ${input.serviceName} request was submitted to ${input.shopName}.`
-      : `Your ${input.serviceName} request has been sent to ${input.shopName}.`;
-
   const filesHtml =
     input.files.length > 0
       ? `
-        <section style="margin-top:22px;">
+        <section
+          style="
+            margin-top:18px;
+            padding:16px;
+            background:#ffffff;
+            border:1px solid #dbe5ef;
+            border-radius:10px;
+          "
+        >
           <h2
             style="
               margin:0 0 8px;
-              color:#332317;
-              font-size:17px;
+              color:#17365d;
+              font-size:16px;
             "
           >
             Files
@@ -356,6 +488,7 @@ export function renderServiceRequestEmail(
             style="
               margin:0;
               padding-left:20px;
+              color:#17365d;
             "
           >
             ${input.files
@@ -365,7 +498,7 @@ export function renderServiceRequestEmail(
                     ${escapeHtml(file.name)}
                     <span
                       style="
-                        color:#7d6a54;
+                        color:#6b7b8d;
                         font-size:12px;
                       "
                     >
@@ -401,8 +534,13 @@ export function renderServiceRequestEmail(
         ].join("\n")
       : "";
 
+  const showCustomerSection =
+    input.recipient !==
+      "customer" &&
+    customerRows.length > 0;
+
   const customerHtml =
-    customerRows.length > 0
+    showCustomerSection
       ? renderHtmlSection({
           label: "Customer",
           rows: customerRows,
@@ -410,7 +548,7 @@ export function renderServiceRequestEmail(
       : "";
 
   const customerText =
-    customerRows.length > 0
+    showCustomerSection
       ? renderTextSection({
           label: "Customer",
           rows: customerRows,
@@ -430,11 +568,6 @@ export function renderServiceRequestEmail(
         renderTextSection,
       )
       .join("");
-
-  const subject =
-    input.recipient === "shop"
-      ? `${recipientTitle} ${input.requestNumber}`
-      : `${input.serviceName} request confirmation ${input.requestNumber}`;
 
   const html = `
     <!doctype html>
@@ -457,7 +590,8 @@ export function renderServiceRequestEmail(
             style="
               overflow:hidden;
               background:#fffdf8;
-              border:1px solid #e3d7c6;
+              border:1px solid #dbe5ef;
+              border-radius:14px;
               font-family:Arial,sans-serif;
               line-height:1.5;
             "
@@ -465,34 +599,34 @@ export function renderServiceRequestEmail(
             <header
               style="
                 padding:20px 22px;
-                background:#f4eadc;
-                border-bottom:1px solid #e3d5c2;
+                background:#17365d;
+                border-bottom:1px solid #102943;
               "
             >
               <div
                 style="
-                  color:#7d6a54;
+                  color:#dcecff;
                   font-size:11px;
                   font-weight:700;
                   letter-spacing:1.2px;
                 "
               >
-                GYAN SERVICE
+                ${escapeHtml(copy.eyebrow)}
               </div>
 
               <h1
                 style="
                   margin:5px 0 2px;
-                  color:#332317;
+                  color:#ffffff;
                   font-size:24px;
                 "
               >
-                ${escapeHtml(recipientTitle)}
+                ${escapeHtml(copy.title)}
               </h1>
 
               <div
                 style="
-                  color:#7d6a54;
+                  color:#dcecff;
                   font-size:13px;
                 "
               >
@@ -510,23 +644,24 @@ export function renderServiceRequestEmail(
               <p
                 style="
                   margin-top:0;
-                  color:#50361e;
+                  color:#24415f;
                 "
               >
-                ${escapeHtml(introduction)}
+                ${escapeHtml(copy.introduction)}
               </p>
 
               <div
                 style="
                   margin:18px 0;
                   padding:14px;
-                  background:#ffffff;
-                  border:1px solid #e8dfd1;
+                  background:#edf6ff;
+                  border:1px solid #b9d2ea;
+                  border-radius:10px;
                 "
               >
                 <div
                   style="
-                    color:#7d6a54;
+                    color:#5d7188;
                     font-size:11px;
                     font-weight:700;
                     letter-spacing:0.7px;
@@ -538,28 +673,45 @@ export function renderServiceRequestEmail(
                 <div
                   style="
                     margin-top:4px;
-                    color:#332317;
+                    color:#17365d;
                     font-family:Consolas,monospace;
-                    font-size:18px;
+                    font-size:17px;
                     font-weight:700;
                     overflow-wrap:anywhere;
                   "
                 >
                   ${escapeHtml(input.requestNumber)}
                 </div>
+
+                <div
+                  style="
+                    margin-top:7px;
+                    color:#5d7188;
+                    font-size:12px;
+                    font-weight:700;
+                  "
+                >
+                  Status:
+                  ${escapeHtml(
+                    formatStatus(
+                      input.status,
+                    ),
+                  )}
+                </div>
               </div>
 
+              ${renderActions(input.actions)}
               ${customerHtml}
               ${filesHtml}
               ${configuredSectionsHtml}
-              ${renderActions(input.actions)}
 
               <div
                 style="
-                  margin-top:24px;
+                  margin-top:20px;
                   padding:14px;
                   background:#fff4d8;
                   border:1px solid #d6a346;
+                  border-radius:10px;
                   color:#714a12;
                   font-size:13px;
                   line-height:1.5;
@@ -583,7 +735,7 @@ export function renderServiceRequestEmail(
                 padding:14px 22px;
                 background:#f6f1e8;
                 border-top:1px solid #e3d7c6;
-                color:#7d6a54;
+                color:#6b7b8d;
                 font-size:11px;
                 text-align:center;
               "
@@ -596,15 +748,29 @@ export function renderServiceRequestEmail(
     </html>
   `;
 
+  const actionText =
+    input.actions?.length
+      ? [
+          "Actions",
+          "-------",
+          ...input.actions.map(
+            (action) =>
+              `${action.label}: ${action.url}`,
+          ),
+          "",
+        ].join("\n")
+      : "";
+
   const text = [
-    "GYAN SERVICE",
-    recipientTitle,
+    copy.eyebrow,
+    copy.title,
     "",
-    introduction,
+    copy.introduction,
     "",
     `Request number: ${input.requestNumber}`,
     `Shop: ${input.shopName} (${input.shopCode})`,
     "",
+    actionText,
     customerText,
     filesText,
     configuredSectionsText,
@@ -614,7 +780,9 @@ export function renderServiceRequestEmail(
   ].join("\n");
 
   return {
-    subject,
+    subject:
+      copy.subject,
+
     html,
     text,
   };

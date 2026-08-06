@@ -145,6 +145,9 @@ interface DynamicServiceRequestPanelProps {
     | string
     | null;
 
+  initialFieldValues?:
+    Record<string, string>;
+
   onClose: () => void;
 }
 
@@ -290,7 +293,7 @@ function isCustomerNameField(
   );
 }
 
-function isContactField(
+function isPhoneLikeField(
   field: DynamicServiceField,
 ): boolean {
   const identity =
@@ -299,10 +302,150 @@ function isContactField(
   return (
     field.key === "phone_number" ||
     field.key === "whatsapp_number" ||
-    field.key === "email_address" ||
+    field.key === "phone_or_whatsapp" ||
     identity.includes("phone") ||
-    identity.includes("whatsapp") ||
+    identity.includes("whatsapp")
+  );
+}
+
+function isEmailField(
+  field: DynamicServiceField,
+): boolean {
+  const identity =
+    normalizeFieldIdentity(field);
+
+  return (
+    field.key === "email_address" ||
     identity.includes("email")
+  );
+}
+
+function sanitizePhoneValue(
+  value: string,
+): string {
+  let result =
+    value.replace(
+      /[^0-9+()\-\s]/g,
+      "",
+    );
+
+  const plusIndex =
+    result.indexOf("+");
+
+  if (plusIndex > 0) {
+    result =
+      result.replace(
+        /\+/g,
+        "",
+      );
+  } else if (
+    plusIndex === 0
+  ) {
+    result =
+      "+" +
+      result
+        .slice(1)
+        .replace(
+          /\+/g,
+          "",
+        );
+  }
+
+  return result;
+}
+
+function getDialCode(
+  countryCode:
+    | string
+    | undefined,
+): string {
+  switch (
+    countryCode
+      ?.trim()
+      .toUpperCase()
+  ) {
+    case "US":
+    case "CA":
+      return "+1 ";
+
+    case "IN":
+      return "+91 ";
+
+    case "GB":
+      return "+44 ";
+
+    case "AU":
+      return "+61 ";
+
+    default:
+      return "";
+  }
+}
+
+function getRequiredLocalDigits(
+  countryCode:
+    | string
+    | undefined,
+): number {
+  switch (
+    countryCode
+      ?.trim()
+      .toUpperCase()
+  ) {
+    case "US":
+    case "CA":
+    case "IN":
+      return 10;
+
+    default:
+      return 7;
+  }
+}
+
+function hasValidPhoneForCountry(
+  value: string,
+  countryCode:
+    | string
+    | undefined,
+): boolean {
+  const digits =
+    value.replace(
+      /\D/g,
+      "",
+    );
+
+  const dialCodeDigits =
+    getDialCode(
+      countryCode,
+    ).replace(
+      /\D/g,
+      "",
+    );
+
+  const localDigits =
+    dialCodeDigits &&
+    digits.startsWith(
+      dialCodeDigits,
+    )
+      ? digits.slice(
+          dialCodeDigits.length,
+        )
+      : digits;
+
+  return (
+    localDigits.length >=
+    getRequiredLocalDigits(
+      countryCode,
+    )
+  );
+}
+
+function isContactField(
+  field: DynamicServiceField,
+): boolean {
+  return (
+    isPhoneLikeField(field) ||
+    isEmailField(field)
   );
 }
 
@@ -481,6 +624,53 @@ function applyLocationDefaults(
     }
   }
 
+  const dialCode =
+    getDialCode(
+      hint.countryCode,
+    );
+
+  if (dialCode) {
+    for (
+      const fieldId
+      of Object.keys(next)
+    ) {
+      const normalizedFieldId =
+        fieldId
+          .toLowerCase()
+          .replace(
+            /[^a-z0-9]+/g,
+            "_",
+          );
+
+      const isPhoneFieldId =
+        normalizedFieldId.includes(
+          "phone",
+        ) ||
+        normalizedFieldId.includes(
+          "whatsapp",
+        );
+
+      if (!isPhoneFieldId) {
+        continue;
+      }
+
+      const currentValue =
+        next[fieldId];
+
+      if (
+        typeof currentValue ===
+          "string" &&
+        currentValue.trim() ===
+          ""
+      ) {
+        next[fieldId] =
+          dialCode;
+
+        changed = true;
+      }
+    }
+  }
+
   return changed
     ? next
     : current;
@@ -491,6 +681,7 @@ export default function DynamicServiceRequestPanel({
   serviceCode,
   serviceName,
   shopName,
+  initialFieldValues,
   onClose,
 }: DynamicServiceRequestPanelProps) {
   const [
@@ -614,15 +805,25 @@ export default function DynamicServiceRequestPanel({
             const field
             of section.fields
           ) {
-            initialValues[
+            const fieldId =
               createFieldId(
                 section.key,
                 field.key,
-              )
-            ] =
-              createInitialValue(
-                field,
               );
+
+            const configuredValue =
+              initialFieldValues
+                ?.[field.key];
+
+            initialValues[
+              fieldId
+            ] =
+              configuredValue !==
+                undefined
+                ? configuredValue
+                : createInitialValue(
+                    field,
+                  );
           }
         }
 
@@ -669,6 +870,7 @@ export default function DynamicServiceRequestPanel({
       controller.abort();
     };
   }, [
+    initialFieldValues,
     shopCode,
     serviceCode,
   ]);
@@ -869,10 +1071,9 @@ export default function DynamicServiceRequestPanel({
               ),
           );
 
-        const contactField =
+        const phoneOrWhatsAppField =
           phoneField ??
-          whatsAppField ??
-          emailField;
+          whatsAppField;
 
         return new Set(
           [
@@ -882,7 +1083,9 @@ export default function DynamicServiceRequestPanel({
               ?.fieldId,
             nameField
               ?.fieldId,
-            contactField
+            phoneOrWhatsAppField
+              ?.fieldId,
+            emailField
               ?.fieldId,
           ].filter(
             (
@@ -1263,29 +1466,75 @@ export default function DynamicServiceRequestPanel({
           "Describe what you need or attach at least one file.";
       }
 
-      const hasContact =
-        contactItems.some(
-          ({ fieldId }) => {
-            const value =
-              values[fieldId];
-
-            return (
-              typeof value ===
-                "string" &&
-              value.trim()
-                .length > 0
-            );
-          },
+      const phoneItem =
+        contactItems.find(
+          ({ field }) =>
+            isPhoneLikeField(
+              field,
+            ),
         );
 
-      if (!hasContact) {
+      const emailItem =
+        contactItems.find(
+          ({ field }) =>
+            isEmailField(
+              field,
+            ),
+        );
+
+      const phoneValue =
+        phoneItem
+          ? values[
+              phoneItem.fieldId
+            ]
+          : "";
+
+      const emailValue =
+        emailItem
+          ? values[
+              emailItem.fieldId
+            ]
+          : "";
+
+      const hasValidPhone =
+        typeof phoneValue ===
+          "string" &&
+        hasValidPhoneForCountry(
+          phoneValue,
+          locationHint
+            ?.countryCode,
+        );
+
+      const hasValidEmail =
+        typeof emailValue ===
+          "string" &&
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+          emailValue.trim(),
+        );
+
+      if (
+        !hasValidPhone &&
+        !hasValidEmail
+      ) {
         const targetId =
-          contactItems[0]
+          phoneItem
+            ?.fieldId ??
+          emailItem
             ?.fieldId ??
           "__online_contact";
 
         nextErrors[targetId] =
-          "Provide a phone number, WhatsApp number, or email address.";
+          locationHint
+            ?.countryCode ===
+              "US" ||
+          locationHint
+            ?.countryCode ===
+              "CA" ||
+          locationHint
+            ?.countryCode ===
+              "IN"
+            ? "Enter a 10-digit phone / WhatsApp number or a valid email address."
+            : "Enter a valid phone / WhatsApp number or email address.";
       }
     }
 
@@ -2017,10 +2266,19 @@ export default function DynamicServiceRequestPanel({
         ? field.type
         : "text";
 
+    const compactLayoutClass =
+      isOnlineRequest &&
+      !showOptionalDetails
+        ? isPhoneLikeField(field) ||
+          isEmailField(field)
+          ? " dynamic-service-request__field--compact-half"
+          : " dynamic-service-request__field--compact-full"
+        : "";
+
     return (
       <label
         key={fieldId}
-        className="dynamic-service-request__field"
+        className={`dynamic-service-request__field${compactLayoutClass}`}
       >
         {commonLabel}
 
@@ -2037,6 +2295,27 @@ export default function DynamicServiceRequestPanel({
           }
           placeholder={
             field.placeholder
+          }
+          inputMode={
+            isPhoneLikeField(
+              field,
+            )
+              ? "tel"
+              : field.type ===
+                  "email"
+                ? "email"
+                : undefined
+          }
+          autoComplete={
+            isPhoneLikeField(
+              field,
+            )
+              ? "tel"
+              : isEmailField(
+                    field,
+                  )
+                ? "email"
+                : undefined
           }
           min={
             field.type ===
@@ -2065,7 +2344,13 @@ export default function DynamicServiceRequestPanel({
           ) =>
             updateValue(
               fieldId,
-              event.target.value,
+              isPhoneLikeField(
+                field,
+              )
+                ? sanitizePhoneValue(
+                    event.target.value,
+                  )
+                : event.target.value,
             )
           }
         />
@@ -2191,18 +2476,34 @@ export default function DynamicServiceRequestPanel({
     }
 
     if (
-      isContactField(
+      isPhoneLikeField(
         field,
       )
     ) {
       return {
         ...field,
         label:
-          "Phone or WhatsApp number",
+          "Phone / WhatsApp",
         placeholder:
-          "Phone or WhatsApp number",
+          "Phone / WhatsApp",
         type: "tel",
-        required: true,
+        required: false,
+      };
+    }
+
+    if (
+      isEmailField(
+        field,
+      )
+    ) {
+      return {
+        ...field,
+        label:
+          "Email",
+        placeholder:
+          "Email",
+        type: "email",
+        required: false,
       };
     }
 
@@ -2323,29 +2624,19 @@ export default function DynamicServiceRequestPanel({
         aria-labelledby="dynamic-service-request-title"
       >
         <header className="dynamic-service-request__header">
-          
           <div>
-  {isOnlineRequest &&
-  !showOptionalDetails ? (
-    <h2 id="dynamic-service-request-title">
-      {shownServiceName}
-    </h2>
-  ) : (
-    <>
-      <span>
-        GYAN SERVICE
-      </span>
+            <span>
+              GYAN SERVICE
+            </span>
 
-      <h2 id="dynamic-service-request-title">
-        {shownServiceName}
-      </h2>
+            <h2 id="dynamic-service-request-title">
+              {shownServiceName}
+            </h2>
 
-      <small>
-        {shownShopName}
-      </small>
-    </>
-  )}
-</div>
+            <small>
+              {shownShopName}
+            </small>
+          </div>
 
           <button
             type="button"

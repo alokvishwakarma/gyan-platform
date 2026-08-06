@@ -28,7 +28,8 @@ interface SharedRequestResponse {
   access?: {
     recipient:
       | "shop"
-      | "customer";
+      | "customer"
+      | "admin";
 
     readOnly: boolean;
   };
@@ -255,6 +256,120 @@ function formatAmount(
   );
 }
 
+
+function normalizeAnswerKey(
+  value: string,
+): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(
+      /[^a-z0-9]+/g,
+      "_",
+    );
+}
+
+function findAnswerValue(
+  answers:
+    Record<string, unknown>,
+
+  candidateKeys:
+    string[],
+): string | null {
+  const normalizedCandidates =
+    new Set(
+      candidateKeys.map(
+        normalizeAnswerKey,
+      ),
+    );
+
+  for (
+    const [
+      key,
+      value,
+    ]
+    of Object.entries(
+      answers,
+    )
+  ) {
+    const leafKey =
+      key
+        .split(".")
+        .at(-1) ??
+      key;
+
+    const normalizedKey =
+      normalizeAnswerKey(
+        leafKey,
+      );
+
+    if (
+      !normalizedCandidates.has(
+        normalizedKey,
+      )
+    ) {
+      continue;
+    }
+
+    const formatted =
+      formatAnswerValue(
+        value,
+      );
+
+    if (
+      formatted !==
+        "Not provided" &&
+      formatted !==
+        "None selected"
+    ) {
+      return formatted;
+    }
+  }
+
+  return null;
+}
+
+function isCustomerAnswerKey(
+  key: string,
+): boolean {
+  const leafKey =
+    key
+      .split(".")
+      .at(-1) ??
+    key;
+
+  const normalized =
+    normalizeAnswerKey(
+      leafKey,
+    );
+
+  return [
+    "customer_name",
+    "name",
+    "phone",
+    "phone_number",
+    "mobile",
+    "mobile_number",
+    "whatsapp",
+    "whatsapp_number",
+    "phone_or_whatsapp",
+    "email",
+    "email_address",
+    "preferred_contact",
+  ].includes(
+    normalized,
+  );
+}
+
+function createAppUrl(
+  pathname: string,
+): string {
+  return new URL(
+    pathname,
+    window.location.origin,
+  ).toString();
+}
+
 export default function SharedRequestScreen({
   requestNumber,
   token,
@@ -372,6 +487,9 @@ export default function SharedRequestScreen({
             ([key]) =>
               !key.startsWith(
                 "customer.",
+              ) &&
+              !isCustomerAnswerKey(
+                key,
               ),
           )
           .map(
@@ -404,6 +522,106 @@ export default function SharedRequestScreen({
         )
       : null;
 
+  const answers =
+    request?.answers ?? {};
+
+  const customerName =
+    request?.customer.name ??
+    findAnswerValue(
+      answers,
+      [
+        "customer_name",
+        "name",
+      ],
+    );
+
+  const customerPhone =
+    request?.customer.phone ??
+    findAnswerValue(
+      answers,
+      [
+        "phone",
+        "phone_number",
+        "mobile",
+        "mobile_number",
+        "phone_or_whatsapp",
+      ],
+    );
+
+  const customerWhatsApp =
+    request?.customer.whatsApp ??
+    findAnswerValue(
+      answers,
+      [
+        "whatsapp",
+        "whatsapp_number",
+        "phone_or_whatsapp",
+      ],
+    );
+
+  const customerEmail =
+    request?.customer.email ??
+    findAnswerValue(
+      answers,
+      [
+        "email",
+        "email_address",
+      ],
+    );
+
+  const preferredContact =
+    findAnswerValue(
+      answers,
+      [
+        "preferred_contact",
+      ],
+    );
+
+  const recipient =
+    data?.access
+      ?.recipient ??
+    "customer";
+
+  const roleLabel =
+    recipient === "shop"
+      ? "Shop View"
+      : recipient === "admin"
+        ? "Admin View"
+        : "Customer View";
+
+  const allRequestsUrl =
+    recipient === "shop"
+      ? createAppUrl(
+          "/shop-admin",
+        )
+      : recipient === "admin"
+        ? createAppUrl(
+            "/admin",
+          )
+        : createAppUrl(
+            "/",
+          );
+
+  const primaryActionLabel =
+    recipient === "shop"
+      ? "Shop Requests"
+      : recipient === "admin"
+        ? "Admin Dashboard"
+        : "My Requests";
+
+  const updateActionUrl =
+    recipient === "shop"
+      ? createAppUrl(
+          "/shop-admin",
+        )
+      : recipient === "admin"
+        ? createAppUrl(
+            `/admin/requests/${encodeURIComponent(
+              requestNumber,
+            )}`,
+          )
+        : null;
+
 
 
   return (
@@ -428,11 +646,7 @@ export default function SharedRequestScreen({
         </div>
 
         <span className="shared-request-screen__recipient">
-          {data?.access
-            ?.recipient ===
-          "shop"
-            ? "Shop View"
-            : "Customer View"}
+{roleLabel}
         </span>
       </header>
 
@@ -499,6 +713,53 @@ export default function SharedRequestScreen({
                   )}
                 </div>
               </section>
+
+              <nav
+                className="shared-request-screen__actions"
+                aria-label="Request actions"
+              >
+                <a
+                  className="shared-request-screen__action shared-request-screen__action--primary"
+                  href={allRequestsUrl}
+                >
+                  {primaryActionLabel}
+                </a>
+
+                {updateActionUrl && (
+                  <a
+                    className="shared-request-screen__action"
+                    href={updateActionUrl}
+                  >
+                    {recipient === "admin"
+                      ? "Update Request"
+                      : "Update Status"}
+                  </a>
+                )}
+
+                {recipient === "shop" && (
+                  <a
+                    className="shared-request-screen__action"
+                    href={createAppUrl(
+                      `/?shop=${encodeURIComponent(
+                        request.shop.code,
+                      )}`,
+                    )}
+                  >
+                    Update Shop
+                  </a>
+                )}
+
+                {recipient === "admin" && (
+                  <a
+                    className="shared-request-screen__action"
+                    href={createAppUrl(
+                      "/admin/shops",
+                    )}
+                  >
+                    Add Shop
+                  </a>
+                )}
+              </nav>
 
               <section className="shared-request-screen__grid">
                 <article className="shared-request-card">
@@ -571,9 +832,7 @@ export default function SharedRequestScreen({
                       </dt>
 
                       <dd>
-                        {request
-                          .customer
-                          .name ??
+                        {customerName ??
                           "Not provided"}
                       </dd>
                     </div>
@@ -584,9 +843,7 @@ export default function SharedRequestScreen({
                       </dt>
 
                       <dd>
-                        {request
-                          .customer
-                          .phone ??
+                        {customerPhone ??
                           "Not provided"}
                       </dd>
                     </div>
@@ -597,9 +854,7 @@ export default function SharedRequestScreen({
                       </dt>
 
                       <dd>
-                        {request
-                          .customer
-                          .email ??
+                        {customerEmail ??
                           "Not provided"}
                       </dd>
                     </div>
@@ -610,9 +865,18 @@ export default function SharedRequestScreen({
                       </dt>
 
                       <dd>
-                        {request
-                          .customer
-                          .whatsApp ??
+                        {customerWhatsApp ??
+                          "Not provided"}
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt>
+                        Preferred contact
+                      </dt>
+
+                      <dd>
+                        {preferredContact ??
                           "Not provided"}
                       </dd>
                     </div>
@@ -766,10 +1030,9 @@ file.downloadUrl ? (
                 <p>
                   This is a secure,
                   read-only request
-                  view. Do not forward
-                  this link to someone
-                  who should not access
-                  the request.
+                  view for the intended
+                  recipient. Do not
+                  forward this link.
                 </p>
 
                 <button

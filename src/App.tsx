@@ -331,6 +331,9 @@ export default function App() {
     shopName:
       | string
       | null;
+
+    initialFieldValues?:
+      Record<string, string>;
   } | null>(null);
 
   const [
@@ -1453,6 +1456,7 @@ if (sharedRequest) {
         dynamicServiceRequest
           .shopCode && (
           <DynamicServiceRequestPanel
+            key={`${dynamicServiceRequest.shopCode}:${dynamicServiceRequest.code}`}
             shopCode={
               dynamicServiceRequest
                 .shopCode
@@ -1468,6 +1472,10 @@ if (sharedRequest) {
             serviceName={
               dynamicServiceRequest
                 .name
+            }
+            initialFieldValues={
+              dynamicServiceRequest
+                .initialFieldValues
             }
             onClose={() =>
               setDynamicServiceRequest(
@@ -1490,27 +1498,7 @@ if (sharedRequest) {
               null,
             )
           }
-          onOpenShop={(
-            shopCode,
-          ) => {
-            setNearbyServiceRequest(
-              null,
-            );
 
-            setActiveShopCode(
-              shopCode,
-            );
-
-            window.history.pushState(
-              {
-                shopCode,
-              },
-              "",
-              `/?shop=${encodeURIComponent(
-                shopCode,
-              )}`,
-            );
-          }}
         />
       )}
 

@@ -853,3 +853,61 @@
   font-size: 1.05rem;
   font-weight: 700;
 }
+
+/* Compact online contact row: Phone / WhatsApp + Email */
+.dynamic-service-request__section--compact
+  .dynamic-service-request__fields {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr);
+  gap: 7px;
+}
+
+.dynamic-service-request__field--compact-full {
+  grid-column: 1 / -1;
+}
+
+.dynamic-service-request__field--compact-half {
+  grid-column: auto;
+  min-width: 0;
+}
+
+.dynamic-service-request__field--compact-half
+  input {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 340px) {
+  .dynamic-service-request__section--compact
+    .dynamic-service-request__fields {
+    gap: 5px;
+  }
+
+  .dynamic-service-request__field--compact-half
+    input {
+    padding-inline: 6px;
+    font-size: 0.7rem;
+  }
+}
+
+/* Compact form: default every field to full width */
+.dynamic-service-request__section--compact
+  .dynamic-service-request__field {
+  grid-column: 1 / -1;
+}
+
+/* Only phone/email share one row */
+.dynamic-service-request__section--compact
+  .dynamic-service-request__field--compact-half {
+  grid-column: auto;
+}
+
+/* Request textarea must always use full width */
+.dynamic-service-request__section--compact
+  textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}

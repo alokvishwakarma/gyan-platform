@@ -4386,7 +4386,7 @@ function renderHtmlRows(rows) {
             style="
               width:38%;
               padding:7px 8px 7px 0;
-              color:#7d6a54;
+              color:#6b7b8d;
               vertical-align:top;
             "
           >
@@ -4396,7 +4396,7 @@ function renderHtmlRows(rows) {
           <td
             style="
               padding:7px 0;
-              color:#332317;
+              color:#17365d;
               font-weight:600;
               vertical-align:top;
               overflow-wrap:anywhere;
@@ -4414,12 +4414,20 @@ function renderHtmlSection(section) {
     return "";
   }
   return `
-    <section style="margin-top:22px;">
+    <section
+      style="
+        margin-top:18px;
+        padding:16px;
+        background:#ffffff;
+        border:1px solid #dbe5ef;
+        border-radius:10px;
+      "
+    >
       <h2
         style="
           margin:0 0 8px;
-          color:#332317;
-          font-size:17px;
+          color:#17365d;
+          font-size:16px;
         "
       >
         ${escapeHtml2(section.label)}
@@ -4444,7 +4452,9 @@ function renderTextSection(section) {
   }
   return [
     section.label,
-    "-".repeat(section.label.length),
+    "-".repeat(
+      section.label.length
+    ),
     ...section.rows.map(
       (row) => `${row.label}: ${row.value}`
     ),
@@ -4459,8 +4469,7 @@ function renderActions(actions) {
   return `
     <div
       style="
-        margin-top:24px;
-        display:block;
+        margin-top:20px;
       "
     >
       ${actions.map(
@@ -4469,14 +4478,17 @@ function renderActions(actions) {
               href="${escapeHtml2(action.url)}"
               style="
                 display:inline-block;
+                min-width:130px;
                 margin:0 8px 8px 0;
                 padding:11px 16px;
-                border:1px solid ${action.primary ? "#145da0" : "#cfc3b2"};
+                border:1px solid ${action.primary ? "#145da0" : "#b8c7d8"};
+                border-radius:8px;
                 background:${action.primary ? "#1565c0" : "#ffffff"};
-                color:${action.primary ? "#ffffff" : "#50361e"};
+                color:${action.primary ? "#ffffff" : "#24415f"};
                 text-decoration:none;
                 font-size:13px;
                 font-weight:700;
+                text-align:center;
               "
             >
               ${escapeHtml2(action.label)}
@@ -4487,6 +4499,58 @@ function renderActions(actions) {
   `;
 }
 __name(renderActions, "renderActions");
+function formatStatus(value) {
+  const normalized = value.trim().replace(
+    /[_-]+/g,
+    " "
+  );
+  return normalized.replace(
+    /\b\w/g,
+    (character) => character.toUpperCase()
+  );
+}
+__name(formatStatus, "formatStatus");
+function getRecipientSubjectLabel(recipient) {
+  if (recipient === "shop") {
+    return "Shop";
+  }
+  if (recipient === "admin") {
+    return "Admin";
+  }
+  return "User";
+}
+__name(getRecipientSubjectLabel, "getRecipientSubjectLabel");
+function getRecipientCopy(input) {
+  const status = formatStatus(
+    input.status
+  );
+  const subject = `${getRecipientSubjectLabel(
+    input.recipient
+  )} - ${input.serviceName} - ${status} - ${input.requestNumber}`;
+  if (input.recipient === "shop") {
+    return {
+      eyebrow: "GYAN SHOP REQUEST",
+      title: `${input.serviceName} request`,
+      introduction: `A ${input.serviceName} request has been assigned to ${input.shopName}. Please review it and contact the customer.`,
+      subject
+    };
+  }
+  if (input.recipient === "admin") {
+    return {
+      eyebrow: "GYAN ADMIN",
+      title: `${input.serviceName} request`,
+      introduction: `A ${input.serviceName} request was submitted and routed to ${input.shopName}.`,
+      subject
+    };
+  }
+  return {
+    eyebrow: "GYAN SERVICE",
+    title: `${input.serviceName} request`,
+    introduction: `Your ${input.serviceName} request has been received. A GYAN team member will review it and contact you by phone, WhatsApp, or email.`,
+    subject
+  };
+}
+__name(getRecipientCopy, "getRecipientCopy");
 function renderServiceRequestEmail(input) {
   const expirationDate = calculateExpirationDate(
     input.createdAt,
@@ -4495,18 +4559,27 @@ function renderServiceRequestEmail(input) {
   const expirationText = formatDate(
     expirationDate
   );
+  const copy = getRecipientCopy(
+    input
+  );
   const customerRows = renderCustomerRows(
     input.customer
   );
-  const recipientTitle = input.recipient === "shop" ? `New ${input.serviceName} request` : `${input.serviceName} request received`;
-  const introduction = input.recipient === "shop" ? `A new ${input.serviceName} request was submitted to ${input.shopName}.` : `Your ${input.serviceName} request has been sent to ${input.shopName}.`;
   const filesHtml = input.files.length > 0 ? `
-        <section style="margin-top:22px;">
+        <section
+          style="
+            margin-top:18px;
+            padding:16px;
+            background:#ffffff;
+            border:1px solid #dbe5ef;
+            border-radius:10px;
+          "
+        >
           <h2
             style="
               margin:0 0 8px;
-              color:#332317;
-              font-size:17px;
+              color:#17365d;
+              font-size:16px;
             "
           >
             Files
@@ -4516,6 +4589,7 @@ function renderServiceRequestEmail(input) {
             style="
               margin:0;
               padding-left:20px;
+              color:#17365d;
             "
           >
             ${input.files.map(
@@ -4524,7 +4598,7 @@ function renderServiceRequestEmail(input) {
                     ${escapeHtml2(file.name)}
                     <span
                       style="
-                        color:#7d6a54;
+                        color:#6b7b8d;
                         font-size:12px;
                       "
                     >
@@ -4550,11 +4624,12 @@ function renderServiceRequestEmail(input) {
     ),
     ""
   ].join("\n") : "";
-  const customerHtml = customerRows.length > 0 ? renderHtmlSection({
+  const showCustomerSection = input.recipient !== "customer" && customerRows.length > 0;
+  const customerHtml = showCustomerSection ? renderHtmlSection({
     label: "Customer",
     rows: customerRows
   }) : "";
-  const customerText = customerRows.length > 0 ? renderTextSection({
+  const customerText = showCustomerSection ? renderTextSection({
     label: "Customer",
     rows: customerRows
   }) : "";
@@ -4564,7 +4639,6 @@ function renderServiceRequestEmail(input) {
   const configuredSectionsText = input.sections.map(
     renderTextSection
   ).join("");
-  const subject = input.recipient === "shop" ? `${recipientTitle} ${input.requestNumber}` : `${input.serviceName} request confirmation ${input.requestNumber}`;
   const html = `
     <!doctype html>
     <html>
@@ -4586,7 +4660,8 @@ function renderServiceRequestEmail(input) {
             style="
               overflow:hidden;
               background:#fffdf8;
-              border:1px solid #e3d7c6;
+              border:1px solid #dbe5ef;
+              border-radius:14px;
               font-family:Arial,sans-serif;
               line-height:1.5;
             "
@@ -4594,34 +4669,34 @@ function renderServiceRequestEmail(input) {
             <header
               style="
                 padding:20px 22px;
-                background:#f4eadc;
-                border-bottom:1px solid #e3d5c2;
+                background:#17365d;
+                border-bottom:1px solid #102943;
               "
             >
               <div
                 style="
-                  color:#7d6a54;
+                  color:#dcecff;
                   font-size:11px;
                   font-weight:700;
                   letter-spacing:1.2px;
                 "
               >
-                GYAN SERVICE
+                ${escapeHtml2(copy.eyebrow)}
               </div>
 
               <h1
                 style="
                   margin:5px 0 2px;
-                  color:#332317;
+                  color:#ffffff;
                   font-size:24px;
                 "
               >
-                ${escapeHtml2(recipientTitle)}
+                ${escapeHtml2(copy.title)}
               </h1>
 
               <div
                 style="
-                  color:#7d6a54;
+                  color:#dcecff;
                   font-size:13px;
                 "
               >
@@ -4639,23 +4714,24 @@ function renderServiceRequestEmail(input) {
               <p
                 style="
                   margin-top:0;
-                  color:#50361e;
+                  color:#24415f;
                 "
               >
-                ${escapeHtml2(introduction)}
+                ${escapeHtml2(copy.introduction)}
               </p>
 
               <div
                 style="
                   margin:18px 0;
                   padding:14px;
-                  background:#ffffff;
-                  border:1px solid #e8dfd1;
+                  background:#edf6ff;
+                  border:1px solid #b9d2ea;
+                  border-radius:10px;
                 "
               >
                 <div
                   style="
-                    color:#7d6a54;
+                    color:#5d7188;
                     font-size:11px;
                     font-weight:700;
                     letter-spacing:0.7px;
@@ -4667,28 +4743,45 @@ function renderServiceRequestEmail(input) {
                 <div
                   style="
                     margin-top:4px;
-                    color:#332317;
+                    color:#17365d;
                     font-family:Consolas,monospace;
-                    font-size:18px;
+                    font-size:17px;
                     font-weight:700;
                     overflow-wrap:anywhere;
                   "
                 >
                   ${escapeHtml2(input.requestNumber)}
                 </div>
+
+                <div
+                  style="
+                    margin-top:7px;
+                    color:#5d7188;
+                    font-size:12px;
+                    font-weight:700;
+                  "
+                >
+                  Status:
+                  ${escapeHtml2(
+    formatStatus(
+      input.status
+    )
+  )}
+                </div>
               </div>
 
+              ${renderActions(input.actions)}
               ${customerHtml}
               ${filesHtml}
               ${configuredSectionsHtml}
-              ${renderActions(input.actions)}
 
               <div
                 style="
-                  margin-top:24px;
+                  margin-top:20px;
                   padding:14px;
                   background:#fff4d8;
                   border:1px solid #d6a346;
+                  border-radius:10px;
                   color:#714a12;
                   font-size:13px;
                   line-height:1.5;
@@ -4712,7 +4805,7 @@ function renderServiceRequestEmail(input) {
                 padding:14px 22px;
                 background:#f6f1e8;
                 border-top:1px solid #e3d7c6;
-                color:#7d6a54;
+                color:#6b7b8d;
                 font-size:11px;
                 text-align:center;
               "
@@ -4724,15 +4817,24 @@ function renderServiceRequestEmail(input) {
       </body>
     </html>
   `;
+  const actionText = input.actions?.length ? [
+    "Actions",
+    "-------",
+    ...input.actions.map(
+      (action) => `${action.label}: ${action.url}`
+    ),
+    ""
+  ].join("\n") : "";
   const text = [
-    "GYAN SERVICE",
-    recipientTitle,
+    copy.eyebrow,
+    copy.title,
     "",
-    introduction,
+    copy.introduction,
     "",
     `Request number: ${input.requestNumber}`,
     `Shop: ${input.shopName} (${input.shopCode})`,
     "",
+    actionText,
     customerText,
     filesText,
     configuredSectionsText,
@@ -4741,7 +4843,7 @@ function renderServiceRequestEmail(input) {
     "After that date, they are automatically deleted and cannot be recovered through GYAN."
   ].join("\n");
   return {
-    subject,
+    subject: copy.subject,
     html,
     text
   };
@@ -4749,6 +4851,7 @@ function renderServiceRequestEmail(input) {
 __name(renderServiceRequestEmail, "renderServiceRequestEmail");
 
 // worker/serviceRequestNotifications.ts
+var DEFAULT_ADMIN_EMAIL = "admin@gyan.cc";
 function normalizeEmail2(value) {
   const normalized = value?.trim().toLowerCase();
   if (!normalized || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
@@ -4759,7 +4862,27 @@ function normalizeEmail2(value) {
   return normalized;
 }
 __name(normalizeEmail2, "normalizeEmail");
-async function sendEmail(env, recipient, input) {
+function getSections(input, recipientType) {
+  if (recipientType === "shop") {
+    return input.sections.shop;
+  }
+  if (recipientType === "admin") {
+    return input.sections.admin ?? input.sections.shop;
+  }
+  return input.sections.customer;
+}
+__name(getSections, "getSections");
+function getActions(input, recipientType) {
+  if (recipientType === "shop") {
+    return input.shopActions;
+  }
+  if (recipientType === "admin") {
+    return input.adminActions;
+  }
+  return input.customerActions;
+}
+__name(getActions, "getActions");
+async function sendEmail(env, recipient, input, adminEmail) {
   if (!env.RESEND_API_KEY) {
     return {
       recipient: recipient.type,
@@ -4773,15 +4896,23 @@ async function sendEmail(env, recipient, input) {
     recipient: recipient.type,
     serviceName: input.service.name,
     requestNumber: input.request.requestNumber,
+    status: input.request.status,
     shopName: input.shop.name,
     shopCode: input.shop.code,
     customer: input.customer,
     files: input.files,
-    sections: recipient.type === "shop" ? input.sections.shop : input.sections.customer,
-    actions: recipient.type === "shop" ? input.shopActions : input.customerActions,
+    sections: getSections(
+      input,
+      recipient.type
+    ),
+    actions: getActions(
+      input,
+      recipient.type
+    ),
     createdAt: input.request.createdAt,
     retentionDays: input.retentionDays
   });
+  const shouldAuditCopyAdmin = adminEmail && recipient.type !== "admin" && recipient.email !== adminEmail;
   try {
     const response = await fetch(
       "https://api.resend.com/emails",
@@ -4796,6 +4927,7 @@ async function sendEmail(env, recipient, input) {
           to: [
             recipient.email
           ],
+          bcc: shouldAuditCopyAdmin ? [adminEmail] : void 0,
           subject: rendered.subject,
           html: rendered.html,
           text: rendered.text
@@ -4838,6 +4970,9 @@ async function sendServiceRequestNotifications(env, input) {
   const customerEmail = normalizeEmail2(
     input.customer.email
   );
+  const adminEmail = normalizeEmail2(
+    input.adminEmail
+  ) ?? DEFAULT_ADMIN_EMAIL;
   if (shopEmail) {
     deliveries.push(
       sendEmail(
@@ -4846,7 +4981,8 @@ async function sendServiceRequestNotifications(env, input) {
           email: shopEmail,
           type: "shop"
         },
-        input
+        input,
+        adminEmail
       )
     );
   }
@@ -4858,12 +4994,23 @@ async function sendServiceRequestNotifications(env, input) {
           email: customerEmail,
           type: "customer"
         },
-        input
+        input,
+        adminEmail
       )
     );
   }
-  if (deliveries.length === 0) {
-    return [];
+  if (adminEmail) {
+    deliveries.push(
+      sendEmail(
+        env,
+        {
+          email: adminEmail,
+          type: "admin"
+        },
+        input,
+        adminEmail
+      )
+    );
   }
   return Promise.all(
     deliveries
@@ -5184,9 +5331,34 @@ function isCustomerNameField(field) {
   return field.field_key === "customer_name" || identity.includes("customer name") || identity === "name";
 }
 __name(isCustomerNameField, "isCustomerNameField");
+function isEmailField(field) {
+  const identity = normalizeFieldIdentity(
+    field
+  );
+  return field.field_key === "email" || field.field_key === "email_address" || identity.includes(
+    "email"
+  );
+}
+__name(isEmailField, "isEmailField");
+function isPhoneLikeField(field) {
+  const identity = normalizeFieldIdentity(
+    field
+  );
+  return field.field_key === "phone" || field.field_key === "phone_number" || field.field_key === "phone_or_whatsapp" || field.field_key === "whatsapp" || field.field_key === "whatsapp_number" || field.field_key === "mobile" || field.field_key === "mobile_number" || identity.includes(
+    "phone"
+  ) || identity.includes(
+    "whatsapp"
+  ) || identity.includes(
+    "mobile"
+  );
+}
+__name(isPhoneLikeField, "isPhoneLikeField");
 function isContactField(field) {
-  const identity = normalizeFieldIdentity(field);
-  return field.field_key === "phone_number" || field.field_key === "whatsapp_number" || field.field_key === "email_address" || identity.includes("phone") || identity.includes("whatsapp") || identity.includes("email");
+  return isPhoneLikeField(
+    field
+  ) || isEmailField(
+    field
+  );
 }
 __name(isContactField, "isContactField");
 function isRequestDescriptionField(field) {
@@ -5227,6 +5399,32 @@ function normalizeAnswerValue(value) {
   return null;
 }
 __name(normalizeAnswerValue, "normalizeAnswerValue");
+function getStringAnswerByFieldKeys(answers, fieldKeys) {
+  const wanted = new Set(
+    fieldKeys.map(
+      (key) => key.trim().toLowerCase()
+    )
+  );
+  for (const [
+    answerKey,
+    value
+  ] of Object.entries(
+    answers
+  )) {
+    if (typeof value !== "string") {
+      continue;
+    }
+    const fieldKey = answerKey.split(".").at(-1)?.trim().toLowerCase();
+    if (fieldKey && wanted.has(fieldKey)) {
+      const normalized = value.trim();
+      if (normalized) {
+        return normalized;
+      }
+    }
+  }
+  return null;
+}
+__name(getStringAnswerByFieldKeys, "getStringAnswerByFieldKeys");
 function generateRequestNumber(shopCode, serviceCode) {
   const now = /* @__PURE__ */ new Date();
   const datePart = [
@@ -6056,7 +6254,16 @@ async function handleCreateServiceRequest(request, env, shopCode, serviceCode) {
     }
     answers[answerKey] = value;
   }
-  const isOnlineRequest = service.workflow_type?.trim().toLowerCase() === "online" || service.workflow_type?.trim().toLowerCase() === "remote" || service.category?.trim().toLowerCase() === "online" || service.category?.trim().toLowerCase() === "digital";
+  const isOnlineRequest = service.workflow_type?.trim().toLowerCase() === "online" || service.workflow_type?.trim().toLowerCase() === "remote" || service.category?.trim().toLowerCase() === "online" || service.category?.trim().toLowerCase() === "digital" || service.category?.trim().toLowerCase() === "nearby";
+  const compactEmailEntry = isOnlineRequest ? [...fieldMap.entries()].find(
+    ([, field]) => isEmailField(
+      field
+    )
+  ) : void 0;
+  const compactEmailValue = compactEmailEntry ? answers[compactEmailEntry[0]] : void 0;
+  const compactHasValidEmail = typeof compactEmailValue === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+    compactEmailValue.trim()
+  );
   for (const [
     answerKey,
     field
@@ -6065,7 +6272,10 @@ async function handleCreateServiceRequest(request, env, shopCode, serviceCode) {
       ...field,
       requirement: isCustomerNameField(
         field
-      ) ? "mandatory" : "optional"
+      ) ? "mandatory" : "optional",
+      validation_json: compactHasValidEmail && isPhoneLikeField(
+        field
+      ) ? null : field.validation_json
     } : field;
     const validationError = validateAnswer(
       validationField,
@@ -6162,16 +6372,47 @@ async function handleCreateServiceRequest(request, env, shopCode, serviceCode) {
         400
       );
     }
-    const hasContact = contactEntries.some(
-      ([answerKey]) => {
+    const hasValidEmail = contactEntries.some(
+      ([
+        answerKey,
+        field
+      ]) => {
+        if (!isEmailField(
+          field
+        )) {
+          return false;
+        }
         const value = answers[answerKey];
-        return typeof value === "string" && value.trim().length > 0;
+        return typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+          value.trim()
+        );
       }
     );
-    if (!hasContact) {
+    const hasUsablePhone = contactEntries.some(
+      ([
+        answerKey,
+        field
+      ]) => {
+        if (!isPhoneLikeField(
+          field
+        )) {
+          return false;
+        }
+        const value = answers[answerKey];
+        if (typeof value !== "string") {
+          return false;
+        }
+        const digits = value.replace(
+          /\D/g,
+          ""
+        );
+        return digits.length >= 7;
+      }
+    );
+    if (!hasValidEmail && !hasUsablePhone) {
       return createJsonResponse9(
         {
-          error: "Provide a phone number, WhatsApp number, or email address."
+          error: "Provide a valid phone / WhatsApp number or email address."
         },
         400
       );
@@ -6238,11 +6479,50 @@ async function handleCreateServiceRequest(request, env, shopCode, serviceCode) {
       storageCapacity.status
     );
   }
-  const customerName = typeof answers["customer.customer_name"] === "string" ? answers["customer.customer_name"] : null;
-  const phoneNumber = typeof answers["customer.phone_number"] === "string" ? answers["customer.phone_number"] : null;
-  const emailAddress = typeof answers["customer.email_address"] === "string" ? answers["customer.email_address"] : null;
-  const whatsAppNumber = typeof answers["customer.whatsapp_number"] === "string" ? answers["customer.whatsapp_number"] : null;
-  const whatsAppConsent = answers["customer.whatsapp_consent"] === true;
+  const customerName = getStringAnswerByFieldKeys(
+    answers,
+    [
+      "customer_name",
+      "name"
+    ]
+  );
+  const phoneOrWhatsApp = getStringAnswerByFieldKeys(
+    answers,
+    [
+      "phone_or_whatsapp"
+    ]
+  );
+  const phoneNumber = getStringAnswerByFieldKeys(
+    answers,
+    [
+      "phone_number",
+      "phone",
+      "mobile_number",
+      "mobile"
+    ]
+  ) ?? phoneOrWhatsApp;
+  const emailAddress = getStringAnswerByFieldKeys(
+    answers,
+    [
+      "email_address",
+      "email"
+    ]
+  );
+  const whatsAppNumber = getStringAnswerByFieldKeys(
+    answers,
+    [
+      "whatsapp_number",
+      "whatsapp"
+    ]
+  ) ?? phoneOrWhatsApp;
+  const whatsAppConsent = Object.entries(
+    answers
+  ).some(
+    ([
+      answerKey,
+      value
+    ]) => answerKey.split(".").at(-1) === "whatsapp_consent" && value === true
+  );
   const requestNumber = generateRequestNumber(
     shopCode,
     serviceCode
@@ -6461,6 +6741,7 @@ async function handleCreateServiceRequest(request, env, shopCode, serviceCode) {
         },
         request: {
           requestNumber: createdRequest.request_number,
+          status: createdRequest.status,
           createdAt: createdRequest.created_at
         },
         customer: {
@@ -6476,6 +6757,20 @@ async function handleCreateServiceRequest(request, env, shopCode, serviceCode) {
         },
         shopActions: notificationActions.shop,
         customerActions: notificationActions.customer,
+        adminActions: [
+          {
+            label: "All Requests",
+            url: `${publicOrigin}/admin`
+          },
+          {
+            label: "All Shops",
+            url: `${publicOrigin}/admin/shops`
+          },
+          {
+            label: "Manage Services",
+            url: `${publicOrigin}/admin/services`
+          }
+        ],
         retentionDays: FILE_RETENTION_DAYS
       }
     );
@@ -7307,77 +7602,40 @@ __name(handleSharedRequestsRoute, "handleSharedRequestsRoute");
 
 // worker/nearbyShops.ts
 var SERVICE_SEARCH_TERMS = {
-  NEARBY_PRINT: [
-    "print",
-    "printing",
-    "photocopy",
-    "scan"
-  ],
-  NEARBY_GROCERY: [
-    "grocery",
-    "vegetable",
-    "daily needs"
-  ],
-  NEARBY_MEDICAL: [
-    "medical",
-    "medicine",
-    "pharmacy",
-    "clinic"
-  ],
-  NEARBY_TUITION: [
-    "tuition",
-    "tutor",
-    "coaching",
-    "education"
-  ],
-  NEARBY_FOOD: [
-    "food",
-    "restaurant",
-    "tiffin",
-    "snack"
-  ],
-  NEARBY_BANKING: [
-    "banking",
-    "payment",
-    "insurance",
-    "financial"
-  ],
-  NEARBY_COURIER: [
-    "courier",
-    "parcel",
-    "postal",
-    "delivery"
-  ],
-  NEARBY_COMPUTER: [
-    "computer",
-    "internet",
-    "accessories",
-    "technology"
-  ],
-  NEARBY_REPAIR: [
-    "repair",
-    "mobile",
-    "appliance",
-    "computer repair"
-  ]
+  NEARBY_PRINT: ["print", "printing", "photocopy", "scan"],
+  NEARBY_GROCERY: ["grocery", "vegetable", "daily needs"],
+  NEARBY_MEDICAL: ["medical", "medicine", "pharmacy", "clinic"],
+  NEARBY_TUITION: ["tuition", "tutor", "coaching", "education"],
+  NEARBY_FOOD: ["food", "restaurant", "tiffin", "snack"],
+  NEARBY_BANKING: ["banking", "payment", "insurance", "financial"],
+  NEARBY_COURIER: ["courier", "parcel", "postal", "delivery"],
+  NEARBY_COMPUTER: ["computer", "internet", "accessories", "technology"],
+  NEARBY_REPAIR: ["repair", "mobile", "appliance", "computer repair"]
+};
+var GEOAPIFY_CATEGORIES = {
+  NEARBY_PRINT: ["commercial", "service"],
+  NEARBY_GROCERY: ["commercial.food_and_drink", "commercial.supermarket", "commercial.marketplace"],
+  NEARBY_MEDICAL: ["healthcare", "healthcare.pharmacy"],
+  NEARBY_TUITION: ["education", "office.educational_institution"],
+  NEARBY_FOOD: ["catering", "commercial.food_and_drink"],
+  NEARBY_BANKING: ["service.financial", "service.financial.bank", "office.insurance"],
+  NEARBY_COURIER: ["service.post", "office.logistics"],
+  NEARBY_COMPUTER: ["commercial.elektronics", "office.it"],
+  NEARBY_REPAIR: ["service.vehicle.repair", "service"],
+  NEARBY_MAPS: ["commercial", "service", "office"]
 };
 function jsonResponse(data, status = 200) {
-  return new Response(
-    JSON.stringify(data),
-    {
-      status,
-      headers: {
-        "content-type": "application/json; charset=utf-8",
-        "cache-control": "no-store"
-      }
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store"
     }
-  );
+  });
 }
 __name(jsonResponse, "jsonResponse");
 function getOptionalNumber(rawValue) {
-  if (!rawValue) {
-    return null;
-  }
+  if (!rawValue) return null;
   const value = Number(rawValue);
   return Number.isFinite(value) ? value : null;
 }
@@ -7385,186 +7643,177 @@ __name(getOptionalNumber, "getOptionalNumber");
 function calculateDistanceKm(firstLatitude, firstLongitude, secondLatitude, secondLongitude) {
   const earthRadiusKm = 6371;
   const toRadians = /* @__PURE__ */ __name((value) => value * Math.PI / 180, "toRadians");
-  const latitudeDifference = toRadians(
-    secondLatitude - firstLatitude
-  );
-  const longitudeDifference = toRadians(
-    secondLongitude - firstLongitude
-  );
-  const firstLatitudeRadians = toRadians(
-    firstLatitude
-  );
-  const secondLatitudeRadians = toRadians(
-    secondLatitude
-  );
-  const haversine = Math.sin(
-    latitudeDifference / 2
-  ) ** 2 + Math.cos(
-    firstLatitudeRadians
-  ) * Math.cos(
-    secondLatitudeRadians
-  ) * Math.sin(
-    longitudeDifference / 2
-  ) ** 2;
-  return 2 * earthRadiusKm * Math.asin(
-    Math.sqrt(haversine)
-  );
+  const latitudeDifference = toRadians(secondLatitude - firstLatitude);
+  const longitudeDifference = toRadians(secondLongitude - firstLongitude);
+  const firstLatitudeRadians = toRadians(firstLatitude);
+  const secondLatitudeRadians = toRadians(secondLatitude);
+  const haversine = Math.sin(latitudeDifference / 2) ** 2 + Math.cos(firstLatitudeRadians) * Math.cos(secondLatitudeRadians) * Math.sin(longitudeDifference / 2) ** 2;
+  return 2 * earthRadiusKm * Math.asin(Math.sqrt(haversine));
 }
 __name(calculateDistanceKm, "calculateDistanceKm");
 function normalizeText(value) {
   return value?.trim().toLowerCase() ?? "";
 }
 __name(normalizeText, "normalizeText");
+async function geocodeLocation(apiKey, city, state) {
+  const searchText = [city, state].filter(Boolean).join(", ");
+  if (!searchText) return null;
+  const parameters = new URLSearchParams({
+    text: searchText,
+    format: "json",
+    limit: "1",
+    apiKey
+  });
+  const response = await fetch(
+    `https://api.geoapify.com/v1/geocode/search?${parameters.toString()}`
+  );
+  if (!response.ok) return null;
+  const result = await response.json();
+  const first = result.results?.[0];
+  if (typeof first?.lat !== "number" || typeof first?.lon !== "number") {
+    return null;
+  }
+  return { latitude: first.lat, longitude: first.lon };
+}
+__name(geocodeLocation, "geocodeLocation");
+async function loadGeoapifyPlaces(apiKey, serviceCode, latitude, longitude) {
+  const categories = GEOAPIFY_CATEGORIES[serviceCode] ?? ["commercial", "service"];
+  const parameters = new URLSearchParams({
+    categories: categories.join(","),
+    filter: `circle:${longitude},${latitude},10000`,
+    bias: `proximity:${longitude},${latitude}`,
+    limit: "10",
+    conditions: "named",
+    lang: "en",
+    apiKey
+  });
+  const response = await fetch(
+    `https://api.geoapify.com/v2/places?${parameters.toString()}`
+  );
+  if (!response.ok) return [];
+  const result = await response.json();
+  return (result.features ?? []).map((feature, index) => {
+    const properties = feature.properties;
+    const name = properties?.name?.trim();
+    if (!name) return null;
+    const placeLatitude = typeof properties.lat === "number" ? properties.lat : null;
+    const placeLongitude = typeof properties.lon === "number" ? properties.lon : null;
+    const distanceKm = typeof properties.distance === "number" ? properties.distance / 1e3 : placeLatitude != null && placeLongitude != null ? calculateDistanceKm(latitude, longitude, placeLatitude, placeLongitude) : null;
+    return {
+      id: properties.place_id ?? `geoapify-${index}`,
+      name,
+      address: properties.formatted ?? [
+        properties.address_line1,
+        properties.address_line2,
+        properties.city,
+        properties.state,
+        properties.postcode
+      ].filter(Boolean).join(", "),
+      latitude: placeLatitude,
+      longitude: placeLongitude,
+      distanceKm,
+      phoneNumber: properties.contact?.phone ?? null,
+      website: properties.website ?? null,
+      categories: properties.categories ?? []
+    };
+  }).filter((place) => place !== null);
+}
+__name(loadGeoapifyPlaces, "loadGeoapifyPlaces");
 async function handleNearbyShopsRoute(request, env, url) {
   if (request.method !== "GET" || url.pathname !== "/api/nearby-shops") {
     return null;
   }
   const serviceCode = url.searchParams.get("serviceCode")?.trim().toUpperCase() ?? "";
-  const latitude = getOptionalNumber(
-    url.searchParams.get("lat")
-  );
-  const longitude = getOptionalNumber(
-    url.searchParams.get("lng")
-  );
-  const requestedCity = normalizeText(
-    url.searchParams.get("city")
-  );
-  const requestedState = normalizeText(
-    url.searchParams.get("state")
-  );
+  let latitude = getOptionalNumber(url.searchParams.get("lat"));
+  let longitude = getOptionalNumber(url.searchParams.get("lng"));
+  const requestedCity = normalizeText(url.searchParams.get("city"));
+  const requestedState = normalizeText(url.searchParams.get("state"));
   const terms = SERVICE_SEARCH_TERMS[serviceCode] ?? [];
-  const result = await env.gyan_registry.prepare(
-    `
-          SELECT
-            sh.code,
-            sh.name,
-            sh.address_line,
-            sh.city,
-            sh.state,
-            sh.postal_code,
-
-            sh.phone_number,
-            sh.whatsapp_number,
-
-            sh.latitude,
-            sh.longitude,
-
-            COUNT(
-              CASE
-                WHEN ss.enabled = 1
-                  THEN 1
-              END
-            ) AS matching_service_count,
-
-            GROUP_CONCAT(
-              CASE
-                WHEN ss.enabled = 1
-                  THEN COALESCE(
-                    ss.display_name,
-                    s.name
-                  )
-              END,
-              '||'
-            ) AS service_names
-
-          FROM shops sh
-
-          LEFT JOIN shop_services ss
-            ON ss.shop_code =
-              sh.code
-
-          LEFT JOIN services s
-            ON s.id =
-              ss.service_id
-
-          WHERE sh.status =
-            'active'
-
-          GROUP BY
-            sh.code,
-            sh.name,
-            sh.address_line,
-            sh.city,
-            sh.state,
-            sh.postal_code,
-            sh.phone_number,
-            sh.whatsapp_number,
-            sh.latitude,
-            sh.longitude
-        `
-  ).all();
-  const shops = result.results.map(
-    (row) => {
-      const serviceNames = row.service_names?.split("||").map(
-        (name) => name.trim()
-      ).filter(Boolean) ?? [];
-      const matchingServiceCount = terms.length === 0 ? Number(
-        row.matching_service_count
-      ) : serviceNames.filter(
-        (serviceName) => {
-          const normalizedName = serviceName.toLowerCase();
-          return terms.some(
-            (term) => normalizedName.includes(
-              term
-            )
-          );
-        }
-      ).length;
-      const distanceKm = latitude != null && longitude != null && row.latitude != null && row.longitude != null ? calculateDistanceKm(
-        latitude,
-        longitude,
-        Number(row.latitude),
-        Number(row.longitude)
-      ) : null;
-      return {
-        code: row.code,
-        name: row.name,
-        address: [
-          row.address_line,
-          row.city,
-          row.state,
-          row.postal_code
-        ].filter(Boolean).join(", "),
-        phoneNumber: row.phone_number,
-        whatsappNumber: row.whatsapp_number,
-        latitude: row.latitude == null ? null : Number(
-          row.latitude
-        ),
-        longitude: row.longitude == null ? null : Number(
-          row.longitude
-        ),
-        distanceKm,
-        matchingServiceCount,
-        serviceNames
-      };
+  const result = await env.gyan_registry.prepare(`
+      SELECT
+        sh.code,
+        sh.name,
+        sh.address_line,
+        sh.city,
+        sh.state,
+        sh.postal_code,
+        sh.phone_number,
+        sh.whatsapp_number,
+        sh.latitude,
+        sh.longitude,
+        COUNT(CASE WHEN ss.enabled = 1 THEN 1 END) AS matching_service_count,
+        GROUP_CONCAT(
+          CASE WHEN ss.enabled = 1 THEN COALESCE(ss.display_name, s.name) END,
+          '||'
+        ) AS service_names
+      FROM shops sh
+      LEFT JOIN shop_services ss ON ss.shop_code = sh.code
+      LEFT JOIN services s ON s.id = ss.service_id
+      WHERE sh.status = 'active'
+      GROUP BY
+        sh.code, sh.name, sh.address_line, sh.city, sh.state, sh.postal_code,
+        sh.phone_number, sh.whatsapp_number, sh.latitude, sh.longitude
+    `).all();
+  const shops = result.results.map((row) => {
+    const serviceNames = row.service_names?.split("||").map((name) => name.trim()).filter(Boolean) ?? [];
+    const matchingServiceCount = terms.length === 0 ? Number(row.matching_service_count) : serviceNames.filter((serviceName) => {
+      const normalizedName = serviceName.toLowerCase();
+      return terms.some((term) => normalizedName.includes(term));
+    }).length;
+    const distanceKm = latitude != null && longitude != null && row.latitude != null && row.longitude != null ? calculateDistanceKm(
+      latitude,
+      longitude,
+      Number(row.latitude),
+      Number(row.longitude)
+    ) : null;
+    return {
+      code: row.code,
+      name: row.name,
+      address: [row.address_line, row.city, row.state, row.postal_code].filter(Boolean).join(", "),
+      phoneNumber: row.phone_number,
+      whatsappNumber: row.whatsapp_number,
+      latitude: row.latitude == null ? null : Number(row.latitude),
+      longitude: row.longitude == null ? null : Number(row.longitude),
+      distanceKm,
+      matchingServiceCount,
+      serviceNames
+    };
+  });
+  shops.sort((first, second) => {
+    const firstCityMatch = requestedCity && normalizeText(first.address).includes(requestedCity) ? 1 : 0;
+    const secondCityMatch = requestedCity && normalizeText(second.address).includes(requestedCity) ? 1 : 0;
+    if (first.matchingServiceCount !== second.matchingServiceCount) {
+      return second.matchingServiceCount - first.matchingServiceCount;
     }
-  );
-  shops.sort(
-    (first, second) => {
-      const firstCityMatch = requestedCity && normalizeText(
-        first.address
-      ).includes(
-        requestedCity
-      ) ? 1 : 0;
-      const secondCityMatch = requestedCity && normalizeText(
-        second.address
-      ).includes(
-        requestedCity
-      ) ? 1 : 0;
-      if (first.matchingServiceCount !== second.matchingServiceCount) {
-        return second.matchingServiceCount - first.matchingServiceCount;
-      }
-      if (firstCityMatch !== secondCityMatch) {
-        return secondCityMatch - firstCityMatch;
-      }
-      if (first.distanceKm != null && second.distanceKm != null) {
-        return first.distanceKm - second.distanceKm;
-      }
-      return first.name.localeCompare(
-        second.name
-      );
+    if (firstCityMatch !== secondCityMatch) {
+      return secondCityMatch - firstCityMatch;
     }
-  );
+    if (first.distanceKm != null && second.distanceKm != null) {
+      return first.distanceKm - second.distanceKm;
+    }
+    return first.name.localeCompare(second.name);
+  });
+  let externalPlaces = [];
+  const geoapifyApiKey = env.GEOAPIFY_API_KEY?.trim();
+  if (geoapifyApiKey && (latitude == null || longitude == null)) {
+    const geocoded = await geocodeLocation(
+      geoapifyApiKey,
+      requestedCity,
+      requestedState
+    );
+    if (geocoded) {
+      latitude = geocoded.latitude;
+      longitude = geocoded.longitude;
+    }
+  }
+  if (geoapifyApiKey && latitude != null && longitude != null) {
+    externalPlaces = await loadGeoapifyPlaces(
+      geoapifyApiKey,
+      serviceCode,
+      latitude,
+      longitude
+    );
+  }
   return jsonResponse({
     serviceCode,
     location: {
@@ -7573,8 +7822,10 @@ async function handleNearbyShopsRoute(request, env, url) {
       city: requestedCity || null,
       state: requestedState || null
     },
-    registeredShops: shops.slice(0, 20),
-    externalSearchAvailable: false
+    registeredShops: shops.filter((shop) => shop.matchingServiceCount > 0 || terms.length === 0).slice(0, 20),
+    externalPlaces,
+    externalSearchAvailable: Boolean(geoapifyApiKey),
+    attribution: externalPlaces.length > 0 ? "Places data \xA9 OpenStreetMap contributors, served by Geoapify" : null
   });
 }
 __name(handleNearbyShopsRoute, "handleNearbyShopsRoute");
@@ -8197,7 +8448,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-psbbRy/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-nJ9fLm/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -8229,7 +8480,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-psbbRy/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-nJ9fLm/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

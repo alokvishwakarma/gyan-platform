@@ -5,11 +5,15 @@ import {
   type ServiceEmailSection,
 } from "./emailTemplates/serviceRequestEmail";
 
+type NotificationRecipientType =
+  | "shop"
+  | "customer"
+  | "admin";
+
 interface NotificationRecipient {
   email: string;
   type:
-    | "shop"
-    | "customer";
+    NotificationRecipientType;
 }
 
 export interface ServiceRequestNotificationInput {
@@ -26,6 +30,7 @@ export interface ServiceRequestNotificationInput {
 
   request: {
     requestNumber: string;
+    status: string;
     createdAt: string;
   };
 
@@ -37,15 +42,20 @@ export interface ServiceRequestNotificationInput {
   };
 
   files: ServiceEmailFile[];
+
   sections: {
-  shop: ServiceEmailSection[];
-  customer: ServiceEmailSection[];
-};
+    shop: ServiceEmailSection[];
+    customer: ServiceEmailSection[];
+    admin?: ServiceEmailSection[];
+  };
 
   shopActions?: ServiceEmailAction[];
   customerActions?: ServiceEmailAction[];
+  adminActions?: ServiceEmailAction[];
 
   retentionDays: number;
+
+  adminEmail?: string | null;
 }
 
 interface ResendResult {
@@ -59,8 +69,7 @@ interface ResendResult {
 
 export interface NotificationDeliveryResult {
   recipient:
-    | "shop"
-    | "customer";
+    NotificationRecipientType;
 
   attempted: boolean;
   sent: boolean;
@@ -69,6 +78,9 @@ export interface NotificationDeliveryResult {
   emailId?: string;
   reason?: string;
 }
+
+const DEFAULT_ADMIN_EMAIL =
+  "admin@gyan.cc";
 
 function normalizeEmail(
   value:
@@ -93,12 +105,65 @@ function normalizeEmail(
   return normalized;
 }
 
+function getSections(
+  input:
+    ServiceRequestNotificationInput,
+
+  recipientType:
+    NotificationRecipientType,
+): ServiceEmailSection[] {
+  if (
+    recipientType ===
+    "shop"
+  ) {
+    return input.sections.shop;
+  }
+
+  if (
+    recipientType ===
+    "admin"
+  ) {
+    return (
+      input.sections.admin ??
+      input.sections.shop
+    );
+  }
+
+  return input.sections.customer;
+}
+
+function getActions(
+  input:
+    ServiceRequestNotificationInput,
+
+  recipientType:
+    NotificationRecipientType,
+): ServiceEmailAction[] | undefined {
+  if (
+    recipientType ===
+    "shop"
+  ) {
+    return input.shopActions;
+  }
+
+  if (
+    recipientType ===
+    "admin"
+  ) {
+    return input.adminActions;
+  }
+
+  return input.customerActions;
+}
+
 async function sendEmail(
   env: Env,
   recipient:
     NotificationRecipient,
   input:
     ServiceRequestNotificationInput,
+  adminEmail:
+    string | null,
 ): Promise<NotificationDeliveryResult> {
   if (!env.RESEND_API_KEY) {
     return {
@@ -127,6 +192,9 @@ async function sendEmail(
       requestNumber:
         input.request.requestNumber,
 
+      status:
+        input.request.status,
+
       shopName:
         input.shop.name,
 
@@ -139,16 +207,17 @@ async function sendEmail(
       files:
         input.files,
 
-        sections:
-  recipient.type === "shop"
-    ? input.sections.shop
-    : input.sections.customer,
+      sections:
+        getSections(
+          input,
+          recipient.type,
+        ),
 
       actions:
-        recipient.type ===
-        "shop"
-          ? input.shopActions
-          : input.customerActions,
+        getActions(
+          input,
+          recipient.type,
+        ),
 
       createdAt:
         input.request.createdAt,
@@ -156,6 +225,13 @@ async function sendEmail(
       retentionDays:
         input.retentionDays,
     });
+
+  const shouldAuditCopyAdmin =
+    adminEmail &&
+    recipient.type !==
+      "admin" &&
+    recipient.email !==
+      adminEmail;
 
   try {
     const response =
@@ -179,6 +255,11 @@ async function sendEmail(
             to: [
               recipient.email,
             ],
+
+            bcc:
+              shouldAuditCopyAdmin
+                ? [adminEmail]
+                : undefined,
 
             subject:
               rendered.subject,
@@ -267,6 +348,12 @@ export async function sendServiceRequestNotifications(
       input.customer.email,
     );
 
+  const adminEmail =
+    normalizeEmail(
+      input.adminEmail,
+    ) ??
+    DEFAULT_ADMIN_EMAIL;
+
   if (shopEmail) {
     deliveries.push(
       sendEmail(
@@ -279,6 +366,7 @@ export async function sendServiceRequestNotifications(
             "shop",
         },
         input,
+        adminEmail,
       ),
     );
   }
@@ -295,14 +383,26 @@ export async function sendServiceRequestNotifications(
             "customer",
         },
         input,
+        adminEmail,
       ),
     );
   }
 
-  if (
-    deliveries.length === 0
-  ) {
-    return [];
+  if (adminEmail) {
+    deliveries.push(
+      sendEmail(
+        env,
+        {
+          email:
+            adminEmail,
+
+          type:
+            "admin",
+        },
+        input,
+        adminEmail,
+      ),
+    );
   }
 
   return Promise.all(
