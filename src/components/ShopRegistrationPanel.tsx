@@ -5,12 +5,17 @@ import {
   useRef,
   useState,
 } from "react";
+
 import QRCode from "qrcode";
+
 import "./ShopRegistrationPanel.css";
 
 interface ShopRegistrationPanelProps {
   onClose: () => void;
-  onRegistered: (shop: RegisteredShop) => void;
+
+  onRegistered: (
+    shop: RegisteredShop,
+  ) => void;
 }
 
 export interface RegisteredShop {
@@ -26,185 +31,419 @@ export interface RegisteredShop {
   postalCode: string;
 }
 
+interface LocationHint {
+  countryCode?: string;
+  region?: string;
+  city?: string;
+  postalCode?: string;
+}
+
 const SHOP_CODE_CHARACTERS =
   "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-function generateShopCode(): string {
-  const randomValues = new Uint32Array(4);
+function generateShopCode():
+  string {
+  const randomValues =
+    new Uint32Array(4);
 
-  crypto.getRandomValues(randomValues);
+  crypto.getRandomValues(
+    randomValues,
+  );
 
-  return Array.from(randomValues)
+  return Array.from(
+    randomValues,
+  )
     .map(
       (value) =>
         SHOP_CODE_CHARACTERS[
-          value % SHOP_CODE_CHARACTERS.length
+          value %
+          SHOP_CODE_CHARACTERS.length
         ],
     )
     .join("");
 }
 
-function normalizePhone(value: string): string {
-  return value.replace(/[^\d+()\-\s]/g, "");
+function normalizePhone(
+  value: string,
+): string {
+  let result =
+    value.replace(
+      /[^0-9+()\-\s]/g,
+      "",
+    );
+
+  if (
+    result.startsWith("+")
+  ) {
+    result =
+      "+" +
+      result
+        .slice(1)
+        .replace(/\+/g, "");
+  } else {
+    result =
+      result.replace(
+        /\+/g,
+        "",
+      );
+  }
+
+  return result;
+}
+
+function getDialCode(
+  countryCode?: string,
+): string {
+  switch (
+    countryCode
+      ?.trim()
+      .toUpperCase()
+  ) {
+    case "US":
+    case "CA":
+      return "+1 ";
+
+    case "IN":
+      return "+91 ";
+
+    case "GB":
+      return "+44 ";
+
+    case "AU":
+      return "+61 ";
+
+    default:
+      return "";
+  }
 }
 
 export default function ShopRegistrationPanel({
   onClose,
   onRegistered,
 }: ShopRegistrationPanelProps) {
-  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+  const qrCanvasRef =
+    useRef<HTMLCanvasElement>(
+      null,
+    );
 
-  const [shopCode, setShopCode] = useState(
-    generateShopCode,
-  );
+  const [
+    shopCode,
+    setShopCode,
+  ] =
+    useState(
+      generateShopCode,
+    );
 
-  const [shopName, setShopName] = useState("");
-  const [ownerName, setOwnerName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-
-  const [whatsAppNumber, setWhatsAppNumber] =
+  const [
+    shopName,
+    setShopName,
+  ] =
     useState("");
 
-  const [sameWhatsAppNumber, setSameWhatsAppNumber] =
+  const [
+    ownerName,
+    setOwnerName,
+  ] =
+    useState("");
+
+  const [
+    phoneNumber,
+    setPhoneNumber,
+  ] =
+    useState("");
+
+  const [
+    whatsAppNumber,
+    setWhatsAppNumber,
+  ] =
+    useState("");
+
+  const [
+    sameWhatsAppNumber,
+    setSameWhatsAppNumber,
+  ] =
     useState(true);
 
-  const [emailAddress, setEmailAddress] =
+  const [
+    emailAddress,
+    setEmailAddress,
+  ] =
     useState("");
 
-  const [addressLine, setAddressLine] =
+  const [
+    addressLine,
+    setAddressLine,
+  ] =
     useState("");
 
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [postalCode, setPostalCode] =
+  const [
+    city,
+    setCity,
+  ] =
     useState("");
+
+  const [
+    state,
+    setState,
+  ] =
+    useState("");
+
+  const [
+    postalCode,
+    setPostalCode,
+  ] =
+    useState("");
+
+  const [
+    showMore,
+    setShowMore,
+  ] =
+    useState(false);
 
   const [
     registrationComplete,
     setRegistrationComplete,
-  ] = useState(false);
+  ] =
+    useState(false);
 
-  const [errorMessage, setErrorMessage] =
-    useState<string | null>(null);
-
-  const [isSaving, setIsSaving] = useState(false);
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] =
+    useState<
+      string | null
+    >(null);
 
   const effectiveWhatsAppNumber =
     sameWhatsAppNumber
       ? phoneNumber
       : whatsAppNumber;
 
-  const shopUrl = useMemo(
-    () =>
-      `https://gyan.cc/?shop=${encodeURIComponent(
-        shopCode,
-      )}`,
-    [shopCode],
-  );
-
-  const drawShopQr = useCallback(
-    async (destinationUrl: string) => {
-      const canvas = qrCanvasRef.current;
-
-      if (!canvas) {
-        return;
-      }
-
-      try {
-        await QRCode.toCanvas(
-          canvas,
-          destinationUrl,
-          {
-            width: 320,
-            margin: 4,
-            errorCorrectionLevel: "H",
-            color: {
-              dark: "#5a3218",
-              light: "#fffaf0",
-            },
-          },
-        );
-
-        const context = canvas.getContext("2d");
-
-        if (!context) {
-          throw new Error(
-            "Canvas is unavailable.",
-          );
-        }
-
-        const badgeSize = 58;
-
-        const badgeX =
-          canvas.width / 2 - badgeSize / 2;
-
-        const badgeY =
-          canvas.height / 2 - badgeSize / 2;
-
-        context.fillStyle = "#fffaf0";
-        context.strokeStyle = "#5a3218";
-        context.lineWidth = 3;
-
-        context.fillRect(
-          badgeX,
-          badgeY,
-          badgeSize,
-          badgeSize,
-        );
-
-        context.strokeRect(
-          badgeX,
-          badgeY,
-          badgeSize,
-          badgeSize,
-        );
-
-        context.fillStyle = "#111111";
-
-        context.font =
-          "700 19px Segoe UI, Arial, sans-serif";
-
-        context.textAlign = "center";
-        context.textBaseline = "middle";
-
-        context.fillText(
-          "GY",
-          canvas.width / 2,
-          canvas.height / 2 - 7,
-        );
-
-        context.fillStyle = "#5a3218";
-
-        context.font =
-          "700 10px Consolas, monospace";
-
-        context.fillText(
+  const shopUrl =
+    useMemo(
+      () =>
+        `https://gyan.cc/?shop=${encodeURIComponent(
           shopCode,
-          canvas.width / 2,
-          canvas.height / 2 + 14,
-        );
-      } catch (error) {
-        console.error(
-          "QR generation failed:",
-          error,
-        );
-
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : "Unable to generate the QR code.",
-        );
-      }
-    },
-    [shopCode],
-  );
+        )}`,
+      [shopCode],
+    );
 
   useEffect(() => {
-    if (!registrationComplete) {
+    const controller =
+      new AbortController();
+
+    async function loadHint():
+      Promise<void> {
+      try {
+        const response =
+          await fetch(
+            "/api/location-hint",
+            {
+              signal:
+                controller.signal,
+
+              headers: {
+                "x-gyan-timezone":
+                  Intl.DateTimeFormat()
+                    .resolvedOptions()
+                    .timeZone,
+
+                "x-gyan-languages":
+                  (
+                    navigator.languages ??
+                    [navigator.language]
+                  ).join(","),
+              },
+            },
+          );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const hint =
+          (await response.json()) as
+            LocationHint;
+
+        if (
+          controller.signal
+            .aborted
+        ) {
+          return;
+        }
+
+        setPhoneNumber(
+          (current) =>
+            current.trim()
+              ? current
+              : getDialCode(
+                  hint.countryCode,
+                ),
+        );
+
+        setCity(
+          (current) =>
+            current.trim()
+              ? current
+              : hint.city ?? "",
+        );
+
+        setState(
+          (current) =>
+            current.trim()
+              ? current
+              : hint.region ?? "",
+        );
+
+        setPostalCode(
+          (current) =>
+            current.trim()
+              ? current
+              : hint.postalCode ??
+                "",
+        );
+      } catch {
+        // Registration still works
+        // without location hints.
+      }
+    }
+
+    void loadHint();
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  const drawShopQr =
+    useCallback(
+      async (
+        destinationUrl: string,
+      ) => {
+        const canvas =
+          qrCanvasRef.current;
+
+        if (!canvas) {
+          return;
+        }
+
+        try {
+          await QRCode.toCanvas(
+            canvas,
+            destinationUrl,
+            {
+              width: 260,
+              margin: 4,
+
+              errorCorrectionLevel:
+                "H",
+
+              color: {
+                dark: "#17365d",
+                light: "#fffdf8",
+              },
+            },
+          );
+
+          const context =
+            canvas.getContext(
+              "2d",
+            );
+
+          if (!context) {
+            throw new Error(
+              "Canvas is unavailable.",
+            );
+          }
+
+          const badgeSize =
+            54;
+
+          const badgeX =
+            canvas.width / 2 -
+            badgeSize / 2;
+
+          const badgeY =
+            canvas.height / 2 -
+            badgeSize / 2;
+
+          context.fillStyle =
+            "#fffdf8";
+
+          context.strokeStyle =
+            "#17365d";
+
+          context.lineWidth =
+            3;
+
+          context.fillRect(
+            badgeX,
+            badgeY,
+            badgeSize,
+            badgeSize,
+          );
+
+          context.strokeRect(
+            badgeX,
+            badgeY,
+            badgeSize,
+            badgeSize,
+          );
+
+          context.fillStyle =
+            "#17365d";
+
+          context.font =
+            "700 18px Segoe UI, Arial, sans-serif";
+
+          context.textAlign =
+            "center";
+
+          context.textBaseline =
+            "middle";
+
+          context.fillText(
+            "GY",
+            canvas.width / 2,
+            canvas.height / 2 -
+              7,
+          );
+
+          context.font =
+            "700 9px Consolas, monospace";
+
+          context.fillText(
+            shopCode,
+            canvas.width / 2,
+            canvas.height / 2 +
+              13,
+          );
+        } catch (error) {
+          console.error(
+            "QR generation failed:",
+            error,
+          );
+
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "Unable to generate the QR code.",
+          );
+        }
+      },
+      [shopCode],
+    );
+
+  useEffect(() => {
+    if (
+      !registrationComplete
+    ) {
       return;
     }
 
-    void drawShopQr(shopUrl);
+    void drawShopQr(
+      shopUrl,
+    );
   }, [
     registrationComplete,
     shopUrl,
@@ -212,22 +451,68 @@ export default function ShopRegistrationPanel({
   ]);
 
   function handleSubmit(
-    event: React.FormEvent<HTMLFormElement>,
-  ) {
+    event:
+      React.FormEvent<HTMLFormElement>,
+  ): void {
     event.preventDefault();
-    setErrorMessage(null);
+
+    setErrorMessage(
+      null,
+    );
 
     if (
       !shopName.trim() ||
-      !ownerName.trim() ||
-      !phoneNumber.trim() ||
-      !addressLine.trim() ||
-      !city.trim() ||
-      !state.trim() ||
-      !postalCode.trim()
+      !addressLine.trim()
     ) {
       setErrorMessage(
-        "Please complete all required fields.",
+        "Please enter the shop name and street / area.",
+      );
+
+      return;
+    }
+
+    const hasValidEmail =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        emailAddress.trim(),
+      );
+
+    const phoneDigits =
+      phoneNumber.replace(
+        /\D/g,
+        "",
+      );
+
+    const dialCodeOnly =
+      phoneNumber.trim() ===
+        "+1" ||
+      phoneNumber.trim() ===
+        "+91" ||
+      phoneNumber.trim() ===
+        "+44" ||
+      phoneNumber.trim() ===
+        "+61";
+
+    const hasUsablePhone =
+      phoneDigits.length >= 7 &&
+      !dialCodeOnly;
+
+    if (
+      !hasUsablePhone &&
+      !hasValidEmail
+    ) {
+      setErrorMessage(
+        "Please enter a phone / WhatsApp number or a valid email address.",
+      );
+
+      return;
+    }
+
+    if (
+      emailAddress.trim() &&
+      !hasValidEmail
+    ) {
+      setErrorMessage(
+        "Please enter a valid email address.",
       );
 
       return;
@@ -244,98 +529,106 @@ export default function ShopRegistrationPanel({
       return;
     }
 
-    setRegistrationComplete(true);
+    setRegistrationComplete(
+      true,
+    );
   }
 
-  function regenerateCode() {
-    setShopCode(generateShopCode());
-    setRegistrationComplete(false);
-    setErrorMessage(null);
+  function regenerateCode():
+    void {
+    setShopCode(
+      generateShopCode(),
+    );
+
+    setRegistrationComplete(
+      false,
+    );
+
+    setErrorMessage(
+      null,
+    );
   }
 
-  function downloadQr() {
-    const canvas = qrCanvasRef.current;
+  function downloadQr():
+    void {
+    const canvas =
+      qrCanvasRef.current;
 
     if (!canvas) {
       return;
     }
 
-    const link = document.createElement("a");
+    const link =
+      document.createElement(
+        "a",
+      );
 
-    link.download = `GYAN-${shopCode}-QR.png`;
-    link.href = canvas.toDataURL("image/png");
+    link.download =
+      `GYAN-${shopCode}-QR.png`;
 
-    document.body.appendChild(link);
+    link.href =
+      canvas.toDataURL(
+        "image/png",
+      );
+
+    document.body.appendChild(
+      link,
+    );
+
     link.click();
     link.remove();
   }
 
-  async function finishRegistration() {
-  setIsSaving(true);
-  setErrorMessage(null);
+  function finishRegistration():
+    void {
+    const registeredShop:
+      RegisteredShop = {
+      code:
+        shopCode,
 
-  const registeredShop: RegisteredShop = {
-    code: shopCode,
-    name: shopName.trim(),
-    ownerName: ownerName.trim(),
-    phoneNumber: phoneNumber.trim(),
-    whatsAppNumber:
-      effectiveWhatsAppNumber.trim(),
-    emailAddress: emailAddress.trim(),
-    addressLine: addressLine.trim(),
-    city: city.trim(),
-    state: state.trim(),
-    postalCode: postalCode.trim(),
-  };
+      name:
+        shopName.trim(),
 
-  try {
-    const response = await fetch("/api/shops", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(registeredShop),
-    });
+      ownerName:
+        ownerName.trim(),
 
-    const result = (await response.json()) as {
-      shop?: RegisteredShop;
-      error?: string;
+      phoneNumber:
+        phoneNumber.trim(),
+
+      whatsAppNumber:
+        effectiveWhatsAppNumber.trim(),
+
+      emailAddress:
+        emailAddress.trim(),
+
+      addressLine:
+        addressLine.trim(),
+
+      city:
+        city.trim(),
+
+      state:
+        state.trim(),
+
+      postalCode:
+        postalCode.trim(),
     };
 
-    if (!response.ok || !result.shop) {
-      throw new Error(
-        result.error ??
-          "The shop could not be registered.",
-      );
-    }
-
-    /*
-     * Keep a local copy for convenience, but D1 is now
-     * the authoritative shared registry.
-     */
     localStorage.setItem(
-      `gyan-shop-${result.shop.code}`,
-      JSON.stringify(result.shop),
+      `gyan-shop-${shopCode}`,
+      JSON.stringify(
+        registeredShop,
+      ),
     );
 
-    onRegistered(result.shop);
-  } catch (error) {
-    console.error(
-      "Cloud registration failed:",
-      error,
+    onRegistered(
+      registeredShop,
     );
-
-    setErrorMessage(
-      error instanceof Error
-        ? error.message
-        : "The shop could not be registered.",
-    );
-  } finally {
-    setIsSaving(false);
   }
-}
 
-  if (registrationComplete) {
+  if (
+    registrationComplete
+  ) {
     return (
       <div className="registration-overlay">
         <section
@@ -345,13 +638,9 @@ export default function ShopRegistrationPanel({
           aria-labelledby="registration-complete-title"
         >
           <header className="registration-panel__header">
-            <div>
-              <span>GYAN Shop Registration</span>
-
-              <h2 id="registration-complete-title">
-                Shop identity created
-              </h2>
-            </div>
+            <h2 id="registration-complete-title">
+              Shop registered
+            </h2>
 
             <button
               type="button"
@@ -365,8 +654,13 @@ export default function ShopRegistrationPanel({
 
           <div className="registration-result">
             <div className="registration-result__shop">
-              <span>Shop code</span>
-              <strong>{shopCode}</strong>
+              <span>
+                Shop code
+              </span>
+
+              <strong>
+                {shopCode}
+              </strong>
             </div>
 
             <canvas
@@ -375,53 +669,36 @@ export default function ShopRegistrationPanel({
             />
 
             <strong className="registration-result__name">
-              {shopName.toUpperCase()}
+              {shopName}
             </strong>
 
             <span className="registration-result__address">
-              {addressLine}, {city}, {state}{" "}
+              {addressLine},{" "}
+              {city},{" "}
+              {state}{" "}
               {postalCode}
             </span>
-
-            <div className="registration-result__url">
-              {shopUrl}
-            </div>
-
-            <p>
-              This QR opens GYAN with your shop
-              selected automatically.
-            </p>
-
-{errorMessage && (
-  <p
-    className="registration-error"
-    role="alert"
-  >
-    {errorMessage}
-  </p>
-)}
 
             <div className="registration-result__actions">
               <button
                 type="button"
                 className="registration-button registration-button--secondary"
-                onClick={downloadQr}
+                onClick={
+                  downloadQr
+                }
               >
                 Download QR
               </button>
 
-<button
-  type="button"
-  className="registration-button registration-button--primary"
-  disabled={isSaving}
-  onClick={() => {
-    void finishRegistration();
-  }}
->
-  {isSaving
-    ? "Saving shop…"
-    : "Save and open shop"}
-</button>
+              <button
+                type="button"
+                className="registration-button registration-button--primary"
+                onClick={
+                  finishRegistration
+                }
+              >
+                Open shop
+              </button>
             </div>
           </div>
         </section>
@@ -432,19 +709,15 @@ export default function ShopRegistrationPanel({
   return (
     <div className="registration-overlay">
       <section
-        className="registration-panel"
+        className="registration-panel registration-panel--compact"
         role="dialog"
         aria-modal="true"
         aria-labelledby="registration-title"
       >
         <header className="registration-panel__header">
-          <div>
-            <span>Join the GYAN network</span>
-
-            <h2 id="registration-title">
-              Register your shop
-            </h2>
-          </div>
+          <h2 id="registration-title">
+            Register your shop
+          </h2>
 
           <button
             type="button"
@@ -457,213 +730,223 @@ export default function ShopRegistrationPanel({
         </header>
 
         <form
-          className="registration-form"
-          onSubmit={handleSubmit}
+          className="registration-form registration-form--compact"
+          onSubmit={
+            handleSubmit
+          }
         >
-          <section className="registration-section">
-            <div className="registration-section__heading">
-              <h3>Shop identity</h3>
-              <span>Required</span>
-            </div>
+          <input
+            type="text"
+            value={shopName}
+            placeholder="Shop name"
+            aria-label="Shop name"
+            autoComplete="organization"
+            required
+            onChange={(event) =>
+              setShopName(
+                event.target.value,
+              )
+            }
+          />
 
-            <label>
-              <span>Shop name</span>
+          <div className="registration-form__contact-row">
+            <input
+              type="tel"
+              inputMode="tel"
+              value={
+                phoneNumber
+              }
+              placeholder="Phone / WhatsApp"
+              aria-label="Phone or WhatsApp"
+              autoComplete="tel"
+              onChange={(event) =>
+                setPhoneNumber(
+                  normalizePhone(
+                    event.target
+                      .value,
+                  ),
+                )
+              }
+            />
 
-              <input
-                type="text"
-                value={shopName}
-                placeholder="Brindawan Cyber Cafe"
-                autoComplete="organization"
-                required
-                onChange={(event) =>
-                  setShopName(event.target.value)
-                }
-              />
-            </label>
+            <input
+              type="email"
+              inputMode="email"
+              value={
+                emailAddress
+              }
+              placeholder="Email"
+              aria-label="Email"
+              autoComplete="email"
+              onChange={(event) =>
+                setEmailAddress(
+                  event.target
+                    .value,
+                )
+              }
+            />
+          </div>
 
-            <label>
-              <span>Owner or manager name</span>
+          <input
+            type="text"
+            value={
+              addressLine
+            }
+            placeholder="Street / area"
+            aria-label="Street or area"
+            autoComplete="street-address"
+            required
+            onChange={(event) =>
+              setAddressLine(
+                event.target.value,
+              )
+            }
+          />
 
+          <button
+            type="button"
+            className="registration-form__more"
+            onClick={() =>
+              setShowMore(
+                (current) =>
+                  !current,
+              )
+            }
+          >
+            {showMore
+              ? "− Hide details"
+              : "+ Add more details"}
+          </button>
+
+          {showMore && (
+            <section className="registration-form__more-fields">
               <input
                 type="text"
                 value={ownerName}
-                placeholder="Owner name"
+                placeholder="Owner / manager name"
+                aria-label="Owner or manager name"
                 autoComplete="name"
-                required
                 onChange={(event) =>
-                  setOwnerName(event.target.value)
-                }
-              />
-            </label>
-
-            <div className="registration-code">
-              <div>
-                <span>Proposed shop code</span>
-                <strong>{shopCode}</strong>
-              </div>
-
-              <button
-                type="button"
-                onClick={regenerateCode}
-              >
-                Generate another
-              </button>
-            </div>
-          </section>
-
-          <section className="registration-section">
-            <div className="registration-section__heading">
-              <h3>Contact details</h3>
-              <span>Phone required</span>
-            </div>
-
-            <label>
-              <span>Mobile number</span>
-
-              <input
-                type="tel"
-                value={phoneNumber}
-                placeholder="+91 12345 67890"
-                autoComplete="tel"
-                required
-                onChange={(event) =>
-                  setPhoneNumber(
-                    normalizePhone(
-                      event.target.value,
-                    ),
-                  )
-                }
-              />
-            </label>
-
-            <label className="registration-checkbox">
-              <input
-                type="checkbox"
-                checked={sameWhatsAppNumber}
-                onChange={(event) =>
-                  setSameWhatsAppNumber(
-                    event.target.checked,
-                  )
-                }
-              />
-
-              <span>
-                WhatsApp number is the same
-              </span>
-            </label>
-
-            {!sameWhatsAppNumber && (
-              <label>
-                <span>WhatsApp number</span>
-
-                <input
-                  type="tel"
-                  value={whatsAppNumber}
-                  placeholder="+91 12345 67890"
-                  required
-                  onChange={(event) =>
-                    setWhatsAppNumber(
-                      normalizePhone(
-                        event.target.value,
-                      ),
-                    )
-                  }
-                />
-              </label>
-            )}
-
-            <label>
-              <span>Email address — optional</span>
-
-              <input
-                type="email"
-                value={emailAddress}
-                placeholder="shop@example.com"
-                autoComplete="email"
-                onChange={(event) =>
-                  setEmailAddress(
+                  setOwnerName(
                     event.target.value,
                   )
                 }
               />
-            </label>
-          </section>
 
-          <section className="registration-section">
-            <div className="registration-section__heading">
-              <h3>Shop address</h3>
-              <span>Required</span>
-            </div>
-
-            <label>
-              <span>Street or area</span>
-
-              <input
-                type="text"
-                value={addressLine}
-                placeholder="Brindawan Nagar"
-                autoComplete="street-address"
-                required
-                onChange={(event) =>
-                  setAddressLine(
-                    event.target.value,
-                  )
-                }
-              />
-            </label>
-
-            <div className="registration-form__two-columns">
-              <label>
-                <span>City</span>
-
+              <div className="registration-form__address-row">
                 <input
                   type="text"
                   value={city}
-                  placeholder="Bombay"
+                  placeholder="City"
+                  aria-label="City"
                   autoComplete="address-level2"
-                  required
                   onChange={(event) =>
-                    setCity(event.target.value)
+                    setCity(
+                      event.target.value,
+                    )
                   }
                 />
-              </label>
-
-              <label>
-                <span>State</span>
 
                 <input
                   type="text"
                   value={state}
-                  placeholder="Maharashtra"
+                  placeholder="State"
+                  aria-label="State"
                   autoComplete="address-level1"
-                  required
                   onChange={(event) =>
-                    setState(event.target.value)
+                    setState(
+                      event.target.value,
+                    )
                   }
                 />
+
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={
+                    postalCode
+                  }
+                  placeholder="PIN / ZIP"
+                  aria-label="PIN or postal code"
+                  autoComplete="postal-code"
+                  onChange={(event) =>
+                    setPostalCode(
+                      event.target.value
+                        .replace(
+                          /[^A-Za-z0-9 -]/g,
+                          "",
+                        )
+                        .slice(
+                          0,
+                          12,
+                        ),
+                    )
+                  }
+                />
+              </div>
+
+              <label className="registration-form__checkbox">
+                <input
+                  type="checkbox"
+                  checked={
+                    sameWhatsAppNumber
+                  }
+                  onChange={(event) =>
+                    setSameWhatsAppNumber(
+                      event.target
+                        .checked,
+                    )
+                  }
+                />
+
+                <span>
+                  WhatsApp uses the
+                  same phone number
+                </span>
               </label>
-            </div>
 
-            <label>
-              <span>PIN or postal code</span>
+              {!sameWhatsAppNumber && (
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  value={
+                    whatsAppNumber
+                  }
+                  placeholder="WhatsApp number"
+                  aria-label="WhatsApp number"
+                  onChange={(event) =>
+                    setWhatsAppNumber(
+                      normalizePhone(
+                        event.target
+                          .value,
+                      ),
+                    )
+                  }
+                />
+              )}
 
-              <input
-                type="text"
-                inputMode="numeric"
-                value={postalCode}
-                placeholder="123456"
-                autoComplete="postal-code"
-                required
-                onChange={(event) =>
-                  setPostalCode(
-                    event.target.value
-                      .replace(/\D/g, "")
-                      .slice(0, 10),
-                  )
-                }
-              />
-            </label>
-          </section>
+              <div className="registration-code">
+                <div>
+                  <span>
+                    Shop code
+                  </span>
+
+                  <strong>
+                    {shopCode}
+                  </strong>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={
+                    regenerateCode
+                  }
+                >
+                  Generate another
+                </button>
+              </div>
+            </section>
+          )}
 
           {errorMessage && (
             <p
@@ -678,7 +961,9 @@ export default function ShopRegistrationPanel({
             <button
               type="button"
               className="registration-button registration-button--secondary"
-              onClick={onClose}
+              onClick={
+                onClose
+              }
             >
               Cancel
             </button>
@@ -687,15 +972,9 @@ export default function ShopRegistrationPanel({
               type="submit"
               className="registration-button registration-button--primary"
             >
-              Register and generate QR
+              Register shop
             </button>
           </div>
-
-          <p className="registration-disclaimer">
-            This MVP saves registration only on this
-            device. Cloud registration will be added
-            next.
-          </p>
         </form>
       </section>
     </div>

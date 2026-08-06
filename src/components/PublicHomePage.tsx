@@ -4,7 +4,8 @@ import {
   useState,
 } from "react";
 
-import GyanAboutPanel from "./GyanAboutPanel";
+import GyanAboutPanel
+  from "./GyanAboutPanel";
 
 import "./PublicHomePage.css";
 
@@ -25,59 +26,75 @@ interface PublicService {
 interface PublicHomePageProps {
   services: PublicService[];
   loading: boolean;
-  onOpenShop: (shopCode: string) => void;
+
+  onOpenShop: (
+    shopCode: string,
+  ) => void;
+
   onClaimShop: () => void;
+
   onOpenAdmin: () => void;
+
   onStartOnlineService?: (
     serviceCode: string,
     serviceName: string,
   ) => void;
+
   onOpenOnlineServices?: () => void;
+
   onOpenNearbyService?: (
     serviceCode: string,
     serviceName: string,
   ) => void;
 }
 
-
 function useResponsiveTileCount(
   maximumTileCount = 6,
 ): number {
-  const [tileCount, setTileCount] =
-    useState(5);
+  const [
+    tileCount,
+    setTileCount,
+  ] = useState(5);
 
   useEffect(() => {
-    const updateTileCount = (): void => {
-      const viewportWidth =
-        window.innerWidth;
+    const updateTileCount =
+      (): void => {
+        const viewportWidth =
+          window.innerWidth;
 
-      if (viewportWidth < 350) {
+        if (
+          viewportWidth < 350
+        ) {
+          setTileCount(
+            Math.min(
+              4,
+              maximumTileCount,
+            ),
+          );
+
+          return;
+        }
+
+        if (
+          viewportWidth < 600
+        ) {
+          setTileCount(
+            Math.min(
+              5,
+              maximumTileCount,
+            ),
+          );
+
+          return;
+        }
+
         setTileCount(
           Math.min(
-            4,
+            6,
             maximumTileCount,
           ),
         );
-        return;
-      }
-
-      if (viewportWidth < 600) {
-        setTileCount(
-          Math.min(
-            5,
-            maximumTileCount,
-          ),
-        );
-        return;
-      }
-
-      setTileCount(
-        Math.min(
-          6,
-          maximumTileCount,
-        ),
-      );
-    };
+      };
 
     updateTileCount();
 
@@ -101,28 +118,62 @@ function isOnlineService(
   service: PublicService,
 ): boolean {
   const category =
-    service.category?.trim().toLowerCase() ?? "";
+    service.category
+      ?.trim()
+      .toLowerCase() ??
+    "";
 
   const subCategory =
-    service.subCategory?.trim().toLowerCase() ?? "";
+    service.subCategory
+      ?.trim()
+      .toLowerCase() ??
+    "";
 
   const workflowType =
-    service.workflowType?.trim().toLowerCase() ?? "";
+    service.workflowType
+      ?.trim()
+      .toLowerCase() ??
+    "";
 
   return (
-    category === "digital" ||
-    category === "online" ||
-    subCategory === "digital" ||
-    subCategory === "online" ||
-    workflowType === "online" ||
-    workflowType === "remote"
+    category ===
+      "digital" ||
+    category ===
+      "online" ||
+    subCategory ===
+      "digital" ||
+    subCategory ===
+      "online" ||
+    workflowType ===
+      "online" ||
+    workflowType ===
+      "remote"
+  );
+}
+
+function isNearbyService(
+  service: PublicService,
+): boolean {
+  return (
+    service.category
+      ?.trim()
+      .toLowerCase() ===
+    "nearby"
+  );
+}
+
+function getServiceName(
+  service: PublicService,
+): string {
+  return (
+    service.catalogName ||
+    service.name
   );
 }
 
 export default function PublicHomePage({
   services,
   loading,
-  onClaimShop,
   onOpenAdmin,
   onStartOnlineService,
   onOpenOnlineServices,
@@ -131,7 +182,20 @@ export default function PublicHomePage({
   const [
     gyanAboutOpen,
     setGyanAboutOpen,
-  ] = useState(false);
+  ] =
+    useState(false);
+
+  const [
+    searchText,
+    setSearchText,
+  ] =
+    useState("");
+
+  const [
+    searchFocused,
+    setSearchFocused,
+  ] =
+    useState(false);
 
   const onlineTileCount =
     useResponsiveTileCount();
@@ -139,175 +203,544 @@ export default function PublicHomePage({
   const nearbyTileCount =
     onlineTileCount;
 
-  const enabledServices = useMemo(
-    () =>
-      [...services]
-        .filter((service) => service.enabled)
-        .sort(
-          (first, second) =>
-            first.sortOrder - second.sortOrder ||
-            first.name.localeCompare(second.name),
-        ),
-    [services],
-  );
-
-  const onlineServices = useMemo(
-    () =>
-      enabledServices
-        .filter(isOnlineService)
-        .filter(
-          (service) =>
-            service.homepageOrder != null,
-        )
-        .sort(
-          (first, second) =>
-            (first.homepageOrder ??
-              first.sortOrder) -
-              (second.homepageOrder ??
-                second.sortOrder) ||
-            first.name.localeCompare(second.name),
-        ),
-    [enabledServices],
-  );
-
-  const popularOnlineServices = useMemo(
-    () =>
-      onlineServices.slice(
-        0,
-        Math.max(
-          1,
-          onlineTileCount - 1,
-        ),
-      ),
-    [
-      onlineServices,
-      onlineTileCount,
-    ],
-  );
-
-  const nearbyServices = useMemo(
-    () =>
-      enabledServices
-        .filter(
-          (service) =>
-            service.category
-              ?.trim()
-              .toLowerCase() === "nearby",
-        )
-        .filter(
-          (service) =>
-            service.homepageOrder != null,
-        )
-        .sort(
-          (first, second) =>
-            (first.homepageOrder ??
-              first.sortOrder) -
-              (second.homepageOrder ??
-                second.sortOrder) ||
-            first.name.localeCompare(second.name),
-        ),
-    [enabledServices],
-  );
-
-  const mapsService = useMemo(
-    () =>
-      nearbyServices.find(
-        (service) =>
-          service.code ===
-            "NEARBY_MAPS" ||
-          (
-            service.catalogName ||
-            service.name
+  const enabledServices =
+    useMemo(
+      () =>
+        [...services]
+          .filter(
+            (service) =>
+              service.enabled,
           )
-            .trim()
-            .toLowerCase() ===
-            "maps",
-      ) ?? null,
-    [nearbyServices],
-  );
+          .sort(
+            (
+              first,
+              second,
+            ) =>
+              first.sortOrder -
+                second.sortOrder ||
+              first.name.localeCompare(
+                second.name,
+              ),
+          ),
+      [services],
+    );
 
-  const visibleNearbyServices = useMemo(
-    () => {
-      const regularServices =
-        nearbyServices.filter(
+  const searchableServices =
+    useMemo(
+      () =>
+        enabledServices.filter(
           (service) =>
-            service.code !==
-              mapsService?.code,
-        );
-
-      const totalSlots =
-        nearbyTileCount * 2;
-
-      const regularServiceSlots =
-        mapsService
-          ? totalSlots - 1
-          : totalSlots;
-
-      return regularServices.slice(
-        0,
-        Math.max(
-          1,
-          regularServiceSlots,
+            isOnlineService(
+              service,
+            ) ||
+            isNearbyService(
+              service,
+            ),
         ),
-      );
-    },
-    [
-      mapsService,
-      nearbyServices,
-      nearbyTileCount,
-    ],
-  );
+      [enabledServices],
+    );
 
+  const searchResults =
+    useMemo(
+      () => {
+        const query =
+          searchText
+            .trim()
+            .toLowerCase();
+
+        if (!query) {
+          return [];
+        }
+
+        return searchableServices
+          .map(
+            (service) => {
+              const name =
+                getServiceName(
+                  service,
+                );
+
+              const haystack =
+                [
+                  name,
+                  service.name,
+                  service.description,
+                  service.category,
+                  service.subCategory,
+                ]
+                  .filter(Boolean)
+                  .join(" ")
+                  .toLowerCase();
+
+              const normalizedName =
+                name.toLowerCase();
+
+              let rank = 3;
+
+              if (
+                normalizedName ===
+                query
+              ) {
+                rank = 0;
+              } else if (
+                normalizedName.startsWith(
+                  query,
+                )
+              ) {
+                rank = 1;
+              } else if (
+                normalizedName.includes(
+                  query,
+                )
+              ) {
+                rank = 2;
+              }
+
+              return {
+                service,
+                rank,
+                matches:
+                  haystack.includes(
+                    query,
+                  ),
+              };
+            },
+          )
+          .filter(
+            (item) =>
+              item.matches,
+          )
+          .sort(
+            (
+              first,
+              second,
+            ) =>
+              first.rank -
+                second.rank ||
+              getServiceName(
+                first.service,
+              ).localeCompare(
+                getServiceName(
+                  second.service,
+                ),
+              ),
+          )
+          .slice(
+            0,
+            8,
+          )
+          .map(
+            (item) =>
+              item.service,
+          );
+      },
+      [
+        searchText,
+        searchableServices,
+      ],
+    );
+
+  const onlineServices =
+    useMemo(
+      () =>
+        enabledServices
+          .filter(
+            isOnlineService,
+          )
+          .filter(
+            (service) =>
+              service.homepageOrder !=
+              null,
+          )
+          .sort(
+            (
+              first,
+              second,
+            ) =>
+              (
+                first.homepageOrder ??
+                first.sortOrder
+              ) -
+                (
+                  second.homepageOrder ??
+                  second.sortOrder
+                ) ||
+              first.name.localeCompare(
+                second.name,
+              ),
+          ),
+      [enabledServices],
+    );
+
+  const popularOnlineServices =
+    useMemo(
+      () =>
+        onlineServices.slice(
+          0,
+          Math.max(
+            1,
+            onlineTileCount - 1,
+          ),
+        ),
+      [
+        onlineServices,
+        onlineTileCount,
+      ],
+    );
+
+  const nearbyServices =
+    useMemo(
+      () =>
+        enabledServices
+          .filter(
+            isNearbyService,
+          )
+          .filter(
+            (service) =>
+              service.homepageOrder !=
+              null,
+          )
+          .sort(
+            (
+              first,
+              second,
+            ) =>
+              (
+                first.homepageOrder ??
+                first.sortOrder
+              ) -
+                (
+                  second.homepageOrder ??
+                  second.sortOrder
+                ) ||
+              first.name.localeCompare(
+                second.name,
+              ),
+          ),
+      [enabledServices],
+    );
+
+  const mapsService =
+    useMemo(
+      () =>
+        nearbyServices.find(
+          (service) =>
+            service.code ===
+              "NEARBY_MAPS" ||
+            getServiceName(
+              service,
+            )
+              .trim()
+              .toLowerCase() ===
+              "maps",
+        ) ?? null,
+      [nearbyServices],
+    );
+
+  const visibleNearbyServices =
+    useMemo(
+      () => {
+        const regularServices =
+          nearbyServices.filter(
+            (service) =>
+              service.code !==
+              mapsService?.code,
+          );
+
+        const totalSlots =
+          nearbyTileCount * 2;
+
+        const regularServiceSlots =
+          mapsService
+            ? totalSlots - 1
+            : totalSlots;
+
+        return regularServices.slice(
+          0,
+          Math.max(
+            1,
+            regularServiceSlots,
+          ),
+        );
+      },
+      [
+        mapsService,
+        nearbyServices,
+        nearbyTileCount,
+      ],
+    );
+
+  function openService(
+    service: PublicService,
+  ): void {
+    const serviceName =
+      getServiceName(
+        service,
+      );
+
+    setSearchText("");
+    setSearchFocused(false);
+
+    if (
+      isNearbyService(
+        service,
+      )
+    ) {
+      onOpenNearbyService?.(
+        service.code,
+        serviceName,
+      );
+
+      return;
+    }
+
+    onStartOnlineService?.(
+      service.code,
+      serviceName,
+    );
+  }
+
+  const showSearchResults =
+    searchFocused &&
+    searchText.trim()
+      .length > 0;
 
   return (
     <div className="public-home">
-      <header className="public-home__header">
-        <button
-          type="button"
-          className="public-home__brand public-home__brand-button"
-          onClick={() =>
-            setGyanAboutOpen(true)
-          }
-          aria-label="About GYAN"
-          title="About GYAN"
-        >
-          <span
-            className="public-home__brand-icon"
-            aria-hidden="true"
-          >
-            📖
-          </span>
+      <header
+        className={`public-home__header${
+          searchFocused
+            ? " public-home__header--searching"
+            : ""
+        }`}
+      >
+        {searchFocused ? (
+          <>
+            <button
+              type="button"
+              className="public-home__search-back"
+              aria-label="Close search"
+              onClick={() => {
+                setSearchText("");
+                setSearchFocused(
+                  false,
+                );
+              }}
+            >
+              ←
+            </button>
 
-          <div className="public-home__brand-text">
-            <strong>GYAN</strong>
+            <div className="public-home__header-search">
+              <span
+                aria-hidden="true"
+              >
+                🔎
+              </span>
 
-            <span className="public-home__tagline">
-              Your Digital Seva Partner
-            </span>
+              <input
+                autoFocus
+                type="search"
+                value={searchText}
+                placeholder="Search services..."
+                aria-label="Search services"
+                autoComplete="off"
+                onChange={(
+                  event,
+                ) =>
+                  setSearchText(
+                    event.target
+                      .value,
+                  )
+                }
+                onKeyDown={(
+                  event,
+                ) => {
+                  if (
+                    event.key ===
+                      "Enter" &&
+                    searchResults.length >
+                      0
+                  ) {
+                    event.preventDefault();
 
-            <span className="public-home__value">
-              Order Online • Pick Up When Ready • No Waiting
-            </span>
+                    openService(
+                      searchResults[0],
+                    );
+                  }
+
+                  if (
+                    event.key ===
+                    "Escape"
+                  ) {
+                    setSearchText(
+                      "",
+                    );
+
+                    setSearchFocused(
+                      false,
+                    );
+                  }
+                }}
+              />
+
+              {searchText && (
+                <button
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={() =>
+                    setSearchText(
+                      "",
+                    )
+                  }
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="public-home__brand public-home__brand-button"
+              onClick={() =>
+                setGyanAboutOpen(
+                  true,
+                )
+              }
+              aria-label="About GYAN"
+              title="About GYAN"
+            >
+              <span
+                className="public-home__brand-icon"
+                aria-hidden="true"
+              >
+                📖
+              </span>
+
+              <div className="public-home__brand-text">
+                <strong>
+                  GYAN
+                </strong>
+
+                <span className="public-home__tagline">
+                  Your Digital Seva
+                  Partner
+                </span>
+
+                <span className="public-home__value">
+                  Order Online • Pick Up
+                  When Ready • No Waiting
+                </span>
+              </div>
+            </button>
+
+            <div className="public-home__header-actions">
+              <button
+                type="button"
+                className="public-home__search-button"
+                aria-label="Search services"
+                title="Search services"
+                onClick={() =>
+                  setSearchFocused(
+                    true,
+                  )
+                }
+              >
+                🔎
+              </button>
+
+              <button
+                type="button"
+                className="public-home__admin-button"
+                onClick={
+                  onOpenAdmin
+                }
+              >
+                Admin
+              </button>
+            </div>
+          </>
+        )}
+
+        {showSearchResults && (
+          <div className="public-home__header-search-results">
+            {searchResults.length >
+            0 ? (
+              searchResults.map(
+                (service) => (
+                  <button
+                    type="button"
+                    key={
+                      service.code
+                    }
+                    className="public-home__service-search-result"
+                    onClick={() =>
+                      openService(
+                        service,
+                      )
+                    }
+                  >
+                    <span
+                      className="public-home__service-search-result-icon"
+                      aria-hidden="true"
+                    >
+                      {service.icon ||
+                        (
+                          isNearbyService(
+                            service,
+                          )
+                            ? "📍"
+                            : "💻"
+                        )}
+                    </span>
+
+                    <span className="public-home__service-search-result-text">
+                      <strong>
+                        {getServiceName(
+                          service,
+                        )}
+                      </strong>
+
+                      <small>
+                        {isNearbyService(
+                          service,
+                        )
+                          ? "Nearby service"
+                          : "Online service"}
+                      </small>
+                    </span>
+
+                    <span
+                      className="public-home__service-search-arrow"
+                      aria-hidden="true"
+                    >
+                      ›
+                    </span>
+                  </button>
+                ),
+              )
+            ) : (
+              <div className="public-home__service-search-empty">
+                No matching service.
+                Try another word.
+              </div>
+            )}
           </div>
-        </button>
-
-        <button
-          type="button"
-          className="public-home__admin-button"
-          onClick={onClaimShop}
-          aria-label="Register with GYAN"
-          title="Register with GYAN"
-        >
-          Register
-        </button>
+        )}
       </header>
 
       <main className="public-home__content">
         <section className="public-home__section public-home__section--online">
           <div className="public-home__section-heading">
             <div>
-              <span>Available from anywhere</span>
-              <h2>Online services request</h2>
+              <span>
+                Available from anywhere
+              </span>
+
+              <h2>
+                Online services request
+              </h2>
             </div>
           </div>
 
@@ -315,7 +748,8 @@ export default function PublicHomePage({
             <div className="public-home__state">
               Loading online services…
             </div>
-          ) : onlineServices.length > 0 ? (
+          ) : onlineServices.length >
+            0 ? (
             <div
               className="public-home__task-grid public-home__task-grid--online public-home__task-grid--responsive"
               style={{
@@ -323,38 +757,49 @@ export default function PublicHomePage({
                   `repeat(${onlineTileCount}, minmax(0, 1fr))`,
               }}
             >
-              {popularOnlineServices.map((service) => (
-                <button
-                  type="button"
-                  key={service.code}
-                  className="public-home__task-card"
-                  onClick={() =>
-                    onStartOnlineService?.(
-                      service.code,
-                      service.catalogName ||
-                        service.name,
-                    )
-                  }
-                >
-                  <span
-                    className="public-home__task-icon"
-                    aria-hidden="true"
+              {popularOnlineServices.map(
+                (service) => (
+                  <button
+                    type="button"
+                    key={
+                      service.code
+                    }
+                    className="public-home__task-card"
+                    onClick={() =>
+                      onStartOnlineService?.(
+                        service.code,
+                        getServiceName(
+                          service,
+                        ),
+                      )
+                    }
                   >
-                    {service.icon || "💻"}
-                  </span>
+                    <span
+                      className="public-home__task-icon"
+                      aria-hidden="true"
+                    >
+                      {service.icon ||
+                        "💻"}
+                    </span>
 
-                  <strong>
-                    {service.catalogName ||
-                      service.name}
-                  </strong>
-                </button>
-              ))}
+                    <strong>
+                      {getServiceName(
+                        service,
+                      )}
+                    </strong>
+                  </button>
+                ),
+              )}
 
               <button
                 type="button"
                 className="public-home__task-card public-home__task-card--other"
-                onClick={onOpenOnlineServices}
-                disabled={!onOpenOnlineServices}
+                onClick={
+                  onOpenOnlineServices
+                }
+                disabled={
+                  !onOpenOnlineServices
+                }
               >
                 <span
                   className="public-home__task-icon"
@@ -363,12 +808,15 @@ export default function PublicHomePage({
                   ⋯
                 </span>
 
-                <strong>Other</strong>
+                <strong>
+                  Other
+                </strong>
               </button>
             </div>
           ) : (
             <div className="public-home__state">
-              No online services are currently available.
+              No online services are
+              currently available.
             </div>
           )}
         </section>
@@ -376,8 +824,14 @@ export default function PublicHomePage({
         <section className="public-home__section">
           <div className="public-home__section-heading">
             <div>
-              <span>Visit a participating shop</span>
-              <h2>Nearby services request</h2>
+              <span>
+                Visit a participating
+                shop
+              </span>
+
+              <h2>
+                Nearby services request
+              </h2>
             </div>
           </div>
 
@@ -385,7 +839,8 @@ export default function PublicHomePage({
             <div className="public-home__state">
               Loading local services…
             </div>
-          ) : nearbyServices.length > 0 ? (
+          ) : nearbyServices.length >
+            0 ? (
             <div
               className="public-home__task-grid public-home__task-grid--nearby public-home__task-grid--responsive"
               style={{
@@ -397,13 +852,16 @@ export default function PublicHomePage({
                 (service) => (
                   <button
                     type="button"
-                    key={service.code}
+                    key={
+                      service.code
+                    }
                     className="public-home__task-card"
                     onClick={() =>
                       onOpenNearbyService?.(
                         service.code,
-                        service.catalogName ||
-                          service.name,
+                        getServiceName(
+                          service,
+                        ),
                       )
                     }
                     disabled={
@@ -414,12 +872,14 @@ export default function PublicHomePage({
                       className="public-home__task-icon"
                       aria-hidden="true"
                     >
-                      {service.icon || "📍"}
+                      {service.icon ||
+                        "📍"}
                     </span>
 
                     <strong>
-                      {service.catalogName ||
-                        service.name}
+                      {getServiceName(
+                        service,
+                      )}
                     </strong>
                   </button>
                 ),
@@ -432,8 +892,9 @@ export default function PublicHomePage({
                   onClick={() =>
                     onOpenNearbyService?.(
                       mapsService.code,
-                      mapsService.catalogName ||
-                        mapsService.name,
+                      getServiceName(
+                        mapsService,
+                      ),
                     )
                   }
                   disabled={
@@ -444,33 +905,39 @@ export default function PublicHomePage({
                     className="public-home__task-icon"
                     aria-hidden="true"
                   >
-                    {mapsService.icon || "🗺️"}
+                    {mapsService.icon ||
+                      "🗺️"}
                   </span>
 
                   <strong>
-                    {mapsService.catalogName ||
-                      mapsService.name}
+                    {getServiceName(
+                      mapsService,
+                    )}
                   </strong>
                 </button>
               )}
             </div>
           ) : (
             <div className="public-home__state">
-              No nearby services are currently available.
+              No nearby services are
+              currently available.
             </div>
           )}
         </section>
-
       </main>
-
 
       {gyanAboutOpen && (
         <GyanAboutPanel
           onClose={() =>
-            setGyanAboutOpen(false)
+            setGyanAboutOpen(
+              false,
+            )
           }
           onOpenAdmin={() => {
-            setGyanAboutOpen(false);
+            setGyanAboutOpen(
+              false,
+            );
+
             onOpenAdmin();
           }}
         />

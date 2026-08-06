@@ -1358,6 +1358,31 @@ export default function DynamicServiceRequestPanel({
           ),
       );
 
+    const compactEmailItem =
+      isOnlineRequest
+        ? allFields.find(
+            ({ field }) =>
+              isEmailField(
+                field,
+              ),
+          )
+        : undefined;
+
+    const compactEmailValue =
+      compactEmailItem
+        ? values[
+            compactEmailItem
+              .fieldId
+          ]
+        : "";
+
+    const compactHasValidEmail =
+      typeof compactEmailValue ===
+        "string" &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        compactEmailValue.trim(),
+      );
+
     for (
       const {
         field,
@@ -1365,20 +1390,30 @@ export default function DynamicServiceRequestPanel({
       }
       of allFields
     ) {
-      const validationField =
+      const validationField:
+        DynamicServiceField =
         isOnlineRequest
           ? {
               ...field,
+
               required:
-                isCustomerNameField(field),
+                isCustomerNameField(
+                  field,
+                ),
             }
           : field;
 
       const error =
-        validateField(
-          validationField,
-          values[fieldId],
-        );
+        isOnlineRequest &&
+        compactHasValidEmail &&
+        isPhoneLikeField(
+          field,
+        )
+          ? null
+          : validateField(
+              validationField,
+              values[fieldId],
+            );
 
       if (error) {
         nextErrors[fieldId] =
