@@ -50,6 +50,19 @@ import {
   handleLocationHintRoute,
 } from "./locationHint";
 
+import {
+  handlePuzzleRoute,
+} from "./puzzle/puzzleRoutes";
+
+import {
+  handlePuzzleAdminRoute,
+} from "./puzzle/puzzleAdminRoutes";
+
+import {
+  handlePuzzleCertificateRoute,
+} from "./puzzle/puzzleCertificate";
+
+
 interface RegisterShopRequest {
   code?: unknown;
   name?: unknown;
@@ -63,30 +76,48 @@ interface RegisterShopRequest {
   postalCode?: unknown;
 }
 
+
 interface ShopRow {
   code: string;
   name: string;
+
   owner_name: string;
+
   phone_number: string;
-  whatsapp_number: string | null;
-  email_address: string | null;
+
+  whatsapp_number:
+    | string
+    | null;
+
+  email_address:
+    | string
+    | null;
+
   address_line: string;
+
   city: string;
   state: string;
+
   postal_code: string;
+
   status: string;
+
   created_at: string;
   updated_at: string;
 }
+
 
 function createJsonResponse(
   data: unknown,
   status = 200,
 ): Response {
   return new Response(
-    JSON.stringify(data),
+    JSON.stringify(
+      data,
+    ),
     {
       status,
+
       headers: {
         "content-type":
           "application/json; charset=utf-8",
@@ -98,11 +129,13 @@ function createJsonResponse(
   );
 }
 
+
 function normalizeShopCode(
   value: unknown,
 ): string | null {
   if (
-    typeof value !== "string"
+    typeof value !==
+    "string"
   ) {
     return null;
   }
@@ -119,11 +152,13 @@ function normalizeShopCode(
     : null;
 }
 
+
 function normalizeRequiredText(
   value: unknown,
 ): string | null {
   if (
-    typeof value !== "string"
+    typeof value !==
+    "string"
   ) {
     return null;
   }
@@ -131,16 +166,19 @@ function normalizeRequiredText(
   const normalized =
     value.trim();
 
-  return normalized.length > 0
+  return normalized.length >
+    0
     ? normalized
     : null;
 }
+
 
 function normalizeOptionalText(
   value: unknown,
 ): string | null {
   if (
-    typeof value !== "string"
+    typeof value !==
+    "string"
   ) {
     return null;
   }
@@ -148,17 +186,22 @@ function normalizeOptionalText(
   const normalized =
     value.trim();
 
-  return normalized.length > 0
+  return normalized.length >
+    0
     ? normalized
     : null;
 }
+
 
 function mapShopRow(
   row: ShopRow,
 ) {
   return {
-    code: row.code,
-    name: row.name,
+    code:
+      row.code,
+
+    name:
+      row.name,
 
     ownerName:
       row.owner_name,
@@ -167,21 +210,27 @@ function mapShopRow(
       row.phone_number,
 
     whatsAppNumber:
-      row.whatsapp_number ?? "",
+      row.whatsapp_number ??
+      "",
 
     emailAddress:
-      row.email_address ?? "",
+      row.email_address ??
+      "",
 
     addressLine:
       row.address_line,
 
-    city: row.city,
-    state: row.state,
+    city:
+      row.city,
+
+    state:
+      row.state,
 
     postalCode:
       row.postal_code,
 
-    status: row.status,
+    status:
+      row.status,
 
     createdAt:
       row.created_at,
@@ -191,10 +240,13 @@ function mapShopRow(
   };
 }
 
+
 async function findShopByCode(
   env: Env,
   code: string,
-): Promise<ShopRow | null> {
+): Promise<
+  ShopRow | null
+> {
   return env.gyan_registry
     .prepare(
       `
@@ -220,9 +272,12 @@ async function findShopByCode(
         LIMIT 1
       `,
     )
-    .bind(code)
+    .bind(
+      code,
+    )
     .first<ShopRow>();
 }
+
 
 async function handleGetShop(
   env: Env,
@@ -260,7 +315,8 @@ async function handleGetShop(
   }
 
   if (
-    shop.status !== "active"
+    shop.status !==
+    "active"
   ) {
     return createJsonResponse(
       {
@@ -273,9 +329,12 @@ async function handleGetShop(
 
   return createJsonResponse({
     shop:
-      mapShopRow(shop),
+      mapShopRow(
+        shop,
+      ),
   });
 }
+
 
 async function handleRegisterShop(
   request: Request,
@@ -371,7 +430,8 @@ async function handleRegisterShop(
     await env.gyan_registry
       .prepare(
         `
-          SELECT code
+          SELECT
+            code
 
           FROM shops
 
@@ -380,12 +440,16 @@ async function handleRegisterShop(
           LIMIT 1
         `,
       )
-      .bind(code)
+      .bind(
+        code,
+      )
       .first<{
         code: string;
       }>();
 
-  if (existingShop) {
+  if (
+    existingShop
+  ) {
     return createJsonResponse(
       {
         error:
@@ -440,7 +504,9 @@ async function handleRegisterShop(
         postalCode,
       )
       .run();
-  } catch (error) {
+  } catch (
+    error
+  ) {
     console.error(
       "Shop registration failed:",
       error,
@@ -461,7 +527,9 @@ async function handleRegisterShop(
       code,
     );
 
-  if (!createdShop) {
+  if (
+    !createdShop
+  ) {
     return createJsonResponse(
       {
         error:
@@ -482,14 +550,25 @@ async function handleRegisterShop(
   );
 }
 
+
+/*
+ * ========================================================
+ * API ROUTING
+ * ========================================================
+ */
+
 async function handleApiRequest(
   request: Request,
   env: Env,
   url: URL,
 ): Promise<Response> {
+
   /*
-   * Administrator authentication.
+   * ------------------------------------------------
+   * Administrator authentication
+   * ------------------------------------------------
    */
+
   const adminAuthResponse =
     await handleAdminAuthRoute(
       request,
@@ -497,13 +576,43 @@ async function handleApiRequest(
       url,
     );
 
-  if (adminAuthResponse) {
+  if (
+    adminAuthResponse
+  ) {
     return adminAuthResponse;
   }
 
+
   /*
-   * Global service administration.
+   * ------------------------------------------------
+   * Puzzle administration
+   *
+   * Authentication is enforced again inside
+   * puzzleAdminRoutes before solved boards or
+   * solution moves are returned.
+   * ------------------------------------------------
    */
+
+  const puzzleAdminResponse =
+    await handlePuzzleAdminRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (
+    puzzleAdminResponse
+  ) {
+    return puzzleAdminResponse;
+  }
+
+
+  /*
+   * ------------------------------------------------
+   * Global service administration
+   * ------------------------------------------------
+   */
+
   const adminServicesResponse =
     await handleAdminServicesRoute(
       request,
@@ -511,24 +620,33 @@ async function handleApiRequest(
       url,
     );
 
-  if (adminServicesResponse) {
+  if (
+    adminServicesResponse
+  ) {
     return adminServicesResponse;
   }
 
-  const adminServiceFormsResponse =
-  await handleAdminServiceFormsRoute(
-    request,
-    env,
-    url,
-  );
 
-if (adminServiceFormsResponse) {
-  return adminServiceFormsResponse;
-}
+  const adminServiceFormsResponse =
+    await handleAdminServiceFormsRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (
+    adminServiceFormsResponse
+  ) {
+    return adminServiceFormsResponse;
+  }
+
 
   /*
-   * Shop administration and overrides.
+   * ------------------------------------------------
+   * Shop administration
+   * ------------------------------------------------
    */
+
   const adminShopsResponse =
     await handleAdminShopsRoute(
       request,
@@ -536,24 +654,83 @@ if (adminServiceFormsResponse) {
       url,
     );
 
-  if (adminShopsResponse) {
+  if (
+    adminShopsResponse
+  ) {
     return adminShopsResponse;
   }
 
-  const adminStorageResponse =
-  await handleAdminStorageRoute(
-    request,
-    env,
-    url,
-  );
 
-if (adminStorageResponse) {
-  return adminStorageResponse;
-}
+  const adminStorageResponse =
+    await handleAdminStorageRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (
+    adminStorageResponse
+  ) {
+    return adminStorageResponse;
+  }
+
 
   /*
-   * Public service catalogs.
+   * ------------------------------------------------
+   * Public puzzle APIs
+   *
+   * Includes:
+   * - today's puzzle
+   * - numbered/practice puzzles
+   * - mystery reveal
+   * - medal winner
+   * - winner list
+   * ------------------------------------------------
    */
+
+  const puzzleResponse =
+    await handlePuzzleRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (
+    puzzleResponse
+  ) {
+    return puzzleResponse;
+  }
+
+
+  /*
+   * ------------------------------------------------
+   * Puzzle certificate email
+   *
+   * This route independently replays the submitted
+   * 5×5 moves before sending a certificate.
+   * ------------------------------------------------
+   */
+
+  const puzzleCertificateResponse =
+    await handlePuzzleCertificateRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (
+    puzzleCertificateResponse
+  ) {
+    return puzzleCertificateResponse;
+  }
+
+
+  /*
+   * ------------------------------------------------
+   * Public service catalog
+   * ------------------------------------------------
+   */
+
   const serviceCatalogResponse =
     await handleServiceCatalogRoute(
       request,
@@ -561,72 +738,118 @@ if (adminStorageResponse) {
       url,
     );
 
-  if (serviceCatalogResponse) {
+  if (
+    serviceCatalogResponse
+  ) {
     return serviceCatalogResponse;
   }
 
+
   /*
- * Browser location hint.
- */
-const locationHintResponse =
-  handleLocationHintRoute(
-    request,
-    url,
-  );
+   * ------------------------------------------------
+   * Browser location hint
+   * ------------------------------------------------
+   */
 
-if (locationHintResponse) {
-  return locationHintResponse;
-}
+  const locationHintResponse =
+    handleLocationHintRoute(
+      request,
+      url,
+    );
 
-/*
- * Nearby registered shops.
- */
-const nearbyShopsResponse =
-  await handleNearbyShopsRoute(
-    request,
-    env,
-    url,
-  );
+  if (
+    locationHintResponse
+  ) {
+    return locationHintResponse;
+  }
 
-if (nearbyShopsResponse) {
-  return nearbyShopsResponse;
-}
+
+  /*
+   * ------------------------------------------------
+   * Nearby registered shops
+   * ------------------------------------------------
+   */
+
+  const nearbyShopsResponse =
+    await handleNearbyShopsRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (
+    nearbyShopsResponse
+  ) {
+    return nearbyShopsResponse;
+  }
+
+
+  /*
+   * ------------------------------------------------
+   * Public service forms
+   * ------------------------------------------------
+   */
 
   const serviceFormResponse =
-  await handleServiceFormsRoute(
-    request,
-    env,
-    url,
-  );
+    await handleServiceFormsRoute(
+      request,
+      env,
+      url,
+    );
 
-if (serviceFormResponse) {
-  return serviceFormResponse;
-}
+  if (
+    serviceFormResponse
+  ) {
+    return serviceFormResponse;
+  }
 
-const serviceRequestResponse =
-  await handleServiceRequestsRoute(
-    request,
-    env,
-    url,
-  );
 
-if (serviceRequestResponse) {
-  return serviceRequestResponse;
-}
-
-const sharedRequestResponse =
-  await handleSharedRequestsRoute(
-    request,
-    env,
-    url,
-  );
-
-if (sharedRequestResponse) {
-  return sharedRequestResponse;
-}
   /*
-   * Print-order creation.
+   * ------------------------------------------------
+   * Service requests
+   * ------------------------------------------------
    */
+
+  const serviceRequestResponse =
+    await handleServiceRequestsRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (
+    serviceRequestResponse
+  ) {
+    return serviceRequestResponse;
+  }
+
+
+  /*
+   * ------------------------------------------------
+   * Shared requests
+   * ------------------------------------------------
+   */
+
+  const sharedRequestResponse =
+    await handleSharedRequestsRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (
+    sharedRequestResponse
+  ) {
+    return sharedRequestResponse;
+  }
+
+
+  /*
+   * ------------------------------------------------
+   * Print orders
+   * ------------------------------------------------
+   */
+
   const printRequestsResponse =
     await handlePrintRequestsRoute(
       request,
@@ -634,25 +857,44 @@ if (sharedRequestResponse) {
       url,
     );
 
-  if (printRequestsResponse) {
+  if (
+    printRequestsResponse
+  ) {
     return printRequestsResponse;
   }
 
+
+  /*
+   * ------------------------------------------------
+   * Health
+   * ------------------------------------------------
+   */
+
   if (
-    request.method === "GET" &&
+    request.method ===
+      "GET" &&
     url.pathname ===
       "/api/health"
   ) {
     return createJsonResponse({
-      status: "ok",
+      status:
+        "ok",
 
       service:
         "GYAN Cloud Shop Registry",
     });
   }
 
+
+  /*
+   * ------------------------------------------------
+   * Register shop
+   * ------------------------------------------------
+   */
+
   if (
-    request.method === "POST" &&
+    request.method ===
+      "POST" &&
     url.pathname ===
       "/api/shops"
   ) {
@@ -662,21 +904,35 @@ if (sharedRequestResponse) {
     );
   }
 
+
+  /*
+   * ------------------------------------------------
+   * Public shop lookup
+   * ------------------------------------------------
+   */
+
   const shopRouteMatch =
     url.pathname.match(
       /^\/api\/shops\/([A-Za-z0-9]{4})$/,
     );
 
   if (
-    request.method === "GET" &&
+    request.method ===
+      "GET" &&
     shopRouteMatch
   ) {
     return handleGetShop(
       env,
-      shopRouteMatch[1],
+      shopRouteMatch[
+        1
+      ],
     );
   }
 
+
+  /*
+   * MUST remain last.
+   */
   return createJsonResponse(
     {
       error:
@@ -686,21 +942,30 @@ if (sharedRequestResponse) {
   );
 }
 
+
+/*
+ * ========================================================
+ * WORKER
+ * ========================================================
+ */
+
 export default {
   async fetch(
     request: Request,
     env: Env,
   ): Promise<Response> {
     const url =
-      new URL(request.url);
+      new URL(
+        request.url,
+      );
 
     try {
       /*
        * API routes must be handled before
-       * the static-asset fallback.
+       * static assets.
        *
-       * Otherwise /api/services may receive
-       * index.html from the SPA fallback.
+       * Otherwise the SPA fallback can return
+       * index.html for an API request.
        */
       if (
         url.pathname.startsWith(
@@ -717,7 +982,9 @@ export default {
       return env.ASSETS.fetch(
         request,
       );
-    } catch (error) {
+    } catch (
+      error
+    ) {
       console.error(
         "Unhandled Worker error:",
         error,
@@ -733,6 +1000,7 @@ export default {
     }
   },
 
+
   async scheduled(
     controller:
       ScheduledController,
@@ -744,27 +1012,31 @@ export default {
       reconcileExpiredStorage(
         env,
       )
-        .then((result) => {
-          console.log(
-            "Storage reconciliation completed:",
-            {
-              cron:
-                controller.cron,
+        .then(
+          (result) => {
+            console.log(
+              "Storage reconciliation completed:",
+              {
+                cron:
+                  controller.cron,
 
-              expiredFileCount:
-                result.expiredFileCount,
+                expiredFileCount:
+                  result.expiredFileCount,
 
-              removedBytes:
-                result.removedBytes,
-            },
-          );
-        })
-        .catch((error) => {
-          console.error(
-            "Storage reconciliation failed:",
-            error,
-          );
-        }),
+                removedBytes:
+                  result.removedBytes,
+              },
+            );
+          },
+        )
+        .catch(
+          (error) => {
+            console.error(
+              "Storage reconciliation failed:",
+              error,
+            );
+          },
+        ),
     );
   },
 };

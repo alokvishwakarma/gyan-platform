@@ -4,6 +4,8 @@ import {
   useState,
 } from "react";
 
+import QRCode from "qrcode";
+
 import "./Puzzle.css";
 
 type TileColor =
@@ -14,10 +16,14 @@ type TileColor =
   | "purple"
   | "orange";
 
+type PuzzleStage =
+  | "5x5"
+  | "7x7";
+
 interface Tile {
   id: number;
-  color: TileColor;
   hidden: boolean;
+  color?: TileColor;
 }
 
 interface Position {
@@ -25,139 +31,186 @@ interface Position {
   column: number;
 }
 
-interface Winner {
-  date: string;
-  name: string;
-  city?: string;
+interface PuzzleMove {
+  from: Position;
+  to: Position;
 }
 
-interface SavedPuzzleState {
-  date: string;
+interface PublicPuzzle {
+  puzzleDate: string;
+  puzzleNumber: number;
+  stage: PuzzleStage;
+  size: number;
+  maxMoves: number;
+  mysteryCount: number;
   board: Tile[];
+}
+
+interface PuzzleResponse {
+  puzzle: PublicPuzzle;
+}
+
+interface RevealResponse {
+  revealed: Array<{
+    id: number;
+    color: TileColor;
+  }>;
+}
+
+interface WinnerClaimResponse {
+  claimed: boolean;
+  alreadyClaimed: boolean;
+
+  winner: {
+    name: string;
+  };
+
+  error?: string;
+}
+
+interface CertificateEmailResponse {
+  sent: boolean;
+  error?: string;
+}
+
+interface PublicWinner {
+  name: string;
+  claimedAt: string;
+}
+
+interface WinnerSummary {
+  puzzleNumber: number;
+  count: number;
+
+  firstWinner:
+    | PublicWinner
+    | null;
+
+  latestWinner:
+    | PublicWinner
+    | null;
+
+  recentWinners:
+    PublicWinner[];
+}
+
+interface SavedGameState {
+  date: string;
+  puzzleNumber: number;
+  stage: PuzzleStage;
+
+  board: Tile[];
+
   moves: number;
+
+  moveHistory:
+    PuzzleMove[];
+
   chancesRemaining: number;
+
   attemptFinished: boolean;
+
   qualified: boolean;
+
+  medalWon: boolean;
 }
 
 interface PuzzleProps {
-  isRegistered?: boolean;
   onClose?: () => void;
 }
 
-interface HintResponse {
-  hint: string;
-}
-
-const SIZE = 5;
-
-const MAX_MOVES = 5;
 const MAX_CHANCES = 5;
 
-const PUZZLE_NUMBER = 218;
-
-const SWIPE_THRESHOLD = 22;
-
-const STATE_KEY =
-  "gyan-puzzle-state-v1";
-
-const WINNERS_KEY =
-  "gyan-puzzle-winners-v1";
+const SWIPE_THRESHOLD =
+  22;
 
 /*
- * Daily Puzzle #218
- *
- * Same board for everybody for v0.1.
- * Hidden colors are fixed.
- *
- * Later this will come from D1.
+ * Production:
+ * null = /api/puzzle/today
  */
-const DAILY_BOARD: Tile[] = [
-  { id: 0, color: "red", hidden: false },
-  { id: 1, color: "blue", hidden: false },
-  { id: 2, color: "red", hidden: true },
-  { id: 3, color: "yellow", hidden: false },
-  { id: 4, color: "green", hidden: false },
+const DEV_PUZZLE_NUMBER:
+  number | null = null;
 
-  { id: 5, color: "yellow", hidden: false },
-  { id: 6, color: "purple", hidden: false },
-  { id: 7, color: "red", hidden: false },
-  { id: 8, color: "blue", hidden: false },
-  { id: 9, color: "yellow", hidden: true },
+const STATE_KEY =
+  "gyan-d1-puzzle-state-v4";
 
-  { id: 10, color: "blue", hidden: true },
-  { id: 11, color: "green", hidden: false },
-  { id: 12, color: "yellow", hidden: false },
-  { id: 13, color: "red", hidden: false },
-  { id: 14, color: "blue", hidden: false },
 
-  { id: 15, color: "blue", hidden: false },
-  { id: 16, color: "red", hidden: false },
-  { id: 17, color: "purple", hidden: false },
-  { id: 18, color: "green", hidden: true },
-  { id: 19, color: "yellow", hidden: false },
+/*
+ * ========================================================
+ * HELPERS
+ * ========================================================
+ */
 
-  { id: 20, color: "green", hidden: false },
-  { id: 21, color: "orange", hidden: true },
-  { id: 22, color: "blue", hidden: false },
-  { id: 23, color: "purple", hidden: false },
-  { id: 24, color: "red", hidden: false },
-];
-
-function createBoard(): Tile[] {
-  return DAILY_BOARD.map((tile) => ({
-    ...tile,
-  }));
-}
-
-function localDateKey(
-  date = new Date(),
-): string {
-  const year =
-    date.getFullYear();
-
-  const month = String(
-    date.getMonth() + 1,
-  ).padStart(2, "0");
-
-  const day = String(
-    date.getDate(),
-  ).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
-
-function getToday(): string {
-  return localDateKey();
-}
-
-function getYesterday(): string {
-  const date =
+function localDateKey(): string {
+  const now =
     new Date();
 
-  date.setDate(
-    date.getDate() - 1,
-  );
+  return [
+    now.getFullYear(),
 
-  return localDateKey(date);
+    String(
+      now.getMonth() + 1,
+    ).padStart(
+      2,
+      "0",
+    ),
+
+    String(
+      now.getDate(),
+    ).padStart(
+      2,
+      "0",
+    ),
+  ].join("-");
 }
 
-function getIndex(
+function cloneBoard(
+  board: Tile[],
+): Tile[] {
+  return board.map(
+    (tile) => ({
+      ...tile,
+    }),
+  );
+}
+
+function cloneMove(
+  move: PuzzleMove,
+): PuzzleMove {
+  return {
+    from: {
+      ...move.from,
+    },
+
+    to: {
+      ...move.to,
+    },
+  };
+}
+
+function indexOf(
   row: number,
   column: number,
+  size: number,
 ): number {
-  return row * SIZE + column;
+  return (
+    row * size +
+    column
+  );
 }
 
-function getPosition(
+function positionOf(
   index: number,
+  size: number,
 ): Position {
   return {
-    row: Math.floor(
-      index / SIZE,
-    ),
+    row:
+      Math.floor(
+        index / size,
+      ),
+
     column:
-      index % SIZE,
+      index % size,
   };
 }
 
@@ -190,49 +243,65 @@ function adjacent(
   );
 }
 
+function validEmail(
+  value: string,
+): boolean {
+  return (
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+      value
+        .trim()
+        .toLowerCase(),
+    )
+  );
+}
+
+
 /*
- * Mystery squares do not count
- * until they have been revealed.
+ * ========================================================
+ * MATCH DETECTION
+ * ========================================================
  */
+
 function longestVisibleMatch(
   board: Tile[],
+  size: number,
 ): number {
   let best = 1;
 
-  /*
-   * Horizontal
-   */
   for (
     let row = 0;
-    row < SIZE;
+    row < size;
     row += 1
   ) {
     let length = 1;
 
     for (
       let column = 1;
-      column < SIZE;
+      column < size;
       column += 1
     ) {
       const previous =
         board[
-          getIndex(
+          indexOf(
             row,
             column - 1,
+            size,
           )
         ];
 
       const current =
         board[
-          getIndex(
+          indexOf(
             row,
             column,
+            size,
           )
         ];
 
       if (
         !previous.hidden &&
         !current.hidden &&
+        previous.color &&
         previous.color ===
           current.color
       ) {
@@ -249,40 +318,40 @@ function longestVisibleMatch(
     }
   }
 
-  /*
-   * Vertical
-   */
   for (
     let column = 0;
-    column < SIZE;
+    column < size;
     column += 1
   ) {
     let length = 1;
 
     for (
       let row = 1;
-      row < SIZE;
+      row < size;
       row += 1
     ) {
       const previous =
         board[
-          getIndex(
+          indexOf(
             row - 1,
             column,
+            size,
           )
         ];
 
       const current =
         board[
-          getIndex(
+          indexOf(
             row,
             column,
+            size,
           )
         ];
 
       if (
         !previous.hidden &&
         !current.hidden &&
+        previous.color &&
         previous.color ===
           current.color
       ) {
@@ -302,121 +371,15 @@ function longestVisibleMatch(
   return best;
 }
 
-function revealOneMystery(
-  board: Tile[],
-): Tile[] {
-  const index =
-    board.findIndex(
-      (tile) =>
-        tile.hidden,
-    );
 
-  if (index === -1) {
-    return board;
-  }
-
-  return board.map(
-    (tile, tileIndex) =>
-      tileIndex === index
-        ? {
-            ...tile,
-            hidden: false,
-          }
-        : tile,
-  );
-}
-
-function cleanWinnerHistory(
-  winners: Winner[],
-): Winner[] {
-  const cutoff =
-    new Date();
-
-  cutoff.setDate(
-    cutoff.getDate() -
-      365,
-  );
-
-  cutoff.setHours(
-    0,
-    0,
-    0,
-    0,
-  );
-
-  return winners.filter(
-    (winner) => {
-      const date =
-        new Date(
-          `${winner.date}T00:00:00`,
-        );
-
-      return date >= cutoff;
-    },
-  );
-}
-
-function loadWinnerHistory(): Winner[] {
-  try {
-    const raw =
-      localStorage.getItem(
-        WINNERS_KEY,
-      );
-
-    let winners: Winner[] =
-      raw
-        ? JSON.parse(raw)
-        : [];
-
-    winners =
-      cleanWinnerHistory(
-        winners,
-      );
-
-    /*
-     * Dummy winner until D1
-     * supplies the real daily winner.
-     */
-    const yesterday =
-      getYesterday();
-
-    const exists =
-      winners.some(
-        (winner) =>
-          winner.date ===
-          yesterday,
-      );
-
-    if (!exists) {
-      winners.push({
-        date: yesterday,
-        name: "Aarav",
-        city: "Lucknow",
-      });
-    }
-
-    localStorage.setItem(
-      WINNERS_KEY,
-      JSON.stringify(
-        winners,
-      ),
-    );
-
-    return winners;
-  } catch {
-    return [
-      {
-        date:
-          getYesterday(),
-        name: "Aarav",
-        city: "Lucknow",
-      },
-    ];
-  }
-}
+/*
+ * ========================================================
+ * LOCAL STORAGE
+ * ========================================================
+ */
 
 function loadSavedState():
-  | SavedPuzzleState
+  | SavedGameState
   | null {
   try {
     const raw =
@@ -431,14 +394,11 @@ function loadSavedState():
     const saved =
       JSON.parse(
         raw,
-      ) as SavedPuzzleState;
+      ) as SavedGameState;
 
-    /*
-     * New day = fresh puzzle.
-     */
     if (
       saved.date !==
-      getToday()
+      localDateKey()
     ) {
       localStorage.removeItem(
         STATE_KEY,
@@ -447,28 +407,88 @@ function loadSavedState():
       return null;
     }
 
-    return saved;
+    return {
+      ...saved,
+
+      moveHistory:
+        Array.isArray(
+          saved.moveHistory,
+        )
+          ? saved.moveHistory
+          : [],
+    };
   } catch {
     return null;
   }
 }
 
+
+/*
+ * ========================================================
+ * API
+ * ========================================================
+ */
+
+async function fetchPuzzle(
+  stage: PuzzleStage,
+): Promise<PublicPuzzle> {
+  const path =
+    DEV_PUZZLE_NUMBER !==
+    null
+      ? `/api/puzzle/${DEV_PUZZLE_NUMBER}/${stage}`
+      : `/api/puzzle/today?stage=${stage}`;
+
+  const response =
+    await fetch(
+      path,
+    );
+
+  if (!response.ok) {
+    throw new Error(
+      "Puzzle unavailable.",
+    );
+  }
+
+  const data =
+    (await response.json()) as
+      PuzzleResponse;
+
+  return data.puzzle;
+}
+
+async function fetchWinnerSummary(
+  puzzleNumber: number,
+): Promise<
+  WinnerSummary | null
+> {
+  try {
+    const response =
+      await fetch(
+        `/api/puzzle/${puzzleNumber}/winners`,
+      );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return (
+      await response.json()
+    ) as WinnerSummary;
+  } catch {
+    return null;
+  }
+}
+
+
+/*
+ * ========================================================
+ * COMPONENT
+ * ========================================================
+ */
+
 export default function Puzzle({
-  isRegistered = false,
   onClose,
 }: PuzzleProps) {
-  /*
-   * Read localStorage only once
-   * when the component mounts.
-   */
-  const initialStateRef =
-    useRef<
-      SavedPuzzleState | null
-    >(loadSavedState());
-
-  const initialState =
-    initialStateRef.current;
-
   const [
     visible,
     setVisible,
@@ -476,60 +496,90 @@ export default function Puzzle({
     useState(true);
 
   const [
+    loading,
+    setLoading,
+  ] =
+    useState(true);
+
+  const [
+    puzzle,
+    setPuzzle,
+  ] =
+    useState<
+      PublicPuzzle | null
+    >(null);
+
+  const [
+    stage,
+    setStage,
+  ] =
+    useState<PuzzleStage>(
+      "5x5",
+    );
+
+  const [
     board,
     setBoard,
   ] =
     useState<Tile[]>(
-      initialState?.board ??
-        createBoard(),
+      [],
+    );
+
+  const [
+    initialBoard,
+    setInitialBoard,
+  ] =
+    useState<Tile[]>(
+      [],
     );
 
   const [
     moves,
     setMoves,
   ] =
-    useState(
-      initialState?.moves ??
-        0,
-    );
+    useState(0);
+
+  const [
+    moveHistory,
+    setMoveHistory,
+  ] =
+    useState<
+      PuzzleMove[]
+    >([]);
 
   const [
     chancesRemaining,
     setChancesRemaining,
   ] =
     useState(
-      initialState
-        ?.chancesRemaining ??
-        MAX_CHANCES,
+      MAX_CHANCES,
     );
 
   const [
     attemptFinished,
     setAttemptFinished,
   ] =
-    useState(
-      initialState
-        ?.attemptFinished ??
-        false,
-    );
+    useState(false);
 
   const [
     qualified,
     setQualified,
   ] =
-    useState(
-      initialState
-        ?.qualified ??
-        false,
-    );
+    useState(false);
+
+  const [
+    medalWon,
+    setMedalWon,
+  ] =
+    useState(false);
 
   const [
     selected,
     setSelected,
   ] =
-    useState<Position | null>(
-      null,
-    );
+    useState<
+      Position | null
+    >(null);
 
   const [
     lastSwap,
@@ -543,47 +593,150 @@ export default function Puzzle({
     >(null);
 
   const [
-    previousMatch,
-    setPreviousMatch,
-  ] =
-    useState(
-      longestVisibleMatch(
-        initialState?.board ??
-          createBoard(),
-      ),
-    );
-
-  const [
     message,
     setMessage,
   ] =
     useState(
-      initialState
-        ?.attemptFinished
-        ? "Attempt complete."
-        : "Swipe a square to swap with its neighbor.",
+      "Loading puzzle…",
+    );
+
+
+  /*
+   * ------------------------------------------------
+   * Certificate
+   * ------------------------------------------------
+   */
+
+  const [
+    certificateBoard,
+    setCertificateBoard,
+  ] =
+    useState<Tile[]>(
+      [],
     );
 
   const [
-    hint,
-    setHint,
+    certificateQr,
+    setCertificateQr,
+  ] =
+    useState("");
+
+  const [
+    certificateOpen,
+    setCertificateOpen,
+  ] =
+    useState(false);
+
+  const [
+    certificateEmail,
+    setCertificateEmail,
+  ] =
+    useState("");
+
+  const [
+    certificateSending,
+    setCertificateSending,
+  ] =
+    useState(false);
+
+  const [
+    certificateSent,
+    setCertificateSent,
+  ] =
+    useState(false);
+
+  const [
+    certificateError,
+    setCertificateError,
   ] =
     useState<
       string | null
     >(null);
 
+
+  /*
+   * ------------------------------------------------
+   * Medal
+   * ------------------------------------------------
+   */
+
   const [
-    hintLoading,
-    setHintLoading,
+    showMedalForm,
+    setShowMedalForm,
   ] =
     useState(false);
 
   const [
-    winners,
+    winnerName,
+    setWinnerName,
   ] =
-    useState<Winner[]>(
-      loadWinnerHistory,
-    );
+    useState("");
+
+  const [
+    winnerEmail,
+    setWinnerEmail,
+  ] =
+    useState("");
+
+  const [
+    claimingMedal,
+    setClaimingMedal,
+  ] =
+    useState(false);
+
+  const [
+    medalClaimed,
+    setMedalClaimed,
+  ] =
+    useState(false);
+
+  const [
+    medalClaimName,
+    setMedalClaimName,
+  ] =
+    useState("");
+
+  const [
+    medalError,
+    setMedalError,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+
+  /*
+   * ------------------------------------------------
+   * Winners
+   * ------------------------------------------------
+   */
+
+  const [
+    winnerSummary,
+    setWinnerSummary,
+  ] =
+    useState<
+      WinnerSummary | null
+    >(null);
+
+  const [
+    winnersOpen,
+    setWinnersOpen,
+  ] =
+    useState(false);
+
+  const [
+    winnersLoading,
+    setWinnersLoading,
+  ] =
+    useState(false);
+
+
+  /*
+   * ------------------------------------------------
+   * Swipe
+   * ------------------------------------------------
+   */
 
   const touchStart =
     useRef<{
@@ -593,155 +746,658 @@ export default function Puzzle({
       y: number;
     } | null>(null);
 
+
   /*
-   * Save today's state after
-   * every meaningful change.
+   * ========================================================
+   * LOAD
+   * ========================================================
    */
+
   useEffect(() => {
-    const state:
-      SavedPuzzleState = {
-      date: getToday(),
+    let cancelled =
+      false;
+
+    async function load() {
+      try {
+        const loaded =
+          await fetchPuzzle(
+            "5x5",
+          );
+
+        if (cancelled) {
+          return;
+        }
+
+        const saved =
+          loadSavedState();
+
+        setPuzzle(
+          loaded,
+        );
+
+        setStage(
+          "5x5",
+        );
+
+        setInitialBoard(
+          cloneBoard(
+            loaded.board,
+          ),
+        );
+
+        if (
+          saved &&
+          saved.puzzleNumber ===
+            loaded.puzzleNumber &&
+          saved.stage ===
+            "5x5"
+        ) {
+          setBoard(
+            cloneBoard(
+              saved.board,
+            ),
+          );
+
+          setMoves(
+            saved.moves,
+          );
+
+          setMoveHistory(
+            saved.moveHistory.map(
+              cloneMove,
+            ),
+          );
+
+          setChancesRemaining(
+            saved.chancesRemaining,
+          );
+
+          setAttemptFinished(
+            saved.attemptFinished,
+          );
+
+          setQualified(
+            saved.qualified,
+          );
+
+          setMedalWon(
+            saved.medalWon,
+          );
+
+          if (
+            saved.qualified
+          ) {
+            setCertificateBoard(
+              cloneBoard(
+                saved.board,
+              ),
+            );
+
+            setCertificateOpen(
+              true,
+            );
+          }
+        } else {
+          setBoard(
+            cloneBoard(
+              loaded.board,
+            ),
+          );
+        }
+
+        const summary =
+          await fetchWinnerSummary(
+            loaded.puzzleNumber,
+          );
+
+        if (!cancelled) {
+          setWinnerSummary(
+            summary,
+          );
+        }
+
+        setMessage(
+          "Swipe a square to swap with its neighbor.",
+        );
+      } catch {
+        setMessage(
+          "Puzzle unavailable.",
+        );
+      } finally {
+        if (!cancelled) {
+          setLoading(
+            false,
+          );
+        }
+      }
+    }
+
+    void load();
+
+    return () => {
+      cancelled =
+        true;
+    };
+  }, []);
+
+
+  /*
+   * ========================================================
+   * SAVE
+   * ========================================================
+   */
+
+  useEffect(() => {
+    if (!puzzle) {
+      return;
+    }
+
+    const saved:
+      SavedGameState = {
+      date:
+        localDateKey(),
+
+      puzzleNumber:
+        puzzle.puzzleNumber,
+
+      stage,
+
       board,
+
       moves,
+
+      moveHistory,
+
       chancesRemaining,
+
       attemptFinished,
+
       qualified,
+
+      medalWon,
     };
 
     localStorage.setItem(
       STATE_KEY,
       JSON.stringify(
-        state,
+        saved,
       ),
     );
   }, [
+    puzzle,
+    stage,
     board,
     moves,
+    moveHistory,
     chancesRemaining,
     attemptFinished,
     qualified,
+    medalWon,
   ]);
 
-  const yesterdayWinner =
-    winners.find(
-      (winner) =>
-        winner.date ===
-        getYesterday(),
+
+  /*
+   * ========================================================
+   * CERTIFICATE QR
+   * ========================================================
+   */
+
+  useEffect(() => {
+    if (
+      !qualified ||
+      !puzzle
+    ) {
+      return;
+    }
+
+    let cancelled =
+      false;
+
+    async function createQr() {
+      try {
+        const dataUrl =
+          await QRCode.toDataURL(
+            "https://gyan.cc",
+            {
+              width: 96,
+              margin: 1,
+
+              errorCorrectionLevel:
+                "M",
+            },
+          );
+
+        if (!cancelled) {
+          setCertificateQr(
+            dataUrl,
+          );
+        }
+      } catch {
+        // Certificate still works.
+      }
+    }
+
+    void createQr();
+
+    return () => {
+      cancelled =
+        true;
+    };
+  }, [
+    qualified,
+    puzzle,
+  ]);
+
+
+  /*
+   * ========================================================
+   * WINNERS
+   * ========================================================
+   */
+
+  async function refreshWinners() {
+    if (!puzzle) {
+      return;
+    }
+
+    setWinnersLoading(
+      true,
     );
 
-  function closePuzzle() {
-    setVisible(false);
-
-    onClose?.();
-  }
-
-  function finishAttempt() {
-    const next =
-      Math.max(
-        0,
-        chancesRemaining -
-          1,
+    const summary =
+      await fetchWinnerSummary(
+        puzzle.puzzleNumber,
       );
 
-    setChancesRemaining(
-      next,
+    setWinnerSummary(
+      summary,
     );
+
+    setWinnersLoading(
+      false,
+    );
+  }
+
+  async function openWinners() {
+    await refreshWinners();
+
+    setWinnersOpen(
+      true,
+    );
+  }
+
+
+  /*
+   * ========================================================
+   * SERVER MYSTERY REVEAL
+   * ========================================================
+   */
+
+  async function checkReveals(
+    currentBoard:
+      Tile[],
+  ): Promise<{
+    board: Tile[];
+    count: number;
+  }> {
+    if (!puzzle) {
+      return {
+        board:
+          currentBoard,
+
+        count: 0,
+      };
+    }
+
+    const response =
+      await fetch(
+        "/api/puzzle/check-reveals",
+        {
+          method:
+            "POST",
+
+          headers: {
+            "content-type":
+              "application/json",
+          },
+
+          body:
+            JSON.stringify({
+              puzzleNumber:
+                puzzle.puzzleNumber,
+
+              stage,
+
+              board:
+                currentBoard.map(
+                  (tile) => ({
+                    id:
+                      tile.id,
+
+                    hidden:
+                      tile.hidden,
+
+                    color:
+                      tile.hidden
+                        ? undefined
+                        : tile.color,
+                  }),
+                ),
+            }),
+        },
+      );
+
+    if (!response.ok) {
+      return {
+        board:
+          currentBoard,
+
+        count: 0,
+      };
+    }
+
+    const data =
+      (await response.json()) as
+        RevealResponse;
+
+    if (
+      data.revealed.length ===
+      0
+    ) {
+      return {
+        board:
+          currentBoard,
+
+        count: 0,
+      };
+    }
+
+    const revealMap =
+      new Map(
+        data.revealed.map(
+          (tile) => [
+            tile.id,
+            tile.color,
+          ],
+        ),
+      );
+
+    return {
+      board:
+        currentBoard.map(
+          (tile) => {
+            const color =
+              revealMap.get(
+                tile.id,
+              );
+
+            if (!color) {
+              return tile;
+            }
+
+            return {
+              id:
+                tile.id,
+
+              hidden:
+                false,
+
+              color,
+            };
+          },
+        ),
+
+      count:
+        data.revealed.length,
+    };
+  }
+
+
+  /*
+   * ========================================================
+   * ATTEMPTS
+   * ========================================================
+   */
+
+  function finishAttempt() {
+    if (
+      stage ===
+      "5x5"
+    ) {
+      setChancesRemaining(
+        (current) =>
+          Math.max(
+            0,
+            current - 1,
+          ),
+      );
+    }
 
     setAttemptFinished(
       true,
     );
 
-    setSelected(null);
-
-    if (next > 0) {
-      setMessage(
-        "Almost! Try again with what you learned.",
-      );
-    } else {
-      setMessage(
-        "All 5 chances used. Come back tomorrow!",
-      );
-    }
+    setSelected(
+      null,
+    );
   }
 
   function startNextAttempt() {
     if (
+      stage !== "5x5" ||
+      qualified ||
       chancesRemaining <=
-        0 ||
-      qualified
+        0
     ) {
       return;
     }
 
-    const freshBoard =
-      createBoard();
-
     setBoard(
-      freshBoard,
+      cloneBoard(
+        initialBoard,
+      ),
     );
 
-    setMoves(0);
+    setMoves(
+      0,
+    );
+
+    setMoveHistory(
+      [],
+    );
 
     setAttemptFinished(
       false,
     );
 
-    setSelected(null);
-
-    setLastSwap(null);
-
-    setPreviousMatch(
-      longestVisibleMatch(
-        freshBoard,
-      ),
+    setSelected(
+      null,
     );
 
-    setHint(null);
+    setLastSwap(
+      null,
+    );
+
+    setCertificateBoard(
+      [],
+    );
+
+    setCertificateOpen(
+      false,
+    );
+
+    setCertificateEmail(
+      "",
+    );
+
+    setCertificateSent(
+      false,
+    );
+
+    setCertificateError(
+      null,
+    );
 
     setMessage(
-      "Good luck — you know more this time!",
+      "Try again — you know more now!",
     );
   }
 
-  function performSwap(
-    firstPosition: Position,
-    secondPosition: Position,
+
+  /*
+   * ========================================================
+   * START 7×7
+   * ========================================================
+   */
+
+  async function startFinal() {
+    if (!qualified) {
+      return;
+    }
+
+    try {
+      setLoading(
+        true,
+      );
+
+      const loaded =
+        await fetchPuzzle(
+          "7x7",
+        );
+
+      setPuzzle(
+        loaded,
+      );
+
+      setStage(
+        "7x7",
+      );
+
+      setBoard(
+        cloneBoard(
+          loaded.board,
+        ),
+      );
+
+      setInitialBoard(
+        cloneBoard(
+          loaded.board,
+        ),
+      );
+
+      setMoves(
+        0,
+      );
+
+      setMoveHistory(
+        [],
+      );
+
+      setChancesRemaining(
+        1,
+      );
+
+      setAttemptFinished(
+        false,
+      );
+
+      setSelected(
+        null,
+      );
+
+      setLastSwap(
+        null,
+      );
+
+      setMedalWon(
+        false,
+      );
+
+      setMedalClaimed(
+        false,
+      );
+
+      setShowMedalForm(
+        false,
+      );
+
+      setWinnerName(
+        "",
+      );
+
+      setWinnerEmail(
+        "",
+      );
+
+      setMedalError(
+        null,
+      );
+
+      setCertificateOpen(
+        false,
+      );
+
+      setMessage(
+        "🏆 Match all 7 to win today's medal.",
+      );
+    } catch {
+      setMessage(
+        "Unable to load the Final.",
+      );
+    } finally {
+      setLoading(
+        false,
+      );
+    }
+  }
+
+
+  /*
+   * ========================================================
+   * SWAP
+   * ========================================================
+   */
+
+  async function performSwap(
+    first: Position,
+    second: Position,
   ) {
     if (
-      qualified ||
+      !puzzle ||
       attemptFinished ||
-      chancesRemaining <= 0 ||
-      moves >= MAX_MOVES
+      medalWon ||
+      moves >=
+        puzzle.maxMoves
     ) {
       return;
     }
 
     if (
       !adjacent(
-        firstPosition,
-        secondPosition,
+        first,
+        second,
       )
     ) {
       return;
     }
 
     const firstIndex =
-      getIndex(
-        firstPosition.row,
-        firstPosition.column,
+      indexOf(
+        first.row,
+        first.column,
+        puzzle.size,
       );
 
     const secondIndex =
-      getIndex(
-        secondPosition.row,
-        secondPosition.column,
+      indexOf(
+        second.row,
+        second.column,
+        puzzle.size,
       );
 
     let nextBoard =
-      board.map(
-        (tile) => ({
-          ...tile,
-        }),
+      cloneBoard(
+        board,
       );
 
     [
@@ -763,55 +1419,44 @@ export default function Puzzle({
     const nextMove =
       moves + 1;
 
+    const performedMove:
+      PuzzleMove = {
+      from: {
+        ...first,
+      },
+
+      to: {
+        ...second,
+      },
+    };
+
+    const nextMoveHistory =
+      [
+        ...moveHistory.map(
+          cloneMove,
+        ),
+
+        performedMove,
+      ];
+
     setLastSwap([
-      firstPosition,
-      secondPosition,
+      first,
+      second,
     ]);
 
-    let match =
-      longestVisibleMatch(
+    const revealResult =
+      await checkReveals(
         nextBoard,
       );
 
-    /*
-     * A newly-created visible
-     * Match 3+ reveals one mystery.
-     */
-    if (
-      match >= 3 &&
-      previousMatch < 3
-    ) {
-      nextBoard =
-        revealOneMystery(
-          nextBoard,
-        );
+    nextBoard =
+      revealResult.board;
 
-      match =
-        Math.max(
-          match,
-          longestVisibleMatch(
-            nextBoard,
-          ),
-        );
-
-      setMessage(
-        "✨ Mystery revealed!",
+    const longest =
+      longestVisibleMatch(
+        nextBoard,
+        puzzle.size,
       );
-    } else {
-      const remaining =
-        MAX_MOVES -
-        nextMove;
-
-      if (
-        remaining > 0
-      ) {
-        setMessage(
-          remaining === 1
-            ? "1 move remaining."
-            : `${remaining} moves remaining.`,
-        );
-      }
-    }
 
     setBoard(
       nextBoard,
@@ -821,20 +1466,34 @@ export default function Puzzle({
       nextMove,
     );
 
-    setPreviousMatch(
-      match,
+    setMoveHistory(
+      nextMoveHistory,
     );
 
-    setSelected(null);
-
-    /*
-     * Board changed:
-     * previous hint is stale.
-     */
-    setHint(null);
+    setSelected(
+      null,
+    );
 
     if (
-      match >= 5
+      revealResult.count >
+      0
+    ) {
+      setMessage(
+        revealResult.count ===
+          1
+          ? "✨ Mystery revealed!"
+          : `✨ ${revealResult.count} mysteries revealed!`,
+      );
+    }
+
+
+    /*
+     * 5×5 solved
+     */
+    if (
+      stage ===
+        "5x5" &&
+      longest >= 5
     ) {
       setQualified(
         true,
@@ -844,34 +1503,91 @@ export default function Puzzle({
         true,
       );
 
+      setCertificateBoard(
+        cloneBoard(
+          nextBoard,
+        ),
+      );
+
+      setCertificateOpen(
+        true,
+      );
+
+      setCertificateSent(
+        false,
+      );
+
+      setCertificateError(
+        null,
+      );
+
       setMessage(
-        "🏆 You unlocked the 7×7 Final!",
+        "🎉 5×5 complete!",
       );
 
       return;
     }
 
+
     /*
-     * Blur after the 5th move.
+     * 7×7 solved
      */
     if (
+      stage ===
+        "7x7" &&
+      longest >= 7
+    ) {
+      setMedalWon(
+        true,
+      );
+
+      setAttemptFinished(
+        true,
+      );
+
+      setMessage(
+        "🏅 Winner! Claim your medal.",
+      );
+
+      return;
+    }
+
+
+    if (
       nextMove >=
-      MAX_MOVES
+      puzzle.maxMoves
     ) {
       finishAttempt();
+
+      return;
+    }
+
+    if (
+      revealResult.count ===
+      0
+    ) {
+      setMessage(
+        `${
+          puzzle.maxMoves -
+          nextMove
+        } moves remaining.`,
+      );
     }
   }
 
+
   /*
-   * Desktop / normal tap fallback.
+   * ========================================================
+   * CLICK
+   * ========================================================
    */
-  function handleTileClick(
+
+  function handleClick(
     row: number,
     column: number,
   ) {
     if (
-      attemptFinished ||
-      qualified
+      attemptFinished
     ) {
       return;
     }
@@ -895,7 +1611,9 @@ export default function Puzzle({
         clicked,
       )
     ) {
-      setSelected(null);
+      setSelected(
+        null,
+      );
 
       return;
     }
@@ -906,7 +1624,7 @@ export default function Puzzle({
         clicked,
       )
     ) {
-      performSwap(
+      void performSwap(
         selected,
         clicked,
       );
@@ -917,28 +1635,21 @@ export default function Puzzle({
     setSelected(
       clicked,
     );
-
-    setMessage(
-      "Choose a neighboring square.",
-    );
   }
 
+
   /*
-   * Mobile swipe.
+   * ========================================================
+   * TOUCH
+   * ========================================================
    */
+
   function handleTouchStart(
     event:
       React.TouchEvent<HTMLButtonElement>,
     row: number,
     column: number,
   ) {
-    if (
-      attemptFinished ||
-      qualified
-    ) {
-      return;
-    }
-
     const touch =
       event.touches[0];
 
@@ -946,8 +1657,12 @@ export default function Puzzle({
       {
         row,
         column,
-        x: touch.clientX,
-        y: touch.clientY,
+
+        x:
+          touch.clientX,
+
+        y:
+          touch.clientY,
       };
   }
 
@@ -961,7 +1676,10 @@ export default function Puzzle({
     touchStart.current =
       null;
 
-    if (!start) {
+    if (
+      !start ||
+      !puzzle
+    ) {
       return;
     }
 
@@ -976,10 +1694,6 @@ export default function Puzzle({
       touch.clientY -
       start.y;
 
-    /*
-     * Short movement:
-     * normal tap/click handles it.
-     */
     if (
       Math.abs(dx) <
         SWIPE_THRESHOLD &&
@@ -989,518 +1703,1234 @@ export default function Puzzle({
       return;
     }
 
-    let targetRow =
+    let row =
       start.row;
 
-    let targetColumn =
+    let column =
       start.column;
 
     if (
       Math.abs(dx) >
       Math.abs(dy)
     ) {
-      targetColumn +=
+      column +=
         dx > 0
           ? 1
           : -1;
     } else {
-      targetRow +=
+      row +=
         dy > 0
           ? 1
           : -1;
     }
 
-    /*
-     * Swipe outside board:
-     * ignore.
-     */
     if (
-      targetRow < 0 ||
-      targetRow >= SIZE ||
-      targetColumn < 0 ||
-      targetColumn >= SIZE
+      row < 0 ||
+      row >=
+        puzzle.size ||
+      column < 0 ||
+      column >=
+        puzzle.size
     ) {
       return;
     }
 
-    performSwap(
+    void performSwap(
       {
-        row: start.row,
+        row:
+          start.row,
+
         column:
           start.column,
       },
+
       {
-        row: targetRow,
-        column:
-          targetColumn,
+        row,
+        column,
       },
     );
   }
 
+
   /*
-   * Hint stays server-side.
-   *
-   * Until /api/puzzle/hint exists,
-   * registered users see a
-   * "coming soon" fallback.
+   * ========================================================
+   * EMAIL CERTIFICATE
+   * ========================================================
    */
-  async function requestHint() {
-    if (!isRegistered) {
-      setHint(
-        "Create a free GYAN profile to unlock hints.",
+
+  async function emailCertificate() {
+    if (
+      !puzzle ||
+      stage !==
+        "5x5" ||
+      !qualified
+    ) {
+      return;
+    }
+
+    const email =
+      certificateEmail
+        .trim()
+        .toLowerCase();
+
+    if (
+      !validEmail(
+        email,
+      )
+    ) {
+      setCertificateError(
+        "Please provide a valid email address.",
       );
 
       return;
     }
 
-    setHintLoading(
+    if (
+      moveHistory.length ===
+      0
+    ) {
+      setCertificateError(
+        "Completion could not be verified. Please solve the puzzle again.",
+      );
+
+      return;
+    }
+
+    setCertificateSending(
       true,
     );
 
-    setHint(null);
+    setCertificateError(
+      null,
+    );
+
+    setCertificateSent(
+      false,
+    );
 
     try {
       const response =
         await fetch(
-          "/api/puzzle/hint",
+          "/api/puzzle/certificate",
           {
             method:
               "POST",
 
             headers: {
-              "Content-Type":
+              "content-type":
                 "application/json",
             },
 
             body:
-              JSON.stringify(
-                {
-                  puzzleNumber:
-                    PUZZLE_NUMBER,
+              JSON.stringify({
+                puzzleNumber:
+                  puzzle.puzzleNumber,
 
-                  stage:
-                    "5x5",
+                email,
 
-                  movesUsed:
-                    moves,
-
-                  board:
-                    board.map(
-                      (
-                        tile,
-                      ) => ({
-                        id: tile.id,
-                        color:
-                          tile.color,
-                        hidden:
-                          tile.hidden,
-                      }),
-                    ),
-                },
-              ),
+                moves:
+                  moveHistory,
+              }),
           },
         );
 
-      if (
-        response.status ===
-        401
-      ) {
-        setHint(
-          "Sign in to your GYAN profile to use hints.",
-        );
-
-        return;
-      }
+      const data =
+        (await response.json()) as
+          CertificateEmailResponse;
 
       if (
-        !response.ok
+        !response.ok ||
+        !data.sent
       ) {
         throw new Error(
-          "Hint request failed",
+          data.error ??
+            "Unable to send certificate.",
         );
       }
 
-      const data =
-        (await response.json()) as HintResponse;
-
-      setHint(
-        data.hint,
+      setCertificateSent(
+        true,
       );
-    } catch {
-      setHint(
-        "Live hints are coming soon.",
+
+      setMessage(
+        "✉️ Certificate sent!",
+      );
+    } catch (
+      error
+    ) {
+      setCertificateError(
+        error instanceof
+        Error
+          ? error.message
+          : "Unable to send certificate.",
       );
     } finally {
-      setHintLoading(
+      setCertificateSending(
         false,
       );
     }
   }
 
+
+  /*
+   * ========================================================
+   * MEDAL
+   * ========================================================
+   */
+
+  async function claimMedal() {
+    if (!puzzle) {
+      return;
+    }
+
+    const name =
+      winnerName.trim();
+
+    const email =
+      winnerEmail
+        .trim()
+        .toLowerCase();
+
+    if (
+      name.length < 2
+    ) {
+      setMedalError(
+        "Please enter your display name.",
+      );
+
+      return;
+    }
+
+    if (
+      !validEmail(
+        email,
+      )
+    ) {
+      setMedalError(
+        "Please enter a valid email.",
+      );
+
+      return;
+    }
+
+    setClaimingMedal(
+      true,
+    );
+
+    setMedalError(
+      null,
+    );
+
+    try {
+      const response =
+        await fetch(
+          "/api/puzzle/winner",
+          {
+            method:
+              "POST",
+
+            headers: {
+              "content-type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                puzzleNumber:
+                  puzzle.puzzleNumber,
+
+                name,
+
+                email,
+              }),
+          },
+        );
+
+      const data =
+        (await response.json()) as
+          WinnerClaimResponse;
+
+      if (
+        !response.ok
+      ) {
+        throw new Error(
+          data.error ??
+            "Unable to claim medal.",
+        );
+      }
+
+      setMedalClaimed(
+        true,
+      );
+
+      setMedalClaimName(
+        data.winner.name,
+      );
+
+      setShowMedalForm(
+        false,
+      );
+
+      setMessage(
+        data.alreadyClaimed
+          ? "🏅 This medal was already saved."
+          : "🏅 Medal claimed!",
+      );
+
+      const summary =
+        await fetchWinnerSummary(
+          puzzle.puzzleNumber,
+        );
+
+      setWinnerSummary(
+        summary,
+      );
+    } catch (
+      error
+    ) {
+      setMedalError(
+        error instanceof
+        Error
+          ? error.message
+          : "Unable to claim medal.",
+      );
+    } finally {
+      setClaimingMedal(
+        false,
+      );
+    }
+  }
+
+
+  /*
+   * ========================================================
+   * EARLY RETURNS
+   * ========================================================
+   */
+
   if (!visible) {
     return null;
   }
 
+  if (
+    loading &&
+    !puzzle
+  ) {
+    return (
+      <section className="daily-puzzle">
+        <div className="daily-puzzle__message">
+          Loading puzzle…
+        </div>
+      </section>
+    );
+  }
+
+  if (!puzzle) {
+    return (
+      <section className="daily-puzzle">
+        <div className="daily-puzzle__message">
+          {message}
+        </div>
+      </section>
+    );
+  }
+
+
+  /*
+   * ========================================================
+   * UI
+   * ========================================================
+   */
+
   return (
     <section
-      className="daily-puzzle"
-      aria-label="GYAN Puzzle of the Day"
+      className={[
+        "daily-puzzle",
+
+        stage ===
+          "7x7"
+          ? "daily-puzzle--final"
+          : "",
+      ].join(" ")}
     >
       <button
         type="button"
         className="daily-puzzle__close"
         aria-label="Close puzzle"
-        onClick={
-          closePuzzle
-        }
+        onClick={() => {
+          setVisible(
+            false,
+          );
+
+          onClose?.();
+        }}
       >
         ×
       </button>
 
       <header className="daily-puzzle__header">
         <span>
-          Puzzle of the Day
+          {stage ===
+          "5x5"
+            ? "Puzzle of the Day"
+            : "GYAN Final"}
         </span>
 
         <strong>
-          #{PUZZLE_NUMBER}
+          #
+          {
+            puzzle.puzzleNumber
+          }
         </strong>
       </header>
 
-      <div className="daily-puzzle__winner">
-        🏆 Yesterday:{" "}
-        <strong>
-          {yesterdayWinner
-            ?.name ??
-            "Aarav"}
-        </strong>
 
-        {yesterdayWinner
-          ?.city && (
-          <>
-            {" "}
-            ·{" "}
-            {
-              yesterdayWinner.city
-            }
-          </>
-        )}
-      </div>
+      {stage ===
+      "5x5" ? (
+        <div className="daily-puzzle__winner-row">
+          <div className="daily-puzzle__winner">
+            {winnerSummary
+              ?.latestWinner ? (
+              <>
+                🏆 Latest Winner:{" "}
 
-      <div
-        className="daily-puzzle__lives"
-        aria-label={`${chancesRemaining} chances remaining`}
-      >
-        {Array.from({
-          length:
-            MAX_CHANCES,
-        }).map(
-          (_, index) => (
-            <span
-              key={index}
-              className={[
-                "daily-puzzle__life",
-
-                index <
-                chancesRemaining
-                  ? "daily-puzzle__life--active"
-                  : "",
-              ].join(
-                " ",
-              )}
-            />
-          ),
-        )}
-      </div>
-
-      <div className="daily-puzzle__lives-label">
-        {chancesRemaining}{" "}
-        {chancesRemaining ===
-        1
-          ? "chance"
-          : "chances"}
-      </div>
-
-      <div className="daily-puzzle__board-shell">
-        <div
-          className={[
-            "daily-puzzle__board",
-
-            attemptFinished &&
-            !qualified
-              ? "daily-puzzle__board--blurred"
-              : "",
-          ].join(
-            " ",
-          )}
-        >
-          {board.map(
-            (
-              tile,
-              index,
-            ) => {
-              const position =
-                getPosition(
-                  index,
-                );
-
-              const isSelected =
-                selected !==
-                  null &&
-                samePosition(
-                  selected,
-                  position,
-                );
-
-              const wasSwapped =
-                lastSwap?.some(
-                  (
-                    swapped,
-                  ) =>
-                    samePosition(
-                      swapped,
-                      position,
-                    ),
-                ) ??
-                false;
-
-              return (
-                <button
-                  key={
-                    tile.id
+                <strong>
+                  {
+                    winnerSummary
+                      .latestWinner
+                      .name
                   }
-                  type="button"
-                  aria-label={
-                    tile.hidden
-                      ? "Mystery square"
-                      : `${tile.color} square`
+                </strong>
+              </>
+            ) : (
+              <>
+                🏆 Be today's first winner!
+              </>
+            )}
+          </div>
+
+          {winnerSummary &&
+            winnerSummary.count >
+              0 && (
+              <button
+                type="button"
+                className="daily-puzzle__all-winners"
+                onClick={() =>
+                  void openWinners()
+                }
+              >
+                All winners
+              </button>
+            )}
+        </div>
+      ) : (
+        <div className="daily-puzzle__winner">
+          🏆 Qualified ·
+          7×7 Championship
+        </div>
+      )}
+
+
+      {stage ===
+        "5x5" && (
+        <>
+          <div className="daily-puzzle__lives">
+            {Array.from({
+              length:
+                MAX_CHANCES,
+            }).map(
+              (
+                _,
+                index,
+              ) => (
+                <span
+                  key={
+                    index
                   }
                   className={[
-                    "daily-puzzle__tile",
+                    "daily-puzzle__life",
 
-                    tile.hidden
-                      ? "daily-puzzle__tile--mystery"
-                      : `daily-puzzle__tile--${tile.color}`,
-
-                    isSelected
-                      ? "daily-puzzle__tile--selected"
+                    index <
+                    chancesRemaining
+                      ? "daily-puzzle__life--active"
                       : "",
-
-                    wasSwapped
-                      ? "daily-puzzle__tile--last-swap"
-                      : "",
-                  ].join(
-                    " ",
-                  )}
-                  onClick={() =>
-                    handleTileClick(
-                      position.row,
-                      position.column,
-                    )
-                  }
-                  onTouchStart={(
-                    event,
-                  ) =>
-                    handleTouchStart(
-                      event,
-                      position.row,
-                      position.column,
-                    )
-                  }
-                  onTouchEnd={
-                    handleTouchEnd
-                  }
-                >
-                  {tile.hidden
-                    ? "?"
-                    : ""}
-                </button>
-              );
-            },
-          )}
-        </div>
-
-        {attemptFinished &&
-          !qualified && (
-            <div className="daily-puzzle__attempt-overlay">
-              <div className="daily-puzzle__attempt-card">
-                <div className="daily-puzzle__retry-icon">
-                  ↻
-                </div>
-
-                {chancesRemaining >
-                0 ? (
-                  <>
-                    <strong>
-                      Try again!
-                    </strong>
-
-                    <span>
-                      You've used
-                      all 5 moves.
-                    </span>
-
-                    <span>
-                      {
-                        chancesRemaining
-                      }{" "}
-                      {chancesRemaining ===
-                      1
-                        ? "chance"
-                        : "chances"}{" "}
-                      left today.
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={
-                        startNextAttempt
-                      }
-                    >
-                      Try Again
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <strong>
-                      Nice try!
-                    </strong>
-
-                    <span>
-                      You've used
-                      today's 5
-                      chances.
-                    </span>
-
-                    <span className="daily-puzzle__tomorrow">
-                      New puzzle
-                      tomorrow.
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-      </div>
-
-      <div className="daily-puzzle__moves">
-        Move {moves} /{" "}
-        {MAX_MOVES}
-      </div>
-
-      {!attemptFinished &&
-        !qualified && (
-          <div
-            className="daily-puzzle__message"
-            aria-live="polite"
-          >
-            {message}
-          </div>
-        )}
-
-      {qualified && (
-        <>
-          <div className="daily-puzzle__qualified-message">
-            🏆 You qualified!
+                  ].join(" ")}
+                />
+              ),
+            )}
           </div>
 
-          <button
-            type="button"
-            className="daily-puzzle__final"
-            onClick={() =>
-              window.alert(
-                "7×7 Final coming next!",
-              )
-            }
-          >
-            Play 7×7 Final
-          </button>
+          <div className="daily-puzzle__lives-label">
+            {
+              chancesRemaining
+            }{" "}
+            {chancesRemaining ===
+            1
+              ? "chance"
+              : "chances"}
+          </div>
         </>
       )}
 
-      <div className="daily-puzzle__rules">
-        <span>
-          <strong>
-            Match 3
-          </strong>{" "}
-          → reveal mystery
-        </span>
 
-        <span>
-          <strong>
-            Match 5
-          </strong>{" "}
-          → unlock final
-        </span>
+      {!medalWon && (
+        <div className="daily-puzzle__board-shell">
+          <div
+            className={[
+              "daily-puzzle__board",
+
+              attemptFinished &&
+              !qualified
+                ? "daily-puzzle__board--blurred"
+                : "",
+            ].join(" ")}
+            style={{
+              gridTemplateColumns:
+                `repeat(${puzzle.size}, 1fr)`,
+            }}
+          >
+            {board.map(
+              (
+                tile,
+                index,
+              ) => {
+                const position =
+                  positionOf(
+                    index,
+                    puzzle.size,
+                  );
+
+                const selectedNow =
+                  selected !==
+                    null &&
+                  samePosition(
+                    selected,
+                    position,
+                  );
+
+                const swapped =
+                  lastSwap?.some(
+                    (item) =>
+                      samePosition(
+                        item,
+                        position,
+                      ),
+                  ) ??
+                  false;
+
+                return (
+                  <button
+                    key={
+                      tile.id
+                    }
+                    type="button"
+                    aria-label={
+                      tile.hidden
+                        ? "Mystery square"
+                        : `${tile.color} square`
+                    }
+                    className={[
+                      "daily-puzzle__tile",
+
+                      stage ===
+                        "7x7"
+                        ? "daily-puzzle__tile--final"
+                        : "",
+
+                      tile.hidden
+                        ? "daily-puzzle__tile--mystery"
+                        : `daily-puzzle__tile--${tile.color}`,
+
+                      selectedNow
+                        ? "daily-puzzle__tile--selected"
+                        : "",
+
+                      swapped
+                        ? "daily-puzzle__tile--last-swap"
+                        : "",
+                    ].join(" ")}
+                    onClick={() =>
+                      handleClick(
+                        position.row,
+                        position.column,
+                      )
+                    }
+                    onTouchStart={(
+                      event,
+                    ) =>
+                      handleTouchStart(
+                        event,
+                        position.row,
+                        position.column,
+                      )
+                    }
+                    onTouchEnd={
+                      handleTouchEnd
+                    }
+                  >
+                    {tile.hidden
+                      ? "?"
+                      : ""}
+                  </button>
+                );
+              },
+            )}
+          </div>
+
+
+          {attemptFinished &&
+            !qualified &&
+            stage ===
+              "5x5" && (
+              <div className="daily-puzzle__attempt-overlay">
+                <div className="daily-puzzle__attempt-card">
+                  <div className="daily-puzzle__retry-icon">
+                    ↻
+                  </div>
+
+                  {chancesRemaining >
+                  0 ? (
+                    <>
+                      <strong>
+                        Try again!
+                      </strong>
+
+                      <span>
+                        You've used all 5 moves.
+                      </span>
+
+                      <span>
+                        {
+                          chancesRemaining
+                        }{" "}
+                        {chancesRemaining ===
+                        1
+                          ? "chance"
+                          : "chances"}{" "}
+                        left today.
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={
+                          startNextAttempt
+                        }
+                      >
+                        Try Again
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <strong>
+                        Today's challenge is complete
+                      </strong>
+
+                      <span>
+                        Previous 5×5 practice is coming next.
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+
+          {attemptFinished &&
+            stage ===
+              "7x7" &&
+            !medalWon && (
+              <div className="daily-puzzle__attempt-overlay">
+                <div className="daily-puzzle__attempt-card">
+                  <div className="daily-puzzle__retry-icon">
+                    🏆
+                  </div>
+
+                  <strong>
+                    Final complete
+                  </strong>
+
+                  <span>
+                    No medal this time.
+                  </span>
+
+                  <span className="daily-puzzle__tomorrow">
+                    New challenge tomorrow.
+                  </span>
+                </div>
+              </div>
+            )}
+        </div>
+      )}
+
+
+      {!medalWon && (
+        <div className="daily-puzzle__moves">
+          Move{" "}
+          {moves}
+          {" / "}
+          {
+            puzzle.maxMoves
+          }
+        </div>
+      )}
+
+      <div className="daily-puzzle__message">
+        {message}
       </div>
 
-      <section className="daily-puzzle__hint">
-        <div className="daily-puzzle__hint-header">
-          <strong>
-            💡 Hint
-          </strong>
 
-          {!isRegistered && (
-            <span>
-              Profile benefit
-            </span>
+      {medalWon && (
+        <section className="daily-puzzle__medal">
+          <div className="daily-puzzle__medal-icon">
+            🏅
+          </div>
+
+          {medalClaimed ? (
+            <>
+              <strong>
+                Medal claimed!
+              </strong>
+
+              <span>
+                GYAN Puzzle #
+                {
+                  puzzle.puzzleNumber
+                }
+              </span>
+
+              <p>
+                Congratulations{" "}
+
+                <strong>
+                  {
+                    medalClaimName
+                  }
+                </strong>
+                .
+              </p>
+
+              <small>
+                Your medal has been saved.
+              </small>
+            </>
+          ) : !showMedalForm ? (
+            <>
+              <strong>
+                Medal earned!
+              </strong>
+
+              <span>
+                GYAN Puzzle #
+                {
+                  puzzle.puzzleNumber
+                }
+              </span>
+
+              <p>
+                You completed the 7×7 Final.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMedalForm(
+                    true,
+                  );
+
+                  setMedalError(
+                    null,
+                  );
+                }}
+              >
+                Claim My Medal
+              </button>
+            </>
+          ) : (
+            <>
+              <strong>
+                Claim your medal
+              </strong>
+
+              <span>
+                Save your GYAN medal.
+              </span>
+
+              <div className="daily-puzzle__medal-form">
+                <label>
+                  <span>
+                    Display name
+                  </span>
+
+                  <input
+                    type="text"
+                    value={
+                      winnerName
+                    }
+                    maxLength={
+                      80
+                    }
+                    autoComplete="name"
+                    placeholder="Name shown to players"
+                    onChange={(
+                      event,
+                    ) =>
+                      setWinnerName(
+                        event
+                          .target
+                          .value,
+                      )
+                    }
+                  />
+                </label>
+
+                <label>
+                  <span>
+                    Email
+                  </span>
+
+                  <input
+                    type="email"
+                    value={
+                      winnerEmail
+                    }
+                    maxLength={
+                      160
+                    }
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    onChange={(
+                      event,
+                    ) =>
+                      setWinnerEmail(
+                        event
+                          .target
+                          .value,
+                      )
+                    }
+                  />
+                </label>
+
+                {medalError && (
+                  <div className="daily-puzzle__medal-error">
+                    {
+                      medalError
+                    }
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  disabled={
+                    claimingMedal
+                  }
+                  onClick={() =>
+                    void claimMedal()
+                  }
+                >
+                  {claimingMedal
+                    ? "Saving…"
+                    : "🏅 Claim Medal"}
+                </button>
+
+                <button
+                  type="button"
+                  className="daily-puzzle__medal-cancel"
+                  disabled={
+                    claimingMedal
+                  }
+                  onClick={() => {
+                    setShowMedalForm(
+                      false,
+                    );
+
+                    setMedalError(
+                      null,
+                    );
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <small>
+                Your display name may appear in the winners list.
+                Email stays private.
+              </small>
+            </>
           )}
+        </section>
+      )}
+
+
+      {!medalWon && (
+        <div className="daily-puzzle__rules">
+          <span>
+            <strong>
+              3+ matching + ?
+            </strong>
+
+            {" → "}
+
+            reveal mystery
+          </span>
+
+          <span>
+            <strong>
+              Match{" "}
+              {
+                puzzle.size
+              }
+            </strong>
+
+            {" → "}
+
+            {stage ===
+            "5x5"
+              ? "unlock final"
+              : "win medal"}
+          </span>
         </div>
+      )}
 
-        {!isRegistered &&
-          !hint && (
-            <p className="daily-puzzle__hint-intro">
-              Create a free GYAN
-              profile to unlock
-              hints.
-            </p>
-          )}
-
-        {hint && (
-          <p className="daily-puzzle__hint-text">
-            {hint}
-          </p>
-        )}
-
-        <button
-          type="button"
-          className="daily-puzzle__hint-button"
-          disabled={
-            hintLoading ||
-            qualified ||
-            attemptFinished
-          }
-          onClick={
-            requestHint
-          }
-        >
-          <strong>
-            {hintLoading
-              ? "Thinking…"
-              : isRegistered
-                ? "💡 Give me a hint"
-                : "🔒 Unlock Hints"}
-          </strong>
-
-          {!isRegistered && (
-            <small>
-              Free with GYAN
-              profile
-            </small>
-          )}
-        </button>
-      </section>
 
       <footer className="daily-puzzle__footer">
         <span>
-          🗓 New puzzle
-          tomorrow
+          🗓 New puzzle tomorrow
         </span>
 
         <span>
-          Streak: 0 day 🔥
+          🏅 Medals: 0 / 7
         </span>
       </footer>
+
+
+      {/* =================================================
+          5×5 CERTIFICATE
+          ================================================= */}
+
+      {qualified &&
+        stage ===
+          "5x5" &&
+        certificateOpen && (
+          <div
+            className="daily-puzzle__certificate-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Puzzle completion certificate"
+          >
+            <section className="daily-puzzle__certificate">
+
+              <div className="daily-puzzle__certificate-top">
+                <div className="daily-puzzle__certificate-brand">
+                  <span
+                    aria-hidden="true"
+                  >
+                    📖
+                  </span>
+
+                  <div>
+                    <strong>
+                      GYAN
+                    </strong>
+
+                    <small>
+                      Daily Puzzle
+                    </small>
+                  </div>
+                </div>
+
+                {certificateQr && (
+                  <img
+                    className="daily-puzzle__certificate-qr"
+                    src={
+                      certificateQr
+                    }
+                    alt="QR code for gyan.cc"
+                  />
+                )}
+              </div>
+
+
+              <div className="daily-puzzle__certificate-title">
+                <small>
+                  CERTIFICATE OF COMPLETION
+                </small>
+
+                <strong>
+                  🎓 Puzzle Solver
+                </strong>
+
+                <span>
+                  GYAN Puzzle #
+                  {
+                    puzzle.puzzleNumber
+                  }
+                  {" (5×5)"}
+                </span>
+              </div>
+
+
+              <div
+                className="daily-puzzle__certificate-grid"
+                style={{
+                  gridTemplateColumns:
+                    "repeat(5, 1fr)",
+                }}
+                aria-label="Solved 5 by 5 puzzle"
+              >
+                {certificateBoard.map(
+                  (tile) => (
+                    <span
+                      key={
+                        tile.id
+                      }
+                      className={[
+                        "daily-puzzle__certificate-tile",
+
+                        tile.hidden
+                          ? "daily-puzzle__certificate-tile--mystery"
+                          : `daily-puzzle__certificate-tile--${tile.color}`,
+                      ].join(" ")}
+                    >
+                      {tile.hidden
+                        ? "?"
+                        : ""}
+                    </span>
+                  ),
+                )}
+              </div>
+
+
+              <div className="daily-puzzle__certificate-actions">
+                <button
+                  type="button"
+                  className="daily-puzzle__certificate-final"
+                  onClick={() => {
+                    setCertificateOpen(
+                      false,
+                    );
+
+                    void startFinal();
+                  }}
+                >
+                  🏆 Play 7×7 Final
+                </button>
+
+
+                <div className="daily-puzzle__certificate-email-row">
+                  <input
+                    type="email"
+                    value={
+                      certificateEmail
+                    }
+                    maxLength={
+                      160
+                    }
+                    autoComplete="email"
+                    placeholder="Provide email to send certificate"
+                    aria-label="Email address for certificate"
+                    disabled={
+                      certificateSending
+                    }
+                    onChange={(
+                      event,
+                    ) => {
+                      setCertificateEmail(
+                        event.target
+                          .value,
+                      );
+
+                      setCertificateError(
+                        null,
+                      );
+
+                      setCertificateSent(
+                        false,
+                      );
+                    }}
+                    onKeyDown={(
+                      event,
+                    ) => {
+                      if (
+                        event.key ===
+                        "Enter"
+                      ) {
+                        event.preventDefault();
+
+                        void emailCertificate();
+                      }
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    className="daily-puzzle__certificate-email-icon"
+                    aria-label="Email certificate"
+                    title="Email certificate"
+                    disabled={
+                      certificateSending
+                    }
+                    onClick={() =>
+                      void emailCertificate()
+                    }
+                  >
+                    {certificateSending
+                      ? "…"
+                      : certificateSent
+                        ? "✓"
+                        : "✉️"}
+                  </button>
+                </div>
+
+
+                {certificateError && (
+                  <div className="daily-puzzle__certificate-error">
+                    {
+                      certificateError
+                    }
+                  </div>
+                )}
+
+                {certificateSent && (
+                  <div className="daily-puzzle__certificate-sent">
+                    ✓ Certificate sent to{" "}
+                    {
+                      certificateEmail
+                    }
+                  </div>
+                )}
+              </div>
+
+
+              <small className="daily-puzzle__certificate-footnote">
+                gyan.cc
+              </small>
+            </section>
+          </div>
+        )}
+
+
+      {/* =================================================
+          WINNERS
+          ================================================= */}
+
+      {winnersOpen && (
+        <div
+          className="daily-puzzle__winner-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Puzzle winners"
+          onClick={() =>
+            setWinnersOpen(
+              false,
+            )
+          }
+        >
+          <section
+            className="daily-puzzle__winner-panel"
+            onClick={(
+              event,
+            ) =>
+              event.stopPropagation()
+            }
+          >
+            <button
+              type="button"
+              className="daily-puzzle__winner-panel-close"
+              aria-label="Close winners"
+              onClick={() =>
+                setWinnersOpen(
+                  false,
+                )
+              }
+            >
+              ×
+            </button>
+
+            <h3>
+              Puzzle #
+              {
+                puzzle.puzzleNumber
+              }
+              {" "}
+              Winners
+            </h3>
+
+            {winnersLoading ? (
+              <p className="daily-puzzle__winner-panel-message">
+                Loading winners…
+              </p>
+            ) : winnerSummary &&
+              winnerSummary.count >
+                0 ? (
+              <>
+                <div className="daily-puzzle__first-winner">
+                  <span>
+                    🏆 First Winner
+                  </span>
+
+                  <strong>
+                    {
+                      winnerSummary
+                        .firstWinner
+                        ?.name
+                    }
+                  </strong>
+                </div>
+
+                <div className="daily-puzzle__recent-winners">
+                  <span className="daily-puzzle__recent-title">
+                    Most recent
+                  </span>
+
+                  {winnerSummary
+                    .recentWinners
+                    .map(
+                      (
+                        winner,
+                        index,
+                      ) => (
+                        <div
+                          key={`${winner.name}-${winner.claimedAt}-${index}`}
+                          className="daily-puzzle__recent-winner"
+                        >
+                          <span>
+                            {
+                              index +
+                              1
+                            }.
+                          </span>
+
+                          <strong>
+                            {
+                              winner.name
+                            }
+                          </strong>
+                        </div>
+                      ),
+                    )}
+                </div>
+
+                <div className="daily-puzzle__winner-count">
+                  🏅{" "}
+                  {
+                    winnerSummary.count
+                  }{" "}
+                  {winnerSummary.count ===
+                  1
+                    ? "winner"
+                    : "winners"}{" "}
+                  today
+                </div>
+              </>
+            ) : (
+              <p className="daily-puzzle__winner-panel-message">
+                No winners yet.
+              </p>
+            )}
+          </section>
+        </div>
+      )}
     </section>
   );
 }
