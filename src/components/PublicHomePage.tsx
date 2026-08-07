@@ -9,6 +9,8 @@ import GyanAboutPanel
 
 import "./PublicHomePage.css";
 
+import Puzzle from "./Puzzle";
+
 interface PublicService {
   code: string;
   name: string;
@@ -731,6 +733,7 @@ export default function PublicHomePage({
       </header>
 
       <main className="public-home__content">
+        <Puzzle />
         <section className="public-home__section public-home__section--online">
           <div className="public-home__section-heading">
             <div>
