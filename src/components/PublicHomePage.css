@@ -923,3 +923,45 @@
     padding-inline: 7px;
   }
 }
+
+.public-home__puzzle-reopen {
+  display: block;
+
+  width: fit-content;
+
+  margin:
+    1rem auto
+    1.25rem;
+
+  padding:
+    0.45rem
+    0.7rem;
+
+  border:
+    1px solid
+    rgba(16, 42, 86, 0.12);
+
+  border-radius:
+    999px;
+
+  background:
+    transparent;
+
+  color:
+    #596b82;
+
+  font: inherit;
+
+  font-size:
+    0.65rem;
+
+  font-weight:
+    700;
+
+  cursor: pointer;
+}
+
+.public-home__puzzle-reopen:hover {
+  background:
+    rgba(16, 42, 86, 0.04);
+}

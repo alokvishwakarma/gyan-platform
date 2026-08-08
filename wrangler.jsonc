@@ -35,5 +35,8 @@
     ]
   },
 
-  "vars": {}
+"vars": {
+  "FEATURED_SHOP_DISTANCE_KM": "5"
+}
+
 }

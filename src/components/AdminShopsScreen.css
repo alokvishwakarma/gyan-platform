@@ -1,186 +1,344 @@
 .admin-shops {
-  width: min(100%, 760px);
-  min-height: 100vh;
-  margin: 0 auto;
+  width: 100%;
+  min-height: 100dvh;
 
-  background: #fffdf8;
-  color: var(--chrome-text);
+  background: #f6f8fc;
+  color: #102a56;
 }
 
 .admin-shops__header {
-  min-height: 64px;
-  padding: 0.45rem;
+  position: sticky;
+  z-index: 20;
+  top: 0;
+
+  min-height: 58px;
+  padding: 7px 10px;
 
   display: grid;
   grid-template-columns:
-    64px minmax(0, 1fr) 72px;
+    minmax(0, 1fr)
+    auto;
 
-  align-items: stretch;
+  align-items: center;
+  gap: 8px;
 
-  background:
-    var(--chrome-background);
+  background: #ffffff;
 
   border-bottom:
-    1px solid
-      var(--chrome-border);
+    1px solid #e2e8f0;
 }
 
-.admin-shops__header button {
-  border: 0;
-  background: transparent;
+.admin-shops__brand {
+  min-width: 0;
+  padding: 0;
 
-  color:
-    var(--chrome-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  border: 0;
+
+  background: transparent;
+  color: inherit;
 
   font: inherit;
-  font-size: 0.7rem;
-  font-weight: 700;
+  text-align: left;
 
   cursor: pointer;
 }
 
-.admin-shops__header > div {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+.admin-shops__brand-icon {
+  flex: 0 0 auto;
 
-  text-align: center;
+  font-size: 1.35rem;
 }
 
-.admin-shops__header strong {
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-}
-
-.admin-shops__header span {
-  color:
-    var(--chrome-text-muted);
-
-  font-size: 0.68rem;
-}
-
-.admin-shops__toolbar {
-  padding: 0.7rem;
-
-  border-bottom:
-    1px solid #eadfce;
-}
-
-.admin-shops__toolbar input {
-  width: 100%;
-  min-height: 42px;
-  padding: 0.65rem;
-
-  border:
-    1px solid #cdbda8;
-
-  background: #ffffff;
-  font: inherit;
-}
-
-.admin-shops__content {
-  padding: 0.7rem;
-
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-}
-
-.admin-shops__error {
-  color: #a32323;
-}
-
-.admin-shop-card {
-  padding: 0.7rem;
-
-  display: grid;
-  grid-template-columns:
-    64px minmax(0, 1fr) auto;
-
-  align-items: center;
-  gap: 0.65rem;
-
-  border:
-    1px solid #e2d4c1;
-
-  background: #ffffff;
-}
-
-.admin-shop-card__code {
-  min-height: 46px;
-
-  display: grid;
-  place-items: center;
-
-  background:
-    var(--chrome-background);
-
-  color:
-    var(--chrome-text);
-
-  font-family:
-    Consolas,
-    monospace;
-
-  font-size: 0.75rem;
-  font-weight: 900;
-}
-
-.admin-shop-card__details {
+.admin-shops__brand-copy {
   min-width: 0;
 
   display: flex;
   flex-direction: column;
 }
 
-.admin-shop-card__details strong {
-  font-size: 0.78rem;
+.admin-shops__brand-copy
+  strong {
+  color: #17365d;
+
+  font-size: 0.95rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
 }
 
-.admin-shop-card__details span {
-  margin-top: 0.18rem;
+.admin-shops__brand-copy
+  small {
+  margin-top: 2px;
 
-  color:
-    var(--chrome-text-muted);
+  color: #697b8d;
 
-  font-size: 0.64rem;
+  font-size: 0.58rem;
 }
 
-.admin-shop-card > button {
-  min-height: 40px;
-  padding: 0.55rem 0.75rem;
+.admin-shops__logout {
+  min-height: 34px;
+  padding: 5px 9px;
 
   border:
-    1px solid #4c2914;
+    1px solid #ccd6df;
 
-  background: #5a3218;
-  color: #ffffff;
+  border-radius: 8px;
+
+  background: #ffffff;
+  color: #35536f;
 
   font: inherit;
-  font-size: 0.68rem;
-  font-weight: 700;
+  font-size: 0.62rem;
+  font-weight: 800;
 
   cursor: pointer;
 }
 
+.admin-shops__content {
+  width:
+    min(
+      calc(100% - 18px),
+      560px
+    );
+
+  margin: 0 auto;
+
+  padding:
+    10px
+    0
+    calc(
+      18px +
+      env(safe-area-inset-bottom)
+    );
+}
+
+.admin-shops__heading-row {
+  padding: 1px 2px 7px;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.admin-shops__heading-row
+  > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-shops__heading-row
+  > div
+  > span {
+  color: #1976d2;
+
+  font-size: 0.56rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-shops__heading-row
+  h1 {
+  margin: 1px 0 0;
+
+  color: #102a56;
+
+  font-size: 1.08rem;
+}
+
+.admin-shops__count {
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0 7px;
+
+  display: grid;
+  place-items: center;
+
+  border:
+    1px solid #d7e2ee;
+
+  border-radius: 8px;
+
+  background: #ffffff;
+  color: #49627b;
+
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.admin-shops__search {
+  min-height: 38px;
+  margin-bottom: 7px;
+  padding: 0 8px;
+
+  display: grid;
+  grid-template-columns:
+    auto minmax(0, 1fr)
+    auto;
+
+  align-items: center;
+  gap: 6px;
+
+  border:
+    1px solid #d6e0ea;
+
+  border-radius: 10px;
+
+  background: #ffffff;
+}
+
+.admin-shops__search
+  > span {
+  font-size: 0.78rem;
+}
+
+.admin-shops__search input {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0;
+
+  border: 0;
+  outline: 0;
+
+  background: transparent;
+  color: #2d4660;
+
+  font: inherit;
+  font-size: 0.7rem;
+}
+
+.admin-shops__search
+  button {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+
+  border: 0;
+  border-radius: 7px;
+
+  background: #f1f4f7;
+  color: #65798e;
+
+  font: inherit;
+}
+
+.admin-shops__state {
+  margin: 0;
+  padding: 14px 10px;
+
+  border:
+    1px solid #dfe7f0;
+
+  border-radius: 10px;
+
+  background: #ffffff;
+
+  color: #6b7d90;
+
+  font-size: 0.68rem;
+  text-align: center;
+}
+
+.admin-shops__state--error {
+  border-color: #e3b5af;
+
+  background: #fff0ed;
+  color: #9d2921;
+}
+
+.admin-shops__list {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-shop-card {
+  padding: 8px;
+
+  border:
+    1px solid #dfe7f0;
+
+  border-radius: 11px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 3px 10px
+    rgb(39 81 135 / 4%);
+}
+
+.admin-shop-card__top {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    auto;
+
+  align-items: center;
+  gap: 7px;
+}
+
+.admin-shop-card__identity {
+  min-width: 0;
+
+  display: grid;
+  grid-template-columns:
+    42px minmax(0, 1fr);
+
+  align-items: center;
+  gap: 7px;
+}
+
+.admin-shop-card__code {
+  min-height: 34px;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 8px;
+
+  background: #edf5ff;
+  color: #17365d;
+
+  font-family:
+    Consolas,
+    monospace;
+
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
 .admin-shop-card__title {
+  min-width: 0;
+
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.45rem;
+  gap: 5px;
 }
 
-.admin-shop-card__details small {
-  color: var(--chrome-text-muted);
-  font-size: 0.68rem;
+.admin-shop-card__title
+  strong {
+  overflow: hidden;
+
+  color: #17365d;
+
+  font-size: 0.7rem;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .admin-shop-card__status {
-  padding: 0.16rem 0.35rem;
+  padding: 2px 4px;
 
-  font-size: 0.55rem;
-  font-weight: 800;
+  border-radius: 6px;
+
+  font-size: 0.48rem;
+  font-weight: 850;
   text-transform: uppercase;
 }
 
@@ -196,21 +354,90 @@
 
 .admin-shop-card__actions {
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  gap: 5px;
 }
 
-.admin-shop-card__actions button {
-  min-height: 34px;
-  padding: 0.4rem 0.6rem;
+.admin-shop-card__actions
+  button {
+  min-height: 31px;
+  padding: 4px 7px;
 
-  border: 1px solid var(--chrome-border);
+  border:
+    1px solid #ccd8e4;
+
+  border-radius: 8px;
+
   background: #ffffff;
-  color: var(--chrome-text);
+  color: #35536f;
 
   font: inherit;
-  font-size: 0.66rem;
-  font-weight: 700;
+  font-size: 0.58rem;
+  font-weight: 800;
 
   cursor: pointer;
+}
+
+.admin-shop-card__actions
+  button:last-child {
+  border-color: #b9d2ea;
+
+  background: #edf6ff;
+  color: #245a8d;
+}
+
+.admin-shop-card__meta {
+  margin-top: 6px;
+  padding-top: 5px;
+
+  display: flex;
+  flex-wrap: wrap;
+  gap:
+    3px 9px;
+
+  border-top:
+    1px solid #edf1f5;
+}
+
+.admin-shop-card__meta
+  span {
+  color: #718198;
+
+  font-size: 0.53rem;
+  line-height: 1.25;
+}
+
+@media (max-width: 420px) {
+  .admin-shops__content {
+    width:
+      min(
+        calc(100% - 14px),
+        560px
+      );
+
+    padding-top: 8px;
+  }
+
+  .admin-shop-card {
+    padding: 7px;
+  }
+
+  .admin-shop-card__identity {
+    grid-template-columns:
+      38px minmax(0, 1fr);
+
+    gap: 6px;
+  }
+
+  .admin-shop-card__code {
+    min-height: 32px;
+
+    font-size: 0.58rem;
+  }
+
+  .admin-shop-card__actions
+    button {
+    padding-inline: 6px;
+
+    font-size: 0.54rem;
+  }
 }

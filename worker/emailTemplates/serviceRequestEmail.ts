@@ -165,6 +165,38 @@ function renderCustomerRows(
   return rows;
 }
 
+function hasMeaningfulValue(
+  value: string,
+): boolean {
+  const normalized =
+    value
+      .trim()
+      .toLowerCase();
+
+  return (
+    normalized.length > 0 &&
+    normalized !==
+      "not provided" &&
+    normalized !==
+      "none selected" &&
+    normalized !==
+      "n/a" &&
+    normalized !==
+      "na"
+  );
+}
+
+function meaningfulRows(
+  rows: ServiceEmailRow[],
+): ServiceEmailRow[] {
+  return rows.filter(
+    (row) =>
+      hasMeaningfulValue(
+        row.value,
+      ),
+  );
+}
+
 function renderHtmlRows(
   rows: ServiceEmailRow[],
 ): string {
@@ -204,8 +236,13 @@ function renderHtmlSection(
   section:
     ServiceEmailSection,
 ): string {
+  const rows =
+    meaningfulRows(
+      section.rows,
+    );
+
   if (
-    section.rows.length === 0
+    rows.length === 0
   ) {
     return "";
   }
@@ -237,7 +274,7 @@ function renderHtmlSection(
           border-collapse:collapse;
         "
       >
-        ${renderHtmlRows(section.rows)}
+        ${renderHtmlRows(rows)}
       </table>
     </section>
   `;
@@ -247,8 +284,13 @@ function renderTextSection(
   section:
     ServiceEmailSection,
 ): string {
+  const rows =
+    meaningfulRows(
+      section.rows,
+    );
+
   if (
-    section.rows.length === 0
+    rows.length === 0
   ) {
     return "";
   }
@@ -259,7 +301,7 @@ function renderTextSection(
       section.label.length,
     ),
 
-    ...section.rows.map(
+    ...rows.map(
       (row) =>
         `${row.label}: ${row.value}`,
     ),
@@ -458,8 +500,10 @@ export function renderServiceRequestEmail(
     );
 
   const customerRows =
-    renderCustomerRows(
-      input.customer,
+    meaningfulRows(
+      renderCustomerRows(
+        input.customer,
+      ),
     );
 
   const filesHtml =
@@ -598,17 +642,96 @@ export function renderServiceRequestEmail(
           >
             <header
               style="
-                padding:20px 22px;
-                background:#17365d;
-                border-bottom:1px solid #102943;
+                padding:14px 16px;
+                background:#f4eadc;
+                border-bottom:1px solid #ded5c8;
+              "
+            >
+              <table
+                role="presentation"
+                style="
+                  width:100%;
+                  border-collapse:collapse;
+                "
+              >
+                <tr>
+                  <td
+                    style="
+                      width:42px;
+                      vertical-align:middle;
+                      font-size:26px;
+                    "
+                  >
+                    📖
+                  </td>
+
+                  <td
+                    style="
+                      vertical-align:middle;
+                    "
+                  >
+                    <div
+                      style="
+                        color:#17365d;
+                        font-size:20px;
+                        font-weight:800;
+                        line-height:1.05;
+                      "
+                    >
+                      GYAN
+                    </div>
+
+                    <div
+                      style="
+                        margin-top:2px;
+                        color:#65788c;
+                        font-size:11px;
+                      "
+                    >
+                      Your Digital Seva Partner
+                    </div>
+                  </td>
+
+                  <td
+                    style="
+                      vertical-align:middle;
+                      text-align:right;
+                    "
+                  >
+                    <span
+                      style="
+                        display:inline-block;
+                        padding:6px 9px;
+                        border:1px solid #cbd7e4;
+                        border-radius:8px;
+                        background:#ffffff;
+                        color:#35536f;
+                        font-size:11px;
+                        font-weight:700;
+                      "
+                    >
+                      ${escapeHtml(
+                        formatStatus(
+                          input.status,
+                        ),
+                      )}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </header>
+
+            <div
+              style="
+                padding:16px 22px 0;
               "
             >
               <div
                 style="
-                  color:#dcecff;
-                  font-size:11px;
+                  color:#6b7b8d;
+                  font-size:10px;
                   font-weight:700;
-                  letter-spacing:1.2px;
+                  letter-spacing:1px;
                 "
               >
                 ${escapeHtml(copy.eyebrow)}
@@ -616,9 +739,9 @@ export function renderServiceRequestEmail(
 
               <h1
                 style="
-                  margin:5px 0 2px;
-                  color:#ffffff;
-                  font-size:24px;
+                  margin:4px 0 2px;
+                  color:#17365d;
+                  font-size:22px;
                 "
               >
                 ${escapeHtml(copy.title)}
@@ -626,15 +749,15 @@ export function renderServiceRequestEmail(
 
               <div
                 style="
-                  color:#dcecff;
-                  font-size:13px;
+                  color:#6b7b8d;
+                  font-size:12px;
                 "
               >
                 ${escapeHtml(input.shopName)}
                 ·
                 ${escapeHtml(input.shopCode)}
               </div>
-            </header>
+            </div>
 
             <main
               style="

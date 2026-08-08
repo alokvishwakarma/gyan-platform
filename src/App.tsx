@@ -30,7 +30,12 @@ import NearbyServicePanel
   from "./components/NearbyServicePanel";
 import SharedRequestScreen
   from "./components/SharedRequestScreen";
-  
+import AdminAnalyticsScreen
+  from "./components/AdminAnalyticsScreen";
+import {
+  trackDailyVisit,
+} from "./analytics/trackDailyVisit";
+
 interface ShopProfile {
   code: string;
   name: string;
@@ -441,6 +446,15 @@ export default function App() {
   ] = useState(false);
 
   const [
+    adminAnalyticsOpen,
+    setAdminAnalyticsOpen,
+  ] = useState(
+    () =>
+      window.location.pathname ===
+      "/admin/analytics",
+  );
+
+  const [
     pendingAdminDestination,
     setPendingAdminDestination,
   ] = useState<AdminDestination>(
@@ -481,6 +495,10 @@ export default function App() {
   const servicesLoading =
     loadedServices?.key !==
     serviceRequestKey;
+
+  useEffect(() => {
+    void trackDailyVisit();
+  }, []);
 
   useEffect(() => {
     if (!activeShopCode) {
@@ -805,6 +823,10 @@ export default function App() {
       false,
     );
 
+    setAdminAnalyticsOpen(
+      false,
+    );
+
     setManagedShopCode(
       null,
     );
@@ -894,6 +916,10 @@ export default function App() {
       );
 
       setAdminStorageOpen(
+        false,
+      );
+
+      setAdminAnalyticsOpen(
         false,
       );
 
@@ -1218,6 +1244,28 @@ if (sharedRequest) {
     );
   }
 
+  if (adminAnalyticsOpen) {
+    return (
+      <AdminAnalyticsScreen
+        onBack={() => {
+          setAdminAnalyticsOpen(
+            false,
+          );
+
+          setDashboardView(
+            "platform",
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            "/admin",
+          );
+        }}
+      />
+    );
+  }
+
   if (dashboardView === "platform") {
     return (
       <PlatformDashboardPage
@@ -1242,6 +1290,21 @@ if (sharedRequest) {
         onOpenStorage={() => {
           setDashboardView(null);
           setAdminStorageOpen(true);
+        }}
+        onOpenAnalytics={() => {
+          setDashboardView(
+            null,
+          );
+
+          setAdminAnalyticsOpen(
+            true,
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            "/admin/analytics",
+          );
         }}
       />
     );

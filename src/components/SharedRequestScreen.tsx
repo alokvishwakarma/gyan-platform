@@ -4,6 +4,7 @@ import {
   useState,
 } from "react";
 
+import "./PublicHomePage.css";
 import "./SharedRequestScreen.css";
 
 interface SharedRequestFile {
@@ -370,6 +371,59 @@ function createAppUrl(
   ).toString();
 }
 
+function getStatusTone(
+  status: string,
+): "red" | "yellow" | "green" {
+  const normalized =
+    status
+      .trim()
+      .toLowerCase();
+
+  if (
+    [
+      "completed",
+      "ready",
+      "closed",
+      "fulfilled",
+    ].includes(
+      normalized,
+    )
+  ) {
+    return "green";
+  }
+
+  if (
+    [
+      "cancelled",
+      "canceled",
+      "rejected",
+      "failed",
+    ].includes(
+      normalized,
+    )
+  ) {
+    return "red";
+  }
+
+  return "yellow";
+}
+
+function formatStatusLabel(
+  status: string,
+): string {
+  return status
+    .trim()
+    .replace(
+      /[_-]+/g,
+      " ",
+    )
+    .replace(
+      /\b\w/g,
+      (character) =>
+        character.toUpperCase(),
+    );
+}
+
 export default function SharedRequestScreen({
   requestNumber,
   token,
@@ -394,6 +448,12 @@ export default function SharedRequestScreen({
     setError,
   ] =
     useState("");
+
+  const [
+    profileOpen,
+    setProfileOpen,
+  ] =
+    useState(false);
 
   useEffect(() => {
     const controller =
@@ -622,35 +682,118 @@ export default function SharedRequestScreen({
           )
         : null;
 
+  const statusTone =
+    request
+      ? getStatusTone(
+          request.status,
+        )
+      : "yellow";
+
+  const profileLabel =
+    recipient === "shop"
+      ? "Shop Profile"
+      : recipient === "admin"
+        ? "Admin"
+        : "Profile";
+
+  const profileIdentity =
+    recipient === "customer"
+      ? customerEmail ??
+        customerPhone ??
+        "Secure email link"
+      : recipient === "shop"
+        ? request?.shop.name ??
+          "GYAN Shop"
+        : "GYAN Admin";
+
 
 
   return (
-    <main className="shared-request-screen">
-      <header className="shared-request-screen__header">
+    <main className="public-home shared-request-screen">
+      <header className="public-home__header shared-request-screen__header">
         <button
           type="button"
+          className="public-home__brand public-home__brand-button shared-request-screen__brand"
           onClick={onClose}
           aria-label="Return to GYAN"
         >
-          ←
+          <span
+            className="public-home__brand-icon"
+            aria-hidden="true"
+          >
+            📖
+          </span>
+
+          <span className="public-home__brand-text">
+            <strong>
+              GYAN
+            </strong>
+
+            <span className="public-home__tagline">
+              Your Digital Seva Partner
+            </span>
+
+            <span className="public-home__value">
+              Order Online • Pick Up When Ready • No Waiting
+            </span>
+          </span>
         </button>
 
-        <div>
-          <strong>
-            GYAN SERVICE
-          </strong>
+        <div className="shared-request-screen__header-actions">
+          <span
+            className={`shared-request-screen__status shared-request-screen__status--${statusTone}`}
+            title={
+              request
+                ? `Status: ${formatStatusLabel(
+                    request.status,
+                  )}`
+                : "Request status"
+            }
+          >
+            <span
+              aria-hidden="true"
+            />
 
-          <span>
-            Shared Request
+            {request
+              ? formatStatusLabel(
+                  request.status,
+                )
+              : "Status"}
           </span>
+
+          <button
+            type="button"
+            className="public-home__admin-button shared-request-screen__profile-button"
+            onClick={() =>
+              setProfileOpen(
+                (current) =>
+                  !current,
+              )
+            }
+          >
+            {profileLabel}
+          </button>
         </div>
 
-        <span className="shared-request-screen__recipient">
-{roleLabel}
-        </span>
+        {profileOpen && (
+          <div className="shared-request-screen__profile-popover">
+            <strong>
+              {roleLabel}
+            </strong>
+
+            <span>
+              {profileIdentity}
+            </span>
+
+            <small>
+              Accessed through a secure
+              GYAN email link.
+            </small>
+          </div>
+        )}
       </header>
 
-      <section className="shared-request-screen__content">
+      <section className="public-home__content shared-request-screen__content">
         {loading && (
           <div className="shared-request-screen__state">
             Loading request…
@@ -673,7 +816,7 @@ export default function SharedRequestScreen({
           !error &&
           request && (
             <>
-              <section className="shared-request-screen__hero">
+              <section className="public-home__intro shared-request-screen__intro">
                 <span>
                   {
                     request
@@ -694,11 +837,6 @@ export default function SharedRequestScreen({
 
                 <div className="shared-request-screen__badges">
                   <span>
-                    Status:{" "}
-                    {request.status}
-                  </span>
-
-                  <span>
                     {
                       request.shop
                         .name
@@ -715,7 +853,7 @@ export default function SharedRequestScreen({
               </section>
 
               <nav
-                className="shared-request-screen__actions"
+                className="public-home__section shared-request-screen__actions"
                 aria-label="Request actions"
               >
                 <a
@@ -761,7 +899,20 @@ export default function SharedRequestScreen({
                 )}
               </nav>
 
-              <section className="shared-request-screen__grid">
+              <section className="public-home__section shared-request-screen__section">
+                <div className="public-home__section-heading">
+                  <div>
+                    <span>
+                      Request information
+                    </span>
+
+                    <h2>
+                      Details
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="shared-request-screen__grid">
                 <article className="shared-request-card">
                   <h2>
                     Request
@@ -792,31 +943,36 @@ export default function SharedRequestScreen({
                       </dd>
                     </div>
 
-                    <div>
-                      <dt>
-                        Shop code
-                      </dt>
+                    {recipient !==
+                      "customer" && (
+                      <>
+                        <div>
+                          <dt>
+                            Shop code
+                          </dt>
 
-                      <dd>
-                        {
-                          request.shop
-                            .code
-                        }
-                      </dd>
-                    </div>
+                          <dd>
+                            {
+                              request.shop
+                                .code
+                            }
+                          </dd>
+                        </div>
 
-                    <div>
-                      <dt>
-                        Service code
-                      </dt>
+                        <div>
+                          <dt>
+                            Service code
+                          </dt>
 
-                      <dd>
-                        {
-                          request.service
-                            .code
-                        }
-                      </dd>
-                    </div>
+                          <dd>
+                            {
+                              request.service
+                                .code
+                            }
+                          </dd>
+                        </div>
+                      </>
+                    )}
                   </dl>
                 </article>
 
@@ -882,14 +1038,28 @@ export default function SharedRequestScreen({
                     </div>
                   </dl>
                 </article>
+                </div>
               </section>
 
               {answerRows.length >
                 0 && (
-                <section className="shared-request-card">
-                  <h2>
-                    Submitted information
-                  </h2>
+                <section className="public-home__section shared-request-screen__section">
+                  <div className="public-home__section-heading">
+                    <div>
+                      <span>
+                        Submitted information
+                      </span>
+
+                      <h2>
+                        Request
+                      </h2>
+                    </div>
+                  </div>
+
+                  <article className="shared-request-card">
+                    <h2 className="shared-request-card__mobile-title">
+                      Submitted information
+                    </h2>
 
                   <dl>
                     {answerRows.map(
@@ -914,10 +1084,24 @@ export default function SharedRequestScreen({
                       ),
                     )}
                   </dl>
+                  </article>
                 </section>
               )}
 
-              <section className="shared-request-card">
+              <section className="public-home__section shared-request-screen__section">
+                <div className="public-home__section-heading">
+                  <div>
+                    <span>
+                      Attachments
+                    </span>
+
+                    <h2>
+                      Files
+                    </h2>
+                  </div>
+                </div>
+
+                <article className="shared-request-card shared-request-card--files">
                 <header className="shared-request-card__heading">
                   <div>
                     <h2>
@@ -1024,9 +1208,10 @@ file.downloadUrl ? (
                     ),
                   )}
                 </div>
+                </article>
               </section>
 
-              <footer className="shared-request-screen__footer">
+              <footer className="public-home__section shared-request-screen__footer">
                 <p>
                   This is a secure,
                   read-only request

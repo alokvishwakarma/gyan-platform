@@ -38,6 +38,34 @@ interface ShopInformationResponse {
   error?: string;
 }
 
+function sanitizePhone(
+  value: string,
+): string {
+  let result =
+    value.replace(
+      /[^0-9+()\-\s]/g,
+      "",
+    );
+
+  if (
+    result.startsWith("+")
+  ) {
+    result =
+      "+" +
+      result
+        .slice(1)
+        .replace(/\+/g, "");
+  } else {
+    result =
+      result.replace(
+        /\+/g,
+        "",
+      );
+  }
+
+  return result;
+}
+
 export default function AdminShopInfoScreen({
   shopCode,
   onBack,
@@ -69,11 +97,17 @@ export default function AdminShopInfoScreen({
     setMessage,
   ] = useState("");
 
+  const [
+    showMore,
+    setShowMore,
+  ] = useState(false);
+
   useEffect(() => {
     const controller =
       new AbortController();
 
-    async function loadShop() {
+    async function loadShop():
+      Promise<void> {
       try {
         const response =
           await fetch(
@@ -142,7 +176,7 @@ export default function AdminShopInfoScreen({
     key: Key,
     value:
       AdminShopInformation[Key],
-  ) {
+  ): void {
     setShop(
       (current) =>
         current
@@ -157,8 +191,55 @@ export default function AdminShopInfoScreen({
     setError("");
   }
 
-  async function saveShop() {
+  async function saveShop():
+    Promise<void> {
     if (!shop) {
+      return;
+    }
+
+    if (
+      !shop.name.trim() ||
+      !shop.addressLine.trim()
+    ) {
+      setError(
+        "Please enter the shop name and street / area.",
+      );
+
+      return;
+    }
+
+    const hasPhone =
+      shop.phoneNumber
+        .replace(
+          /\D/g,
+          "",
+        )
+        .length >= 7;
+
+    const hasValidEmail =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        shop.emailAddress.trim(),
+      );
+
+    if (
+      !hasPhone &&
+      !hasValidEmail
+    ) {
+      setError(
+        "Please enter a phone / WhatsApp number or a valid email address.",
+      );
+
+      return;
+    }
+
+    if (
+      shop.emailAddress.trim() &&
+      !hasValidEmail
+    ) {
+      setError(
+        "Please enter a valid email address.",
+      );
+
       return;
     }
 
@@ -185,31 +266,31 @@ export default function AdminShopInfoScreen({
 
             body: JSON.stringify({
               name:
-                shop.name,
+                shop.name.trim(),
 
               ownerName:
-                shop.ownerName,
+                shop.ownerName.trim(),
 
               phoneNumber:
-                shop.phoneNumber,
+                shop.phoneNumber.trim(),
 
               whatsAppNumber:
-                shop.whatsAppNumber,
+                shop.whatsAppNumber.trim(),
 
               emailAddress:
-                shop.emailAddress,
+                shop.emailAddress.trim(),
 
               addressLine:
-                shop.addressLine,
+                shop.addressLine.trim(),
 
               city:
-                shop.city,
+                shop.city.trim(),
 
               state:
-                shop.state,
+                shop.state.trim(),
 
               postalCode:
-                shop.postalCode,
+                shop.postalCode.trim(),
 
               status:
                 shop.status,
@@ -253,21 +334,27 @@ export default function AdminShopInfoScreen({
       <header className="admin-shop-info__header">
         <button
           type="button"
+          className="admin-shop-info__brand"
           onClick={onBack}
           aria-label="Back to shops"
         >
-          ←
-        </button>
-
-        <div>
-          <strong>
-            GYAN CONTROL CENTER
-          </strong>
-
-          <span>
-            Shop Information
+          <span
+            className="admin-shop-info__brand-icon"
+            aria-hidden="true"
+          >
+            📖
           </span>
-        </div>
+
+          <span className="admin-shop-info__brand-copy">
+            <strong>
+              GYAN
+            </strong>
+
+            <small>
+              Shop Information
+            </small>
+          </span>
+        </button>
 
         <span className="admin-shop-info__code">
           {shopCode}
@@ -276,7 +363,7 @@ export default function AdminShopInfoScreen({
 
       <section className="admin-shop-info__content">
         {loading && (
-          <p>
+          <p className="admin-shop-info__state">
             Loading shop…
           </p>
         )}
@@ -292,62 +379,136 @@ export default function AdminShopInfoScreen({
             className="admin-shop-info__form"
             onSubmit={(event) => {
               event.preventDefault();
+
               void saveShop();
             }}
           >
-            <section>
-              <h2>
-                Identity
-              </h2>
+            <div className="admin-shop-info__heading">
+              <span>
+                Shop administration
+              </span>
 
-              <label>
-                <span>
-                  Shop code
-                </span>
+              <h1>
+                {shop.name ||
+                  "Shop information"}
+              </h1>
+            </div>
 
+            <section className="admin-shop-info__compact">
+              <input
+                type="text"
+                value={shop.name}
+                placeholder="Shop name"
+                aria-label="Shop name"
+                maxLength={150}
+                onChange={(event) =>
+                  updateField(
+                    "name",
+                    event.target.value,
+                  )
+                }
+              />
+
+              <div className="admin-shop-info__contact-row">
                 <input
-                  type="text"
-                  value={shop.code}
-                  disabled
-                />
-
-                <small>
-                  The shop code cannot be
-                  changed because it is used
-                  by QR codes and orders.
-                </small>
-              </label>
-
-              <label>
-                <span>
-                  Shop name
-                </span>
-
-                <input
-                  type="text"
-                  value={shop.name}
-                  required
-                  maxLength={150}
+                  type="tel"
+                  inputMode="tel"
+                  value={
+                    shop.phoneNumber
+                  }
+                  placeholder="Phone / WhatsApp"
+                  aria-label="Phone or WhatsApp"
+                  maxLength={40}
                   onChange={(event) =>
                     updateField(
-                      "name",
+                      "phoneNumber",
+                      sanitizePhone(
+                        event.target.value,
+                      ),
+                    )
+                  }
+                />
+
+                <input
+                  type="email"
+                  value={
+                    shop.emailAddress
+                  }
+                  placeholder="Email"
+                  aria-label="Email"
+                  maxLength={254}
+                  onChange={(event) =>
+                    updateField(
+                      "emailAddress",
                       event.target.value,
                     )
                   }
                 />
-              </label>
+              </div>
 
-              <label>
-                <span>
-                  Owner name
-                </span>
+              <textarea
+                rows={2}
+                value={
+                  shop.addressLine
+                }
+                placeholder="Street / area"
+                aria-label="Street or area"
+                maxLength={250}
+                onChange={(event) =>
+                  updateField(
+                    "addressLine",
+                    event.target.value,
+                  )
+                }
+              />
 
+              <select
+                value={shop.status}
+                aria-label="Shop status"
+                onChange={(event) =>
+                  updateField(
+                    "status",
+                    event.target
+                      .value as
+                      | "active"
+                      | "inactive",
+                  )
+                }
+              >
+                <option value="active">
+                  Active
+                </option>
+
+                <option value="inactive">
+                  Inactive
+                </option>
+              </select>
+            </section>
+
+            <button
+              type="button"
+              className="admin-shop-info__more"
+              onClick={() =>
+                setShowMore(
+                  (current) =>
+                    !current,
+                )
+              }
+            >
+              {showMore
+                ? "− Hide details"
+                : "+ Add more details"}
+            </button>
+
+            {showMore && (
+              <section className="admin-shop-info__more-fields">
                 <input
                   type="text"
                   value={
                     shop.ownerName
                   }
-                  required
+                  placeholder="Owner / manager name"
+                  aria-label="Owner or manager name"
                   maxLength={150}
                   onChange={(event) =>
                     updateField(
@@ -356,141 +517,32 @@ export default function AdminShopInfoScreen({
                     )
                   }
                 />
-              </label>
-
-              <label>
-                <span>
-                  Status
-                </span>
-
-                <select
-                  value={shop.status}
-                  onChange={(event) =>
-                    updateField(
-                      "status",
-                      event.target
-                        .value as
-                        | "active"
-                        | "inactive",
-                    )
-                  }
-                >
-                  <option value="active">
-                    Active
-                  </option>
-
-                  <option value="inactive">
-                    Inactive
-                  </option>
-                </select>
-              </label>
-            </section>
-
-            <section>
-              <h2>
-                Contact
-              </h2>
-
-              <label>
-                <span>
-                  Mobile number
-                </span>
 
                 <input
                   type="tel"
-                  value={
-                    shop.phoneNumber
-                  }
-                  required
-                  maxLength={40}
-                  onChange={(event) =>
-                    updateField(
-                      "phoneNumber",
-                      event.target.value,
-                    )
-                  }
-                />
-              </label>
-
-              <label>
-                <span>
-                  WhatsApp number
-                </span>
-
-                <input
-                  type="tel"
+                  inputMode="tel"
                   value={
                     shop.whatsAppNumber
                   }
+                  placeholder="Separate WhatsApp number"
+                  aria-label="Separate WhatsApp number"
                   maxLength={40}
-                  placeholder="919876543210"
                   onChange={(event) =>
                     updateField(
                       "whatsAppNumber",
-                      event.target.value,
+                      sanitizePhone(
+                        event.target.value,
+                      ),
                     )
                   }
                 />
-              </label>
 
-              <label>
-                <span>
-                  Email address
-                </span>
-
-                <input
-                  type="email"
-                  value={
-                    shop.emailAddress
-                  }
-                  maxLength={254}
-                  placeholder="shop@example.com"
-                  onChange={(event) =>
-                    updateField(
-                      "emailAddress",
-                      event.target.value,
-                    )
-                  }
-                />
-              </label>
-            </section>
-
-            <section>
-              <h2>
-                Address
-              </h2>
-
-              <label>
-                <span>
-                  Address line
-                </span>
-
-                <textarea
-                  rows={2}
-                  value={
-                    shop.addressLine
-                  }
-                  required
-                  maxLength={250}
-                  onChange={(event) =>
-                    updateField(
-                      "addressLine",
-                      event.target.value,
-                    )
-                  }
-                />
-              </label>
-
-              <div className="admin-shop-info__grid">
-                <label>
-                  <span>
-                    City
-                  </span>
-
+                <div className="admin-shop-info__location-row">
                   <input
                     type="text"
                     value={shop.city}
-                    required
+                    placeholder="City"
+                    aria-label="City"
                     maxLength={100}
                     onChange={(event) =>
                       updateField(
@@ -499,17 +551,12 @@ export default function AdminShopInfoScreen({
                       )
                     }
                   />
-                </label>
-
-                <label>
-                  <span>
-                    State
-                  </span>
 
                   <input
                     type="text"
                     value={shop.state}
-                    required
+                    placeholder="State"
+                    aria-label="State"
                     maxLength={100}
                     onChange={(event) =>
                       updateField(
@@ -518,30 +565,41 @@ export default function AdminShopInfoScreen({
                       )
                     }
                   />
-                </label>
-              </div>
 
-              <label>
-                <span>
-                  Postal code
-                </span>
+                  <input
+                    type="text"
+                    value={
+                      shop.postalCode
+                    }
+                    placeholder="PIN / ZIP"
+                    aria-label="PIN or ZIP"
+                    maxLength={30}
+                    onChange={(event) =>
+                      updateField(
+                        "postalCode",
+                        event.target.value,
+                      )
+                    }
+                  />
+                </div>
 
-                <input
-                  type="text"
-                  value={
-                    shop.postalCode
-                  }
-                  required
-                  maxLength={30}
-                  onChange={(event) =>
-                    updateField(
-                      "postalCode",
-                      event.target.value,
-                    )
-                  }
-                />
-              </label>
-            </section>
+                <div className="admin-shop-info__immutable">
+                  <span>
+                    Shop code
+                  </span>
+
+                  <strong>
+                    {shop.code}
+                  </strong>
+
+                  <small>
+                    Used by QR codes and
+                    requests. It cannot be
+                    changed.
+                  </small>
+                </div>
+              </section>
+            )}
 
             {message && (
               <p className="admin-shop-info__success">
@@ -564,7 +622,7 @@ export default function AdminShopInfoScreen({
               >
                 {saving
                   ? "Saving…"
-                  : "Save shop information"}
+                  : "Save changes"}
               </button>
             </div>
           </form>

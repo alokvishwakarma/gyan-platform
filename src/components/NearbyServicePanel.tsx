@@ -7,11 +7,13 @@ import {
 
 import "./NearbyServicePanel.css";
 
+
 interface NearbyServicePanelProps {
   serviceCode: string;
   serviceName: string;
   onClose: () => void;
 }
+
 
 interface LocationHint {
   countryCode?: string;
@@ -19,25 +21,39 @@ interface LocationHint {
   city?: string;
 }
 
+
 interface RegisteredShop {
   code: string;
   name: string;
   address: string;
-  distanceKm: number | null;
+
+  distanceKm:
+    | number
+    | null;
 }
+
 
 interface ExternalPlace {
   id: string;
   name: string;
   address: string;
-  distanceKm: number | null;
+
+  distanceKm:
+    | number
+    | null;
 }
 
+
 interface NearbyResponse {
-  registeredShops?: RegisteredShop[];
-  externalPlaces?: ExternalPlace[];
+  registeredShops?:
+    RegisteredShop[];
+
+  externalPlaces?:
+    ExternalPlace[];
+
   error?: string;
 }
+
 
 interface SubmitResponse {
   request?: {
@@ -45,41 +61,270 @@ interface SubmitResponse {
   };
 
   requestNumber?: string;
+
   error?: string;
 }
+
+
+interface NearbyCacheEntry {
+  createdAt: number;
+
+  registeredShops:
+    RegisteredShop[];
+
+  externalPlaces:
+    ExternalPlace[];
+}
+
 
 type SelectedBusiness =
   | {
       kind: "support";
+
       shopCode: "SUPP";
-      name: "GYAN Support";
+
+      name:
+        "GYAN Support";
+
       address: "";
     }
   | {
-      kind: "registered";
+      kind:
+        "registered";
+
       shopCode: string;
+
       name: string;
+
       address: string;
     }
   | {
-      kind: "external";
+      kind:
+        "external";
+
       shopCode: "SUPP";
+
       name: string;
+
       address: string;
     };
+
 
 const SUPPORT_BUSINESS:
   SelectedBusiness = {
     kind: "support",
+
     shopCode: "SUPP",
-    name: "GYAN Support",
+
+    name:
+      "GYAN Support",
+
     address: "",
   };
 
-function formatDistance(
-  distanceKm: number | null,
+
+const NEARBY_CACHE_PREFIX =
+  "gyan-nearby-v1:";
+
+
+/*
+ * GPS results can change as the
+ * user moves, so keep these shorter.
+ */
+const GPS_CACHE_TTL =
+  30 * 60 * 1000;
+
+
+/*
+ * Address/area results are generally
+ * stable enough to keep longer.
+ */
+const ADDRESS_CACHE_TTL =
+  4 * 60 * 60 * 1000;
+
+
+/*
+ * ========================================================
+ * CACHE
+ * ========================================================
+ */
+
+function normalizeCacheText(
+  value: string,
 ): string {
-  if (distanceKm == null) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(
+      /\s+/g,
+      " ",
+    );
+}
+
+
+function createGpsCacheKey(
+  serviceCode: string,
+  latitude: number,
+  longitude: number,
+): string {
+  return [
+    NEARBY_CACHE_PREFIX,
+
+    "gps:",
+
+    serviceCode
+      .trim()
+      .toUpperCase(),
+
+    ":",
+
+    latitude.toFixed(
+      3,
+    ),
+
+    ",",
+
+    longitude.toFixed(
+      3,
+    ),
+  ].join("");
+}
+
+
+function createAddressCacheKey(
+  serviceCode: string,
+  city: string,
+  stateRegion: string,
+): string {
+  return [
+    NEARBY_CACHE_PREFIX,
+
+    "address:",
+
+    serviceCode
+      .trim()
+      .toUpperCase(),
+
+    ":",
+
+    normalizeCacheText(
+      city,
+    ),
+
+    "|",
+
+    normalizeCacheText(
+      stateRegion,
+    ),
+  ].join("");
+}
+
+
+function readNearbyCache(
+  key: string,
+  ttl: number,
+):
+  | NearbyCacheEntry
+  | null {
+  try {
+    const raw =
+      localStorage.getItem(
+        key,
+      );
+
+    if (!raw) {
+      return null;
+    }
+
+    const cached =
+      JSON.parse(
+        raw,
+      ) as NearbyCacheEntry;
+
+    if (
+      !Number.isFinite(
+        cached.createdAt,
+      ) ||
+      !Array.isArray(
+        cached.registeredShops,
+      ) ||
+      !Array.isArray(
+        cached.externalPlaces,
+      )
+    ) {
+      localStorage.removeItem(
+        key,
+      );
+
+      return null;
+    }
+
+    if (
+      Date.now() -
+        cached.createdAt >
+      ttl
+    ) {
+      localStorage.removeItem(
+        key,
+      );
+
+      return null;
+    }
+
+    return cached;
+  } catch {
+    return null;
+  }
+}
+
+
+function writeNearbyCache(
+  key: string,
+  registeredShops:
+    RegisteredShop[],
+  externalPlaces:
+    ExternalPlace[],
+): void {
+  try {
+    const entry:
+      NearbyCacheEntry = {
+      createdAt:
+        Date.now(),
+
+      registeredShops,
+
+      externalPlaces,
+    };
+
+    localStorage.setItem(
+      key,
+      JSON.stringify(
+        entry,
+      ),
+    );
+  } catch {
+    /*
+     * Search must continue even
+     * when browser storage is unavailable.
+     */
+  }
+}
+
+
+/*
+ * ========================================================
+ * GENERAL HELPERS
+ * ========================================================
+ */
+
+function formatDistance(
+  distanceKm:
+    | number
+    | null,
+): string {
+  if (
+    distanceKm == null
+  ) {
     return "";
   }
 
@@ -87,6 +332,7 @@ function formatDistance(
     1,
   )} km`;
 }
+
 
 function sanitizePhone(
   value: string,
@@ -98,13 +344,18 @@ function sanitizePhone(
     );
 
   if (
-    sanitized.startsWith("+")
+    sanitized.startsWith(
+      "+",
+    )
   ) {
     sanitized =
       "+" +
       sanitized
         .slice(1)
-        .replace(/\+/g, "");
+        .replace(
+          /\+/g,
+          "",
+        );
   } else {
     sanitized =
       sanitized.replace(
@@ -115,6 +366,7 @@ function sanitizePhone(
 
   return sanitized;
 }
+
 
 function getDialCode(
   countryCode?: string,
@@ -142,6 +394,7 @@ function getDialCode(
   }
 }
 
+
 function getRequiredLocalDigits(
   countryCode?: string,
 ): number {
@@ -159,6 +412,7 @@ function getRequiredLocalDigits(
       return 7;
   }
 }
+
 
 function hasValidPhoneForCountry(
   value: string,
@@ -196,137 +450,179 @@ function hasValidPhoneForCountry(
   );
 }
 
+
+/*
+ * ========================================================
+ * COMPONENT
+ * ========================================================
+ */
+
 export default function NearbyServicePanel({
   serviceCode,
   serviceName,
   onClose,
 }: NearbyServicePanelProps) {
   const [
-    locationOpen,
-    setLocationOpen,
-  ] = useState(false);
-
-  const [
     detectedCountryCode,
     setDetectedCountryCode,
-  ] = useState<string | undefined>(
-    undefined,
-  );
+  ] =
+    useState<
+      string | undefined
+    >(undefined);
+
 
   const [
     city,
     setCity,
-  ] = useState("");
+  ] =
+    useState("");
+
 
   const [
     stateRegion,
     setStateRegion,
-  ] = useState("");
+  ] =
+    useState("");
 
-  const [
-    latitude,
-    setLatitude,
-  ] = useState<number | null>(
-    null,
-  );
-
-  const [
-    longitude,
-    setLongitude,
-  ] = useState<number | null>(
-    null,
-  );
 
   const [
     registeredShops,
     setRegisteredShops,
-  ] = useState<RegisteredShop[]>(
-    [],
-  );
+  ] =
+    useState<
+      RegisteredShop[]
+    >([]);
+
 
   const [
     externalPlaces,
     setExternalPlaces,
-  ] = useState<ExternalPlace[]>(
-    [],
-  );
+  ] =
+    useState<
+      ExternalPlace[]
+    >([]);
+
 
   const [
     selectedBusiness,
     setSelectedBusiness,
-  ] = useState<SelectedBusiness>(
-    SUPPORT_BUSINESS,
-  );
+  ] =
+    useState<SelectedBusiness>(
+      SUPPORT_BUSINESS,
+    );
+
 
   const [
     requestDetails,
     setRequestDetails,
-  ] = useState("");
+  ] =
+    useState("");
+
 
   const [
     customerName,
     setCustomerName,
-  ] = useState("");
+  ] =
+    useState("");
+
 
   const [
     phoneOrWhatsApp,
     setPhoneOrWhatsApp,
-  ] = useState("");
+  ] =
+    useState("");
+
 
   const [
     email,
     setEmail,
-  ] = useState("");
+  ] =
+    useState("");
+
 
   const [
     preferredDate,
     setPreferredDate,
-  ] = useState("");
+  ] =
+    useState("");
+
 
   const [
     serviceAddress,
     setServiceAddress,
-  ] = useState("");
+  ] =
+    useState("");
+
 
   const [
     additionalNotes,
     setAdditionalNotes,
-  ] = useState("");
+  ] =
+    useState("");
+
 
   const [
     showMore,
     setShowMore,
-  ] = useState(false);
+  ] =
+    useState(false);
+
 
   const [
     files,
     setFiles,
-  ] = useState<File[]>([]);
+  ] =
+    useState<File[]>(
+      [],
+    );
+
 
   const [
     searching,
     setSearching,
-  ] = useState(false);
+  ] =
+    useState(false);
+
 
   const [
     submitting,
     setSubmitting,
-  ] = useState(false);
+  ] =
+    useState(false);
+
 
   const [
     error,
     setError,
-  ] = useState("");
+  ] =
+    useState("");
+
+
+  const [
+    searchMessage,
+    setSearchMessage,
+  ] =
+    useState("");
+
 
   const [
     successNumber,
     setSuccessNumber,
-  ] = useState("");
+  ] =
+    useState("");
+
 
   const fileInputRef =
-    useRef<HTMLInputElement | null>(
-      null,
-    );
+    useRef<
+      HTMLInputElement | null
+    >(null);
+
+
+  /*
+   * ========================================================
+   * APPROXIMATE LOCATION HINT
+   * ========================================================
+   */
 
   useEffect(() => {
     const controller =
@@ -344,20 +640,27 @@ export default function NearbyServicePanel({
 
               headers: {
                 "x-gyan-timezone":
-                  Intl.DateTimeFormat()
+                  Intl
+                    .DateTimeFormat()
                     .resolvedOptions()
                     .timeZone,
 
                 "x-gyan-languages":
                   (
                     navigator.languages ??
-                    [navigator.language]
-                  ).join(","),
+                    [
+                      navigator.language,
+                    ]
+                  ).join(
+                    ",",
+                  ),
               },
             },
           );
 
-        if (!response.ok) {
+        if (
+          !response.ok
+        ) {
           return;
         }
 
@@ -366,17 +669,20 @@ export default function NearbyServicePanel({
             LocationHint;
 
         if (
-          controller.signal.aborted
+          controller.signal
+            .aborted
         ) {
           return;
         }
 
         setCity(
-          hint.city ?? "",
+          hint.city ??
+            "",
         );
 
         setStateRegion(
-          hint.region ?? "",
+          hint.region ??
+            "",
         );
 
         setDetectedCountryCode(
@@ -392,19 +698,31 @@ export default function NearbyServicePanel({
                 ),
         );
       } catch {
-        // Location entry remains optional.
+        /*
+         * Manual location search
+         * remains available.
+         */
       }
     }
 
     void loadHint();
 
-    return () =>
+    return () => {
       controller.abort();
+    };
   }, []);
+
+
+  /*
+   * ========================================================
+   * DERIVED VALUES
+   * ========================================================
+   */
 
   const resultCount =
     registeredShops.length +
     externalPlaces.length;
+
 
   const locationSummary =
     useMemo(
@@ -413,25 +731,155 @@ export default function NearbyServicePanel({
           city.trim(),
           stateRegion.trim(),
         ]
-          .filter(Boolean)
-          .join(", "),
+          .filter(
+            Boolean,
+          )
+          .join(
+            ", ",
+          ),
       [
         city,
         stateRegion,
       ],
     );
 
+
+  /*
+   * ========================================================
+   * APPLY SEARCH RESULT
+   * ========================================================
+   */
+
+  function applyNearbyResults(
+    shops:
+      RegisteredShop[],
+    places:
+      ExternalPlace[],
+    fromCache:
+      boolean,
+  ): void {
+    setRegisteredShops(
+      shops,
+    );
+
+    setExternalPlaces(
+      places,
+    );
+
+    /*
+     * A new location search should
+     * not silently leave an old shop
+     * selected.
+     */
+    setSelectedBusiness(
+      SUPPORT_BUSINESS,
+    );
+
+    const total =
+      shops.length +
+      places.length;
+
+    if (
+      total === 0
+    ) {
+      setSearchMessage(
+        fromCache
+          ? "No nearby results in the saved search."
+          : "No nearby businesses found.",
+      );
+
+      return;
+    }
+
+    setSearchMessage(
+      fromCache
+        ? `${total} nearby result${
+            total === 1
+              ? ""
+              : "s"
+          } loaded from this device.`
+        : `${total} nearby result${
+            total === 1
+              ? ""
+              : "s"
+          } found.`,
+    );
+  }
+
+
+  /*
+   * ========================================================
+   * SEARCH
+   * ========================================================
+   */
+
   async function searchNearby(
     nextLatitude:
       | number
-      | null = latitude,
+      | null = null,
 
     nextLongitude:
       | number
-      | null = longitude,
+      | null = null,
   ): Promise<void> {
-    setSearching(true);
-    setError("");
+    setError(
+      "",
+    );
+
+
+    const hasPreciseLocation =
+      nextLatitude != null &&
+      nextLongitude != null;
+
+
+    const cacheKey =
+      hasPreciseLocation
+        ? createGpsCacheKey(
+            serviceCode,
+            nextLatitude,
+            nextLongitude,
+          )
+        : createAddressCacheKey(
+            serviceCode,
+            city,
+            stateRegion,
+          );
+
+
+    const cacheTtl =
+      hasPreciseLocation
+        ? GPS_CACHE_TTL
+        : ADDRESS_CACHE_TTL;
+
+
+    const cached =
+      readNearbyCache(
+        cacheKey,
+        cacheTtl,
+      );
+
+
+    if (
+      cached
+    ) {
+      applyNearbyResults(
+        cached.registeredShops,
+        cached.externalPlaces,
+        true,
+      );
+
+      return;
+    }
+
+
+    setSearching(
+      true,
+    );
+
+    setSearchMessage(
+      "Searching nearby…",
+    );
+
 
     try {
       const parameters =
@@ -439,30 +887,35 @@ export default function NearbyServicePanel({
           serviceCode,
         });
 
+
       if (
-        nextLatitude != null
+        hasPreciseLocation
       ) {
         parameters.set(
           "lat",
-          String(nextLatitude),
+          String(
+            nextLatitude,
+          ),
         );
-      }
 
-      if (
-        nextLongitude != null
-      ) {
         parameters.set(
           "lng",
-          String(nextLongitude),
+          String(
+            nextLongitude,
+          ),
         );
       }
 
-      if (city.trim()) {
+
+      if (
+        city.trim()
+      ) {
         parameters.set(
           "city",
           city.trim(),
         );
       }
+
 
       if (
         stateRegion.trim()
@@ -473,43 +926,76 @@ export default function NearbyServicePanel({
         );
       }
 
+
       const response =
         await fetch(
           `/api/nearby-shops?${parameters.toString()}`,
         );
 
+
       const result =
         (await response.json()) as
           NearbyResponse;
 
-      if (!response.ok) {
+
+      if (
+        !response.ok
+      ) {
         throw new Error(
           result.error ??
             "Nearby shops could not be loaded.",
         );
       }
 
-      setRegisteredShops(
+
+      const nextShops =
         result.registeredShops ??
-          [],
-      );
+        [];
 
-      setExternalPlaces(
+
+      const nextPlaces =
         result.externalPlaces ??
-          [],
+        [];
+
+
+      writeNearbyCache(
+        cacheKey,
+        nextShops,
+        nextPlaces,
       );
 
-      setLocationOpen(false);
-    } catch (caughtError) {
+
+      applyNearbyResults(
+        nextShops,
+        nextPlaces,
+        false,
+      );
+    } catch (
+      caughtError
+    ) {
+      setSearchMessage(
+        "",
+      );
+
       setError(
-        caughtError instanceof Error
+        caughtError instanceof
+          Error
           ? caughtError.message
           : "Nearby shops could not be loaded.",
       );
     } finally {
-      setSearching(false);
+      setSearching(
+        false,
+      );
     }
   }
+
+
+  /*
+   * ========================================================
+   * PRECISE LOCATION
+   * ========================================================
+   */
 
   function useMyLocation():
     void {
@@ -517,33 +1003,41 @@ export default function NearbyServicePanel({
       !navigator.geolocation
     ) {
       setError(
-        "Location is not available in this browser.",
+        "Location is not available in this browser. Search by address or area instead.",
       );
 
       return;
     }
 
-    setSearching(true);
-    setError("");
+
+    setSearching(
+      true,
+    );
+
+    setError(
+      "",
+    );
+
+    setSearchMessage(
+      "Getting your location…",
+    );
+
 
     navigator.geolocation
       .getCurrentPosition(
-        (position) => {
+        (
+          position,
+        ) => {
           const nextLatitude =
-            position.coords
+            position
+              .coords
               .latitude;
 
           const nextLongitude =
-            position.coords
+            position
+              .coords
               .longitude;
 
-          setLatitude(
-            nextLatitude,
-          );
-
-          setLongitude(
-            nextLongitude,
-          );
 
           void searchNearby(
             nextLatitude,
@@ -552,10 +1046,16 @@ export default function NearbyServicePanel({
         },
 
         () => {
-          setSearching(false);
+          setSearching(
+            false,
+          );
+
+          setSearchMessage(
+            "",
+          );
 
           setError(
-            "Location permission was not available. Enter a city or state instead.",
+            "Location permission was not available. Search by address or area instead.",
           );
         },
 
@@ -563,18 +1063,66 @@ export default function NearbyServicePanel({
           enableHighAccuracy:
             false,
 
-          timeout: 10000,
+          timeout:
+            10000,
 
+          /*
+           * Browser geolocation
+           * can itself reuse a recent
+           * location reading.
+           */
           maximumAge:
             300000,
         },
       );
   }
 
+
+  /*
+   * ========================================================
+   * MANUAL SEARCH
+   * ========================================================
+   */
+
+  function searchByAddress():
+    void {
+    if (
+      !city.trim() &&
+      !stateRegion.trim()
+    ) {
+      setError(
+        "Enter an address, area, city, state or postal code.",
+      );
+
+      return;
+    }
+
+
+    /*
+     * Manual search should not reuse
+     * an earlier GPS position.
+     */
+
+    void searchNearby(
+      null,
+      null,
+    );
+  }
+
+
+  /*
+   * ========================================================
+   * SELECT BUSINESS
+   * ========================================================
+   */
+
   function selectBusiness(
     value: string,
   ): void {
-    if (value === "support") {
+    if (
+      value ===
+      "support"
+    ) {
       setSelectedBusiness(
         SUPPORT_BUSINESS,
       );
@@ -582,22 +1130,29 @@ export default function NearbyServicePanel({
       return;
     }
 
+
     if (
       value.startsWith(
         "gyan:",
       )
     ) {
       const shopCode =
-        value.slice(5);
+        value.slice(
+          5,
+        );
+
 
       const shop =
         registeredShops.find(
           (item) =>
             item.code ===
-              shopCode,
+            shopCode,
         );
 
-      if (shop) {
+
+      if (
+        shop
+      ) {
         setSelectedBusiness({
           kind:
             "registered",
@@ -616,22 +1171,29 @@ export default function NearbyServicePanel({
       return;
     }
 
+
     if (
       value.startsWith(
         "external:",
       )
     ) {
       const placeId =
-        value.slice(9);
+        value.slice(
+          9,
+        );
+
 
       const place =
         externalPlaces.find(
           (item) =>
             item.id ===
-              placeId,
+            placeId,
         );
 
-      if (place) {
+
+      if (
+        place
+      ) {
         setSelectedBusiness({
           kind:
             "external",
@@ -646,6 +1208,7 @@ export default function NearbyServicePanel({
             place.address,
         });
 
+
         if (
           !serviceAddress.trim()
         ) {
@@ -657,6 +1220,7 @@ export default function NearbyServicePanel({
     }
   }
 
+
   function getSelectedValue():
     string {
     if (
@@ -666,12 +1230,14 @@ export default function NearbyServicePanel({
       return "support";
     }
 
+
     if (
       selectedBusiness.kind ===
       "registered"
     ) {
       return `gyan:${selectedBusiness.shopCode}`;
     }
+
 
     const matchingPlace =
       externalPlaces.find(
@@ -682,34 +1248,49 @@ export default function NearbyServicePanel({
             selectedBusiness.address,
       );
 
+
     return matchingPlace
       ? `external:${matchingPlace.id}`
       : "support";
   }
 
+
+  /*
+   * ========================================================
+   * VALIDATION
+   * ========================================================
+   */
+
   function validate():
     string | null {
     if (
       !requestDetails.trim() &&
-      files.length === 0
+      files.length ===
+        0
     ) {
       return "Describe what you need or attach a file.";
     }
 
-    if (!customerName.trim()) {
+
+    if (
+      !customerName.trim()
+    ) {
       return "Please enter your name.";
     }
+
 
     const hasEmail =
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
         email.trim(),
       );
 
+
     const hasPhone =
       hasValidPhoneForCountry(
         phoneOrWhatsApp,
         detectedCountryCode,
       );
+
 
     if (
       !hasPhone &&
@@ -727,6 +1308,7 @@ export default function NearbyServicePanel({
       );
     }
 
+
     if (
       email.trim() &&
       !hasEmail
@@ -734,15 +1316,26 @@ export default function NearbyServicePanel({
       return "Please enter a valid email address.";
     }
 
+
     return null;
   }
+
+
+  /*
+   * ========================================================
+   * SUBMIT
+   * ========================================================
+   */
 
   async function submitRequest():
     Promise<void> {
     const validationError =
       validate();
 
-    if (validationError) {
+
+    if (
+      validationError
+    ) {
       setError(
         validationError,
       );
@@ -750,8 +1343,15 @@ export default function NearbyServicePanel({
       return;
     }
 
-    setSubmitting(true);
-    setError("");
+
+    setSubmitting(
+      true,
+    );
+
+    setError(
+      "",
+    );
+
 
     try {
       const businessContext =
@@ -764,89 +1364,105 @@ export default function NearbyServicePanel({
             }`
           : "";
 
+
       const combinedNotes =
         [
           businessContext,
+
           additionalNotes.trim(),
         ]
-          .filter(Boolean)
-          .join("\n");
+          .filter(
+            Boolean,
+          )
+          .join(
+            "\n",
+          );
 
-      const submittedAnswers = [
-        {
-          sectionKey:
-            "service_details",
 
-          fieldKey:
-            "request_details",
+      const submittedAnswers =
+        [
+          {
+            sectionKey:
+              "service_details",
 
-          value:
-            requestDetails.trim(),
-        },
-        {
-          sectionKey:
-            "customer_details",
+            fieldKey:
+              "request_details",
 
-          fieldKey:
-            "customer_name",
+            value:
+              requestDetails.trim(),
+          },
 
-          value:
-            customerName.trim(),
-        },
-        {
-          sectionKey:
-            "customer_details",
+          {
+            sectionKey:
+              "customer_details",
 
-          fieldKey:
-            "phone_or_whatsapp",
+            fieldKey:
+              "customer_name",
 
-          value:
-            phoneOrWhatsApp.trim(),
-        },
-        {
-          sectionKey:
-            "customer_details",
+            value:
+              customerName.trim(),
+          },
 
-          fieldKey:
-            "email_address",
+          {
+            sectionKey:
+              "customer_details",
 
-          value:
-            email.trim(),
-        },
-        {
-          sectionKey:
-            "additional_details",
+            fieldKey:
+              "phone_or_whatsapp",
 
-          fieldKey:
-            "preferred_date",
+            value:
+              phoneOrWhatsApp.trim(),
+          },
 
-          value:
-            preferredDate,
-        },
-        {
-          sectionKey:
-            "additional_details",
+          {
+            sectionKey:
+              "customer_details",
 
-          fieldKey:
-            "service_address",
+            fieldKey:
+              "email_address",
 
-          value:
-            serviceAddress.trim(),
-        },
-        {
-          sectionKey:
-            "additional_details",
+            value:
+              email.trim(),
+          },
 
-          fieldKey:
-            "additional_notes",
+          {
+            sectionKey:
+              "additional_details",
 
-          value:
-            combinedNotes,
-        },
-      ];
+            fieldKey:
+              "preferred_date",
+
+            value:
+              preferredDate,
+          },
+
+          {
+            sectionKey:
+              "additional_details",
+
+            fieldKey:
+              "service_address",
+
+            value:
+              serviceAddress.trim(),
+          },
+
+          {
+            sectionKey:
+              "additional_details",
+
+            fieldKey:
+              "additional_notes",
+
+            value:
+              combinedNotes,
+          },
+        ];
+
 
       const formData =
         new FormData();
+
 
       formData.set(
         "metadata",
@@ -856,16 +1472,20 @@ export default function NearbyServicePanel({
         }),
       );
 
+
       for (
-        const file
-        of files
+        const file of
+        files
       ) {
         formData.append(
           "file:service_details:attachments",
+
           file,
+
           file.name,
         );
       }
+
 
       const endpoint =
         `/api/shops/${encodeURIComponent(
@@ -874,25 +1494,34 @@ export default function NearbyServicePanel({
           serviceCode,
         )}/requests`;
 
+
       const response =
         await fetch(
           endpoint,
           {
-            method: "POST",
-            body: formData,
+            method:
+              "POST",
+
+            body:
+              formData,
           },
         );
+
 
       const result =
         (await response.json()) as
           SubmitResponse;
 
-      if (!response.ok) {
+
+      if (
+        !response.ok
+      ) {
         throw new Error(
           result.error ??
             "The request could not be submitted.",
         );
       }
+
 
       const requestNumber =
         result.request
@@ -900,21 +1529,36 @@ export default function NearbyServicePanel({
         result.requestNumber ??
         "Submitted";
 
+
       setSuccessNumber(
         requestNumber,
       );
-    } catch (caughtError) {
+    } catch (
+      caughtError
+    ) {
       setError(
-        caughtError instanceof Error
+        caughtError instanceof
+          Error
           ? caughtError.message
           : "The request could not be submitted.",
       );
     } finally {
-      setSubmitting(false);
+      setSubmitting(
+        false,
+      );
     }
   }
 
-  if (successNumber) {
+
+  /*
+   * ========================================================
+   * SUCCESS
+   * ========================================================
+   */
+
+  if (
+    successNumber
+  ) {
     return (
       <div className="nearby-service-overlay">
         <section
@@ -930,12 +1574,15 @@ export default function NearbyServicePanel({
 
             <button
               type="button"
-              onClick={onClose}
+              onClick={
+                onClose
+              }
               aria-label="Close"
             >
               ×
             </button>
           </header>
+
 
           <div className="nearby-service-panel__success">
             <span
@@ -945,18 +1592,23 @@ export default function NearbyServicePanel({
             </span>
 
             <strong>
-              {successNumber}
+              {
+                successNumber
+              }
             </strong>
 
             <p>
-              Your request has been received.
-              You will be contacted by phone,
+              Your request has been
+              received. You will be
+              contacted by phone,
               WhatsApp, or email.
             </p>
 
             <button
               type="button"
-              onClick={onClose}
+              onClick={
+                onClose
+              }
             >
               Done
             </button>
@@ -965,6 +1617,13 @@ export default function NearbyServicePanel({
       </div>
     );
   }
+
+
+  /*
+   * ========================================================
+   * UI
+   * ========================================================
+   */
 
   return (
     <div className="nearby-service-overlay">
@@ -976,104 +1635,32 @@ export default function NearbyServicePanel({
       >
         <header className="nearby-service-panel__header nearby-service-panel__header--compact">
           <h2 id="nearby-service-title">
-            {serviceName}
+            {
+              serviceName
+            }
           </h2>
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={
+              onClose
+            }
             aria-label="Close nearby request"
           >
             ×
           </button>
         </header>
 
+
         <div className="nearby-service-panel__content nearby-service-panel__content--compact">
-          <div className="nearby-service-panel__shop-row">
-            <select
-              aria-label="Select shop"
-              value={
-                getSelectedValue()
-              }
-              onChange={(event) =>
-                selectBusiness(
-                  event.target.value,
-                )
-              }
-            >
-              <option value="support">
-                GYAN Support
-              </option>
 
-              {registeredShops.length >
-                0 && (
-                <optgroup label="Participating GYAN shops">
-                  {registeredShops.map(
-                    (shop) => (
-                      <option
-                        key={
-                          shop.code
-                        }
-                        value={
-                          `gyan:${shop.code}`
-                        }
-                      >
-                        ⭐{" "}
-                        {shop.name}
-                        {formatDistance(
-                          shop.distanceKm,
-                        )}
-                      </option>
-                    ),
-                  )}
-                </optgroup>
-              )}
+          {/* =============================================
+              LOCATION SEARCH — ALWAYS VISIBLE
+              ============================================= */}
 
-              {externalPlaces.length >
-                0 && (
-                <optgroup label="Other nearby businesses">
-                  {externalPlaces.map(
-                    (place) => (
-                      <option
-                        key={
-                          place.id
-                        }
-                        value={
-                          `external:${place.id}`
-                        }
-                      >
-                        {place.name}
-                        {formatDistance(
-                          place.distanceKm,
-                        )}
-                      </option>
-                    ),
-                  )}
-                </optgroup>
-              )}
-            </select>
+          <section className="nearby-service-panel__location-search">
+            <div className="nearby-service-panel__location-search-row">
 
-            <button
-              type="button"
-              className="nearby-service-panel__map-button"
-              aria-label="Find nearby shops"
-              title="Find nearby shops"
-              aria-expanded={
-                locationOpen
-              }
-              onClick={() =>
-                setLocationOpen(
-                  (current) =>
-                    !current,
-                )
-              }
-            >
-              🗺️
-            </button>
-          </div>
-
-          {locationOpen && (
-            <section className="nearby-service-panel__location-box">
               <button
                 type="button"
                 className="nearby-service-panel__use-location"
@@ -1086,36 +1673,50 @@ export default function NearbyServicePanel({
               >
                 {searching
                   ? "Searching…"
-                  : "Use my location"}
+                  : "📍 Use my location"}
               </button>
 
-              <div className="nearby-service-panel__manual-location">
-                <input
-                  value={city}
-                  placeholder="City"
-                  aria-label="City"
-                  onChange={(event) =>
-                    setCity(
-                      event.target.value,
-                    )
-                  }
-                />
 
+              <div className="nearby-service-panel__address-search">
                 <input
                   value={
-                    stateRegion
+                    city
                   }
-                  placeholder="State"
-                  aria-label="State"
-                  onChange={(event) =>
-                    setStateRegion(
-                      event.target.value,
-                    )
+                  placeholder="Address / area / city"
+                  aria-label="Address, area or city"
+                  disabled={
+                    searching
                   }
+                  onChange={(
+                    event,
+                  ) => {
+                    setCity(
+                      event.target
+                        .value,
+                    );
+
+                    setError(
+                      "",
+                    );
+                  }}
+                  onKeyDown={(
+                    event,
+                  ) => {
+                    if (
+                      event.key ===
+                      "Enter"
+                    ) {
+                      event.preventDefault();
+
+                      searchByAddress();
+                    }
+                  }}
                 />
 
                 <button
                   type="button"
+                  aria-label="Search nearby"
+                  title="Search nearby"
                   disabled={
                     searching ||
                     (
@@ -1123,47 +1724,215 @@ export default function NearbyServicePanel({
                       !stateRegion.trim()
                     )
                   }
-                  onClick={() =>
-                    void searchNearby()
+                  onClick={
+                    searchByAddress
                   }
                 >
-                  Search
+                  🔎
                 </button>
               </div>
-            </section>
-          )}
+            </div>
 
-          {resultCount > 0 &&
+
+            <div className="nearby-service-panel__state-row">
+              <input
+                value={
+                  stateRegion
+                }
+                placeholder="State / region (optional)"
+                aria-label="State"
+                disabled={
+                  searching
+                }
+                onChange={(
+                  event,
+                ) => {
+                  setStateRegion(
+                    event.target
+                      .value,
+                  );
+
+                  setError(
+                    "",
+                  );
+                }}
+                onKeyDown={(
+                  event,
+                ) => {
+                  if (
+                    event.key ===
+                      "Enter"
+                  ) {
+                    event.preventDefault();
+
+                    searchByAddress();
+                  }
+                }}
+              />
+            </div>
+
+
+            <p className="nearby-service-panel__routing-hint">
+              📍 Select a nearby shop
+              before submitting.
+              {" "}
+              <strong>
+                Otherwise, your request
+                goes to GYAN Support.
+              </strong>
+            </p>
+
+
+            {searchMessage && (
+              <small className="nearby-service-panel__search-message">
+                {
+                  searchMessage
+                }
+              </small>
+            )}
+          </section>
+
+
+          {/* =============================================
+              SHOP PICKER
+              ============================================= */}
+
+          <div className="nearby-service-panel__shop-row">
+            <select
+              aria-label="Select shop"
+              value={
+                getSelectedValue()
+              }
+              onChange={(
+                event,
+              ) =>
+                selectBusiness(
+                  event.target
+                    .value,
+                )
+              }
+            >
+              <option value="support">
+                GYAN Support
+              </option>
+
+
+              {registeredShops.length >
+                0 && (
+                <optgroup label="Participating GYAN shops">
+                  {registeredShops.map(
+                    (
+                      shop,
+                    ) => (
+                      <option
+                        key={
+                          shop.code
+                        }
+                        value={
+                          `gyan:${shop.code}`
+                        }
+                      >
+                        ⭐{" "}
+                        {
+                          shop.name
+                        }
+                        {
+                          formatDistance(
+                            shop.distanceKm,
+                          )
+                        }
+                      </option>
+                    ),
+                  )}
+                </optgroup>
+              )}
+
+
+              {externalPlaces.length >
+                0 && (
+                <optgroup label="Other nearby businesses">
+                  {externalPlaces.map(
+                    (
+                      place,
+                    ) => (
+                      <option
+                        key={
+                          place.id
+                        }
+                        value={
+                          `external:${place.id}`
+                        }
+                      >
+                        {
+                          place.name
+                        }
+                        {
+                          formatDistance(
+                            place.distanceKm,
+                          )
+                        }
+                      </option>
+                    ),
+                  )}
+                </optgroup>
+              )}
+            </select>
+          </div>
+
+
+          {resultCount >
+            0 &&
             locationSummary && (
-            <small className="nearby-service-panel__summary">
-              {resultCount}
-              {" nearby result"}
-              {resultCount === 1
-                ? ""
-                : "s"}
-              {" • "}
-              {locationSummary}
-            </small>
-          )}
+              <small className="nearby-service-panel__summary">
+                {
+                  resultCount
+                }
+                {" nearby result"}
+                {
+                  resultCount ===
+                  1
+                    ? ""
+                    : "s"
+                }
+                {" • "}
+                {
+                  locationSummary
+                }
+              </small>
+            )}
+
+
+          {/* =============================================
+              REQUEST DETAILS
+              ============================================= */}
 
           <textarea
             className="nearby-service-panel__request"
-            rows={2}
-            value={requestDetails}
+            rows={
+              2
+            }
+            value={
+              requestDetails
+            }
             placeholder="What do you need?"
             aria-label="What do you need?"
-            onChange={(event) =>
+            onChange={(
+              event,
+            ) =>
               setRequestDetails(
-                event.target.value,
+                event.target
+                  .value,
               )
             }
           />
+
 
           <button
             type="button"
             className="nearby-service-panel__file-button"
             onClick={() =>
-              fileInputRef.current
+              fileInputRef
+                .current
                 ?.click()
             }
           >
@@ -1172,9 +1941,11 @@ export default function NearbyServicePanel({
             </span>
 
             <strong>
-              {files.length > 0
+              {files.length >
+              0
                 ? `${files.length} file${
-                    files.length === 1
+                    files.length ===
+                    1
                       ? ""
                       : "s"
                   } attached`
@@ -1182,32 +1953,45 @@ export default function NearbyServicePanel({
             </strong>
           </button>
 
+
           <input
-            ref={fileInputRef}
+            ref={
+              fileInputRef
+            }
             className="nearby-service-panel__hidden-file"
             type="file"
             multiple
-            onChange={(event) =>
+            onChange={(
+              event,
+            ) =>
               setFiles(
                 Array.from(
-                  event.target.files ??
+                  event.target
+                    .files ??
                     [],
                 ),
               )
             }
           />
 
+
           <input
-            value={customerName}
+            value={
+              customerName
+            }
             placeholder="Name"
             aria-label="Name"
             autoComplete="name"
-            onChange={(event) =>
+            onChange={(
+              event,
+            ) =>
               setCustomerName(
-                event.target.value,
+                event.target
+                  .value,
               )
             }
           />
+
 
           <div className="nearby-service-panel__contact-row">
             <input
@@ -1219,36 +2003,48 @@ export default function NearbyServicePanel({
               type="tel"
               inputMode="tel"
               autoComplete="tel"
-              onChange={(event) =>
+              onChange={(
+                event,
+              ) =>
                 setPhoneOrWhatsApp(
                   sanitizePhone(
-                    event.target.value,
+                    event.target
+                      .value,
                   ),
                 )
               }
             />
 
+
             <input
-              value={email}
+              value={
+                email
+              }
               placeholder="Email"
               aria-label="Email"
               type="email"
               inputMode="email"
               autoComplete="email"
-              onChange={(event) =>
+              onChange={(
+                event,
+              ) =>
                 setEmail(
-                  event.target.value,
+                  event.target
+                    .value,
                 )
               }
             />
           </div>
+
 
           <button
             type="button"
             className="nearby-service-panel__more-button"
             onClick={() =>
               setShowMore(
-                (current) =>
+                (
+                  current,
+                ) =>
                   !current,
               )
             }
@@ -1258,6 +2054,7 @@ export default function NearbyServicePanel({
               : "+ Add more details"}
           </button>
 
+
           {showMore && (
             <section className="nearby-service-panel__more-fields">
               <input
@@ -1266,12 +2063,16 @@ export default function NearbyServicePanel({
                   preferredDate
                 }
                 aria-label="Preferred date"
-                onChange={(event) =>
+                onChange={(
+                  event,
+                ) =>
                   setPreferredDate(
-                    event.target.value,
+                    event.target
+                      .value,
                   )
                 }
               />
+
 
               <input
                 value={
@@ -1279,55 +2080,86 @@ export default function NearbyServicePanel({
                 }
                 placeholder="Service address or landmark"
                 aria-label="Service address or landmark"
-                onChange={(event) =>
+                onChange={(
+                  event,
+                ) =>
                   setServiceAddress(
-                    event.target.value,
+                    event.target
+                      .value,
                   )
                 }
               />
 
+
               <textarea
-                rows={2}
+                rows={
+                  2
+                }
                 value={
                   additionalNotes
                 }
                 placeholder="Additional notes"
                 aria-label="Additional notes"
-                onChange={(event) =>
+                onChange={(
+                  event,
+                ) =>
                   setAdditionalNotes(
-                    event.target.value,
+                    event.target
+                      .value,
                   )
                 }
               />
             </section>
           )}
 
+
           {selectedBusiness.kind ===
             "external" && (
-            <small className="nearby-service-panel__external-note">
-              {selectedBusiness.name} is
-              not a participating GYAN
-              shop. GYAN Support will
-              receive this request.
-            </small>
-          )}
+<small className="nearby-service-panel__external-note">
+  {
+    selectedBusiness.name
+  }{" "}
+  is not a participating
+  GYAN shop. GYAN Support
+  will receive this request
+  and assign it to an
+  appropriate shop.
+</small>
+            )}
+
+
+          {selectedBusiness.kind ===
+            "support" && (
+              <small className="nearby-service-panel__support-note">
+                No nearby shop selected.
+                This request will be sent
+                to GYAN Support.
+              </small>
+            )}
+
 
           {error && (
             <p
               className="nearby-service-panel__error"
               role="alert"
             >
-              {error}
+              {
+                error
+              }
             </p>
           )}
+
 
           <div className="nearby-service-panel__actions">
             <button
               type="button"
-              onClick={onClose}
+              onClick={
+                onClose
+              }
             >
               Cancel
             </button>
+
 
             <button
               type="button"

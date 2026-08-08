@@ -62,6 +62,24 @@ import {
   handlePuzzleCertificateRoute,
 } from "./puzzle/puzzleCertificate";
 
+import {
+  handleHomeFeaturedRoute,
+} from "./homeFeatured";
+
+import {
+  handleAdvertisementRoute,
+} from "./advertisements";
+
+import {
+  handleLocalServiceRequestRoute,
+} from "./localServiceRequests";
+
+import {
+  cleanupAnalytics,
+  handleAnalyticsRoute,
+} from "./analytics";
+
+
 
 interface RegisterShopRequest {
   code?: unknown;
@@ -298,6 +316,7 @@ async function handleGetShop(
     );
   }
 
+  
   const shop =
     await findShopByCode(
       env,
@@ -675,6 +694,21 @@ async function handleApiRequest(
   }
 
 
+  const analyticsResponse =
+    await handleAnalyticsRoute(
+      request,
+      env,
+      url,
+    );
+
+
+  if (
+    analyticsResponse
+  ) {
+    return analyticsResponse;
+  }
+
+
   /*
    * ------------------------------------------------
    * Public puzzle APIs
@@ -863,6 +897,18 @@ async function handleApiRequest(
     return printRequestsResponse;
   }
 
+const homeFeaturedResponse =
+  await handleHomeFeaturedRoute(
+    request,
+    env,
+    url,
+  );
+
+if (
+  homeFeaturedResponse
+) {
+  return homeFeaturedResponse;
+}
 
   /*
    * ------------------------------------------------
@@ -904,6 +950,33 @@ async function handleApiRequest(
     );
   }
 
+  const advertisementResponse =
+  await handleAdvertisementRoute(
+    request,
+    env,
+    url,
+  );
+
+
+if (
+  advertisementResponse
+) {
+  return advertisementResponse;
+}
+
+const localServiceRequestResponse =
+  await handleLocalServiceRequestRoute(
+    request,
+    env,
+    url,
+  );
+
+
+if (
+  localServiceRequestResponse
+) {
+  return localServiceRequestResponse;
+}
 
   /*
    * ------------------------------------------------
@@ -1008,7 +1081,7 @@ export default {
     context:
       ExecutionContext,
   ): Promise<void> {
-    context.waitUntil(
+    context.waitUntil(      
       reconcileExpiredStorage(
         env,
       )
@@ -1038,5 +1111,33 @@ export default {
           },
         ),
     );
+
+    context.waitUntil(
+  cleanupAnalytics(
+    env,
+  )
+    .then(
+      () => {
+        console.log(
+          "Analytics cleanup completed:",
+          {
+            cron:
+              controller.cron,
+          },
+        );
+      },
+    )
+    .catch(
+      (
+        error,
+      ) => {
+        console.error(
+          "Analytics cleanup failed:",
+          error,
+        );
+      },
+    ),
+);
+
   },
 };
