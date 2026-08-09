@@ -89,6 +89,12 @@ interface FeaturedServiceCardProps {
     serviceCode: string,
     serviceName: string,
   ) => void;
+
+  onOpenAdvertise?:
+    () => void;
+
+  onOpenRequestService?:
+    () => void;
 }
 
 
@@ -235,6 +241,8 @@ function getSourceLabel(
 
 export default function FeaturedServiceCard({
   onStartService,
+  onOpenAdvertise,
+  onOpenRequestService,
 }: FeaturedServiceCardProps) {
   const [
     data,
@@ -679,6 +687,14 @@ export default function FeaturedServiceCard({
 
 
   function openAdvertise(): void {
+    if (
+      onOpenAdvertise
+    ) {
+      onOpenAdvertise();
+
+      return;
+    }
+
     setActionCoordinates(
       coordinates,
     );
@@ -702,6 +718,14 @@ export default function FeaturedServiceCard({
 
 
   function openRequestService(): void {
+    if (
+      onOpenRequestService
+    ) {
+      onOpenRequestService();
+
+      return;
+    }
+
     setActionCoordinates(
       coordinates,
     );

@@ -1,0 +1,152 @@
+:root {
+  --gyan-content-width:
+    920px;
+
+  --gyan-side-gap:
+    10px;
+
+  --gyan-header-height:
+    64px;
+
+  --gyan-header-height-desktop:
+    68px;
+}
+
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+
+  margin: 0;
+}
+
+
+body {
+  overflow: hidden;
+}
+
+
+/* ======================================================
+ * APPLICATION SHELL
+ * ====================================================== */
+
+.gyan-shell {
+  position: fixed;
+
+  top: 0;
+  bottom: 0;
+
+  left: 50%;
+
+  width:
+    min(
+      calc(
+        100vw -
+        (2 * var(--gyan-side-gap))
+      ),
+      var(--gyan-content-width)
+    );
+
+  max-width:
+    var(--gyan-content-width);
+
+  height: 100dvh;
+
+  transform:
+    translateX(-50%);
+
+  overflow: hidden;
+
+  background:
+    #f6f8fc;
+
+  color:
+    #102a56;
+}
+
+
+/* ======================================================
+ * SCROLLABLE BODY
+ * ====================================================== */
+
+.gyan-shell__body {
+  position: absolute;
+
+  top:
+    var(
+      --gyan-header-height
+    );
+
+  right: 0;
+  bottom: 0;
+  left: 0;
+
+  width: 100%;
+  max-width: none;
+
+  margin: 0;
+
+  padding:
+    7px 0
+    calc(
+      92px +
+      env(
+        safe-area-inset-bottom
+      )
+    );
+
+  box-sizing:
+    border-box;
+
+  transform: none;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  overscroll-behavior-y:
+    contain;
+
+  -webkit-overflow-scrolling:
+    touch;
+}
+
+
+/* ======================================================
+ * RESPONSIVE
+ * ====================================================== */
+
+@media (
+  max-width: 350px
+) {
+  :root {
+    --gyan-side-gap:
+      7px;
+  }
+}
+
+
+@media (
+  min-width: 430px
+) {
+  :root {
+    --gyan-side-gap:
+      14px;
+  }
+}
+
+
+@media (
+  min-width: 768px
+) {
+  .gyan-shell__body {
+    top:
+      var(
+        --gyan-header-height-desktop
+      );
+
+    padding-top:
+      10px;
+  }
+}

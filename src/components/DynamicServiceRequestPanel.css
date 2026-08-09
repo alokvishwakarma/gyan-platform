@@ -911,3 +911,38 @@
   min-width: 0;
   box-sizing: border-box;
 }
+
+/* Embedded in GYAN shell */
+
+.dynamic-service-request-embedded {
+  width: 100%;
+
+  padding:
+    0.7rem 0
+    1rem;
+
+  box-sizing:
+    border-box;
+}
+
+.dynamic-service-request-embedded
+.dynamic-service-request {
+  position: relative;
+
+  width:
+    min(
+      calc(100% - 1rem),
+      680px
+    );
+
+  max-height: none;
+
+  margin:
+    0 auto;
+
+  overflow: visible;
+
+  box-shadow:
+    0 8px 24px
+    rgb(15 23 42 / 8%);
+}

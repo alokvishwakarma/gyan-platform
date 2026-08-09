@@ -913,3 +913,28 @@ button {
     min-height: 34px;
   }
 }
+
+.nearby-service-embedded {
+  width: 100%;
+}
+
+.nearby-service-embedded
+.nearby-service-panel {
+  width:
+    min(
+      calc(100% - 1rem),
+      680px
+    );
+
+  max-height: none;
+
+  margin:
+    0.7rem auto
+    1rem;
+
+  overflow: visible;
+
+  box-shadow:
+    0 8px 24px
+    rgb(15 23 42 / 8%);
+}

@@ -149,6 +149,8 @@ interface DynamicServiceRequestPanelProps {
     Record<string, string>;
 
   onClose: () => void;
+
+  embedded?: boolean;
 }
 
 type FieldValue =
@@ -683,6 +685,7 @@ export default function DynamicServiceRequestPanel({
   shopName,
   initialFieldValues,
   onClose,
+  embedded = false,
 }: DynamicServiceRequestPanelProps) {
   const [
     responseData,
@@ -2558,6 +2561,24 @@ export default function DynamicServiceRequestPanel({
     };
   }
 
+  const containerClassName =
+    embedded
+      ? "dynamic-service-request-embedded"
+      : "dynamic-service-request-overlay";
+
+
+  const dialogProps =
+    embedded
+      ? {}
+      : {
+          role:
+            "dialog" as const,
+
+          "aria-modal":
+            true as const,
+        };
+
+
   const shownServiceName =
     responseData
       ?.service
@@ -2574,11 +2595,14 @@ export default function DynamicServiceRequestPanel({
 
   if (createdRequest) {
     return (
-      <div className="dynamic-service-request-overlay">
+      <div
+        className={
+          containerClassName
+        }
+      >
         <section
           className="dynamic-service-request dynamic-service-request--success"
-          role="dialog"
-          aria-modal="true"
+          {...dialogProps}
           aria-labelledby="dynamic-request-success-title"
         >
           <div className="dynamic-service-request__success-icon">
@@ -2651,11 +2675,14 @@ export default function DynamicServiceRequestPanel({
   }
 
   return (
-    <div className="dynamic-service-request-overlay">
+    <div
+      className={
+        containerClassName
+      }
+    >
       <section
         className="dynamic-service-request"
-        role="dialog"
-        aria-modal="true"
+        {...dialogProps}
         aria-labelledby="dynamic-service-request-title"
       >
         <header className="dynamic-service-request__header">

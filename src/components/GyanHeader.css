@@ -1,0 +1,118 @@
+.gyan-header {
+  position: fixed;
+
+  top: 0;
+  left: 50%;
+
+  z-index: 5000;
+
+  width:
+    min(
+      calc(
+        100% -
+        (2 * var(--gyan-side-gap))
+      ),
+      var(--gyan-content-width)
+    );
+
+  min-height:
+    var(
+      --gyan-header-height
+    );
+
+  display: grid;
+
+  grid-template-columns:
+    auto
+    minmax(0, 1fr)
+    auto;
+
+  align-items: center;
+
+  gap: 12px;
+
+  padding:
+    7px
+    max(
+      10px,
+      env(
+        safe-area-inset-right
+      )
+    )
+    7px
+    max(
+      10px,
+      env(
+        safe-area-inset-left
+      )
+    );
+
+  box-sizing: border-box;
+
+  transform:
+    translateX(-50%);
+
+  border:
+    1px solid
+    #e4eaf2;
+
+  border-top: 0;
+
+  border-radius:
+    0 0 14px 14px;
+
+  background:
+    rgb(
+      255 255 255 /
+      96%
+    );
+
+  backdrop-filter:
+    blur(14px);
+}
+
+
+.gyan-header__left,
+.gyan-header__center,
+.gyan-header__right {
+  min-width: 0;
+}
+
+
+.gyan-header__left {
+  display: flex;
+  align-items: center;
+
+  min-width: 0;
+}
+
+
+.gyan-header__center {
+  display: flex;
+  align-items: center;
+
+  min-width: 0;
+}
+
+
+.gyan-header__right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 6px;
+
+  min-width: 0;
+}
+
+
+@media (
+  min-width: 768px
+) {
+  .gyan-header {
+    min-height:
+      var(
+        --gyan-header-height-desktop
+      );
+  }
+}

@@ -28,9 +28,11 @@
     var(--public-home-text);
 }
 
-/* Header, content, and sticky actions share this width system. */
-.public-home__header,
-.public-home__content,
+/*
+ * GyanShell now owns the width of the fixed header and
+ * the scrollable body. Only the legacy sticky action bar
+ * still uses the PublicHomePage width variables directly.
+ */
 .public-home__sticky-actions {
   width:
     min(
@@ -964,4 +966,139 @@
 .public-home__puzzle-reopen:hover {
   background:
     rgba(16, 42, 86, 0.04);
+}
+
+/* ======================================================
+ * GYAN SHELL INTEGRATION
+ * ======================================================
+ *
+ * GyanHeader and GyanShell are now responsible for the
+ * outer 920px application frame.
+ *
+ * PublicHomePage styles only the content INSIDE that frame.
+ */
+
+/*
+ * Ensure PublicHomePage cannot apply a second independent
+ * width to the GyanShell body.
+ */
+.gyan-shell__body.public-home__content {
+  width: 100%;
+  max-width: none;
+
+  margin: 0;
+
+  left: 0;
+
+  transform: none;
+}
+
+
+/*
+ * Normal homepage content styling.
+ * Width is intentionally NOT specified here.
+ */
+.public-home__content {
+  min-height: 0;
+
+  padding:
+    7px 0
+    calc(
+      92px +
+      env(
+        safe-area-inset-bottom
+      )
+    );
+}
+
+
+/* ======================================================
+ * PUZZLE LANDING VIEW
+ * ====================================================== */
+
+/*
+ * On first load the Puzzle is the only body content shown.
+ * The GYAN header remains fixed because it lives outside
+ * this scroll container in GyanShell.
+ */
+.public-home__content:has(
+  > .daily-puzzle
+)
+> :not(.daily-puzzle) {
+  display: none !important;
+}
+
+
+/*
+ * Keep the Puzzle compact and centered inside the same
+ * shell body used by the normal homepage.
+ */
+.public-home__content
+> .daily-puzzle {
+  position: relative;
+
+  width:
+    min(
+      calc(
+        100% -
+        1rem
+      ),
+      390px
+    );
+
+  max-width: 390px;
+
+  height: auto;
+  min-height: 0;
+
+  margin:
+    0.7rem auto
+    1rem;
+
+  overflow: visible;
+
+  transform: none;
+}
+
+
+/*
+ * Hide legacy sticky homepage actions while Puzzle is open.
+ */
+.public-home:has(
+  .public-home__content
+  > .daily-puzzle
+)
+.public-home__sticky-actions {
+  display: none !important;
+}
+
+
+/* ======================================================
+ * MOBILE
+ * ====================================================== */
+
+@media (
+  max-width: 360px
+) {
+  .public-home__content
+  > .daily-puzzle {
+    width:
+      calc(
+        100% -
+        0.5rem
+      );
+
+    margin-top:
+      0.5rem;
+  }
+}
+
+
+@media (
+  min-width: 768px
+) {
+  .public-home__content {
+    padding-top:
+      10px;
+  }
 }

@@ -35,6 +35,14 @@ import AdminAnalyticsScreen
 import {
   trackDailyVisit,
 } from "./analytics/trackDailyVisit";
+import CompanyCardPage
+  from "./components/CompanyCardPage";
+
+import AboutPage
+  from "./components/AboutPage";
+
+import QrPage
+  from "./components/QrPage";
 
 interface ShopProfile {
   code: string;
@@ -283,6 +291,8 @@ const SUPPORT_INTAKE_SHOP_NAME =
 
 export default function App() {
 
+
+  
   const [
   sharedRequest,
   setSharedRequest,
@@ -496,6 +506,8 @@ export default function App() {
     loadedServices?.key !==
     serviceRequestKey;
 
+
+    
   useEffect(() => {
     void trackDailyVisit();
   }, []);
@@ -979,6 +991,34 @@ if (sharedRequest) {
   );
 }
 
+
+if (
+  window.location.pathname ===
+  "/card"
+) {
+  return (
+    <CompanyCardPage />
+  );
+}
+
+if (
+  window.location.pathname ===
+  "/about"
+) {
+  return (
+    <AboutPage />
+  );
+}
+
+if (
+  window.location.pathname ===
+  "/qr"
+) {
+  return (
+    <QrPage />
+  );
+}
+
   if (
     managedServiceFormCode
   ) {
@@ -1431,6 +1471,26 @@ if (sharedRequest) {
       name: serviceName,
     });
   }}
+  shellContent={
+    nearbyServiceRequest
+      ? (
+        <NearbyServicePanel
+          embedded
+          serviceCode={
+            nearbyServiceRequest.code
+          }
+          serviceName={
+            nearbyServiceRequest.name
+          }
+          onClose={() =>
+            setNearbyServiceRequest(
+              null,
+            )
+          }
+        />
+      )
+      : undefined
+  }
 />
         ) : (
         <CustomerHomePage
@@ -1547,23 +1607,6 @@ if (sharedRequest) {
             }
           />
         )}
-
-      {nearbyServiceRequest && (
-        <NearbyServicePanel
-          serviceCode={
-            nearbyServiceRequest.code
-          }
-          serviceName={
-            nearbyServiceRequest.name
-          }
-          onClose={() =>
-            setNearbyServiceRequest(
-              null,
-            )
-          }
-
-        />
-      )}
 
       {registrationPanelOpen && (
         <ShopRegistrationPanel

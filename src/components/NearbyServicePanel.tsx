@@ -7,11 +7,13 @@ import {
 
 import "./NearbyServicePanel.css";
 
-
 interface NearbyServicePanelProps {
   serviceCode: string;
   serviceName: string;
+
   onClose: () => void;
+
+  embedded?: boolean;
 }
 
 
@@ -461,6 +463,7 @@ export default function NearbyServicePanel({
   serviceCode,
   serviceName,
   onClose,
+  embedded = false,
 }: NearbyServicePanelProps) {
   const [
     detectedCountryCode,
@@ -1550,6 +1553,24 @@ export default function NearbyServicePanel({
   }
 
 
+  const containerClassName =
+    embedded
+      ? "nearby-service-embedded"
+      : "nearby-service-overlay";
+
+
+  const dialogProps =
+    embedded
+      ? {}
+      : {
+          role:
+            "dialog" as const,
+
+          "aria-modal":
+            true as const,
+        };
+
+
   /*
    * ========================================================
    * SUCCESS
@@ -1560,11 +1581,14 @@ export default function NearbyServicePanel({
     successNumber
   ) {
     return (
-      <div className="nearby-service-overlay">
+      <div
+        className={
+          containerClassName
+        }
+      >
         <section
           className="nearby-service-panel nearby-service-panel--compact"
-          role="dialog"
-          aria-modal="true"
+          {...dialogProps}
           aria-labelledby="nearby-success-title"
         >
           <header className="nearby-service-panel__header nearby-service-panel__header--compact">
@@ -1626,11 +1650,14 @@ export default function NearbyServicePanel({
    */
 
   return (
-    <div className="nearby-service-overlay">
+    <div
+      className={
+        containerClassName
+      }
+    >
       <section
         className="nearby-service-panel nearby-service-panel--compact"
-        role="dialog"
-        aria-modal="true"
+        {...dialogProps}
         aria-labelledby="nearby-service-title"
       >
         <header className="nearby-service-panel__header nearby-service-panel__header--compact">

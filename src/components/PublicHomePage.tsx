@@ -1,4 +1,5 @@
 import {
+  type ReactNode,
   useEffect,
   useMemo,
   useState,
@@ -13,7 +14,12 @@ import Puzzle
 import GyanAboutPanel
   from "./GyanAboutPanel";
 
+import GyanShell
+  from "./GyanShell";
+
 import "./PublicHomePage.css";
+
+
 
 
 interface PublicService {
@@ -74,6 +80,9 @@ interface PublicHomePageProps {
     serviceCode: string,
     serviceName: string,
   ) => void;
+
+  shellContent?:
+    ReactNode;
 }
 
 
@@ -244,6 +253,8 @@ export default function PublicHomePage({
   onOpenOnlineServices,
 
   onOpenNearbyService,
+
+  shellContent,
 }: PublicHomePageProps) {
   const [
     gyanAboutOpen,
@@ -690,301 +701,287 @@ export default function PublicHomePage({
       0;
 
 
+  const headerLeft =
+    searchFocused
+      ? (
+        <button
+          type="button"
+          className="public-home__search-back"
+          aria-label="Close search"
+          onClick={() => {
+            setSearchText("");
+
+            setSearchFocused(
+              false,
+            );
+          }}
+        >
+          ←
+        </button>
+      )
+      : (
+        <button
+          type="button"
+          className="public-home__brand public-home__brand-button"
+          onClick={() =>
+            setGyanAboutOpen(
+              true,
+            )
+          }
+          aria-label="About GYAN"
+          title="About GYAN"
+        >
+          <span
+            className="public-home__brand-icon"
+            aria-hidden="true"
+          >
+            📖
+          </span>
+
+          <div
+            className="public-home__brand-text"
+          >
+            <strong>
+              GYAN
+            </strong>
+
+            <span
+              className="public-home__tagline"
+            >
+              Your Digital Seva Partner
+            </span>
+
+            <span
+              className="public-home__value"
+            >
+              Order Online • Pick Up When
+              Ready • No Waiting
+            </span>
+          </div>
+        </button>
+      );
+
+
+  const headerCenter =
+    searchFocused
+      ? (
+        <div
+          className="public-home__header-search"
+        >
+          <span
+            aria-hidden="true"
+          >
+            🔎
+          </span>
+
+          <input
+            autoFocus
+            type="search"
+            value={
+              searchText
+            }
+            placeholder="Search services..."
+            aria-label="Search services"
+            autoComplete="off"
+            onChange={(
+              event,
+            ) =>
+              setSearchText(
+                event.target.value,
+              )
+            }
+            onKeyDown={(
+              event,
+            ) => {
+              if (
+                event.key ===
+                  "Enter" &&
+                searchResults.length >
+                  0
+              ) {
+                event.preventDefault();
+
+                openService(
+                  searchResults[0],
+                );
+              }
+
+              if (
+                event.key ===
+                "Escape"
+              ) {
+                setSearchText("");
+
+                setSearchFocused(
+                  false,
+                );
+              }
+            }}
+          />
+
+          {
+            searchText &&
+            (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={() =>
+                  setSearchText("")
+                }
+              >
+                ×
+              </button>
+            )
+          }
+
+          {
+            showSearchResults &&
+            (
+              <div
+                className="public-home__header-search-results"
+              >
+                {
+                  searchResults.length >
+                  0
+                    ? (
+                      searchResults.map(
+                        (
+                          service,
+                        ) => (
+                          <button
+                            type="button"
+                            key={
+                              service.code
+                            }
+                            className="public-home__service-search-result"
+                            onClick={() =>
+                              openService(
+                                service,
+                              )
+                            }
+                          >
+                            <span
+                              className="public-home__service-search-result-icon"
+                              aria-hidden="true"
+                            >
+                              {
+                                service.icon ||
+                                (
+                                  isNearbyService(
+                                    service,
+                                  )
+                                    ? "📍"
+                                    : "💻"
+                                )
+                              }
+                            </span>
+
+                            <span
+                              className="public-home__service-search-result-text"
+                            >
+                              <strong>
+                                {
+                                  getServiceName(
+                                    service,
+                                  )
+                                }
+                              </strong>
+
+                              <small>
+                                {
+                                  isNearbyService(
+                                    service,
+                                  )
+                                    ? "Nearby service"
+                                    : "Online service"
+                                }
+                              </small>
+                            </span>
+
+                            <span
+                              className="public-home__service-search-arrow"
+                              aria-hidden="true"
+                            >
+                              ›
+                            </span>
+                          </button>
+                        ),
+                      )
+                    )
+                    : (
+                      <div
+                        className="public-home__service-search-empty"
+                      >
+                        No matching service.
+                        Try another word.
+                      </div>
+                    )
+                }
+              </div>
+            )
+          }
+        </div>
+      )
+      : null;
+
+
+  const headerRight =
+    searchFocused
+      ? null
+      : (
+        <div
+          className="public-home__header-actions"
+        >
+          <button
+            type="button"
+            className="public-home__search-button"
+            aria-label="Search services"
+            title="Search services"
+            onClick={() =>
+              setSearchFocused(
+                true,
+              )
+            }
+          >
+            🔎
+          </button>
+
+          <button
+            type="button"
+            className="public-home__admin-button"
+            onClick={
+              onOpenAdmin
+            }
+          >
+            Admin
+          </button>
+        </div>
+      );
+
+
   return (
     <div
       className="public-home"
     >
-      <header
-        className={`public-home__header${
-          searchFocused
-            ? " public-home__header--searching"
-            : ""
-        }`}
+      <GyanShell
+        headerLeft={
+          headerLeft
+        }
+        headerCenter={
+          headerCenter
+        }
+        headerRight={
+          headerRight
+        }
+        bodyClassName="public-home__content"
       >
         {
-          searchFocused
+          shellContent
             ? (
-              <>
-                <button
-                  type="button"
-                  className="public-home__search-back"
-                  aria-label="Close search"
-                  onClick={() => {
-                    setSearchText(
-                      "",
-                    );
-
-                    setSearchFocused(
-                      false,
-                    );
-                  }}
-                >
-                  ←
-                </button>
-
-
-                <div
-                  className="public-home__header-search"
-                >
-                  <span
-                    aria-hidden="true"
-                  >
-                    🔎
-                  </span>
-
-
-                  <input
-                    autoFocus
-                    type="search"
-                    value={
-                      searchText
-                    }
-                    placeholder="Search services..."
-                    aria-label="Search services"
-                    autoComplete="off"
-                    onChange={(
-                      event,
-                    ) =>
-                      setSearchText(
-                        event
-                          .target
-                          .value,
-                      )
-                    }
-                    onKeyDown={(
-                      event,
-                    ) => {
-                      if (
-                        event.key ===
-                          "Enter" &&
-
-                        searchResults.length >
-                          0
-                      ) {
-                        event.preventDefault();
-
-
-                        openService(
-                          searchResults[
-                            0
-                          ],
-                        );
-                      }
-
-
-                      if (
-                        event.key ===
-                        "Escape"
-                      ) {
-                        setSearchText(
-                          "",
-                        );
-
-
-                        setSearchFocused(
-                          false,
-                        );
-                      }
-                    }}
-                  />
-
-
-                  {
-                    searchText &&
-                    (
-                      <button
-                        type="button"
-                        aria-label="Clear search"
-                        onClick={() =>
-                          setSearchText(
-                            "",
-                          )
-                        }
-                      >
-                        ×
-                      </button>
-                    )
-                  }
-                </div>
-              </>
+              shellContent
             )
             : (
               <>
-                <button
-                  type="button"
-                  className="public-home__brand public-home__brand-button"
-                  onClick={() =>
-                    setGyanAboutOpen(
-                      true,
-                    )
-                  }
-                  aria-label="About GYAN"
-                  title="About GYAN"
-                >
-                  <span
-                    className="public-home__brand-icon"
-                    aria-hidden="true"
-                  >
-                    📖
-                  </span>
-
-
-                  <div
-                    className="public-home__brand-text"
-                  >
-                    <strong>
-                      GYAN
-                    </strong>
-
-
-                    <span
-                      className="public-home__tagline"
-                    >
-                      Your Digital
-                      Seva Partner
-                    </span>
-
-
-                    <span
-                      className="public-home__value"
-                    >
-                      Order Online •
-                      Pick Up When
-                      Ready • No Waiting
-                    </span>
-                  </div>
-                </button>
-
-
-                <div
-                  className="public-home__header-actions"
-                >
-                  <button
-                    type="button"
-                    className="public-home__search-button"
-                    aria-label="Search services"
-                    title="Search services"
-                    onClick={() =>
-                      setSearchFocused(
-                        true,
-                      )
-                    }
-                  >
-                    🔎
-                  </button>
-
-
-                  <button
-                    type="button"
-                    className="public-home__admin-button"
-                    onClick={
-                      onOpenAdmin
-                    }
-                  >
-                    Admin
-                  </button>
-                </div>
-              </>
-            )
-        }
-
-
-        {
-          showSearchResults &&
-          (
-            <div
-              className="public-home__header-search-results"
-            >
-              {
-                searchResults.length >
-                0
-                  ? (
-                    searchResults.map(
-                      (
-                        service,
-                      ) => (
-                        <button
-                          type="button"
-                          key={
-                            service.code
-                          }
-                          className="public-home__service-search-result"
-                          onClick={() =>
-                            openService(
-                              service,
-                            )
-                          }
-                        >
-                          <span
-                            className="public-home__service-search-result-icon"
-                            aria-hidden="true"
-                          >
-                            {
-                              service.icon ||
-                              (
-                                isNearbyService(
-                                  service,
-                                )
-                                  ? "📍"
-                                  : "💻"
-                              )
-                            }
-                          </span>
-
-
-                          <span
-                            className="public-home__service-search-result-text"
-                          >
-                            <strong>
-                              {
-                                getServiceName(
-                                  service,
-                                )
-                              }
-                            </strong>
-
-
-                            <small>
-                              {
-                                isNearbyService(
-                                  service,
-                                )
-                                  ? "Nearby service"
-                                  : "Online service"
-                              }
-                            </small>
-                          </span>
-
-
-                          <span
-                            className="public-home__service-search-arrow"
-                            aria-hidden="true"
-                          >
-                            ›
-                          </span>
-                        </button>
-                      ),
-                    )
-                  )
-                  : (
-                    <div
-                      className="public-home__service-search-empty"
-                    >
-                      No matching
-                      service. Try
-                      another word.
-                    </div>
-                  )
-              }
-            </div>
-          )
-        }
-      </header>
-
-
-      <main
-        className="public-home__content"
-      >
         {/*
          * =================================================
          * DAILY PUZZLE
@@ -1292,7 +1289,11 @@ export default function PublicHomePage({
                 )
           }
         </section>
-      </main>
+
+              </>
+            )
+        }
+      </GyanShell>
 
 
       {
