@@ -2818,76 +2818,74 @@ input:focus {
   }
 }
 
+/* =========================================================
+   Compact attempts row
+   ========================================================= */
+
+.daily-puzzle__attempts-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+
+  margin:
+    3px 0 5px;
+
+  min-height: 18px;
+}
+
+.daily-puzzle__attempts-row
+> strong {
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #334155;
+}
+
+.daily-puzzle__attempts-row
+.daily-puzzle__lives {
+  margin: 0;
+  padding: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 5px;
+}
+
+.daily-puzzle__attempts-left {
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #64748b;
+  white-space: nowrap;
+}
+
 /*
- * =========================================================
- * 5×5 landing viewport fit
- * =========================================================
- *
- * On ordinary desktop / tall-phone screens the initial
- * puzzle should fit below the fixed GYAN header without
- * producing a cosmetic scrollbar.
- *
- * Short screens retain normal scrolling.
+ * The old separate lives label is no longer rendered,
+ * but keep it suppressed in case an older cached bundle
+ * briefly mixes with this stylesheet.
  */
+.daily-puzzle__lives-label {
+  display: none;
+}
 
-@media (min-height: 760px) {
-  .daily-puzzle:not(
-    .daily-puzzle--final
-  ) {
-    margin-top: 4px;
-    margin-bottom: 4px;
 
-    padding-top: 8px;
-    padding-bottom: 8px;
-  }
+/* =========================================================
+   Landing puzzle position
+   ========================================================= */
 
-  .daily-puzzle:not(
-    .daily-puzzle--final
-  )
-  .daily-puzzle__winner-row {
-    margin-bottom: 4px;
-  }
+.gyan-shell__body.public-home__content:has(
+  > .daily-puzzle
+) {
+  padding-top: 2px;
+}
 
-  .daily-puzzle:not(
-    .daily-puzzle--final
-  )
-  .daily-puzzle__lives {
-    margin-top: 4px;
-  }
-
-  .daily-puzzle:not(
-    .daily-puzzle--final
-  )
-  .daily-puzzle__lives-label {
-    margin-bottom: 4px;
-  }
-
-  .daily-puzzle:not(
-    .daily-puzzle--final
-  )
-  .daily-puzzle__moves {
-    margin-top: 5px;
-  }
-
-  .daily-puzzle:not(
-    .daily-puzzle--final
-  )
-  .daily-puzzle__message {
-    margin-top: 4px;
-    margin-bottom: 4px;
-  }
-
-  .daily-puzzle:not(
-    .daily-puzzle--final
-  )
-  .daily-puzzle__rules {
-    margin-top: 5px;
-  }
-
-  .daily-puzzle:not(
-    .daily-puzzle--final
-  )
-  .daily-puzzle__footer {
-    margin-top: 5px;
-  }
+.public-home__content
+> .daily-puzzle {
+  margin:
+    3px auto
+    6px;
 }

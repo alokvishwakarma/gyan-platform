@@ -347,171 +347,367 @@ export default function AdminAnalyticsScreen({
       [data?.mapPoints],
     );
 
+  /*
+   * ========================================================
+   * MAP INITIALIZATION
+   *
+   * Create MapLibre exactly once. Do not tie map creation
+   * to analytics data changes.
+   * ========================================================
+   */
+
   useEffect(() => {
-    if (!mapElementRef.current) {
+    const container =
+      mapElementRef.current;
+
+    if (!container) {
       return;
     }
 
-    if (!mapRef.current) {
-      const map =
-        new maplibregl.Map({
-          container:
-            mapElementRef.current,
-          center: [10, 20],
-          zoom: 1.1,
-          style: {
-            version: 8,
-            sources: {
-              osm: {
-                type: "raster",
-                tiles: [
-                  "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-                ],
-                tileSize: 256,
-                attribution:
-                  "© OpenStreetMap contributors",
-              },
+    const map =
+      new maplibregl.Map({
+        container,
+
+        center: [
+          -98.5,
+          39.5,
+        ],
+
+        zoom: 3,
+
+        style: {
+          version: 8,
+
+          sources: {
+            osm: {
+              type: "raster",
+
+              tiles: [
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+              ],
+
+              tileSize: 256,
+
+              attribution:
+                "© OpenStreetMap contributors",
             },
-            layers: [
-              {
-                id: "osm",
-                type: "raster",
-                source: "osm",
-              },
-            ],
           },
-        });
 
-      map.addControl(
-        new maplibregl
-          .NavigationControl({
-            showCompass: false,
-          }),
-        "top-right",
-      );
+          layers: [
+            {
+              id: "osm",
+              type: "raster",
+              source: "osm",
+            },
+          ],
+        },
+      });
 
-      map.on("load", () => {
+    map.addControl(
+      new maplibregl
+        .NavigationControl({
+          showCompass: false,
+        }),
+      "top-right",
+    );
+
+    map.on(
+      "load",
+      () => {
+        /*
+         * Start with an empty source.
+         * The data-update effect below owns its contents.
+         */
         map.addSource(
           "analytics",
           {
             type: "geojson",
-            data: geoJson,
+
+            data: {
+              type:
+                "FeatureCollection",
+
+              features: [],
+            },
           },
         );
 
         map.addLayer({
-          id: "analytics-bubbles",
-          type: "circle",
-          source: "analytics",
+          id:
+            "analytics-bubbles",
+
+          type:
+            "circle",
+
+          source:
+            "analytics",
+
           paint: {
+            "circle-color":
+              "#176b42",
+
             "circle-radius": [
               "interpolate",
               ["linear"],
-              ["get", "uniqueVisitors"],
-              1, 6,
-              10, 12,
-              100, 24,
-              1000, 42,
+              [
+                "get",
+                "uniqueVisitors",
+              ],
+
+              1,
+              8,
+
+              10,
+              14,
+
+              100,
+              24,
+
+              1000,
+              42,
             ],
-            "circle-opacity": 0.72,
-            "circle-stroke-width": 2,
+
+            "circle-opacity":
+              0.8,
+
+            "circle-stroke-width":
+              3,
+
             "circle-stroke-color":
               "#ffffff",
           },
         });
 
-        map.on(
-          "click",
-          "analytics-bubbles",
-          (
-            event:
-              maplibregl.MapMouseEvent & {
-                features?:
-                  maplibregl.MapGeoJSONFeature[];
-              },
-          ) => {
-            const feature =
-              event.features?.[0];
+        map.resize();
+      },
+    );
 
-            if (
-              !feature ||
-              feature.geometry.type !==
-                "Point"
-            ) {
-              return;
-            }
+    map.on(
+      "click",
+      "analytics-bubbles",
+      (
+        event:
+          maplibregl.MapMouseEvent & {
+            features?:
+              maplibregl
+                .MapGeoJSONFeature[];
+          },
+      ) => {
+        const feature =
+          event.features?.[0];
 
-            const properties =
-              feature.properties ?? {};
+        if (
+          !feature ||
+          feature.geometry.type !==
+            "Point"
+        ) {
+          return;
+        }
 
-            void openDetails(
-              "location",
-              {
-                country:
-                  String(
-                    properties.countryCode ??
-                      "",
-                  ),
+        const properties =
+          feature.properties ??
+          {};
 
-                region:
-                  String(
-                    properties.region ??
-                      "",
-                  ),
+        void openDetails(
+          "location",
+          {
+            country:
+              String(
+                properties
+                  .countryCode ??
+                  "",
+              ),
 
-                city:
-                  String(
-                    properties.city ??
-                      "",
-                  ),
-              },
-            );
+            region:
+              String(
+                properties.region ??
+                  "",
+              ),
+
+            city:
+              String(
+                properties.city ??
+                  "",
+              ),
           },
         );
+      },
+    );
 
-        map.on(
-          "mouseenter",
-          "analytics-bubbles",
-          () => {
-            map.getCanvas()
-              .style.cursor =
-                "pointer";
-          },
+    map.on(
+      "mouseenter",
+      "analytics-bubbles",
+      () => {
+        map
+          .getCanvas()
+          .style.cursor =
+            "pointer";
+      },
+    );
+
+    map.on(
+      "mouseleave",
+      "analytics-bubbles",
+      () => {
+        map
+          .getCanvas()
+          .style.cursor =
+            "";
+      },
+    );
+
+    map.on(
+      "error",
+      (event) => {
+        console.error(
+          "Analytics map error:",
+          event.error,
         );
+      },
+    );
 
-        map.on(
-          "mouseleave",
-          "analytics-bubbles",
-          () => {
-            map.getCanvas()
-              .style.cursor = "";
-          },
-        );
-      });
+    mapRef.current =
+      map;
 
-      mapRef.current = map;
+    return () => {
+      map.remove();
 
-      return () => {
-        map.remove();
-        mapRef.current = null;
-      };
-    }
+      mapRef.current =
+        null;
+    };
+  }, []);
 
-    const map = mapRef.current;
 
-    if (!map.isStyleLoaded()) {
+  /*
+   * ========================================================
+   * MAP DATA
+   *
+   * Update visitor points whenever analytics data changes.
+   * If the map style is still loading, wait for load.
+   * ========================================================
+   */
+
+  useEffect(() => {
+    const map =
+      mapRef.current;
+
+    if (!map) {
       return;
     }
 
-    const source =
+    const update =
+      (): void => {
+        map.resize();
+
+        const source =
+          map.getSource(
+            "analytics",
+          ) as
+            maplibregl.GeoJSONSource |
+            undefined;
+
+        /*
+         * The source may not exist for the very first
+         * render if the style is still finishing load.
+         */
+        if (!source) {
+          return;
+        }
+
+        source.setData(
+          geoJson,
+        );
+
+        const validPoints =
+          (
+            data?.mapPoints ??
+            []
+          ).filter(
+            (point) =>
+              point.latitude !=
+                null &&
+              point.longitude !=
+                null,
+          );
+
+        if (
+          validPoints.length ===
+          0
+        ) {
+          return;
+        }
+
+        if (
+          validPoints.length ===
+          1
+        ) {
+          const point =
+            validPoints[0];
+
+          map.easeTo({
+            center: [
+              point.longitude!,
+              point.latitude!,
+            ],
+
+            zoom: 9,
+
+            duration: 300,
+          });
+
+          return;
+        }
+
+        const bounds =
+          new maplibregl
+            .LngLatBounds();
+
+        validPoints.forEach(
+          (point) => {
+            bounds.extend([
+              point.longitude!,
+              point.latitude!,
+            ]);
+          },
+        );
+
+        map.fitBounds(
+          bounds,
+          {
+            padding: 45,
+            maxZoom: 9,
+            duration: 300,
+          },
+        );
+      };
+
+    if (
+      map.isStyleLoaded() &&
       map.getSource(
         "analytics",
-      ) as
-        maplibregl.GeoJSONSource |
-        undefined;
+      )
+    ) {
+      update();
 
-    source?.setData(geoJson);
-  }, [geoJson]);
+      return;
+    }
+
+    map.once(
+      "load",
+      update,
+    );
+
+    return () => {
+      map.off(
+        "load",
+        update,
+      );
+    };
+  }, [
+    geoJson,
+    data?.mapPoints,
+  ]);
+
 
   const summary = data?.summary;
 

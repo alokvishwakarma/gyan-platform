@@ -75,6 +75,10 @@ import {
 } from "./localServiceRequests";
 
 import {
+  handlePublicAuthRoute,
+} from "./auth";
+
+import {
   cleanupAnalytics,
   handleAnalyticsRoute,
 } from "./analytics";
@@ -584,6 +588,32 @@ async function handleApiRequest(
 
   /*
    * ------------------------------------------------
+   * Public user authentication
+   *
+   * Includes:
+   * - send magic link
+   * - verify magic link
+   * - current user
+   * - logout
+   * ------------------------------------------------
+   */
+
+  const publicAuthResponse =
+    await handlePublicAuthRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (
+    publicAuthResponse
+  ) {
+    return publicAuthResponse;
+  }
+
+
+  /*
+   * ------------------------------------------------
    * Administrator authentication
    * ------------------------------------------------
    */
@@ -1081,63 +1111,59 @@ export default {
     context:
       ExecutionContext,
   ): Promise<void> {
-    context.waitUntil(      
-      reconcileExpiredStorage(
-        env,
-      )
-        .then(
-          (result) => {
-            console.log(
-              "Storage reconciliation completed:",
-              {
-                cron:
-                  controller.cron,
-
-                expiredFileCount:
-                  result.expiredFileCount,
-
-                removedBytes:
-                  result.removedBytes,
-              },
-            );
-          },
-        )
-        .catch(
-          (error) => {
-            console.error(
-              "Storage reconciliation failed:",
-              error,
-            );
-          },
-        ),
-    );
-
     context.waitUntil(
-  cleanupAnalytics(
-    env,
-  )
-    .then(
-      () => {
-        console.log(
-          "Analytics cleanup completed:",
-          {
-            cron:
-              controller.cron,
-          },
-        );
-      },
-    )
-    .catch(
-      (
-        error,
-      ) => {
-        console.error(
-          "Analytics cleanup failed:",
-          error,
-        );
-      },
-    ),
-);
+      Promise.all([
+        reconcileExpiredStorage(
+          env,
+        )
+          .then(
+            (result) => {
+              console.log(
+                "Storage reconciliation completed:",
+                {
+                  cron:
+                    controller.cron,
 
+                  expiredFileCount:
+                    result.expiredFileCount,
+
+                  removedBytes:
+                    result.removedBytes,
+                },
+              );
+            },
+          )
+          .catch(
+            (error) => {
+              console.error(
+                "Storage reconciliation failed:",
+                error,
+              );
+            },
+          ),
+
+        cleanupAnalytics(
+          env,
+        )
+          .then(
+            () => {
+              console.log(
+                "Analytics cleanup completed.",
+              );
+            },
+          )
+          .catch(
+            (error) => {
+              console.error(
+                "Analytics cleanup failed:",
+                error,
+              );
+            },
+          ),
+      ]).then(
+        () =>
+          undefined,
+      ),
+    );
   },
 };

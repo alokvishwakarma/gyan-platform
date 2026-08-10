@@ -2532,46 +2532,7 @@ export default function Puzzle({
       )}
 
 
-      {stage ===
-        "5x5" && (
-        <>
-          <div className="daily-puzzle__lives">
-            {Array.from({
-              length:
-                MAX_CHANCES,
-            }).map(
-              (
-                _,
-                index,
-              ) => (
-                <span
-                  key={
-                    index
-                  }
-                  className={[
-                    "daily-puzzle__life",
 
-                    index <
-                    chancesRemaining
-                      ? "daily-puzzle__life--active"
-                      : "",
-                  ].join(" ")}
-                />
-              ),
-            )}
-          </div>
-
-          <div className="daily-puzzle__lives-label">
-            {
-              chancesRemaining
-            }{" "}
-            {chancesRemaining ===
-            1
-              ? "attempt"
-              : "attempts"}
-          </div>
-        </>
-      )}
 
 
       {!medalWon && (
@@ -2799,6 +2760,51 @@ export default function Puzzle({
           {
             puzzle.maxMoves
           }
+        </div>
+      )}
+
+            {stage ===
+        "5x5" && (
+        <div className="daily-puzzle__attempts-row">
+          <strong>
+            Attempts
+          </strong>
+
+          <div
+            className="daily-puzzle__lives"
+            aria-label={`${chancesRemaining} attempts remaining`}
+          >
+            {Array.from({
+              length:
+                MAX_CHANCES,
+            }).map(
+              (
+                _,
+                index,
+              ) => (
+                <span
+                  key={
+                    index
+                  }
+                  className={[
+                    "daily-puzzle__life",
+
+                    index <
+                    chancesRemaining
+                      ? "daily-puzzle__life--active"
+                      : "",
+                  ].join(" ")}
+                />
+              ),
+            )}
+          </div>
+
+          <span className="daily-puzzle__attempts-left">
+            {
+              chancesRemaining
+            }{" "}
+            left
+          </span>
         </div>
       )}
 

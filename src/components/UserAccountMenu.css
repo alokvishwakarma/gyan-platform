@@ -1,0 +1,218 @@
+.user-account-menu {
+  position: relative;
+}
+
+
+.user-account-menu__trigger {
+  position: relative;
+
+  width: 34px;
+  height: 34px;
+
+  display: grid;
+  place-items: center;
+
+  border: 0;
+  border-radius:
+    999px;
+
+  background:
+    transparent;
+
+  font-size:
+    1rem;
+
+  cursor: pointer;
+}
+
+
+.user-account-menu__trigger:hover {
+  background:
+    #eef3f8;
+}
+
+
+.user-account-menu__trigger--signed-in {
+  background:
+    #eefaf2;
+}
+
+
+.user-account-menu__trigger b {
+  position: absolute;
+
+  right: -1px;
+  bottom: -1px;
+
+  width: 15px;
+  height: 15px;
+
+  display: grid;
+  place-items: center;
+
+  border:
+    2px solid
+    #fff;
+
+  border-radius:
+    999px;
+
+  background:
+    #169447;
+
+  color:
+    #fff;
+
+  font-size:
+    0.58rem;
+
+  line-height: 1;
+}
+
+
+.user-account-menu__popover {
+  position: absolute;
+
+  top:
+    calc(
+      100% +
+      8px
+    );
+
+  right: 0;
+
+  z-index: 9000;
+
+  width: 190px;
+
+  display: grid;
+
+  gap: 4px;
+
+  padding: 8px;
+
+  box-sizing:
+    border-box;
+
+  border:
+    1px solid
+    #dfe6ef;
+
+  border-radius:
+    12px;
+
+  background:
+    #fff;
+
+  box-shadow:
+    0 14px 34px
+    rgb(
+      15 23 42 /
+      18%
+    );
+}
+
+
+.user-account-menu__popover
+button {
+  width: 100%;
+
+  border: 0;
+
+  border-radius:
+    8px;
+
+  padding:
+    8px 10px;
+
+  text-align: left;
+
+  background:
+    transparent;
+
+  color:
+    #102a56;
+
+  font: inherit;
+  font-size:
+    0.76rem;
+
+  cursor: pointer;
+}
+
+
+.user-account-menu__popover
+button:hover {
+  background:
+    #f3f6fa;
+}
+
+
+.user-account-menu__signin {
+  background:
+    #edf5ff !important;
+
+  color:
+    #145da0 !important;
+
+  font-weight: 800 !important;
+}
+
+
+.user-account-menu__logout {
+  margin-top: 3px;
+
+  border-top:
+    1px solid
+    #edf1f6 !important;
+
+  color:
+    #9d2b23 !important;
+}
+
+
+.user-account-menu__identity {
+  display: grid;
+
+  gap: 2px;
+
+  padding:
+    6px 8px 8px;
+
+  border-bottom:
+    1px solid
+    #edf1f6;
+
+  margin-bottom: 3px;
+}
+
+
+.user-account-menu__identity
+small {
+  color:
+    #64748b;
+
+  font-size:
+    0.64rem;
+}
+
+
+.user-account-menu__identity
+strong {
+  overflow-wrap:
+    anywhere;
+
+  font-size:
+    0.7rem;
+}
+
+
+.user-account-menu__status {
+  padding: 8px;
+
+  font-size:
+    0.72rem;
+
+  color:
+    #64748b;
+}

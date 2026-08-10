@@ -17,6 +17,9 @@ import GyanAboutPanel
 import GyanShell
   from "./GyanShell";
 
+import UserAccountMenu
+  from "./UserAccountMenu";
+
 import "./PublicHomePage.css";
 
 
@@ -282,6 +285,7 @@ export default function PublicHomePage({
     setSearchFocused,
   ] =
     useState(false);
+
 
 
   const onlineTileCount =
@@ -946,15 +950,11 @@ export default function PublicHomePage({
             🔎
           </button>
 
-          <button
-            type="button"
-            className="public-home__admin-button"
-            onClick={
+          <UserAccountMenu
+            onOpenAdmin={
               onOpenAdmin
             }
-          >
-            Admin
-          </button>
+          />
         </div>
       );
 
