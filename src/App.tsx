@@ -1446,6 +1446,10 @@ if (
     serviceCode: string,
     serviceName: string,
   ) => {
+    setNearbyServiceRequest(
+      null,
+    );
+
     setDynamicServiceRequest({
       code: serviceCode,
       name: serviceName,
@@ -1466,31 +1470,67 @@ if (
     serviceCode: string,
     serviceName: string,
   ) => {
+    setDynamicServiceRequest(
+      null,
+    );
+
     setNearbyServiceRequest({
       code: serviceCode,
       name: serviceName,
     });
   }}
+
   shellContent={
-    nearbyServiceRequest
+  nearbyServiceRequest
+    ? (
+      <NearbyServicePanel
+        embedded
+        serviceCode={
+          nearbyServiceRequest.code
+        }
+        serviceName={
+          nearbyServiceRequest.name
+        }
+        onClose={() =>
+          setNearbyServiceRequest(
+            null,
+          )
+        }
+      />
+    )
+    : dynamicServiceRequest &&
+        dynamicServiceRequest.shopCode
       ? (
-        <NearbyServicePanel
+        <DynamicServiceRequestPanel
           embedded
+          key={
+            `${dynamicServiceRequest.shopCode}:${dynamicServiceRequest.code}`
+          }
+          shopCode={
+            dynamicServiceRequest.shopCode
+          }
+          shopName={
+            dynamicServiceRequest.shopName
+          }
           serviceCode={
-            nearbyServiceRequest.code
+            dynamicServiceRequest.code
           }
           serviceName={
-            nearbyServiceRequest.name
+            dynamicServiceRequest.name
+          }
+          initialFieldValues={
+            dynamicServiceRequest.initialFieldValues
           }
           onClose={() =>
-            setNearbyServiceRequest(
+            setDynamicServiceRequest(
               null,
             )
           }
         />
       )
       : undefined
-  }
+}
+
 />
         ) : (
         <CustomerHomePage
@@ -1575,38 +1615,39 @@ if (
         />
       )}
 
-      {dynamicServiceRequest &&
+{activeShopCode !== null &&
+  dynamicServiceRequest &&
+  dynamicServiceRequest
+    .shopCode && (
+    <DynamicServiceRequestPanel
+      key={`${dynamicServiceRequest.shopCode}:${dynamicServiceRequest.code}`}
+      shopCode={
         dynamicServiceRequest
-          .shopCode && (
-          <DynamicServiceRequestPanel
-            key={`${dynamicServiceRequest.shopCode}:${dynamicServiceRequest.code}`}
-            shopCode={
-              dynamicServiceRequest
-                .shopCode
-            }
-            shopName={
-              dynamicServiceRequest
-                .shopName
-            }
-            serviceCode={
-              dynamicServiceRequest
-                .code
-            }
-            serviceName={
-              dynamicServiceRequest
-                .name
-            }
-            initialFieldValues={
-              dynamicServiceRequest
-                .initialFieldValues
-            }
-            onClose={() =>
-              setDynamicServiceRequest(
-                null,
-              )
-            }
-          />
-        )}
+          .shopCode
+      }
+      shopName={
+        dynamicServiceRequest
+          .shopName
+      }
+      serviceCode={
+        dynamicServiceRequest
+          .code
+      }
+      serviceName={
+        dynamicServiceRequest
+          .name
+      }
+      initialFieldValues={
+        dynamicServiceRequest
+          .initialFieldValues
+      }
+      onClose={() =>
+        setDynamicServiceRequest(
+          null,
+        )
+      }
+    />
+  )}
 
       {registrationPanelOpen && (
         <ShopRegistrationPanel

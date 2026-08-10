@@ -57,6 +57,14 @@ interface RevealResponse {
   }>;
 }
 
+interface RevealResult {
+  board: Tile[];
+  count: number;
+
+  revealedTileIds:
+    number[];
+}
+
 interface WinnerClaimResponse {
   claimed: boolean;
   alreadyClaimed: boolean;
@@ -243,6 +251,30 @@ function adjacent(
   );
 }
 
+function scrollGyanShellToTop():
+  void {
+  window.requestAnimationFrame(
+    () => {
+      window.requestAnimationFrame(
+        () => {
+          const shellBody =
+            document.querySelector(
+              ".gyan-shell__body",
+            );
+
+          if (
+            shellBody instanceof
+              HTMLElement
+          ) {
+            shellBody.scrollTop = 0;
+          }
+        },
+      );
+    },
+  );
+}
+
+
 function validEmail(
   value: string,
 ): boolean {
@@ -261,6 +293,177 @@ function validEmail(
  * MATCH DETECTION
  * ========================================================
  */
+
+function findVisibleMatchSignatures(
+  board: Tile[],
+  size: number,
+): Set<string> {
+  const matches =
+    new Set<string>();
+
+  /*
+   * Horizontal runs.
+   */
+  for (
+    let row = 0;
+    row < size;
+    row += 1
+  ) {
+    let column = 0;
+
+    while (
+      column < size
+    ) {
+      const start =
+        column;
+
+      const first =
+        board[
+          indexOf(
+            row,
+            column,
+            size,
+          )
+        ];
+
+      if (
+        first.hidden ||
+        !first.color
+      ) {
+        column += 1;
+        continue;
+      }
+
+      const color =
+        first.color;
+
+      column += 1;
+
+      while (
+        column < size
+      ) {
+        const current =
+          board[
+            indexOf(
+              row,
+              column,
+              size,
+            )
+          ];
+
+        if (
+          current.hidden ||
+          current.color !==
+            color
+        ) {
+          break;
+        }
+
+        column += 1;
+      }
+
+      const length =
+        column - start;
+
+      if (
+        length >= 3
+      ) {
+        matches.add(
+          [
+            "H",
+            row,
+            start,
+            column - 1,
+            color,
+          ].join(":"),
+        );
+      }
+    }
+  }
+
+  /*
+   * Vertical runs.
+   */
+  for (
+    let column = 0;
+    column < size;
+    column += 1
+  ) {
+    let row = 0;
+
+    while (
+      row < size
+    ) {
+      const start =
+        row;
+
+      const first =
+        board[
+          indexOf(
+            row,
+            column,
+            size,
+          )
+        ];
+
+      if (
+        first.hidden ||
+        !first.color
+      ) {
+        row += 1;
+        continue;
+      }
+
+      const color =
+        first.color;
+
+      row += 1;
+
+      while (
+        row < size
+      ) {
+        const current =
+          board[
+            indexOf(
+              row,
+              column,
+              size,
+            )
+          ];
+
+        if (
+          current.hidden ||
+          current.color !==
+            color
+        ) {
+          break;
+        }
+
+        row += 1;
+      }
+
+      const length =
+        row - start;
+
+      if (
+        length >= 3
+      ) {
+        matches.add(
+          [
+            "V",
+            column,
+            start,
+            row - 1,
+            color,
+          ].join(":"),
+        );
+      }
+    }
+  }
+
+  return matches;
+}
+
 
 function longestVisibleMatch(
   board: Tile[],
@@ -601,6 +804,15 @@ export default function Puzzle({
     );
 
 
+  const [
+    justRevealedTileIds,
+    setJustRevealedTileIds,
+  ] =
+    useState<
+      number[]
+    >([]);
+
+
   /*
    * ------------------------------------------------
    * Certificate
@@ -747,6 +959,18 @@ export default function Puzzle({
     } | null>(null);
 
 
+  const certificateOverlayRef =
+    useRef<
+      HTMLDivElement | null
+    >(null);
+
+
+  const revealAnimationTimeout =
+    useRef<
+      number | null
+    >(null);
+
+
   /*
    * ========================================================
    * LOAD
@@ -883,6 +1107,31 @@ export default function Puzzle({
 
   /*
    * ========================================================
+   * REVEAL ANIMATION CLEANUP
+   * ========================================================
+   */
+
+  useEffect(
+    () => {
+      return () => {
+        if (
+          revealAnimationTimeout
+            .current !==
+          null
+        ) {
+          window.clearTimeout(
+            revealAnimationTimeout
+              .current,
+          );
+        }
+      };
+    },
+    [],
+  );
+
+
+  /*
+   * ========================================================
    * SAVE
    * ========================================================
    */
@@ -933,6 +1182,38 @@ export default function Puzzle({
     attemptFinished,
     qualified,
     medalWon,
+  ]);
+
+
+  /*
+   * ========================================================
+   * CERTIFICATE POSITION
+   * ========================================================
+   */
+
+  useEffect(() => {
+    if (
+      !certificateOpen
+    ) {
+      return;
+    }
+
+    scrollGyanShellToTop();
+
+    window.requestAnimationFrame(
+      () => {
+        if (
+          certificateOverlayRef
+            .current
+        ) {
+          certificateOverlayRef
+            .current
+            .scrollTop = 0;
+        }
+      },
+    );
+  }, [
+    certificateOpen,
   ]);
 
 
@@ -1036,16 +1317,18 @@ export default function Puzzle({
   async function checkReveals(
     currentBoard:
       Tile[],
-  ): Promise<{
-    board: Tile[];
-    count: number;
-  }> {
+  ): Promise<
+    RevealResult
+  > {
     if (!puzzle) {
       return {
         board:
           currentBoard,
 
         count: 0,
+
+        revealedTileIds:
+          [],
       };
     }
 
@@ -1093,6 +1376,9 @@ export default function Puzzle({
           currentBoard,
 
         count: 0,
+
+        revealedTileIds:
+          [],
       };
     }
 
@@ -1109,6 +1395,9 @@ export default function Puzzle({
           currentBoard,
 
         count: 0,
+
+        revealedTileIds:
+          [],
       };
     }
 
@@ -1149,7 +1438,72 @@ export default function Puzzle({
 
       count:
         data.revealed.length,
+
+      revealedTileIds:
+        data.revealed.map(
+          (tile) =>
+            tile.id,
+        ),
     };
+  }
+
+
+  function animateRevealedTiles(
+    tileIds:
+      number[],
+  ): void {
+    if (
+      tileIds.length ===
+      0
+    ) {
+      return;
+    }
+
+    if (
+      revealAnimationTimeout
+        .current !==
+      null
+    ) {
+      window.clearTimeout(
+        revealAnimationTimeout
+          .current,
+      );
+    }
+
+    /*
+     * Clear first so the same tile can animate again
+     * after another server reveal in a later move.
+     */
+    setJustRevealedTileIds(
+      [],
+    );
+
+    window.requestAnimationFrame(
+      () => {
+        window.requestAnimationFrame(
+          () => {
+            setJustRevealedTileIds(
+              tileIds,
+            );
+
+            revealAnimationTimeout
+              .current =
+                window.setTimeout(
+                  () => {
+                    setJustRevealedTileIds(
+                      [],
+                    );
+
+                    revealAnimationTimeout
+                      .current =
+                        null;
+                  },
+                  950,
+                );
+          },
+        );
+      },
+    );
   }
 
 
@@ -1216,6 +1570,10 @@ export default function Puzzle({
 
     setLastSwap(
       null,
+    );
+
+    setJustRevealedTileIds(
+      [],
     );
 
     setCertificateBoard(
@@ -1309,6 +1667,10 @@ export default function Puzzle({
         null,
       );
 
+      setJustRevealedTileIds(
+        [],
+      );
+
       setMedalWon(
         false,
       );
@@ -1340,6 +1702,8 @@ export default function Puzzle({
       setMessage(
         "🏆 Match all 7 to win today's medal.",
       );
+
+      scrollGyanShellToTop();
     } catch {
       setMessage(
         "Unable to load the Final.",
@@ -1380,6 +1744,12 @@ export default function Puzzle({
     ) {
       return;
     }
+
+    const matchesBefore =
+      findVisibleMatchSignatures(
+        board,
+        puzzle.size,
+      );
 
     const firstIndex =
       indexOf(
@@ -1444,10 +1814,34 @@ export default function Puzzle({
       second,
     ]);
 
-    const revealResult =
-      await checkReveals(
+    const matchesAfter =
+      findVisibleMatchSignatures(
         nextBoard,
+        puzzle.size,
       );
+
+    const createdNewMatch =
+      [...matchesAfter].some(
+        (match) =>
+          !matchesBefore.has(
+            match,
+          ),
+      );
+
+    const revealResult =
+      createdNewMatch
+        ? await checkReveals(
+            nextBoard,
+          )
+        : {
+            board:
+              nextBoard,
+
+            count: 0,
+
+            revealedTileIds:
+              [],
+          };
 
     nextBoard =
       revealResult.board;
@@ -1460,6 +1854,11 @@ export default function Puzzle({
 
     setBoard(
       nextBoard,
+    );
+
+    animateRevealedTiles(
+      revealResult
+        .revealedTileIds,
     );
 
     setMoves(
@@ -1508,6 +1907,8 @@ export default function Puzzle({
           nextBoard,
         ),
       );
+
+      scrollGyanShellToTop();
 
       setCertificateOpen(
         true,
@@ -2166,8 +2567,8 @@ export default function Puzzle({
             }{" "}
             {chancesRemaining ===
             1
-              ? "chance"
-              : "chances"}
+              ? "attempt"
+              : "attempts"}
           </div>
         </>
       )}
@@ -2227,7 +2628,16 @@ export default function Puzzle({
                     aria-label={
                       tile.hidden
                         ? "Mystery square"
-                        : `${tile.color} square`
+                        : initialBoard.some(
+                            (
+                              initialTile,
+                            ) =>
+                              initialTile.id ===
+                                tile.id &&
+                              initialTile.hidden,
+                          )
+                          ? `Revealed ${tile.color} mystery square`
+                          : `${tile.color} square`
                     }
                     className={[
                       "daily-puzzle__tile",
@@ -2240,6 +2650,24 @@ export default function Puzzle({
                       tile.hidden
                         ? "daily-puzzle__tile--mystery"
                         : `daily-puzzle__tile--${tile.color}`,
+
+                      !tile.hidden &&
+                      initialBoard.some(
+                        (
+                          initialTile,
+                        ) =>
+                          initialTile.id ===
+                            tile.id &&
+                          initialTile.hidden,
+                      )
+                        ? "daily-puzzle__tile--revealed"
+                        : "",
+
+                      justRevealedTileIds.includes(
+                        tile.id,
+                      )
+                        ? "daily-puzzle__tile--just-revealed"
+                        : "",
 
                       selectedNow
                         ? "daily-puzzle__tile--selected"
@@ -2305,8 +2733,8 @@ export default function Puzzle({
                         }{" "}
                         {chancesRemaining ===
                         1
-                          ? "chance"
-                          : "chances"}{" "}
+                          ? "attempt"
+                          : "attempts"}{" "}
                         left today.
                       </span>
 
@@ -2566,12 +2994,12 @@ export default function Puzzle({
         <div className="daily-puzzle__rules">
           <span>
             <strong>
-              3+ matching + ?
+              Match 3+
             </strong>
 
             {" → "}
 
-            reveal mystery
+            reveal 1 mystery
           </span>
 
           <span>
@@ -2613,12 +3041,34 @@ export default function Puzzle({
           "5x5" &&
         certificateOpen && (
           <div
+            ref={
+              certificateOverlayRef
+            }
             className="daily-puzzle__certificate-overlay"
             role="dialog"
             aria-modal="true"
             aria-label="Puzzle completion certificate"
+            style={{
+              top:
+                "var(--gyan-header-height, 64px)",
+
+              alignItems:
+                "start",
+
+              justifyItems:
+                "center",
+
+              paddingTop:
+                "8px",
+            }}
           >
-            <section className="daily-puzzle__certificate">
+            <section
+              className="daily-puzzle__certificate"
+              style={{
+                margin:
+                  "0 auto 12px",
+              }}
+            >
 
               <div className="daily-puzzle__certificate-top">
                 <div className="daily-puzzle__certificate-brand">

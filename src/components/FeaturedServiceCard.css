@@ -1693,3 +1693,138 @@
 
   cursor: default;
 }
+
+/* =========================================================
+ * GYAN SHELL — Featured overlays
+ *
+ * Advertise / Request / More should begin directly below
+ * the fixed GYAN header instead of being vertically centered.
+ * ========================================================= */
+
+.featured-service__action-overlay,
+.featured-service__overlay {
+  position: fixed;
+
+  top:
+    var(
+      --gyan-header-height,
+      64px
+    );
+
+  right: 0;
+  bottom: 0;
+  left: 0;
+
+  height:
+    calc(
+      100dvh -
+      var(
+        --gyan-header-height,
+        64px
+      )
+    );
+
+  box-sizing:
+    border-box;
+
+  align-items:
+    flex-start !important;
+
+  justify-content:
+    center !important;
+
+  padding:
+    8px
+    10px
+    max(
+      10px,
+      env(
+        safe-area-inset-bottom
+      )
+    );
+
+  overflow-x:
+    hidden;
+
+  overflow-y:
+    auto;
+
+  overscroll-behavior:
+    contain;
+
+  -webkit-overflow-scrolling:
+    touch;
+}
+
+
+/*
+ * Advertise
+ */
+.featured-service__advertise-panel {
+  margin:
+    0 auto !important;
+
+  max-height:
+    none !important;
+}
+
+
+/*
+ * Request Service
+ */
+.featured-service__request-panel {
+  margin:
+    0 auto !important;
+
+  max-height:
+    none !important;
+}
+
+
+/*
+ * +More / Offers near you
+ */
+.featured-service__more-panel {
+  margin:
+    0 auto !important;
+
+  max-height:
+    none !important;
+}
+
+
+/*
+ * Individual featured-ad details should follow the
+ * same shell positioning too.
+ */
+.featured-service__detail {
+  margin:
+    0 auto !important;
+
+  max-height:
+    none !important;
+}
+
+
+/* Desktop GYAN header is 68px. */
+@media (
+  min-width: 768px
+) {
+  .featured-service__action-overlay,
+  .featured-service__overlay {
+    top:
+      var(
+        --gyan-header-height-desktop,
+        68px
+      );
+
+    height:
+      calc(
+        100dvh -
+        var(
+          --gyan-header-height-desktop,
+          68px
+        )
+      );
+  }
+}

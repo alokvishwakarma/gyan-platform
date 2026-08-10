@@ -2685,29 +2685,21 @@ export default function DynamicServiceRequestPanel({
         {...dialogProps}
         aria-labelledby="dynamic-service-request-title"
       >
-        <header className="dynamic-service-request__header">
-          <div>
-            <span>
-              GYAN SERVICE
-            </span>
+<header className="dynamic-service-request__header">
+  <div>
+    <h2 id="dynamic-service-request-title">
+      {shownServiceName}
+    </h2>
+  </div>
 
-            <h2 id="dynamic-service-request-title">
-              {shownServiceName}
-            </h2>
-
-            <small>
-              {shownShopName}
-            </small>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close service request"
-          >
-            ×
-          </button>
-        </header>
+  <button
+    type="button"
+    onClick={onClose}
+    aria-label="Close service request"
+  >
+    ×
+  </button>
+</header>
 
         <div className="dynamic-service-request__content">
           {loading && (

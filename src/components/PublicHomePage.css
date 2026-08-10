@@ -1102,3 +1102,45 @@
       10px;
   }
 }
+
+/* ======================================================
+ * Puzzle landing screen
+ * Remove homepage-only bottom space
+ * ====================================================== */
+
+.gyan-shell__body.public-home__content:has(
+  > .daily-puzzle
+) {
+  padding-top:
+    7px;
+
+  padding-bottom:
+    max(
+      6px,
+      env(
+        safe-area-inset-bottom
+      )
+    );
+
+  scrollbar-gutter:
+    auto;
+}
+
+
+/*
+ * When the Puzzle is closed, restore the bottom room
+ * required by the normal homepage.
+ */
+.gyan-shell__body.public-home__content:not(
+  :has(
+    > .daily-puzzle
+  )
+) {
+  padding-bottom:
+    calc(
+      92px +
+      env(
+        safe-area-inset-bottom
+      )
+    );
+}

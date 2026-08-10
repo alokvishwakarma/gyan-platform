@@ -198,139 +198,7 @@ function localDateKey(): string {
   return `${year}-${month}-${day}`;
 }
 
-function indexOf(
-  row: number,
-  column: number,
-  size: number,
-): number {
-  return (
-    row * size +
-    column
-  );
-}
 
-function countDirection(
-  board: PuzzleTile[],
-  size: number,
-  row: number,
-  column: number,
-  rowDelta: number,
-  columnDelta: number,
-  color: TileColor,
-): number {
-  let count = 0;
-
-  let currentRow =
-    row + rowDelta;
-
-  let currentColumn =
-    column + columnDelta;
-
-  while (
-    currentRow >= 0 &&
-    currentRow < size &&
-    currentColumn >= 0 &&
-    currentColumn < size
-  ) {
-    const tile =
-      board[
-        indexOf(
-          currentRow,
-          currentColumn,
-          size,
-        )
-      ];
-
-    if (
-      tile.hidden ||
-      tile.color !== color
-    ) {
-      break;
-    }
-
-    count += 1;
-
-    currentRow +=
-      rowDelta;
-
-    currentColumn +=
-      columnDelta;
-  }
-
-  return count;
-}
-
-function shouldReveal(
-  board: PuzzleTile[],
-  size: number,
-  tileIndex: number,
-): boolean {
-  const tile =
-    board[
-      tileIndex
-    ];
-
-  if (
-    !tile ||
-    !tile.hidden
-  ) {
-    return false;
-  }
-
-  const row =
-    Math.floor(
-      tileIndex / size,
-    );
-
-  const column =
-    tileIndex %
-    size;
-
-  const horizontal =
-    countDirection(
-      board,
-      size,
-      row,
-      column,
-      0,
-      -1,
-      tile.color,
-    ) +
-    countDirection(
-      board,
-      size,
-      row,
-      column,
-      0,
-      1,
-      tile.color,
-    );
-
-  const vertical =
-    countDirection(
-      board,
-      size,
-      row,
-      column,
-      -1,
-      0,
-      tile.color,
-    ) +
-    countDirection(
-      board,
-      size,
-      row,
-      column,
-      1,
-      0,
-      tile.color,
-    );
-
-  return (
-    horizontal >= 3 ||
-    vertical >= 3
-  );
-}
 
 function buildAuthoritativeBoard(
   storedBoard: PuzzleTile[],
@@ -648,56 +516,47 @@ export async function handlePuzzleRoute(
       );
     }
 
-    const revealed:
-      Array<{
-        id: number;
-        color: TileColor;
-      }> = [];
+const hiddenTile =
+  authoritative.find(
+    (
+      tile,
+    ) =>
+      tile.hidden,
+  );
 
-    let changed = true;
 
-    while (changed) {
-      changed = false;
+if (
+  !hiddenTile
+) {
+  return jsonResponse({
+    revealed: [],
+  });
+}
 
-      for (
-        let index = 0;
-        index <
-        authoritative.length;
-        index += 1
-      ) {
-        const tile =
-          authoritative[
-            index
-          ];
 
-        if (
-          tile.hidden &&
-          shouldReveal(
-            authoritative,
-            row.board_size,
-            index,
-          )
-        ) {
-          tile.hidden =
-            false;
+/*
+ * The client only calls this endpoint
+ * after a successful Match-3+ move.
+ *
+ * Reveal exactly one remaining mystery
+ * tile per successful matching move.
+ */
+hiddenTile.hidden =
+  false;
 
-          revealed.push({
-            id:
-              tile.id,
 
-            color:
-              tile.color,
-          });
+return jsonResponse({
+  revealed: [
+    {
+      id:
+        hiddenTile.id,
 
-          changed =
-            true;
-        }
-      }
-    }
+      color:
+        hiddenTile.color,
+    },
+  ],
+});
 
-    return jsonResponse({
-      revealed,
-    });
   }
 
   /*

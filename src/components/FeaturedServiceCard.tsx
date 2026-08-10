@@ -1071,57 +1071,50 @@ export default function FeaturedServiceCard({
 
 
   function renderActions() {
-    return (
-      <div
-        className="featured-service__actions"
+  return (
+    <div
+      className="featured-service__actions"
+    >
+      <button
+        type="button"
+        aria-label="Advertise"
+        title="Advertise"
+        onClick={
+          openAdvertise
+        }
       >
-        <button
-          type="button"
-          aria-label="Advertise for Free"
-          title="Advertise for Free"
-          onClick={
-            openAdvertise
-          }
+        <span
+          aria-hidden="true"
         >
-          <span
-            aria-hidden="true"
-          >
-            📣
-          </span>
-        </button>
+          📣
+        </span>
 
-        <button
-          type="button"
-          aria-label="Request Service"
-          title="Request Service"
-          onClick={
-            openRequestService
-          }
-        >
-          <span
-            aria-hidden="true"
-          >
-            🙋
-          </span>
-        </button>
+        <strong>
+          Advertise
+        </strong>
+      </button>
 
-        <button
-          type="button"
-          aria-label="Get Coupon"
-          title="Get Coupon"
-          onClick={() => {
-            void openMore();
-          }}
+      <button
+        type="button"
+        aria-label="Request Service"
+        title="Request Service"
+        onClick={
+          openRequestService
+        }
+      >
+        <span
+          aria-hidden="true"
         >
-          <span
-            aria-hidden="true"
-          >
-            🎟️
-          </span>
-        </button>
-      </div>
-    );
-  }
+          🙋
+        </span>
+
+        <strong>
+          Request
+        </strong>
+      </button>
+    </div>
+  );
+}
 
 
   function renderAdTile(

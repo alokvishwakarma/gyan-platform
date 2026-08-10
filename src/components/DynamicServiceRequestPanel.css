@@ -946,3 +946,45 @@
     0 8px 24px
     rgb(15 23 42 / 8%);
 }
+
+.dynamic-service-request-embedded
+.dynamic-service-request__header {
+  padding:
+    8px 12px;
+}
+
+
+.dynamic-service-request-embedded
+.dynamic-service-request__header
+h2 {
+  margin: 0;
+
+  font-size:
+    1rem;
+
+  line-height:
+    1.15;
+}
+
+
+.dynamic-service-request-embedded
+.dynamic-service-request__header
+small {
+  display: block;
+
+  margin-top:
+    2px;
+
+  font-size:
+    0.68rem;
+
+  line-height:
+    1.1;
+}
+
+
+.dynamic-service-request-embedded
+.dynamic-service-request__content {
+  padding-top:
+    8px;
+}
