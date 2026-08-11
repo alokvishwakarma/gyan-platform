@@ -78,6 +78,10 @@ interface PublicHomePageProps {
     shopCode: string,
   ) => void;
 
+  onRegisterMyShop: (
+    email: string,
+  ) => void;
+
   onStartOnlineService?: (
     serviceCode: string,
     serviceName: string,
@@ -261,6 +265,8 @@ export default function PublicHomePage({
   onOpenChat,
 
   onOpenMyShop,
+
+  onRegisterMyShop,
 
   onStartOnlineService,
 
@@ -971,7 +977,10 @@ export default function PublicHomePage({
             onOpenMyShop={
               onOpenMyShop
             }
-          />
+                      onRegisterMyShop={
+              onRegisterMyShop
+            }
+/>
         </div>
       );
 
@@ -1026,6 +1035,12 @@ export default function PublicHomePage({
         <FeaturedServiceCard
           onStartService={
             onStartOnlineService
+          }
+          onOpenRequestService={() =>
+            onOpenNearbyService?.(
+              "GENERAL_REQUEST",
+              "Request Service",
+            )
           }
         />
 

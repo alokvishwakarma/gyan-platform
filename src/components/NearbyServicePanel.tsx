@@ -596,6 +596,13 @@ export default function NearbyServicePanel({
 
 
   const [
+    preciseLocationVerified,
+    setPreciseLocationVerified,
+  ] =
+    useState(false);
+
+
+  const [
     submitting,
     setSubmitting,
   ] =
@@ -764,6 +771,13 @@ export default function NearbyServicePanel({
   const resultCount =
     registeredShops.length +
     externalPlaces.length;
+
+
+  const isGeneralRequest =
+    serviceCode
+      .trim()
+      .toUpperCase() ===
+    "GENERAL_REQUEST";
 
 
   const locationSummary =
@@ -1069,6 +1083,10 @@ export default function NearbyServicePanel({
               ),
       );
 
+      setPreciseLocationVerified(
+        true,
+      );
+
       void searchNearby(
         adminLocation.latitude,
         adminLocation.longitude,
@@ -1117,6 +1135,10 @@ export default function NearbyServicePanel({
               .longitude;
 
 
+          setPreciseLocationVerified(
+            true,
+          );
+
           void searchNearby(
             nextLatitude,
             nextLongitude,
@@ -1124,6 +1146,10 @@ export default function NearbyServicePanel({
         },
 
         () => {
+          setPreciseLocationVerified(
+            false,
+          );
+
           setSearching(
             false,
           );
@@ -1133,7 +1159,7 @@ export default function NearbyServicePanel({
           );
 
           setError(
-            "Location permission was not available. Search by address or area instead.",
+            "Location permission was not available. You can continue with the city / state location or search by address / area.",
           );
         },
 
@@ -1164,6 +1190,10 @@ export default function NearbyServicePanel({
 
   function searchByAddress():
     void {
+    setPreciseLocationVerified(
+      false,
+    );
+
     if (
       !city.trim() &&
       !stateRegion.trim()
@@ -1503,38 +1533,44 @@ export default function NearbyServicePanel({
               email.trim(),
           },
 
-          {
-            sectionKey:
-              "additional_details",
+          ...(
+            isGeneralRequest
+              ? []
+              : [
+                  {
+                    sectionKey:
+                      "additional_details",
 
-            fieldKey:
-              "preferred_date",
+                    fieldKey:
+                      "preferred_date",
 
-            value:
-              preferredDate,
-          },
+                    value:
+                      preferredDate,
+                  },
 
-          {
-            sectionKey:
-              "additional_details",
+                  {
+                    sectionKey:
+                      "additional_details",
 
-            fieldKey:
-              "service_address",
+                    fieldKey:
+                      "service_address",
 
-            value:
-              serviceAddress.trim(),
-          },
+                    value:
+                      serviceAddress.trim(),
+                  },
 
-          {
-            sectionKey:
-              "additional_details",
+                  {
+                    sectionKey:
+                      "additional_details",
 
-            fieldKey:
-              "additional_notes",
+                    fieldKey:
+                      "additional_notes",
 
-            value:
-              combinedNotes,
-          },
+                    value:
+                      combinedNotes,
+                  },
+                ]
+          ),
         ];
 
 
@@ -1761,6 +1797,14 @@ export default function NearbyServicePanel({
               ============================================= */}
 
           <section className="nearby-service-panel__location-search">
+            {isGeneralRequest && (
+              <p className="nearby-service-panel__routing-hint">
+                📍 We will use the available city / state location.
+                You do not need to choose a service category.
+                Use My Location if you want to share a more precise location.
+              </p>
+            )}
+
             <div className="nearby-service-panel__location-search-row">
 
               <button
@@ -1875,13 +1919,21 @@ export default function NearbyServicePanel({
 
 
             <p className="nearby-service-panel__routing-hint">
-              📍 Select a nearby shop
-              before submitting.
-              {" "}
-              <strong>
-                Otherwise, your request
-                goes to GYAN Support.
-              </strong>
+              {isGeneralRequest
+                ? preciseLocationVerified
+                  ? "✓ Precise location shared. Your request will go to GYAN Support."
+                  : "Using the available city / state location. You may use My Location for more precision."
+                : (
+                  <>
+                    📍 Select a nearby shop
+                    before submitting.
+                    {" "}
+                    <strong>
+                      Otherwise, your request
+                      goes to GYAN Support.
+                    </strong>
+                  </>
+                )}
             </p>
 
 
@@ -1899,6 +1951,7 @@ export default function NearbyServicePanel({
               SHOP PICKER
               ============================================= */}
 
+          {!isGeneralRequest && (
           <div className="nearby-service-panel__shop-row">
             <select
               aria-label="Select shop"
@@ -1980,6 +2033,7 @@ export default function NearbyServicePanel({
               )}
             </select>
           </div>
+          )}
 
 
           {resultCount >
@@ -2139,6 +2193,7 @@ export default function NearbyServicePanel({
           </div>
 
 
+          {!isGeneralRequest && (
           <button
             type="button"
             className="nearby-service-panel__more-button"
@@ -2155,9 +2210,11 @@ export default function NearbyServicePanel({
               ? "− Hide details"
               : "+ Add more details"}
           </button>
+          )}
 
 
-          {showMore && (
+          {!isGeneralRequest &&
+          showMore && (
             <section className="nearby-service-panel__more-fields">
               <input
                 type="date"

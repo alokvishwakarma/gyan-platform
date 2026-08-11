@@ -31,12 +31,17 @@ interface UserAccountMenuProps {
   onOpenMyShop: (
     shopCode: string,
   ) => void;
+
+  onRegisterMyShop: (
+    email: string,
+  ) => void;
 }
 
 export default function UserAccountMenu({
   onOpenAdmin,
   onOpenChat,
   onOpenMyShop,
+  onRegisterMyShop,
 }: UserAccountMenuProps) {
   const [
     open,
@@ -256,8 +261,10 @@ export default function UserAccountMenu({
         shops.length ===
         0
       ) {
-        setMyShopError(
-          "No active shop is linked to this email.",
+        setOpen(false);
+
+        onRegisterMyShop(
+          user?.email ?? "",
         );
 
         return;

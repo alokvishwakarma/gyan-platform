@@ -52,6 +52,13 @@ export default function ShopChatPanel({
   const [messages, setMessages] =
     useState<ChatMessage[]>([]);
 
+
+  const [
+    requestSummary,
+    setRequestSummary,
+  ] =
+    useState("");
+
   const [draft, setDraft] =
     useState("");
 
@@ -95,6 +102,7 @@ export default function ShopChatPanel({
               thread?: {
                 requestNumber: string;
                 serviceName: string;
+                requestSummary: string;
               };
               messages?: ChatMessage[];
               error?: string;
@@ -116,6 +124,11 @@ export default function ShopChatPanel({
 
           setActiveTitle(
             result.thread.serviceName,
+          );
+
+          setRequestSummary(
+            result.thread.requestSummary ??
+              "",
           );
 
           setMessages(
@@ -200,7 +213,19 @@ export default function ShopChatPanel({
 
   useEffect(
     () => {
-      void loadThreads();
+      const timer =
+        window.setTimeout(
+          () => {
+            void loadThreads();
+          },
+          0,
+        );
+
+      return () => {
+        window.clearTimeout(
+          timer,
+        );
+      };
     },
     [loadThreads],
   );
@@ -435,6 +460,20 @@ export default function ShopChatPanel({
                     activeRequestNumber
                   }
                 </small>
+
+                {requestSummary && (
+                  <p
+                    className="shop-chat__request-summary"
+                  >
+                    <b>
+                      Requested:
+                    </b>
+                    {" "}
+                    {
+                      requestSummary
+                    }
+                  </p>
+                )}
               </div>
 
               <div

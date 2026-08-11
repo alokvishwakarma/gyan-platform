@@ -37,6 +37,7 @@ interface ThreadResponse {
     serviceName: string;
     shopCode: string;
     shopName: string;
+    requestSummary: string;
   };
   messages?: ChatMessage[];
   error?: string;
@@ -59,6 +60,13 @@ export default function ChatPanel({
 
   const [messages, setMessages] =
     useState<ChatMessage[]>([]);
+
+
+  const [
+    requestSummary,
+    setRequestSummary,
+  ] =
+    useState("");
 
   const [draft, setDraft] =
     useState("");
@@ -114,6 +122,11 @@ export default function ChatPanel({
 
           setActiveTitle(
             `${result.thread.serviceName} · ${result.thread.shopName}`,
+          );
+
+          setRequestSummary(
+            result.thread.requestSummary ??
+              "",
           );
 
           setMessages(
@@ -198,7 +211,19 @@ export default function ChatPanel({
 
   useEffect(
     () => {
-      void loadThreads();
+      const timer =
+        window.setTimeout(
+          () => {
+            void loadThreads();
+          },
+          0,
+        );
+
+      return () => {
+        window.clearTimeout(
+          timer,
+        );
+      };
     },
     [loadThreads],
   );
@@ -428,6 +453,20 @@ export default function ChatPanel({
                     activeRequestNumber
                   }
                 </small>
+
+                {requestSummary && (
+                  <p
+                    className="chat-panel__request-summary"
+                  >
+                    <b>
+                      Requested:
+                    </b>
+                    {" "}
+                    {
+                      requestSummary
+                    }
+                  </p>
+                )}
               </div>
 
               <div

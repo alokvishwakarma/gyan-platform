@@ -1,3 +1,7 @@
+import {
+  getAdminSession,
+} from "./adminAuth";
+
 interface ChatUser {
   id: number;
   email: string;
@@ -10,6 +14,7 @@ interface RequestRow {
   email_address: string | null;
   status: string;
   created_at: string;
+  details_json: string | null;
   service_name: string;
   shop_name: string;
 }
@@ -38,6 +43,56 @@ const SESSION_COOKIE =
 
 const MAX_MESSAGE_LENGTH =
   2000;
+
+function getRequestSummary(
+  detailsJson:
+    string | null,
+): string {
+  if (!detailsJson) {
+    return "";
+  }
+
+  try {
+    const parsed =
+      JSON.parse(
+        detailsJson,
+      ) as
+        Record<
+          string,
+          unknown
+        >;
+
+    const preferredKeys = [
+      "service_details.request_details",
+      "request.request_details",
+      "details.request_details",
+      "request_details",
+      "service_details.description",
+      "description",
+    ];
+
+    for (
+      const key
+      of preferredKeys
+    ) {
+      const value =
+        parsed[key];
+
+      if (
+        typeof value ===
+          "string" &&
+        value.trim()
+      ) {
+        return value.trim();
+      }
+    }
+
+    return "";
+  } catch {
+    return "";
+  }
+}
+
 
 function jsonResponse(
   data: unknown,
@@ -176,6 +231,7 @@ async function loadOwnedRequest(
         sr.email_address,
         sr.status,
         sr.created_at,
+        sr.details_json,
         s.name AS service_name,
         sh.name AS shop_name
       FROM service_requests sr
@@ -460,6 +516,11 @@ async function getThread(
         serviceRequest.shop_code,
       shopName:
         serviceRequest.shop_name,
+
+      requestSummary:
+        getRequestSummary(
+          serviceRequest.details_json,
+        ),
     },
     messages:
       messages.results.map(
@@ -960,6 +1021,7 @@ async function getShopThread(
           sr.email_address,
           sr.status,
           sr.created_at,
+          sr.details_json,
           s.name AS service_name,
           sh.name AS shop_name
         FROM service_requests sr
@@ -1080,6 +1142,11 @@ async function getShopThread(
         shopCode,
       shopName:
         shop.name,
+
+      requestSummary:
+        getRequestSummary(
+          serviceRequest.details_json,
+        ),
     },
 
     messages:
@@ -1222,6 +1289,7 @@ async function postShopMessage(
           sr.email_address,
           sr.status,
           sr.created_at,
+          sr.details_json,
           s.name AS service_name,
           sh.name AS shop_name
         FROM service_requests sr
@@ -1361,6 +1429,451 @@ async function postShopMessage(
 }
 
 
+
+async function requireChatAdmin(
+  request: Request,
+  env: Env,
+): Promise<Response | null> {
+  const session =
+    await getAdminSession(
+      request,
+      env,
+    );
+
+  if (session) {
+    return null;
+  }
+
+  return jsonResponse(
+    {
+      error:
+        "Administrator authentication is required.",
+    },
+    401,
+  );
+}
+
+
+async function listAdminThreads(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const auth =
+    await requireChatAdmin(
+      request,
+      env,
+    );
+
+  if (auth) {
+    return auth;
+  }
+
+  const result =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          sr.request_number,
+          sr.status AS request_status,
+          sr.created_at AS request_created_at,
+          sr.customer_name,
+          sr.email_address,
+          sr.shop_code,
+          s.name AS service_name,
+          sh.name AS shop_name,
+          ct.id AS thread_id,
+          ct.updated_at AS chat_updated_at,
+          (
+            SELECT cm.message
+            FROM chat_messages cm
+            WHERE cm.thread_id = ct.id
+            ORDER BY cm.id DESC
+            LIMIT 1
+          ) AS last_message
+        FROM service_requests sr
+        INNER JOIN services s
+          ON s.id = sr.service_id
+        INNER JOIN shops sh
+          ON sh.code = sr.shop_code
+        LEFT JOIN chat_threads ct
+          ON ct.request_id = sr.id
+        WHERE
+          ct.id IS NOT NULL
+        ORDER BY
+          ct.updated_at DESC
+        LIMIT 200
+        `,
+      )
+      .all<{
+        request_number: string;
+        request_status: string;
+        request_created_at: string;
+        customer_name: string | null;
+        email_address: string | null;
+        shop_code: string;
+        service_name: string;
+        shop_name: string;
+        thread_id: number;
+        chat_updated_at: string;
+        last_message: string | null;
+      }>();
+
+  return jsonResponse({
+    threads:
+      result.results.map(
+        (row) => ({
+          requestNumber:
+            row.request_number,
+          requestStatus:
+            row.request_status,
+          requestCreatedAt:
+            row.request_created_at,
+          customerName:
+            row.customer_name,
+          customerEmail:
+            row.email_address,
+          shopCode:
+            row.shop_code,
+          shopName:
+            row.shop_name,
+          serviceName:
+            row.service_name,
+          threadId:
+            row.thread_id,
+          chatUpdatedAt:
+            row.chat_updated_at,
+          lastMessage:
+            row.last_message,
+        }),
+      ),
+  });
+}
+
+
+async function getAdminThread(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
+  const auth =
+    await requireChatAdmin(
+      request,
+      env,
+    );
+
+  if (auth) {
+    return auth;
+  }
+
+  const requestNumber =
+    (
+      url.searchParams.get(
+        "requestNumber",
+      ) ?? ""
+    )
+      .trim()
+      .toUpperCase();
+
+  if (!requestNumber) {
+    return jsonResponse(
+      {
+        error:
+          "Request number is required.",
+      },
+      400,
+    );
+  }
+
+  const serviceRequest =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          sr.id,
+          sr.request_number,
+          sr.shop_code,
+          sr.email_address,
+          sr.status,
+          sr.created_at,
+          sr.details_json,
+          s.name AS service_name,
+          sh.name AS shop_name
+        FROM service_requests sr
+        INNER JOIN services s
+          ON s.id = sr.service_id
+        INNER JOIN shops sh
+          ON sh.code = sr.shop_code
+        WHERE sr.request_number = ?
+        LIMIT 1
+        `,
+      )
+      .bind(
+        requestNumber,
+      )
+      .first<RequestRow>();
+
+  if (!serviceRequest) {
+    return jsonResponse(
+      {
+        error:
+          "Request not found.",
+      },
+      404,
+    );
+  }
+
+  const thread =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          id,
+          request_id,
+          customer_user_id,
+          shop_code,
+          status,
+          created_at,
+          updated_at
+        FROM chat_threads
+        WHERE request_id = ?
+        LIMIT 1
+        `,
+      )
+      .bind(
+        serviceRequest.id,
+      )
+      .first<ThreadRow>();
+
+  if (!thread) {
+    return jsonResponse(
+      {
+        error:
+          "This request does not have a chat thread yet.",
+      },
+      404,
+    );
+  }
+
+  const messages =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          id,
+          sender_type,
+          sender_user_id,
+          sender_shop_code,
+          message,
+          created_at
+        FROM chat_messages
+        WHERE thread_id = ?
+        ORDER BY id ASC
+        LIMIT 500
+        `,
+      )
+      .bind(
+        thread.id,
+      )
+      .all<MessageRow>();
+
+  return jsonResponse({
+    thread: {
+      id:
+        thread.id,
+      requestNumber:
+        serviceRequest.request_number,
+      requestStatus:
+        serviceRequest.status,
+      serviceName:
+        serviceRequest.service_name,
+      shopCode:
+        serviceRequest.shop_code,
+      shopName:
+        serviceRequest.shop_name,
+
+      requestSummary:
+        getRequestSummary(
+          serviceRequest.details_json,
+        ),
+    },
+
+    messages:
+      messages.results.map(
+        (message) => ({
+          id:
+            message.id,
+          senderType:
+            message.sender_type,
+          message:
+            message.message,
+          createdAt:
+            message.created_at,
+          mine:
+            message.sender_type ===
+              "admin" ||
+            message.sender_type ===
+              "support",
+        }),
+      ),
+  });
+}
+
+
+async function postAdminMessage(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const auth =
+    await requireChatAdmin(
+      request,
+      env,
+    );
+
+  if (auth) {
+    return auth;
+  }
+
+  let body: {
+    requestNumber?: unknown;
+    message?: unknown;
+  };
+
+  try {
+    body =
+      await request.json();
+  } catch {
+    return jsonResponse(
+      {
+        error:
+          "Invalid request.",
+      },
+      400,
+    );
+  }
+
+  const requestNumber =
+    typeof body.requestNumber ===
+      "string"
+      ? body.requestNumber
+          .trim()
+          .toUpperCase()
+      : "";
+
+  const message =
+    typeof body.message ===
+      "string"
+      ? body.message.trim()
+      : "";
+
+  if (
+    !requestNumber ||
+    !message ||
+    message.length >
+      MAX_MESSAGE_LENGTH
+  ) {
+    return jsonResponse(
+      {
+        error:
+          `Request and a 1-${MAX_MESSAGE_LENGTH} character message are required.`,
+      },
+      400,
+    );
+  }
+
+  const row =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          ct.id AS thread_id
+        FROM chat_threads ct
+        INNER JOIN service_requests sr
+          ON sr.id = ct.request_id
+        WHERE sr.request_number = ?
+        LIMIT 1
+        `,
+      )
+      .bind(
+        requestNumber,
+      )
+      .first<{
+        thread_id: number;
+      }>();
+
+  if (!row) {
+    return jsonResponse(
+      {
+        error:
+          "Chat thread not found.",
+      },
+      404,
+    );
+  }
+
+  const inserted =
+    await env.gyan_registry
+      .prepare(
+        `
+        INSERT INTO chat_messages (
+          thread_id,
+          sender_type,
+          message
+        )
+        VALUES (
+          ?,
+          'admin',
+          ?
+        )
+        RETURNING
+          id,
+          sender_type,
+          sender_user_id,
+          sender_shop_code,
+          message,
+          created_at
+        `,
+      )
+      .bind(
+        row.thread_id,
+        message,
+      )
+      .first<MessageRow>();
+
+  await env.gyan_registry
+    .prepare(
+      `
+      UPDATE chat_threads
+      SET updated_at =
+        CURRENT_TIMESTAMP
+      WHERE id = ?
+      `,
+    )
+    .bind(
+      row.thread_id,
+    )
+    .run();
+
+  return jsonResponse(
+    {
+      message: inserted
+        ? {
+            id:
+              inserted.id,
+            senderType:
+              inserted.sender_type,
+            message:
+              inserted.message,
+            createdAt:
+              inserted.created_at,
+            mine: true,
+          }
+        : null,
+    },
+    201,
+  );
+}
+
+
 export async function handleChatRoute(
   request: Request,
   env: Env,
@@ -1441,6 +1954,40 @@ export async function handleChatRoute(
       "/api/chat/shop/messages"
   ) {
     return postShopMessage(
+      request,
+      env,
+    );
+  }
+
+  if (
+    request.method === "GET" &&
+    url.pathname ===
+      "/api/chat/admin/threads"
+  ) {
+    return listAdminThreads(
+      request,
+      env,
+    );
+  }
+
+  if (
+    request.method === "GET" &&
+    url.pathname ===
+      "/api/chat/admin/thread"
+  ) {
+    return getAdminThread(
+      request,
+      env,
+      url,
+    );
+  }
+
+  if (
+    request.method === "POST" &&
+    url.pathname ===
+      "/api/chat/admin/messages"
+  ) {
+    return postAdminMessage(
       request,
       env,
     );

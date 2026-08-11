@@ -53,6 +53,9 @@ import ChatPanel
 import ShopChatPanel
   from "./components/ShopChatPanel";
 
+import AdminChatPanel
+  from "./components/AdminChatPanel";
+
 import {
   clearAdminLocationOverride,
 } from "./location/adminLocation";
@@ -393,6 +396,12 @@ export default function App() {
 
 
   const [
+    registrationEmail,
+    setRegistrationEmail,
+  ] = useState("");
+
+
+  const [
     adminLocationOpen,
     setAdminLocationOpen,
   ] = useState(false);
@@ -405,6 +414,11 @@ export default function App() {
   const [
     shopChatOpen,
     setShopChatOpen,
+  ] = useState(false);
+
+  const [
+    adminChatOpen,
+    setAdminChatOpen,
   ] = useState(false);
 
   const [
@@ -1429,6 +1443,58 @@ if (
         }}
       />
 
+      <button
+        type="button"
+        aria-label="Open admin messages"
+        onClick={() =>
+          setAdminChatOpen(
+            true,
+          )
+        }
+        style={{
+          position:
+            "fixed",
+          right:
+            "14px",
+          bottom:
+            "14px",
+          zIndex:
+            2500,
+          border:
+            "0",
+          borderRadius:
+            "999px",
+          padding:
+            "10px 14px",
+          background:
+            "#5b3ea8",
+          color:
+            "#fff",
+          font:
+            "inherit",
+          fontSize:
+            "0.72rem",
+          fontWeight:
+            800,
+          boxShadow:
+            "0 8px 24px rgb(15 23 42 / 20%)",
+          cursor:
+            "pointer",
+        }}
+      >
+        💬 Messages
+      </button>
+
+      {adminChatOpen && (
+        <AdminChatPanel
+          onClose={() =>
+            setAdminChatOpen(
+              false,
+            )
+          }
+        />
+      )}
+
       {adminLocationOpen && (
         <AdminLocationPanel
           onClose={() =>
@@ -1441,11 +1507,23 @@ if (
 
       {registrationPanelOpen && (
         <ShopRegistrationPanel
-          onClose={() =>
-            setRegistrationPanelOpen(
-              false,
+          initialEmail={
+            registrationEmail
+          }
+          requireRealLocation={
+            Boolean(
+              registrationEmail,
             )
           }
+          onClose={() => {
+            setRegistrationPanelOpen(
+              false,
+            );
+
+            setRegistrationEmail(
+              "",
+            );
+          }}
 
           onRegistered={
             handleRegisteredShop
@@ -1558,7 +1636,13 @@ if (
     );
   }}
   onClaimShop={() => {
-    setRegistrationPanelOpen(true);
+    setRegistrationEmail(
+      "",
+    );
+
+    setRegistrationPanelOpen(
+      true,
+    );
   }}
   onOpenAdmin={() => {
     setPendingAdminDestination(
@@ -1585,6 +1669,15 @@ if (
       },
       "",
       "/shop-admin",
+    );
+  }}
+  onRegisterMyShop={(email) => {
+    setRegistrationEmail(
+      email,
+    );
+
+    setRegistrationPanelOpen(
+      true,
     );
   }}
   onStartOnlineService={(

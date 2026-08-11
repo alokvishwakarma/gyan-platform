@@ -20,6 +20,9 @@ interface ShopRegistrationPanelProps {
   onRegistered: (
     shop: RegisteredShop,
   ) => void;
+
+  initialEmail?: string;
+  requireRealLocation?: boolean;
 }
 
 export interface RegisteredShop {
@@ -33,6 +36,12 @@ export interface RegisteredShop {
   city: string;
   state: string;
   postalCode: string;
+
+  latitude?:
+    number;
+
+  longitude?:
+    number;
 }
 
 interface LocationHint {
@@ -124,6 +133,8 @@ function getDialCode(
 export default function ShopRegistrationPanel({
   onClose,
   onRegistered,
+  initialEmail = "",
+  requireRealLocation = false,
 }: ShopRegistrationPanelProps) {
   const qrCanvasRef =
     useRef<HTMLCanvasElement>(
@@ -172,7 +183,9 @@ export default function ShopRegistrationPanel({
     emailAddress,
     setEmailAddress,
   ] =
-    useState("");
+    useState(
+      initialEmail,
+    );
 
   const [
     addressLine,
@@ -197,6 +210,34 @@ export default function ShopRegistrationPanel({
     setPostalCode,
   ] =
     useState("");
+
+  const [
+    verifiedLatitude,
+    setVerifiedLatitude,
+  ] =
+    useState<
+      number | null
+    >(null);
+
+  const [
+    verifiedLongitude,
+    setVerifiedLongitude,
+  ] =
+    useState<
+      number | null
+    >(null);
+
+  const [
+    locationVerified,
+    setLocationVerified,
+  ] =
+    useState(false);
+
+  const [
+    locating,
+    setLocating,
+  ] =
+    useState(false);
 
   const [
     showMore,
@@ -496,6 +537,140 @@ export default function ShopRegistrationPanel({
     drawShopQr,
   ]);
 
+  async function verifyRealLocation():
+    Promise<void> {
+    if (
+      !navigator.geolocation
+    ) {
+      setErrorMessage(
+        "Location access is required to register a shop.",
+      );
+      return;
+    }
+
+    setLocating(true);
+    setErrorMessage(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (
+        position,
+      ) => {
+        const latitude =
+          position.coords.latitude;
+
+        const longitude =
+          position.coords.longitude;
+
+        try {
+          const parameters =
+            new URLSearchParams();
+
+          parameters.set(
+            "lat",
+            String(latitude),
+          );
+
+          parameters.set(
+            "lng",
+            String(longitude),
+          );
+
+          const response =
+            await fetch(
+              `/api/location/resolve?${parameters.toString()}`,
+              {
+                credentials:
+                  "include",
+              },
+            );
+
+          const result =
+            (await response.json()) as {
+              location?: {
+                city?: string;
+                region?: string;
+                postalCode?: string;
+              };
+              error?: string;
+            };
+
+          if (
+            !response.ok ||
+            !result.location
+          ) {
+            throw new Error(
+              result.error ??
+                "Location could not be resolved.",
+            );
+          }
+
+          setVerifiedLatitude(
+            latitude,
+          );
+
+          setVerifiedLongitude(
+            longitude,
+          );
+
+          setCity(
+            result.location.city ??
+              "",
+          );
+
+          setState(
+            result.location.region ??
+              "",
+          );
+
+          setPostalCode(
+            result.location.postalCode ??
+              "",
+          );
+
+          setLocationVerified(
+            true,
+          );
+        } catch (
+          error
+        ) {
+          setLocationVerified(
+            false,
+          );
+
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "Location could not be verified.",
+          );
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => {
+        setLocating(false);
+
+        setLocationVerified(
+          false,
+        );
+
+        setErrorMessage(
+          "Location permission is required to register a shop.",
+        );
+      },
+      {
+        enableHighAccuracy:
+          false,
+
+        timeout:
+          10000,
+
+        maximumAge:
+          0,
+      },
+    );
+  }
+
+
   async function handleSubmit(
     event:
       React.FormEvent<HTMLFormElement>,
@@ -505,6 +680,17 @@ export default function ShopRegistrationPanel({
     setErrorMessage(
       null,
     );
+
+    if (
+      requireRealLocation &&
+      !locationVerified
+    ) {
+      setErrorMessage(
+        "Verify the shop location before registering.",
+      );
+
+      return;
+    }
 
     if (
       !shopName.trim() ||
@@ -606,6 +792,14 @@ export default function ShopRegistrationPanel({
 
       postalCode:
         postalCode.trim(),
+
+      latitude:
+        verifiedLatitude ??
+        undefined,
+
+      longitude:
+        verifiedLongitude ??
+        undefined,
     };
 
     try {
@@ -748,6 +942,14 @@ export default function ShopRegistrationPanel({
 
       postalCode:
         postalCode.trim(),
+
+      latitude:
+        verifiedLatitude ??
+        undefined,
+
+      longitude:
+        verifiedLongitude ??
+        undefined,
     };
 
     onRegistered(
@@ -923,6 +1125,11 @@ export default function ShopRegistrationPanel({
               placeholder="Email"
               aria-label="Email"
               autoComplete="email"
+              readOnly={
+                Boolean(
+                  initialEmail,
+                )
+              }
               onChange={(event) =>
                 setEmailAddress(
                   event.target
@@ -931,6 +1138,45 @@ export default function ShopRegistrationPanel({
               }
             />
           </div>
+
+          {requireRealLocation && (
+            <div
+              className="registration-form__location-check"
+            >
+              <button
+                type="button"
+                disabled={
+                  locating
+                }
+                onClick={() =>
+                  void verifyRealLocation()
+                }
+              >
+                {locating
+                  ? "📍 Checking location…"
+                  : locationVerified
+                    ? "✓ Location verified"
+                    : "📍 Verify shop location"}
+              </button>
+
+              {locationVerified && (
+                <small>
+                  {city || "Location"}
+                  {state
+                    ? `, ${state}`
+                    : ""}
+                  {verifiedLatitude != null &&
+                  verifiedLongitude != null
+                    ? ` · ${verifiedLatitude.toFixed(
+                        4,
+                      )}, ${verifiedLongitude.toFixed(
+                        4,
+                      )}`
+                    : ""}
+                </small>
+              )}
+            </div>
+          )}
 
           <input
             type="text"
@@ -1103,6 +1349,10 @@ export default function ShopRegistrationPanel({
             <button
               type="submit"
               className="registration-button registration-button--primary"
+              disabled={
+                requireRealLocation &&
+                !locationVerified
+              }
             >
               Register shop
             </button>
