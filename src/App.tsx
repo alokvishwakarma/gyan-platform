@@ -5,6 +5,7 @@ import {
 
 import "./App.css";
 import "./GyanShellPopups.css";
+import "./ShopBranding.css";
 
 import AboutAdminPanel from "./components/AboutAdminPanel";
 import AdminServiceFormScreen from "./components/AdminServiceFormScreen";

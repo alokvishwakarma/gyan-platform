@@ -1010,7 +1010,12 @@ export default function PublicHomePage({
 
   return (
     <div
-      className="public-home"
+      className={[
+        "public-home",
+        shopName
+          ? "public-home--shop"
+          : "",
+      ].join(" ")}
     >
       <GyanShell
         headerLeft={

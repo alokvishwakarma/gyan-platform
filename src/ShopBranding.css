@@ -1,0 +1,618 @@
+/*
+ * Light shop branding
+ *
+ * GYAN remains the primary brand.
+ * The active shop receives a warm copper accent.
+ */
+
+.public-home--shop {
+  --shop-accent:
+    #9a5b3d;
+
+  --shop-accent-dark:
+    #7d472f;
+
+  --shop-accent-soft:
+    #fff6f0;
+
+  --shop-accent-soft-2:
+    #fdf0e7;
+
+  --shop-accent-border:
+    #e8d2c5;
+
+  --shop-popup-background:
+    #eef5ff;
+}
+
+
+/* =========================================================
+ * Shop identity in the shared GYAN header
+ * ========================================================= */
+
+.public-home--shop
+.public-home__shop-context {
+  color:
+    var(
+      --shop-accent
+    );
+
+  font-weight: 850;
+}
+
+
+/* Keep GYAN itself blue/green.
+ * Only the shop line gets the shop accent.
+ */
+
+
+/* =========================================================
+ * Shop storefront headings
+ * ========================================================= */
+
+.public-home--shop
+.shop-home-content__heading
+span {
+  color:
+    var(
+      --shop-accent
+    );
+}
+
+.public-home--shop
+.shop-home-content__heading
+h2 {
+  color:
+    var(
+      --shop-accent-dark
+    );
+}
+
+
+/* =========================================================
+ * Featured shop services
+ * ========================================================= */
+
+.public-home--shop
+.shop-home-content__featured-card {
+  border-color:
+    var(
+      --shop-accent-border
+    );
+
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      var(
+        --shop-accent-soft
+      ) 100%
+    );
+}
+
+.public-home--shop
+.shop-home-content__featured-card:hover {
+  border-color:
+    #d7b49f;
+
+  background:
+    var(
+      --shop-accent-soft-2
+    );
+}
+
+.public-home--shop
+.shop-home-content__featured-icon {
+  display: grid;
+  place-items: center;
+
+  width: 36px;
+  height: 36px;
+
+  border-radius: 9px;
+
+  background:
+    var(
+      --shop-accent-soft-2
+    );
+}
+
+.public-home--shop
+.shop-home-content__featured-arrow {
+  color:
+    var(
+      --shop-accent
+    );
+}
+
+
+/* Other services stay mostly neutral.
+ * A tiny warm border on hover is enough.
+ */
+
+.public-home--shop
+.shop-home-content__service-card:hover {
+  border-color:
+    var(
+      --shop-accent-border
+    );
+
+  background:
+    var(
+      --shop-accent-soft
+    );
+}
+
+
+/* =========================================================
+ * Shop request/service screens
+ *
+ * Because shop screens now live inside the shared GYAN shell,
+ * give them the same contained blue-stage treatment as GYAN
+ * request/pop-up screens instead of a full-width gray page.
+ * ========================================================= */
+
+.public-home--shop
+.public-home__content {
+  border-radius:
+    0 0 12px 12px;
+}
+
+
+/*
+ * Embedded service screens are content inside the shell,
+ * not full-page overlays.
+ */
+
+.public-home--shop
+.dynamic-service-request-overlay,
+.public-home--shop
+.nearby-service-overlay {
+  width:
+    100% !important;
+
+  max-width:
+    100% !important;
+
+  padding:
+    8px !important;
+
+  border-radius:
+    12px !important;
+
+  background:
+    var(
+      --shop-popup-background
+    ) !important;
+}
+
+
+/*
+ * Contain the actual request card instead of allowing it
+ * to visually span the whole shop body.
+ */
+
+.public-home--shop
+.dynamic-service-request,
+.public-home--shop
+.nearby-service-panel {
+  width:
+    min(
+      100%,
+      760px
+    ) !important;
+
+  margin:
+    0 auto !important;
+
+  border:
+    1px solid
+    #d7e3f2 !important;
+
+  border-radius:
+    12px !important;
+
+  background:
+    #ffffff !important;
+
+  box-shadow:
+    0 5px 18px
+    rgb(
+      31 65 110 /
+      8%
+    ) !important;
+
+  overflow:
+    hidden;
+}
+
+
+/*
+ * Registration/chat/location popups reached while a shop
+ * is active keep GYAN's normal geometry. Add only the
+ * subtle blue stage around the contained panel.
+ */
+
+.public-home--shop
+.registration-overlay,
+.public-home--shop
+.chat-panel__overlay,
+.public-home--shop
+.shop-chat__overlay,
+.public-home--shop
+.admin-location-overlay {
+  background:
+    rgb(
+      224 236 252 /
+      72%
+    ) !important;
+}
+
+
+/* =========================================================
+ * Mobile
+ * ========================================================= */
+
+@media (
+  max-width:
+    560px
+) {
+  .public-home--shop
+  .dynamic-service-request-overlay,
+  .public-home--shop
+  .nearby-service-overlay {
+    padding:
+      4px !important;
+
+    border-radius:
+      10px !important;
+  }
+
+  .public-home--shop
+  .dynamic-service-request,
+  .public-home--shop
+  .nearby-service-panel {
+    border-radius:
+      10px !important;
+  }
+}
+
+/*
+ * Shop homepage refinement:
+ * - more breathing room below the shared GYAN header
+ * - section heading scale closer to the GYAN homepage
+ * - star treatment for Featured
+ */
+
+.public-home--shop
+.public-home__content {
+  padding-top:
+    0.8rem;
+}
+
+.public-home--shop
+.shop-home-content {
+  gap:
+    0.9rem;
+}
+
+.public-home--shop
+.shop-home-content__section {
+  gap:
+    0.5rem;
+}
+
+.public-home--shop
+.shop-home-content__heading {
+  min-height:
+    38px;
+
+  padding:
+    0 0.12rem;
+}
+
+.public-home--shop
+.shop-home-content__heading span {
+  font-size:
+    0.62rem;
+
+  line-height:
+    1.2;
+}
+
+.public-home--shop
+.shop-home-content__heading h2 {
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  gap:
+    0.32rem;
+
+  margin-top:
+    0.14rem;
+
+  font-size:
+    0.96rem;
+
+  line-height:
+    1.2;
+}
+
+.public-home--shop
+.shop-home-content__heading
+.shop-home-content__heading-icon {
+  display:
+    inline-grid;
+
+  place-items:
+    center;
+
+  width:
+    20px;
+
+  height:
+    20px;
+
+  border-radius:
+    999px;
+
+  background:
+    var(
+      --shop-accent-soft-2
+    );
+
+  color:
+    var(
+      --shop-accent
+    );
+
+  font-size:
+    0.68rem;
+
+  line-height:
+    1;
+}
+
+
+/*
+ * Keep the three Featured cards noticeably taller than
+ * ordinary service tiles, but give the section itself the
+ * same visual rhythm as the GYAN homepage sections.
+ */
+
+.public-home--shop
+.shop-home-content__featured-card {
+  min-height:
+    104px;
+}
+
+
+/*
+ * Other services should visually line up with Featured,
+ * similar to the Online/Nearby section relationship on
+ * the main GYAN homepage.
+ */
+
+.public-home--shop
+.shop-home-content__heading--row {
+  margin-top:
+    0.12rem;
+}
+
+
+@media (
+  max-width:
+    599px
+) {
+  .public-home--shop
+  .public-home__content {
+    padding-top:
+      0.65rem;
+  }
+
+  .public-home--shop
+  .shop-home-content {
+    gap:
+      0.75rem;
+  }
+
+  .public-home--shop
+  .shop-home-content__heading {
+    min-height:
+      34px;
+  }
+
+  .public-home--shop
+  .shop-home-content__heading h2 {
+    font-size:
+      0.9rem;
+  }
+
+  .public-home--shop
+  .shop-home-content__featured-card {
+    min-height:
+      96px;
+  }
+}
+
+/*
+ * Shop popup stage refinement
+ *
+ * Shop-specific request screens use a light-blue stage,
+ * but the stage is contained to the GYAN body width rather
+ * than shading the entire browser viewport.
+ */
+
+.public-home--shop {
+  --shop-popup-stage:
+    #edf5ff;
+
+  --shop-popup-stage-border:
+    #d7e6f7;
+}
+
+
+/*
+ * Embedded shop service/request screens already live inside
+ * PublicHomePage/GyanShell. Give that contained body area the
+ * blue stage instead of using a viewport-sized overlay.
+ */
+
+.public-home--shop
+.public-home__content
+.dynamic-service-request-overlay,
+.public-home--shop
+.public-home__content
+.nearby-service-overlay {
+  width:
+    100% !important;
+
+  max-width:
+    100% !important;
+
+  box-sizing:
+    border-box !important;
+
+  padding:
+    8px !important;
+
+  border:
+    1px solid
+    var(
+      --shop-popup-stage-border
+    ) !important;
+
+  border-radius:
+    12px !important;
+
+  background:
+    var(
+      --shop-popup-stage
+    ) !important;
+
+  box-shadow:
+    none !important;
+}
+
+
+/*
+ * The actual popup/request card stays white and narrower
+ * inside the blue GYAN body stage.
+ */
+
+.public-home--shop
+.public-home__content
+.dynamic-service-request,
+.public-home--shop
+.public-home__content
+.nearby-service-panel {
+  width:
+    min(
+      100%,
+      720px
+    ) !important;
+
+  margin:
+    0 auto !important;
+
+  border:
+    1px solid
+    #d8e3ef !important;
+
+  border-radius:
+    11px !important;
+
+  background:
+    #ffffff !important;
+
+  box-shadow:
+    0 4px 14px
+    rgb(
+      31 65 110 /
+      7%
+    ) !important;
+}
+
+
+/*
+ * Do not tint the whole viewport for shop-context overlays.
+ * Keep the viewport transparent; the visible stage belongs
+ * to the centered GYAN body/panel.
+ */
+
+.public-home--shop
+.registration-overlay,
+.public-home--shop
+.chat-panel__overlay,
+.public-home--shop
+.shop-chat__overlay,
+.public-home--shop
+.admin-location-overlay {
+  background:
+    transparent !important;
+}
+
+
+/*
+ * Their contained panels get the same subtle blue edge.
+ */
+
+.public-home--shop
+.registration-panel,
+.public-home--shop
+.chat-panel,
+.public-home--shop
+.shop-chat,
+.public-home--shop
+.admin-location-panel {
+  border-color:
+    var(
+      --shop-popup-stage-border
+    ) !important;
+
+  box-shadow:
+    0 8px 24px
+    rgb(
+      31 65 110 /
+      12%
+    ) !important;
+}
+
+
+/*
+ * Small screens: preserve the blue stage but keep it tight.
+ */
+
+@media (
+  max-width:
+    560px
+) {
+  .public-home--shop
+  .public-home__content
+  .dynamic-service-request-overlay,
+  .public-home--shop
+  .public-home__content
+  .nearby-service-overlay {
+    padding:
+      4px !important;
+
+    border-radius:
+      9px !important;
+  }
+
+  .public-home--shop
+  .public-home__content
+  .dynamic-service-request,
+  .public-home--shop
+  .public-home__content
+  .nearby-service-panel {
+    width:
+      100% !important;
+
+    border-radius:
+      9px !important;
+  }
+}
