@@ -1342,6 +1342,11 @@ async function analyticsDetails(
             business_name,
             service_name,
             discount_percent,
+
+            city,
+            region,
+            region_code,
+
             email,
             status,
             created_at,
@@ -1373,6 +1378,16 @@ async function analyticsDetails(
           service_name: string;
           discount_percent:
             number | null;
+
+          city:
+            string | null;
+
+          region:
+            string | null;
+
+          region_code:
+            string | null;
+
           email: string;
           status: string;
           created_at: string;
@@ -1402,6 +1417,17 @@ async function analyticsDetails(
                 null
                 ? `${row.discount_percent}% discount`
                 : "",
+
+              [
+                row.city ||
+                  "Not available",
+
+                row.region_code ||
+                  "NA",
+              ]
+                .join(
+                  ", ",
+                ),
 
               row.email,
 
@@ -1473,6 +1499,16 @@ async function analyticsDetails(
             email,
             phone,
             preferred_time,
+
+            latitude,
+            longitude,
+
+            city,
+            region,
+            region_code,
+            country_code,
+            postal_code,
+
             status,
             assigned_shop_code,
             created_at
@@ -1509,6 +1545,28 @@ async function analyticsDetails(
             string | null;
           preferred_time:
             string | null;
+
+          latitude:
+            number | null;
+
+          longitude:
+            number | null;
+
+          city:
+            string | null;
+
+          region:
+            string | null;
+
+          region_code:
+            string | null;
+
+          country_code:
+            string | null;
+
+          postal_code:
+            string | null;
+
           status: string;
           assigned_shop_code:
             string | null;
@@ -1534,6 +1592,35 @@ async function analyticsDetails(
 
           meta:
             [
+              [
+                row.city ?? "",
+
+                row.region_code ||
+                  row.region ||
+                  "",
+              ]
+                .filter(
+                  Boolean,
+                )
+                .join(
+                  ", ",
+                ),
+
+              (
+                row.latitude != null &&
+                row.longitude != null
+              )
+                ? `${Number(
+                    row.latitude,
+                  ).toFixed(
+                    4,
+                  )}, ${Number(
+                    row.longitude,
+                  ).toFixed(
+                    4,
+                  )}`
+                : "",
+
               row.assigned_shop_code
                 ? `Assigned ${row.assigned_shop_code}`
                 : "Not assigned",
@@ -1650,13 +1737,43 @@ async function analyticsDetails(
                 ),
 
               meta:
-                firstValue(
-                  row,
+                [
                   [
-                    "created_at",
-                    "updated_at",
-                  ],
-                ),
+                    firstValue(
+                      row,
+                      [
+                        "last_city",
+                      ],
+                    ) ||
+                    "Not available",
+
+                    firstValue(
+                      row,
+                      [
+                        "last_region_code",
+                        "last_region",
+                      ],
+                    ) ||
+                    "NA",
+                  ]
+                    .join(
+                      ", ",
+                    ),
+
+                  firstValue(
+                    row,
+                    [
+                      "created_at",
+                      "updated_at",
+                    ],
+                  ),
+                ]
+                  .filter(
+                    Boolean,
+                  )
+                  .join(
+                    " · ",
+                  ),
 
               badge:
                 firstValue(

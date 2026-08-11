@@ -51,6 +51,10 @@ import {
 } from "./locationHint";
 
 import {
+  handleLocationResolveRoute,
+} from "./locationResolve";
+
+import {
   handlePuzzleRoute,
 } from "./puzzle/puzzleRoutes";
 
@@ -83,7 +87,9 @@ import {
   handleAnalyticsRoute,
 } from "./analytics";
 
-
+import {
+  handleChatRoute,
+} from "./chat";
 
 interface RegisterShopRequest {
   code?: unknown;
@@ -611,6 +617,16 @@ async function handleApiRequest(
     return publicAuthResponse;
   }
 
+  const chatResponse =
+  await handleChatRoute(
+    request,
+    env,
+    url,
+  );
+
+if (chatResponse) {
+  return chatResponse;
+}
 
   /*
    * ------------------------------------------------
@@ -811,6 +827,25 @@ async function handleApiRequest(
 
   /*
    * ------------------------------------------------
+   * Manual/admin location resolver
+   * ------------------------------------------------
+   */
+
+  const locationResolveResponse =
+    await handleLocationResolveRoute(
+      request,
+      url,
+    );
+
+  if (
+    locationResolveResponse
+  ) {
+    return locationResolveResponse;
+  }
+
+
+  /*
+   * ------------------------------------------------
    * Browser location hint
    * ------------------------------------------------
    */
@@ -994,6 +1029,87 @@ if (
   return advertisementResponse;
 }
 
+/*
+ * ------------------------------------------------
+ * Local service requests
+ *
+ * The existing request handler owns validation,
+ * verification email and assignment behavior.
+ * After it succeeds, persist the resolved
+ * human-readable location snapshot on the row.
+ * ------------------------------------------------
+ */
+
+let localRequestLocation:
+  {
+    city?: string;
+    region?: string;
+    regionCode?: string;
+    countryCode?: string;
+    postalCode?: string;
+  } | null =
+    null;
+
+if (
+  request.method ===
+    "POST" &&
+  url.pathname ===
+    "/api/local-service-requests"
+) {
+  try {
+    const body =
+      (await request.clone().json()) as {
+        city?: unknown;
+        region?: unknown;
+        regionCode?: unknown;
+        countryCode?: unknown;
+        postalCode?: unknown;
+      };
+
+    localRequestLocation = {
+      city:
+        typeof body.city ===
+          "string"
+          ? body.city.trim()
+          : "",
+
+      region:
+        typeof body.region ===
+          "string"
+          ? body.region.trim()
+          : "",
+
+      regionCode:
+        typeof body.regionCode ===
+          "string"
+          ? body.regionCode
+              .trim()
+              .toUpperCase()
+          : "",
+
+      countryCode:
+        typeof body.countryCode ===
+          "string"
+          ? body.countryCode
+              .trim()
+              .toUpperCase()
+          : "",
+
+      postalCode:
+        typeof body.postalCode ===
+          "string"
+          ? body.postalCode.trim()
+          : "",
+    };
+  } catch {
+    /*
+     * Existing request handler will return the
+     * appropriate invalid-body response.
+     */
+  }
+}
+
+
 const localServiceRequestResponse =
   await handleLocalServiceRequestRoute(
     request,
@@ -1005,6 +1121,79 @@ const localServiceRequestResponse =
 if (
   localServiceRequestResponse
 ) {
+  if (
+    localServiceRequestResponse.ok &&
+    localRequestLocation
+  ) {
+    try {
+      const result =
+        (await localServiceRequestResponse
+          .clone()
+          .json()) as {
+          requestId?: number;
+          request?: {
+            id?: number;
+          };
+        };
+
+      const requestId =
+        Number(
+          result.requestId ??
+          result.request?.id,
+        );
+
+      if (
+        Number.isInteger(
+          requestId,
+        ) &&
+        requestId >
+          0
+      ) {
+        await env.gyan_registry
+          .prepare(
+            `
+            UPDATE local_service_requests
+
+            SET
+              city = ?,
+              region = ?,
+              region_code = ?,
+              country_code = ?,
+              postal_code = ?
+
+            WHERE id = ?
+            `,
+          )
+          .bind(
+            localRequestLocation.city ||
+              null,
+
+            localRequestLocation.region ||
+              null,
+
+            localRequestLocation.regionCode ||
+              null,
+
+            localRequestLocation.countryCode ||
+              null,
+
+            localRequestLocation.postalCode ||
+              null,
+
+            requestId,
+          )
+          .run();
+      }
+    } catch (
+      error
+    ) {
+      console.error(
+        "Unable to save service-request location snapshot:",
+        error,
+      );
+    }
+  }
+
   return localServiceRequestResponse;
 }
 

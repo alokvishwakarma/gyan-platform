@@ -27,10 +27,16 @@ interface AuthMeResponse {
 
 interface UserAccountMenuProps {
   onOpenAdmin: () => void;
+  onOpenChat: () => void;
+  onOpenMyShop: (
+    shopCode: string,
+  ) => void;
 }
 
 export default function UserAccountMenu({
   onOpenAdmin,
+  onOpenChat,
+  onOpenMyShop,
 }: UserAccountMenuProps) {
   const [
     open,
@@ -57,6 +63,19 @@ export default function UserAccountMenu({
     useState<
       AuthUser | null
     >(null);
+
+
+  const [
+    myShopLoading,
+    setMyShopLoading,
+  ] =
+    useState(false);
+
+  const [
+    myShopError,
+    setMyShopError,
+  ] =
+    useState("");
 
   async function loadUser():
     Promise<void> {
@@ -191,6 +210,85 @@ export default function UserAccountMenu({
     };
   }, []);
 
+  async function openMyShop():
+    Promise<void> {
+    if (myShopLoading) {
+      return;
+    }
+
+    setMyShopLoading(
+      true,
+    );
+
+    setMyShopError("");
+
+    try {
+      const response =
+        await fetch(
+          "/api/chat/my-shops",
+          {
+            credentials:
+              "include",
+          },
+        );
+
+      const result =
+        (await response.json()) as {
+          shops?: {
+            code: string;
+            name: string;
+          }[];
+
+          error?: string;
+        };
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ??
+            "Your shop could not be loaded.",
+        );
+      }
+
+      const shops =
+        result.shops ?? [];
+
+      if (
+        shops.length ===
+        0
+      ) {
+        setMyShopError(
+          "No active shop is linked to this email.",
+        );
+
+        return;
+      }
+
+      /*
+       * MVP: most shop owners have one shop.
+       * If more than one is linked, open the
+       * first; we can add a selector later.
+       */
+      setOpen(false);
+
+      onOpenMyShop(
+        shops[0].code,
+      );
+    } catch (
+      caughtError
+    ) {
+      setMyShopError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Your shop could not be loaded.",
+      );
+    } finally {
+      setMyShopLoading(
+        false,
+      );
+    }
+  }
+
+
   async function logout():
     Promise<void> {
     await fetch(
@@ -294,6 +392,40 @@ export default function UserAccountMenu({
                 >
                   🛍 Shopper
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    onOpenChat();
+                  }}
+                >
+                  💬 Chat
+                </button>
+
+                <button
+                  type="button"
+                  disabled={
+                    myShopLoading
+                  }
+                  onClick={() =>
+                    void openMyShop()
+                  }
+                >
+                  {myShopLoading
+                    ? "🏪 Opening…"
+                    : "🏪 My Shop"}
+                </button>
+
+                {myShopError && (
+                  <div
+                    className="user-account-menu__status"
+                  >
+                    {
+                      myShopError
+                    }
+                  </div>
+                )}
 
                 <button
                   type="button"

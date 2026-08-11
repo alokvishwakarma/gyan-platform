@@ -1,0 +1,496 @@
+
+.gyan-public-page {
+  min-height: 100vh;
+  padding: 1rem;
+  box-sizing: border-box;
+  background: #f5f1e8;
+  color: #27241f;
+  font-family: inherit;
+}
+
+.gyan-a5 {
+  width: min(100%, 148mm);
+  min-height: 210mm;
+  margin: 0 auto;
+  padding: 12mm;
+  box-sizing: border-box;
+  background: #fffdf8;
+  border: 1px solid #e2dccf;
+  border-radius: 18px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.12);
+}
+
+.gyan-a5__brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.gyan-a5__brand-main {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.gyan-a5__logo {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #eef6f0;
+  font-size: 1.6rem;
+}
+
+.gyan-a5__brand strong {
+  display: block;
+  font-size: 1.35rem;
+  letter-spacing: 0.04em;
+}
+
+.gyan-a5__brand small {
+  display: block;
+  margin-top: 0.08rem;
+  color: #756f65;
+  font-size: 0.72rem;
+}
+
+.gyan-a5__domain {
+  font-weight: 900;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+}
+
+.gyan-a5__hero {
+  margin-top: 1.2rem;
+  text-align: center;
+}
+
+.gyan-a5__hero h1 {
+  margin: 0;
+  font-size: 1.55rem;
+  line-height: 1.15;
+}
+
+.gyan-a5__hero p {
+  margin: 0.45rem auto 0;
+  max-width: 31rem;
+  color: #69635b;
+  line-height: 1.45;
+  font-size: 0.82rem;
+}
+
+.gyan-a5__qr-wrap {
+  width: min(72%, 260px);
+  margin: 1.2rem auto 0;
+  padding: 0.7rem;
+  box-sizing: border-box;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid #e1dbcf;
+}
+
+.gyan-a5__qr {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+.gyan-a5__scan {
+  margin-top: 0.7rem;
+  text-align: center;
+}
+
+.gyan-a5__scan strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.gyan-a5__scan span {
+  display: block;
+  margin-top: 0.2rem;
+  color: #176b42;
+  font-size: 1.2rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.gyan-a5__features {
+  margin-top: 1.1rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.gyan-a5__feature {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.65rem;
+  border: 1px solid #ece6db;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.gyan-a5__feature > span:first-child {
+  font-size: 1.3rem;
+  text-align: center;
+}
+
+.gyan-a5__feature strong {
+  display: block;
+  font-size: 0.78rem;
+}
+
+.gyan-a5__feature small {
+  display: block;
+  margin-top: 0.08rem;
+  color: #777168;
+  font-size: 0.65rem;
+  line-height: 1.35;
+}
+
+.gyan-a5__footer {
+  margin-top: 1rem;
+  text-align: center;
+  color: #777168;
+  font-size: 0.62rem;
+}
+
+.gyan-about__section {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  border: 1px solid #ebe5da;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.gyan-about__section h2 {
+  margin: 0 0 0.35rem;
+  font-size: 0.9rem;
+}
+
+.gyan-about__section p {
+  margin: 0;
+  color: #625d55;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.gyan-about__steps {
+  margin-top: 0.45rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.gyan-about__step {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.7rem;
+}
+
+.gyan-about__step span:first-child {
+  font-size: 1rem;
+}
+
+.gyan-qr-page .gyan-a5 {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.gyan-qr-page .gyan-a5__qr-wrap {
+  width: min(84%, 330px);
+}
+
+@media print {
+  @page {
+    size: A5 portrait;
+    margin: 0;
+  }
+
+  body {
+    margin: 0;
+  }
+
+  .gyan-public-page {
+    padding: 0;
+    background: #fff;
+  }
+
+  .gyan-a5 {
+    width: 148mm;
+    min-height: 210mm;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .gyan-public-page {
+    padding: 0;
+  }
+
+  .gyan-a5 {
+    width: 100%;
+    min-height: 100vh;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+/* Append to GyanPublicPages.css */
+
+.gyan-qr-page {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.gyan-qr-card {
+  min-height: 210mm;
+  display: flex;
+  flex-direction: column;
+  padding: 10mm 11mm;
+}
+
+.gyan-qr-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  text-align: left;
+}
+
+.gyan-qr-card__logo {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: #eef6f0;
+  font-size: 1.45rem;
+}
+
+.gyan-qr-card__header h1 {
+  margin: 0;
+  font-size: 1.65rem;
+  line-height: 1;
+  letter-spacing: 0.055em;
+}
+
+.gyan-qr-card__header p {
+  margin: 0.22rem 0 0;
+  color: #6c665d;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.gyan-qr-card__intro {
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+.gyan-qr-card__intro p {
+  max-width: 310px;
+  margin: 0 auto;
+  color: #706a61;
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.gyan-qr-card__qr-wrap {
+  width: min(76%, 285px);
+  margin: 0.8rem auto 0;
+  padding: 0.55rem;
+  box-sizing: border-box;
+  border: 1px solid #e1dbcf;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.gyan-qr-card__qr {
+  width: 100%;
+  aspect-ratio: 1;
+  display: block;
+}
+
+.gyan-qr-card__domain {
+  margin-top: 0.55rem;
+  text-align: center;
+}
+
+.gyan-qr-card__domain small {
+  display: block;
+  color: #777168;
+  font-size: 0.6rem;
+}
+
+.gyan-qr-card__domain strong {
+  display: block;
+  margin-top: 0.05rem;
+  color: #176b42;
+  font-size: 1.35rem;
+  line-height: 1.1;
+  letter-spacing: 0.09em;
+}
+
+.gyan-qr-card__actions {
+  margin: 0.75rem auto 0;
+  padding: 0.5rem 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 1px solid #e9e3d8;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.gyan-qr-card__actions span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+}
+
+.gyan-qr-card__actions > span:nth-child(even) {
+  color: #aaa297;
+}
+
+.gyan-qr-card__details {
+  margin-top: 0.8rem;
+  display: grid;
+  gap: 0.42rem;
+}
+
+.gyan-qr-card__details > div {
+  padding: 0.52rem 0.6rem;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 0.42rem;
+  align-items: start;
+  border: 1px solid #eee8dc;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.gyan-qr-card__details > div > span {
+  text-align: center;
+  font-size: 1rem;
+}
+
+.gyan-qr-card__details p {
+  margin: 0;
+  color: #6b655c;
+  font-size: 0.62rem;
+  line-height: 1.35;
+}
+
+.gyan-qr-card__details strong {
+  display: block;
+  margin-bottom: 0.08rem;
+  color: #302d28;
+  font-size: 0.66rem;
+}
+
+.gyan-qr-card__footer {
+  margin-top: auto;
+  padding-top: 0.65rem;
+  text-align: center;
+  color: #827b71;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+}
+
+@media (max-width: 420px) {
+  .gyan-qr-card {
+    padding: 1rem;
+  }
+
+  .gyan-qr-card__qr-wrap {
+    width: min(74vw, 275px);
+  }
+
+  .gyan-qr-card__actions {
+    gap: 0.3rem;
+    font-size: 0.62rem;
+  }
+}
+
+@media print {
+  .gyan-qr-card {
+    width: 148mm;
+    min-height: 210mm;
+    padding: 10mm 11mm;
+  }
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gyan-public-page {
+  width: 100%;
+  min-height: 100dvh;
+
+  padding: 1rem;
+
+  box-sizing: border-box;
+
+  overflow-x: hidden;
+  overflow-y: visible;
+
+  background: #f5f1e8;
+  color: #27241f;
+}
+
+.gyan-a5 {
+  width: min(
+    100%,
+    148mm
+  );
+
+  min-height: 210mm;
+  height: auto;
+
+  margin: 0 auto;
+
+  padding: 12mm;
+
+  box-sizing: border-box;
+
+  overflow: visible;
+
+  background: #fffdf8;
+
+  border:
+    1px solid
+    #e2dccf;
+
+  border-radius: 18px;
+
+  box-shadow:
+    0 16px 44px
+    rgba(
+      0,
+      0,
+      0,
+      0.12
+    );
+}

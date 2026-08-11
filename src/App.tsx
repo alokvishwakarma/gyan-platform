@@ -44,6 +44,21 @@ import AboutPage
 import QrPage
   from "./components/QrPage";
 
+import AdminLocationPanel
+  from "./components/AdminLocationPanel";
+
+import ChatPanel
+  from "./components/ChatPanel";
+
+import ShopChatPanel
+  from "./components/ShopChatPanel";
+
+import {
+  clearAdminLocationOverride,
+} from "./location/adminLocation";
+
+
+
 interface ShopProfile {
   code: string;
   name: string;
@@ -374,6 +389,22 @@ export default function App() {
   const [
     registrationPanelOpen,
     setRegistrationPanelOpen,
+  ] = useState(false);
+
+
+  const [
+    adminLocationOpen,
+    setAdminLocationOpen,
+  ] = useState(false);
+
+  const [
+    chatOpen,
+    setChatOpen,
+  ] = useState(false);
+
+  const [
+    shopChatOpen,
+    setShopChatOpen,
   ] = useState(false);
 
   const [
@@ -917,6 +948,12 @@ export default function App() {
         },
       );
     } finally {
+      clearAdminLocationOverride();
+
+      setAdminLocationOpen(
+        false,
+      );
+
       setDashboardView(null);
 
       setAdminServicesOpen(
@@ -1306,31 +1343,75 @@ if (
     );
   }
 
-  if (dashboardView === "platform") {
-    return (
+if (
+  dashboardView ===
+  "platform"
+) {
+  return (
+    <>
       <PlatformDashboardPage
         onBack={() => {
-          setDashboardView(null);
-          window.history.pushState({}, "", activeShopCode
-            ? `/?shop=${encodeURIComponent(activeShopCode)}`
-            : "/");
+          setDashboardView(
+            null,
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            activeShopCode
+              ? `/?shop=${encodeURIComponent(
+                  activeShopCode,
+                )}`
+              : "/",
+          );
         }}
+
         onAddShop={() =>
-          setRegistrationPanelOpen(true)
+          setRegistrationPanelOpen(
+            true,
+          )
         }
+
+        onChangeLocation={() =>
+          setAdminLocationOpen(
+            true,
+          )
+        }
+
         onOpenShops={() => {
-          setDashboardView(null);
-          setAdminShopsOpen(true);
-          window.history.pushState({}, "", "/admin/shops");
+          setDashboardView(
+            null,
+          );
+
+          setAdminShopsOpen(
+            true,
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            "/admin/shops",
+          );
         }}
+
         onOpenServices={() => {
-          setDashboardView(null);
+          setDashboardView(
+            null,
+          );
+
           openAdminServices();
         }}
+
         onOpenStorage={() => {
-          setDashboardView(null);
-          setAdminStorageOpen(true);
+          setDashboardView(
+            null,
+          );
+
+          setAdminStorageOpen(
+            true,
+          );
         }}
+
         onOpenAnalytics={() => {
           setDashboardView(
             null,
@@ -1347,14 +1428,40 @@ if (
           );
         }}
       />
-    );
-  }
+
+      {adminLocationOpen && (
+        <AdminLocationPanel
+          onClose={() =>
+            setAdminLocationOpen(
+              false,
+            )
+          }
+        />
+      )}
+
+      {registrationPanelOpen && (
+        <ShopRegistrationPanel
+          onClose={() =>
+            setRegistrationPanelOpen(
+              false,
+            )
+          }
+
+          onRegistered={
+            handleRegisteredShop
+          }
+        />
+      )}
+    </>
+  );
+}
 
   if (
     dashboardView === "shop" &&
     activeShopCode
   ) {
     return (
+      <>
       <ShopDashboardPage
         shopCode={activeShopCode}
         shopName={
@@ -1390,8 +1497,8 @@ if (
           );
         }}
         onOpenRequests={() => {
-          console.log(
-            `Open requests for ${activeShopCode}`,
+          setShopChatOpen(
+            true,
           );
         }}
         onOpenQr={() =>
@@ -1412,6 +1519,24 @@ if (
 
         
       />
+
+      {shopChatOpen && (
+        <ShopChatPanel
+          shopCode={
+            activeShopCode
+          }
+          shopName={
+            visibleShopProfile?.name ??
+            "Your GYAN Shop"
+          }
+          onClose={() =>
+            setShopChatOpen(
+              false,
+            )
+          }
+        />
+      )}
+      </>
     );
   }
 
@@ -1441,6 +1566,26 @@ if (
     );
 
     setAboutPanelOpen(true);
+  }}
+  onOpenChat={() => {
+    setChatOpen(true);
+  }}
+  onOpenMyShop={(shopCode) => {
+    setActiveShopCode(
+      shopCode,
+    );
+
+    setDashboardView(
+      "shop",
+    );
+
+    window.history.pushState(
+      {
+        shopCode,
+      },
+      "",
+      "/shop-admin",
+    );
   }}
   onStartOnlineService={(
     serviceCode: string,
@@ -1648,6 +1793,16 @@ if (
       }
     />
   )}
+
+      {chatOpen && (
+        <ChatPanel
+          onClose={() =>
+            setChatOpen(
+              false,
+            )
+          }
+        />
+      )}
 
       {registrationPanelOpen && (
         <ShopRegistrationPanel

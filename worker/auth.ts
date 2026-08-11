@@ -270,6 +270,158 @@ async function sendMagicLinkEmail(
   }
 }
 
+function networkRegionCode(
+  region: string,
+  countryCode: string,
+): string {
+  const key =
+    region
+      .trim()
+      .toLowerCase();
+
+  const country =
+    countryCode
+      .trim()
+      .toUpperCase();
+
+  const us:
+    Record<string, string> = {
+    california: "CA",
+    texas: "TX",
+    florida: "FL",
+    "new york": "NY",
+    washington: "WA",
+    illinois: "IL",
+    pennsylvania: "PA",
+    ohio: "OH",
+    georgia: "GA",
+    "north carolina": "NC",
+    "new jersey": "NJ",
+    virginia: "VA",
+    massachusetts: "MA",
+    arizona: "AZ",
+    michigan: "MI",
+    maryland: "MD",
+    colorado: "CO",
+    minnesota: "MN",
+    wisconsin: "WI",
+    oregon: "OR",
+    nevada: "NV",
+    utah: "UT",
+    "district of columbia": "DC",
+  };
+
+  const india:
+    Record<string, string> = {
+    "andhra pradesh": "AP",
+    "arunachal pradesh": "AR",
+    assam: "AS",
+    bihar: "BR",
+    chhattisgarh: "CG",
+    goa: "GA",
+    gujarat: "GJ",
+    haryana: "HR",
+    "himachal pradesh": "HP",
+    jharkhand: "JH",
+    karnataka: "KA",
+    kerala: "KL",
+    "madhya pradesh": "MP",
+    maharashtra: "MH",
+    manipur: "MN",
+    meghalaya: "ML",
+    mizoram: "MZ",
+    nagaland: "NL",
+    odisha: "OD",
+    punjab: "PB",
+    rajasthan: "RJ",
+    sikkim: "SK",
+    "tamil nadu": "TN",
+    telangana: "TS",
+    tripura: "TR",
+    "uttar pradesh": "UP",
+    uttarakhand: "UK",
+    "west bengal": "WB",
+    delhi: "DL",
+    chandigarh: "CH",
+    puducherry: "PY",
+    "jammu and kashmir": "JK",
+    ladakh: "LA",
+  };
+
+  if (country === "US") {
+    return us[key] ?? "";
+  }
+
+  if (country === "IN") {
+    return india[key] ?? "";
+  }
+
+  return "";
+}
+
+
+function getNetworkLocation(
+  request: Request,
+): {
+  city: string;
+  region: string;
+  regionCode: string;
+  countryCode: string;
+  postalCode: string;
+} {
+  const cf =
+    request.cf;
+
+  const city =
+    String(
+      cf?.city ?? "",
+    ).trim();
+
+  const region =
+    String(
+      cf?.region ?? "",
+    ).trim();
+
+  const countryCode =
+    String(
+      cf?.country ?? "",
+    )
+      .trim()
+      .toUpperCase();
+
+  /*
+   * Cloudflare may expose regionCode directly.
+   * Fall back to our compact US/India mapping.
+   */
+  const rawRegionCode =
+    String(
+      cf?.regionCode ?? "",
+    )
+      .trim()
+      .toUpperCase();
+
+  const regionCode =
+    rawRegionCode ||
+    networkRegionCode(
+      region,
+      countryCode,
+    );
+
+  const postalCode =
+    String(
+      cf?.postalCode ?? "",
+    ).trim();
+
+  return {
+    city,
+    region,
+    regionCode,
+    countryCode,
+    postalCode,
+  };
+}
+
+
 async function currentUser(
   request: Request,
   env: Env,
@@ -596,14 +748,33 @@ export async function handlePublicAuthRoute(
       );
     }
 
+    const networkLocation =
+      getNetworkLocation(
+        request,
+      );
+
     await env.gyan_registry
       .prepare(
         `
         INSERT INTO users (
           email,
-          last_login_at
+          last_login_at,
+
+          last_city,
+          last_region,
+          last_region_code,
+          last_country_code,
+          last_postal_code,
+          last_location_at
         )
         VALUES (
+          ?,
+          CURRENT_TIMESTAMP,
+
+          ?,
+          ?,
+          ?,
+          ?,
           ?,
           CURRENT_TIMESTAMP
         )
@@ -612,12 +783,63 @@ export async function handlePublicAuthRoute(
         DO UPDATE SET
           updated_at =
             CURRENT_TIMESTAMP,
+
           last_login_at =
-            CURRENT_TIMESTAMP
+            CURRENT_TIMESTAMP,
+
+          last_city =
+            CASE
+              WHEN excluded.last_city != ''
+                THEN excluded.last_city
+              ELSE users.last_city
+            END,
+
+          last_region =
+            CASE
+              WHEN excluded.last_region != ''
+                THEN excluded.last_region
+              ELSE users.last_region
+            END,
+
+          last_region_code =
+            CASE
+              WHEN excluded.last_region_code != ''
+                THEN excluded.last_region_code
+              ELSE users.last_region_code
+            END,
+
+          last_country_code =
+            CASE
+              WHEN excluded.last_country_code != ''
+                THEN excluded.last_country_code
+              ELSE users.last_country_code
+            END,
+
+          last_postal_code =
+            CASE
+              WHEN excluded.last_postal_code != ''
+                THEN excluded.last_postal_code
+              ELSE users.last_postal_code
+            END,
+
+          last_location_at =
+            CASE
+              WHEN excluded.last_city != ''
+                OR excluded.last_region != ''
+                OR excluded.last_country_code != ''
+                THEN CURRENT_TIMESTAMP
+              ELSE users.last_location_at
+            END
         `,
       )
       .bind(
         magic.email,
+
+        networkLocation.city,
+        networkLocation.region,
+        networkLocation.regionCode,
+        networkLocation.countryCode,
+        networkLocation.postalCode,
       )
       .run();
 

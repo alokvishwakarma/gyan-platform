@@ -3,6 +3,10 @@ import {
   useState,
 } from "react";
 
+import {
+  getAdminLocationOverride,
+} from "../location/adminLocation";
+
 import "./FeaturedServiceCard.css";
 
 
@@ -101,6 +105,15 @@ interface FeaturedServiceCardProps {
 interface Coordinates {
   latitude: number;
   longitude: number;
+}
+
+
+interface ResolvedActionLocation {
+  city: string;
+  region: string;
+  regionCode: string;
+  countryCode: string;
+  postalCode: string;
 }
 
 
@@ -310,6 +323,22 @@ export default function FeaturedServiceCard({
       null,
     );
 
+
+  const [
+    actionLocationLabel,
+    setActionLocationLabel,
+  ] =
+    useState("");
+
+
+  const [
+    actionLocationDetails,
+    setActionLocationDetails,
+  ] =
+    useState<
+      ResolvedActionLocation | null
+    >(null);
+
   const [
     locationLoading,
     setLocationLoading,
@@ -372,6 +401,37 @@ export default function FeaturedServiceCard({
 
       async function load() {
         try {
+          const adminLocation =
+            getAdminLocationOverride();
+
+          if (adminLocation) {
+            const adminCoordinates = {
+              latitude:
+                adminLocation.latitude,
+
+              longitude:
+                adminLocation.longitude,
+            };
+
+            setCoordinates(
+              adminCoordinates,
+            );
+
+            const localData =
+              await fetchFeatured(
+                adminCoordinates,
+                3,
+              );
+
+            if (!cancelled) {
+              setData(
+                localData,
+              );
+            }
+
+            return;
+          }
+
           const initial =
             await fetchFeatured();
 
@@ -584,7 +644,167 @@ export default function FeaturedServiceCard({
   }
 
 
+  async function resolveActionLocation(
+    location:
+      Coordinates,
+  ): Promise<void> {
+    try {
+      const parameters =
+        new URLSearchParams();
+
+      parameters.set(
+        "lat",
+        String(
+          location.latitude,
+        ),
+      );
+
+      parameters.set(
+        "lng",
+        String(
+          location.longitude,
+        ),
+      );
+
+      const response =
+        await fetch(
+          `/api/location/resolve?${parameters.toString()}`,
+        );
+
+      const result =
+        (await response.json()) as {
+          location?: {
+            city?: string;
+            region?: string;
+            regionCode?: string;
+            countryCode?: string;
+            postalCode?: string;
+          };
+
+          error?: string;
+        };
+
+      if (
+        !response.ok ||
+        !result.location
+      ) {
+        setActionLocationLabel(
+          "",
+        );
+
+        setActionLocationDetails(
+          null,
+        );
+
+        return;
+      }
+
+      setActionLocationLabel(
+        [
+          result.location.city,
+          result.location.regionCode ||
+            result.location.region,
+        ]
+          .filter(Boolean)
+          .join(", "),
+      );
+
+      setActionLocationDetails({
+        city:
+          result.location.city ??
+          "",
+
+        region:
+          result.location.region ??
+          "",
+
+        regionCode:
+          result.location.regionCode ??
+          "",
+
+        countryCode:
+          result.location.countryCode ??
+          "",
+
+        postalCode:
+          result.location.postalCode ??
+          "",
+      });
+    } catch {
+      /*
+       * Coordinates remain authoritative
+       * even if reverse lookup fails.
+       */
+      setActionLocationLabel(
+        "",
+      );
+
+      setActionLocationDetails(
+        null,
+      );
+    }
+  }
+
+
   function captureActionLocation(): void {
+    const adminLocation =
+      getAdminLocationOverride();
+
+    if (adminLocation) {
+      const captured = {
+        latitude:
+          adminLocation.latitude,
+
+        longitude:
+          adminLocation.longitude,
+      };
+
+      setActionCoordinates(
+        captured,
+      );
+
+      setCoordinates(
+        captured,
+      );
+
+      void resolveActionLocation(
+        captured,
+      );
+
+      setLocationLoading(
+        false,
+      );
+
+      setLocationError(
+        "",
+      );
+
+      void (
+        async () => {
+          try {
+            const localData =
+              await fetchFeatured(
+                captured,
+                3,
+              );
+
+            setData(
+              localData,
+            );
+          } catch (
+            error
+          ) {
+            console.error(
+              "Unable to refresh featured services:",
+              error,
+            );
+          }
+        }
+      )();
+
+      return;
+    }
+
     if (
       !navigator.geolocation
     ) {
@@ -695,9 +915,39 @@ export default function FeaturedServiceCard({
       return;
     }
 
+    const adminLocation =
+      getAdminLocationOverride();
+
+    const nextActionCoordinates =
+      adminLocation
+        ? {
+            latitude:
+              adminLocation.latitude,
+
+            longitude:
+              adminLocation.longitude,
+          }
+        : coordinates;
+
     setActionCoordinates(
-      coordinates,
+      nextActionCoordinates,
     );
+
+    setActionLocationLabel(
+      "",
+    );
+
+    setActionLocationDetails(
+      null,
+    );
+
+    if (
+      nextActionCoordinates
+    ) {
+      void resolveActionLocation(
+        nextActionCoordinates,
+      );
+    }
 
     setLocationError(
       "",
@@ -726,9 +976,39 @@ export default function FeaturedServiceCard({
       return;
     }
 
+    const adminLocation =
+      getAdminLocationOverride();
+
+    const nextActionCoordinates =
+      adminLocation
+        ? {
+            latitude:
+              adminLocation.latitude,
+
+            longitude:
+              adminLocation.longitude,
+          }
+        : coordinates;
+
     setActionCoordinates(
-      coordinates,
+      nextActionCoordinates,
     );
+
+    setActionLocationLabel(
+      "",
+    );
+
+    setActionLocationDetails(
+      null,
+    );
+
+    if (
+      nextActionCoordinates
+    ) {
+      void resolveActionLocation(
+        nextActionCoordinates,
+      );
+    }
 
     setLocationError(
       "",
@@ -785,6 +1065,63 @@ export default function FeaturedServiceCard({
     );
 
     try {
+      let resolvedLocation =
+        actionLocationDetails;
+
+      if (
+        !resolvedLocation
+      ) {
+        try {
+          const parameters =
+            new URLSearchParams();
+
+          parameters.set(
+            "lat",
+            String(
+              actionCoordinates.latitude,
+            ),
+          );
+
+          parameters.set(
+            "lng",
+            String(
+              actionCoordinates.longitude,
+            ),
+          );
+
+          const locationResponse =
+            await fetch(
+              `/api/location/resolve?${parameters.toString()}`,
+            );
+
+          const locationResult =
+            (await locationResponse.json()) as {
+              location?: {
+                city?: string;
+                region?: string;
+                regionCode?: string;
+                countryCode?: string;
+                postalCode?: string;
+              };
+            };
+
+          if (
+            locationResponse.ok &&
+            locationResult.location
+          ) {
+            resolvedLocation = {
+              city: locationResult.location.city ?? "",
+              region: locationResult.location.region ?? "",
+              regionCode: locationResult.location.regionCode ?? "",
+              countryCode: locationResult.location.countryCode ?? "",
+              postalCode: locationResult.location.postalCode ?? "",
+            };
+          }
+        } catch {
+          // Coordinates remain authoritative.
+        }
+      }
+
       const response =
         await fetch(
           "/api/advertisements",
@@ -860,6 +1197,21 @@ export default function FeaturedServiceCard({
                 longitude:
                   actionCoordinates
                     .longitude,
+
+                city:
+                  resolvedLocation?.city ?? "",
+
+                region:
+                  resolvedLocation?.region ?? "",
+
+                regionCode:
+                  resolvedLocation?.regionCode ?? "",
+
+                countryCode:
+                  resolvedLocation?.countryCode ?? "",
+
+                postalCode:
+                  resolvedLocation?.postalCode ?? "",
               }),
           },
         );
@@ -922,6 +1274,89 @@ export default function FeaturedServiceCard({
     );
 
     try {
+      let resolvedLocation =
+        actionLocationDetails;
+
+      if (
+        !resolvedLocation
+      ) {
+        await resolveActionLocation(
+          actionCoordinates,
+        );
+
+        /*
+         * React state updates are asynchronous, so
+         * fetch the resolver directly for the submit
+         * path when details are still unavailable.
+         */
+        try {
+          const parameters =
+            new URLSearchParams();
+
+          parameters.set(
+            "lat",
+            String(
+              actionCoordinates.latitude,
+            ),
+          );
+
+          parameters.set(
+            "lng",
+            String(
+              actionCoordinates.longitude,
+            ),
+          );
+
+          const locationResponse =
+            await fetch(
+              `/api/location/resolve?${parameters.toString()}`,
+            );
+
+          const locationResult =
+            (await locationResponse.json()) as {
+              location?: {
+                city?: string;
+                region?: string;
+                regionCode?: string;
+                countryCode?: string;
+                postalCode?: string;
+              };
+            };
+
+          if (
+            locationResponse.ok &&
+            locationResult.location
+          ) {
+            resolvedLocation = {
+              city:
+                locationResult.location.city ??
+                "",
+
+              region:
+                locationResult.location.region ??
+                "",
+
+              regionCode:
+                locationResult.location.regionCode ??
+                "",
+
+              countryCode:
+                locationResult.location.countryCode ??
+                "",
+
+              postalCode:
+                locationResult.location.postalCode ??
+                "",
+            };
+          }
+        } catch {
+          /*
+           * Location text is useful but should not
+           * block a valid coordinate-based request.
+           */
+        }
+      }
+
       const response =
         await fetch(
           "/api/local-service-requests",
@@ -990,6 +1425,31 @@ export default function FeaturedServiceCard({
                 longitude:
                   actionCoordinates
                     .longitude,
+
+                city:
+                  resolvedLocation
+                    ?.city ??
+                  "",
+
+                region:
+                  resolvedLocation
+                    ?.region ??
+                  "",
+
+                regionCode:
+                  resolvedLocation
+                    ?.regionCode ??
+                  "",
+
+                countryCode:
+                  resolvedLocation
+                    ?.countryCode ??
+                  "",
+
+                postalCode:
+                  resolvedLocation
+                    ?.postalCode ??
+                  "",
               }),
           },
         );
@@ -1071,50 +1531,50 @@ export default function FeaturedServiceCard({
 
 
   function renderActions() {
-  return (
-    <div
-      className="featured-service__actions"
-    >
-      <button
-        type="button"
-        aria-label="Advertise"
-        title="Advertise"
-        onClick={
-          openAdvertise
-        }
+    return (
+      <div
+        className="featured-service__actions"
       >
-        <span
-          aria-hidden="true"
+        <button
+          type="button"
+          aria-label="Advertise"
+          title="Advertise"
+          onClick={
+            openAdvertise
+          }
         >
-          📣
-        </span>
+          <span
+            aria-hidden="true"
+          >
+            📣
+          </span>
 
-        <strong>
-          Advertise
-        </strong>
-      </button>
+          <strong>
+            Advertise
+          </strong>
+        </button>
 
-      <button
-        type="button"
-        aria-label="Request Service"
-        title="Request Service"
-        onClick={
-          openRequestService
-        }
-      >
-        <span
-          aria-hidden="true"
+        <button
+          type="button"
+          aria-label="Request Service"
+          title="Request Service"
+          onClick={
+            openRequestService
+          }
         >
-          🙋
-        </span>
+          <span
+            aria-hidden="true"
+          >
+            🙋
+          </span>
 
-        <strong>
-          Request
-        </strong>
-      </button>
-    </div>
-  );
-}
+          <strong>
+            Request
+          </strong>
+        </button>
+      </div>
+    );
+  }
 
 
   function renderAdTile(
@@ -1883,14 +2343,57 @@ export default function FeaturedServiceCard({
                     >
                       <div
                         className="featured-service__location-confirmed"
+                        title={
+                          actionCoordinates
+                            ? `Location verified${actionLocationLabel ? ` · ${actionLocationLabel}` : ""} · ${actionCoordinates.latitude.toFixed(4)}, ${actionCoordinates.longitude.toFixed(4)}`
+                            : "Location verified"
+                        }
                       >
-                        <span
-                          aria-hidden="true"
-                        >
-                          ✓
+                        <span>
+                          ✓ Location verified
                         </span>
 
-                        Location verified
+                        {
+                          actionLocationLabel &&
+                          (
+                            <>
+                              <span>
+                                ·
+                              </span>
+
+                              <span>
+                                {
+                                  actionLocationLabel
+                                }
+                              </span>
+                            </>
+                          )
+                        }
+
+                        {
+                          actionCoordinates &&
+                          (
+                            <>
+                              <span>
+                                ·
+                              </span>
+
+                              <span>
+                                {
+                                  actionCoordinates.latitude.toFixed(
+                                    4,
+                                  )
+                                }
+                                {", "}
+                                {
+                                  actionCoordinates.longitude.toFixed(
+                                    4,
+                                  )
+                                }
+                              </span>
+                            </>
+                          )
+                        }
                       </div>
 
                       <label>
@@ -2231,14 +2734,57 @@ export default function FeaturedServiceCard({
                     >
                       <div
                         className="featured-service__location-confirmed"
+                        title={
+                          actionCoordinates
+                            ? `Location verified${actionLocationLabel ? ` · ${actionLocationLabel}` : ""} · ${actionCoordinates.latitude.toFixed(4)}, ${actionCoordinates.longitude.toFixed(4)}`
+                            : "Location verified"
+                        }
                       >
-                        <span
-                          aria-hidden="true"
-                        >
-                          ✓
+                        <span>
+                          ✓ Location verified
                         </span>
 
-                        Location verified
+                        {
+                          actionLocationLabel &&
+                          (
+                            <>
+                              <span>
+                                ·
+                              </span>
+
+                              <span>
+                                {
+                                  actionLocationLabel
+                                }
+                              </span>
+                            </>
+                          )
+                        }
+
+                        {
+                          actionCoordinates &&
+                          (
+                            <>
+                              <span>
+                                ·
+                              </span>
+
+                              <span>
+                                {
+                                  actionCoordinates.latitude.toFixed(
+                                    4,
+                                  )
+                                }
+                                {", "}
+                                {
+                                  actionCoordinates.longitude.toFixed(
+                                    4,
+                                  )
+                                }
+                              </span>
+                            </>
+                          )
+                        }
                       </div>
 
                       <label>

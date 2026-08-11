@@ -8,6 +8,10 @@ import {
 
 import QRCode from "qrcode";
 
+import {
+  getAdminLocationOverride,
+} from "../location/adminLocation";
+
 import "./ShopRegistrationPanel.css";
 
 interface ShopRegistrationPanelProps {
@@ -234,6 +238,48 @@ export default function ShopRegistrationPanel({
 
     async function loadHint():
       Promise<void> {
+      const adminLocation =
+        getAdminLocationOverride();
+
+      if (adminLocation) {
+        setPhoneNumber(
+          (current) =>
+            current.trim()
+              ? current
+              : adminLocation.phoneCountryCode
+                ? `${adminLocation.phoneCountryCode} `
+                : getDialCode(
+                    adminLocation.countryCode,
+                  ),
+        );
+
+        setCity(
+          (current) =>
+            current.trim()
+              ? current
+              : adminLocation.city ??
+                "",
+        );
+
+        setState(
+          (current) =>
+            current.trim()
+              ? current
+              : adminLocation.region ??
+                "",
+        );
+
+        setPostalCode(
+          (current) =>
+            current.trim()
+              ? current
+              : adminLocation.postalCode ??
+                "",
+        );
+
+        return;
+      }
+
       try {
         const response =
           await fetch(
@@ -450,10 +496,10 @@ export default function ShopRegistrationPanel({
     drawShopQr,
   ]);
 
-  function handleSubmit(
+  async function handleSubmit(
     event:
       React.FormEvent<HTMLFormElement>,
-  ): void {
+  ): Promise<void> {
     event.preventDefault();
 
     setErrorMessage(
@@ -462,10 +508,11 @@ export default function ShopRegistrationPanel({
 
     if (
       !shopName.trim() ||
+      !ownerName.trim() ||
       !addressLine.trim()
     ) {
       setErrorMessage(
-        "Please enter the shop name and street / area.",
+        "Please enter the shop name, owner / manager and street / area.",
       );
 
       return;
@@ -497,11 +544,10 @@ export default function ShopRegistrationPanel({
       !dialCodeOnly;
 
     if (
-      !hasUsablePhone &&
-      !hasValidEmail
+      !hasUsablePhone
     ) {
       setErrorMessage(
-        "Please enter a phone / WhatsApp number or a valid email address.",
+        "Please enter a valid phone / WhatsApp number.",
       );
 
       return;
@@ -529,9 +575,99 @@ export default function ShopRegistrationPanel({
       return;
     }
 
-    setRegistrationComplete(
-      true,
-    );
+    const registeredShop:
+      RegisteredShop = {
+      code:
+        shopCode,
+
+      name:
+        shopName.trim(),
+
+      ownerName:
+        ownerName.trim(),
+
+      phoneNumber:
+        phoneNumber.trim(),
+
+      whatsAppNumber:
+        effectiveWhatsAppNumber.trim(),
+
+      emailAddress:
+        emailAddress.trim(),
+
+      addressLine:
+        addressLine.trim(),
+
+      city:
+        city.trim(),
+
+      state:
+        state.trim(),
+
+      postalCode:
+        postalCode.trim(),
+    };
+
+    try {
+      const response =
+        await fetch(
+          "/api/shops",
+          {
+            method:
+              "POST",
+
+            credentials:
+              "include",
+
+            headers: {
+              "content-type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify(
+                registeredShop,
+              ),
+          },
+        );
+
+      const result =
+        (await response.json()) as {
+          shop?:
+            RegisteredShop;
+
+          error?: string;
+        };
+
+      if (
+        !response.ok ||
+        !result.shop
+      ) {
+        throw new Error(
+          result.error ??
+            "The shop could not be registered.",
+        );
+      }
+
+      localStorage.setItem(
+        `gyan-shop-${shopCode}`,
+        JSON.stringify(
+          result.shop,
+        ),
+      );
+
+      setRegistrationComplete(
+        true,
+      );
+    } catch (
+      error
+    ) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "The shop could not be registered.",
+      );
+    }
   }
 
   function regenerateCode():
@@ -614,17 +750,11 @@ export default function ShopRegistrationPanel({
         postalCode.trim(),
     };
 
-    localStorage.setItem(
-      `gyan-shop-${shopCode}`,
-      JSON.stringify(
-        registeredShop,
-      ),
-    );
-
     onRegistered(
       registeredShop,
     );
   }
+
 
   if (
     registrationComplete
@@ -749,6 +879,20 @@ export default function ShopRegistrationPanel({
             }
           />
 
+          <input
+            type="text"
+            value={ownerName}
+            placeholder="Owner / manager name"
+            aria-label="Owner or manager name"
+            autoComplete="name"
+            required
+            onChange={(event) =>
+              setOwnerName(
+                event.target.value,
+              )
+            }
+          />
+
           <div className="registration-form__contact-row">
             <input
               type="tel"
@@ -759,6 +903,7 @@ export default function ShopRegistrationPanel({
               placeholder="Phone / WhatsApp"
               aria-label="Phone or WhatsApp"
               autoComplete="tel"
+              required
               onChange={(event) =>
                 setPhoneNumber(
                   normalizePhone(
@@ -820,19 +965,6 @@ export default function ShopRegistrationPanel({
 
           {showMore && (
             <section className="registration-form__more-fields">
-              <input
-                type="text"
-                value={ownerName}
-                placeholder="Owner / manager name"
-                aria-label="Owner or manager name"
-                autoComplete="name"
-                onChange={(event) =>
-                  setOwnerName(
-                    event.target.value,
-                  )
-                }
-              />
-
               <div className="registration-form__address-row">
                 <input
                   type="text"

@@ -5,6 +5,10 @@ import {
   useState,
 } from "react";
 
+import {
+  getAdminLocationOverride,
+} from "../location/adminLocation";
+
 import "./NearbyServicePanel.css";
 
 interface NearbyServicePanelProps {
@@ -12,6 +16,10 @@ interface NearbyServicePanelProps {
   serviceName: string;
 
   onClose: () => void;
+
+  onOpenShop?: (
+    shopCode: string,
+  ) => void;
 
   embedded?: boolean;
 }
@@ -633,6 +641,37 @@ export default function NearbyServicePanel({
 
     async function loadHint():
       Promise<void> {
+      const adminLocation =
+        getAdminLocationOverride();
+
+      if (adminLocation) {
+        setCity(
+          adminLocation.city ??
+            adminLocation.label ??
+            "",
+        );
+
+        setStateRegion(
+          adminLocation.region ??
+            "",
+        );
+
+        setDetectedCountryCode(
+          adminLocation.countryCode,
+        );
+
+        setPhoneOrWhatsApp(
+          (current) =>
+            current.trim()
+              ? current
+              : getDialCode(
+                  adminLocation.countryCode,
+                ),
+        );
+
+        return;
+      }
+
       try {
         const response =
           await fetch(
@@ -1002,6 +1041,42 @@ export default function NearbyServicePanel({
 
   function useMyLocation():
     void {
+    const adminLocation =
+      getAdminLocationOverride();
+
+    if (adminLocation) {
+      setCity(
+        adminLocation.city ??
+          adminLocation.label ??
+          "",
+      );
+
+      setStateRegion(
+        adminLocation.region ??
+          "",
+      );
+
+      setDetectedCountryCode(
+        adminLocation.countryCode,
+      );
+
+      setPhoneOrWhatsApp(
+        (current) =>
+          current.trim()
+            ? current
+            : getDialCode(
+                adminLocation.countryCode,
+              ),
+      );
+
+      void searchNearby(
+        adminLocation.latitude,
+        adminLocation.longitude,
+      );
+
+      return;
+    }
+
     if (
       !navigator.geolocation
     ) {

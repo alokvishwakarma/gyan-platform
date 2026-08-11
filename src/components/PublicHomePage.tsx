@@ -71,6 +71,13 @@ interface PublicHomePageProps {
   onOpenAdmin:
     () => void;
 
+  onOpenChat:
+    () => void;
+
+  onOpenMyShop: (
+    shopCode: string,
+  ) => void;
+
   onStartOnlineService?: (
     serviceCode: string,
     serviceName: string,
@@ -250,6 +257,10 @@ export default function PublicHomePage({
   loading,
 
   onOpenAdmin,
+
+  onOpenChat,
+
+  onOpenMyShop,
 
   onStartOnlineService,
 
@@ -953,6 +964,12 @@ export default function PublicHomePage({
           <UserAccountMenu
             onOpenAdmin={
               onOpenAdmin
+            }
+            onOpenChat={
+              onOpenChat
+            }
+            onOpenMyShop={
+              onOpenMyShop
             }
           />
         </div>

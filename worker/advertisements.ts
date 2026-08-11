@@ -19,6 +19,12 @@ interface AdvertisementSubmissionBody {
 
   longitude?: number;
 
+  city?: string;
+  region?: string;
+  regionCode?: string;
+  countryCode?: string;
+  postalCode?: string;
+
   durationDays?: number;
 
   description?: string;
@@ -47,6 +53,12 @@ interface AdvertisementRow {
   latitude: number;
 
   longitude: number;
+
+  city: string | null;
+  region: string | null;
+  region_code: string | null;
+  country_code: string | null;
+  postal_code: string | null;
 
   service_radius_km: number;
 
@@ -379,6 +391,31 @@ async function createAdvertisement(
     );
 
 
+  const city =
+    cleanText(
+      body.city,
+    );
+
+  const region =
+    cleanText(
+      body.region,
+    );
+
+  const regionCode =
+    cleanText(
+      body.regionCode,
+    ).toUpperCase();
+
+  const countryCode =
+    cleanText(
+      body.countryCode,
+    ).toUpperCase();
+
+  const postalCode =
+    cleanText(
+      body.postalCode,
+    );
+
   const distanceMiles =
     Number(
       body.distanceMiles,
@@ -538,6 +575,12 @@ async function createAdvertisement(
           latitude,
           longitude,
 
+          city,
+          region,
+          region_code,
+          country_code,
+          postal_code,
+
           service_radius_km,
 
           phone,
@@ -557,6 +600,12 @@ async function createAdvertisement(
           ?,
           ?,
 
+          ?,
+          ?,
+
+          ?,
+          ?,
+          ?,
           ?,
           ?,
 
@@ -586,6 +635,21 @@ async function createAdvertisement(
 
         latitude,
         longitude,
+
+        city ||
+          null,
+
+        region ||
+          null,
+
+        regionCode ||
+          null,
+
+        countryCode ||
+          null,
+
+        postalCode ||
+          null,
 
         radiusKm,
 
@@ -803,6 +867,12 @@ async function verifyAdvertisement(
 
           latitude,
           longitude,
+
+          city,
+          region,
+          region_code,
+          country_code,
+          postal_code,
 
           service_radius_km,
 
@@ -1298,6 +1368,12 @@ async function loadAuthorizedReview(
 
           latitude,
           longitude,
+
+          city,
+          region,
+          region_code,
+          country_code,
+          postal_code,
 
           service_radius_km,
 
@@ -2217,6 +2293,12 @@ async function loadAuthorizedDelete(
 
           latitude,
           longitude,
+
+          city,
+          region,
+          region_code,
+          country_code,
+          postal_code,
 
           service_radius_km,
 
