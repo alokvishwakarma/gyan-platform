@@ -136,6 +136,8 @@ interface CreateServiceRequestResponse {
 }
 
 interface DynamicServiceRequestPanelProps {
+  embedded?: boolean;
+
   shopCode: string;
   serviceCode: string;
 
@@ -149,8 +151,6 @@ interface DynamicServiceRequestPanelProps {
     Record<string, string>;
 
   onClose: () => void;
-
-  embedded?: boolean;
 }
 
 type FieldValue =
@@ -175,6 +175,178 @@ interface SubmittedAnswer {
     | string[];
 }
 
+
+interface ItemListRow {
+  id: string;
+  item: string;
+  quantity: string;
+  unit: string;
+  price: string;
+  details: string;
+}
+
+function isItemListField(
+  field:
+    DynamicServiceField,
+): boolean {
+  return (
+    field.type ===
+      "textarea" &&
+    field.key ===
+      "items"
+  );
+}
+
+function createEmptyItemRow():
+  ItemListRow {
+  return {
+    id:
+      crypto.randomUUID(),
+
+    item: "",
+    quantity: "",
+    unit: "",
+    price: "",
+    details: "",
+  };
+}
+
+function parseItemRows(
+  value:
+    | FieldValue
+    | undefined,
+): ItemListRow[] {
+  if (
+    typeof value !==
+      "string" ||
+    !value.trim()
+  ) {
+    return [
+      createEmptyItemRow(),
+    ];
+  }
+
+  try {
+    const parsed =
+      JSON.parse(
+        value,
+      ) as unknown;
+
+    if (
+      !Array.isArray(
+        parsed,
+      )
+    ) {
+      return [
+        createEmptyItemRow(),
+      ];
+    }
+
+    const rows =
+      parsed
+        .filter(
+          (
+            row,
+          ) =>
+            typeof row ===
+              "object" &&
+            row !== null,
+        )
+        .map(
+          (
+            row,
+          ) => {
+            const candidate =
+              row as
+                Record<
+                  string,
+                  unknown
+                >;
+
+            return {
+              id:
+                typeof candidate.id ===
+                  "string"
+                  ? candidate.id
+                  : crypto.randomUUID(),
+
+              item:
+                typeof candidate.item ===
+                  "string"
+                  ? candidate.item
+                  : "",
+
+              quantity:
+                typeof candidate.quantity ===
+                  "string"
+                  ? candidate.quantity
+                  : "",
+
+              unit:
+                typeof candidate.unit ===
+                  "string"
+                  ? candidate.unit
+                  : "",
+
+              price:
+                typeof candidate.price ===
+                  "string"
+                  ? candidate.price
+                  : "",
+
+              details:
+                typeof candidate.details ===
+                  "string"
+                  ? candidate.details
+                  : "",
+            };
+          },
+        );
+
+    return rows.length > 0
+      ? rows
+      : [
+          createEmptyItemRow(),
+        ];
+  } catch {
+    return [
+      createEmptyItemRow(),
+    ];
+  }
+}
+
+function serializeItemRows(
+  rows:
+    ItemListRow[],
+): string {
+  return JSON.stringify(
+    rows.map(
+      ({
+        item,
+        quantity,
+        unit,
+        price,
+        details,
+      }) => ({
+        item:
+          item.trim(),
+
+        quantity:
+          quantity.trim(),
+
+        unit:
+          unit.trim(),
+
+        price:
+          price.trim(),
+
+        details:
+          details.trim(),
+      }),
+    ),
+  );
+}
+
 function createFieldId(
   sectionKey: string,
   fieldKey: string,
@@ -185,6 +357,16 @@ function createFieldId(
 function createInitialValue(
   field: DynamicServiceField,
 ): FieldValue {
+  if (
+    isItemListField(
+      field,
+    )
+  ) {
+    return serializeItemRows([
+      createEmptyItemRow(),
+    ]);
+  }
+
   if (
     field.type ===
     "checkbox"
@@ -679,14 +861,16 @@ function applyLocationDefaults(
 }
 
 export default function DynamicServiceRequestPanel({
+  embedded: _embedded = false,
   shopCode,
   serviceCode,
   serviceName,
   shopName,
   initialFieldValues,
   onClose,
-  embedded = false,
 }: DynamicServiceRequestPanelProps) {
+  void _embedded;
+
   const [
     responseData,
     setResponseData,
@@ -1209,6 +1393,44 @@ export default function DynamicServiceRequestPanel({
       | FieldValue
       | undefined,
   ): string | null {
+    if (
+      isItemListField(
+        field,
+      )
+    ) {
+      const rows =
+        parseItemRows(
+          value,
+        );
+
+      const usableRows =
+        rows.filter(
+          (row) =>
+            row.item.trim(),
+        );
+
+      if (
+        field.required &&
+        usableRows.length ===
+          0
+      ) {
+        return "Add at least one item.";
+      }
+
+      if (
+        usableRows.some(
+          (row) =>
+            row.item.trim()
+              .length >
+            120,
+        )
+      ) {
+        return "Item names cannot exceed 120 characters.";
+      }
+
+      return null;
+    }
+
     if (
       field.type ===
       "file"
@@ -1875,6 +2097,242 @@ export default function DynamicServiceRequestPanel({
             )}
           </span>
         );
+
+    if (
+      isItemListField(
+        field,
+      )
+    ) {
+      const rows =
+        parseItemRows(
+          value,
+        );
+
+      function updateItemRow(
+        rowId: string,
+        key:
+          | "item"
+          | "quantity"
+          | "unit"
+          | "price"
+          | "details",
+        nextValue: string,
+      ): void {
+        const nextRows =
+          rows.map(
+            (row) =>
+              row.id === rowId
+                ? {
+                    ...row,
+                    [key]:
+                      nextValue,
+                  }
+                : row,
+          );
+
+        updateValue(
+          fieldId,
+          serializeItemRows(
+            nextRows,
+          ),
+        );
+      }
+
+      function removeItemRow(
+        rowId: string,
+      ): void {
+        const nextRows =
+          rows.filter(
+            (row) =>
+              row.id !==
+              rowId,
+          );
+
+        updateValue(
+          fieldId,
+          serializeItemRows(
+            nextRows.length > 0
+              ? nextRows
+              : [
+                  createEmptyItemRow(),
+                ],
+          ),
+        );
+      }
+
+      return (
+        <div
+          key={fieldId}
+          className="dynamic-service-request__field dynamic-service-request__item-list"
+        >
+          {commonLabel}
+
+          <div className="dynamic-service-request__item-list-rows">
+            {rows.map(
+              (
+                row,
+                index,
+              ) => (
+                <div
+                  key={
+                    row.id
+                  }
+                  className="dynamic-service-request__item-row"
+                >
+                  <div className="dynamic-service-request__item-row-header">
+                    <strong>
+                      Item {
+                        index +
+                        1
+                      }
+                    </strong>
+
+                    {rows.length >
+                      1 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          removeItemRow(
+                            row.id,
+                          )
+                        }
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+
+                  <input
+                    type="text"
+                    value={
+                      row.item
+                    }
+                    placeholder="Item name"
+                    maxLength={
+                      120
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateItemRow(
+                        row.id,
+                        "item",
+                        event.target
+                          .value,
+                      )
+                    }
+                  />
+
+                  <div className="dynamic-service-request__item-row-grid">
+                    <input
+                      type="text"
+                      value={
+                        row.quantity
+                      }
+                      placeholder="Qty"
+                      inputMode="decimal"
+                      onChange={(
+                        event,
+                      ) =>
+                        updateItemRow(
+                          row.id,
+                          "quantity",
+                          event.target
+                            .value,
+                        )
+                      }
+                    />
+
+                    <input
+                      type="text"
+                      value={
+                        row.unit
+                      }
+                      placeholder="Unit (kg, pcs)"
+                      onChange={(
+                        event,
+                      ) =>
+                        updateItemRow(
+                          row.id,
+                          "unit",
+                          event.target
+                            .value,
+                        )
+                      }
+                    />
+
+                    <input
+                      type="text"
+                      value={
+                        row.price
+                      }
+                      placeholder="Expected price"
+                      inputMode="decimal"
+                      onChange={(
+                        event,
+                      ) =>
+                        updateItemRow(
+                          row.id,
+                          "price",
+                          event.target
+                            .value,
+                        )
+                      }
+                    />
+                  </div>
+
+                  <input
+                    type="text"
+                    value={
+                      row.details
+                    }
+                    placeholder="Condition / details"
+                    onChange={(
+                      event,
+                    ) =>
+                      updateItemRow(
+                        row.id,
+                        "details",
+                        event.target
+                          .value,
+                      )
+                    }
+                  />
+                </div>
+              ),
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="dynamic-service-request__add-item"
+            onClick={() =>
+              updateValue(
+                fieldId,
+                serializeItemRows([
+                  ...rows,
+                  createEmptyItemRow(),
+                ]),
+              )
+            }
+          >
+            + Add item
+          </button>
+
+          {field.helpText && (
+            <small className="dynamic-service-request__help">
+              {field.helpText}
+            </small>
+          )}
+
+          {error && (
+            <small className="dynamic-service-request__field-error">
+              {error}
+            </small>
+          )}
+        </div>
+      );
+    }
 
     if (
       field.type ===
@@ -2561,24 +3019,6 @@ export default function DynamicServiceRequestPanel({
     };
   }
 
-  const containerClassName =
-    embedded
-      ? "dynamic-service-request-embedded"
-      : "dynamic-service-request-overlay";
-
-
-  const dialogProps =
-    embedded
-      ? {}
-      : {
-          role:
-            "dialog" as const,
-
-          "aria-modal":
-            true as const,
-        };
-
-
   const shownServiceName =
     responseData
       ?.service
@@ -2595,14 +3035,11 @@ export default function DynamicServiceRequestPanel({
 
   if (createdRequest) {
     return (
-      <div
-        className={
-          containerClassName
-        }
-      >
+      <div className="dynamic-service-request-overlay">
         <section
           className="dynamic-service-request dynamic-service-request--success"
-          {...dialogProps}
+          role="dialog"
+          aria-modal="true"
           aria-labelledby="dynamic-request-success-title"
         >
           <div className="dynamic-service-request__success-icon">
@@ -2675,31 +3112,36 @@ export default function DynamicServiceRequestPanel({
   }
 
   return (
-    <div
-      className={
-        containerClassName
-      }
-    >
+    <div className="dynamic-service-request-overlay">
       <section
         className="dynamic-service-request"
-        {...dialogProps}
+        role="dialog"
+        aria-modal="true"
         aria-labelledby="dynamic-service-request-title"
       >
-<header className="dynamic-service-request__header">
-  <div>
-    <h2 id="dynamic-service-request-title">
-      {shownServiceName}
-    </h2>
-  </div>
+        <header className="dynamic-service-request__header">
+          <div>
+            <span>
+              GYAN SERVICE
+            </span>
 
-  <button
-    type="button"
-    onClick={onClose}
-    aria-label="Close service request"
-  >
-    ×
-  </button>
-</header>
+            <h2 id="dynamic-service-request-title">
+              {shownServiceName}
+            </h2>
+
+            <small>
+              {shownShopName}
+            </small>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close service request"
+          >
+            ×
+          </button>
+        </header>
 
         <div className="dynamic-service-request__content">
           {loading && (

@@ -4,6 +4,7 @@ import {
 } from "react";
 
 import "./App.css";
+import "./GyanShellPopups.css";
 
 import AboutAdminPanel from "./components/AboutAdminPanel";
 import AdminServiceFormScreen from "./components/AdminServiceFormScreen";
@@ -13,7 +14,6 @@ import AdminShopInfoScreen from "./components/AdminShopInfoScreen";
 import AdminShopsScreen from "./components/AdminShopsScreen";
 import AdminShopServicesScreen from "./components/AdminShopServicesScreen";
 import AdminStoragePanel from "./components/AdminStoragePanel";
-import CustomerHomePage from "./components/CustomerHomePage";
 import PlatformDashboardPage from "./components/PlatformDashboardPage";
 import PublicHomePage from "./components/PublicHomePage";
 import ShopDashboardPage from "./components/ShopDashboardPage";
@@ -52,6 +52,9 @@ import ChatPanel
 
 import ShopChatPanel
   from "./components/ShopChatPanel";
+
+import ShopHomeContent
+  from "./components/ShopHomeContent";
 
 import AdminChatPanel
   from "./components/AdminChatPanel";
@@ -1621,207 +1624,183 @@ if (
   return (
     <main className="app-shell">
       <div className="app-content">
-        {!activeShopCode ? (
-          
-          <PublicHomePage
-  services={services}
-  loading={servicesLoading}
-  onOpenShop={(shopCode) => {
-    setActiveShopCode(shopCode);
-
-    window.history.pushState(
-      { shopCode },
-      "",
-      `/?shop=${encodeURIComponent(shopCode)}`,
-    );
-  }}
-  onClaimShop={() => {
-    setRegistrationEmail(
-      "",
-    );
-
-    setRegistrationPanelOpen(
-      true,
-    );
-  }}
-  onOpenAdmin={() => {
-    setPendingAdminDestination(
-      "platformDashboard",
-    );
-
-    setAboutPanelOpen(true);
-  }}
-  onOpenChat={() => {
-    setChatOpen(true);
-  }}
-  onOpenMyShop={(shopCode) => {
-    setActiveShopCode(
-      shopCode,
-    );
-
-    setDashboardView(
-      "shop",
-    );
-
-    window.history.pushState(
-      {
-        shopCode,
-      },
-      "",
-      "/shop-admin",
-    );
-  }}
-  onRegisterMyShop={(email) => {
-    setRegistrationEmail(
-      email,
-    );
-
-    setRegistrationPanelOpen(
-      true,
-    );
-  }}
-  onStartOnlineService={(
-    serviceCode: string,
-    serviceName: string,
-  ) => {
-    setNearbyServiceRequest(
-      null,
-    );
-
-    setDynamicServiceRequest({
-      code: serviceCode,
-      name: serviceName,
-
-      shopCode:
-        SUPPORT_INTAKE_SHOP_CODE,
-
-      shopName:
-        SUPPORT_INTAKE_SHOP_NAME,
-    });
-  }}
-  onOpenOnlineServices={() => {
-    console.log(
-      "Open online service search wizard",
-    );
-  }}
-  onOpenNearbyService={(
-    serviceCode: string,
-    serviceName: string,
-  ) => {
-    setDynamicServiceRequest(
-      null,
-    );
-
-    setNearbyServiceRequest({
-      code: serviceCode,
-      name: serviceName,
-    });
-  }}
-
-  shellContent={
-  nearbyServiceRequest
-    ? (
-      <NearbyServicePanel
-        embedded
-        serviceCode={
-          nearbyServiceRequest.code
-        }
-        serviceName={
-          nearbyServiceRequest.name
-        }
-        onClose={() =>
-          setNearbyServiceRequest(
-            null,
-          )
-        }
-      />
-    )
-    : dynamicServiceRequest &&
-        dynamicServiceRequest.shopCode
-      ? (
-        <DynamicServiceRequestPanel
-          embedded
-          key={
-            `${dynamicServiceRequest.shopCode}:${dynamicServiceRequest.code}`
-          }
-          shopCode={
-            dynamicServiceRequest.shopCode
-          }
-          shopName={
-            dynamicServiceRequest.shopName
-          }
-          serviceCode={
-            dynamicServiceRequest.code
-          }
-          serviceName={
-            dynamicServiceRequest.name
-          }
-          initialFieldValues={
-            dynamicServiceRequest.initialFieldValues
-          }
-          onClose={() =>
-            setDynamicServiceRequest(
-              null,
-            )
-          }
-        />
-      )
-      : undefined
-}
-
-/>
-        ) : (
-        <CustomerHomePage
-          shopCode={
-            visibleShopProfile?.code
-          }
-          shopName={
-            shopLoading
-              ? "Loading shop..."
-              : visibleShopProfile?.name
-          }
-          address={
-            shopLoading
-              ? "Please wait"
-              : visibleShopProfile?.address
-          }
+        <PublicHomePage
           services={services}
           loading={servicesLoading}
-          onServiceSelect={(service) =>
-            handleServiceClick({
-              id: service.code,
-              title: service.name,
-              icon:
-                service.icon ||
-                "🧩",
-              color:
-                service.color ||
-                "#607d8b",
-              enabled:
-                service.enabled,
-            })
-          }
-          onRegisterShop={() =>
-            setRegistrationPanelOpen(
-              true,
-            )
-          }
-          onOpenShopQr={() =>
-            setShopQrPanelOpen(
-              true,
-            )
-          }
-          onOpenAdmin={() => {
-            setPendingAdminDestination(
-              "shopDashboard",
-            );
 
-            setAboutPanelOpen(
-              true,
+          shopName={
+            activeShopCode
+              ? (
+                  shopLoading
+                    ? "Loading shop..."
+                    : visibleShopProfile?.name
+                )
+              : undefined
+          }
+
+          shopAddress={
+            activeShopCode
+              ? (
+                  shopLoading
+                    ? "Please wait"
+                    : visibleShopProfile?.address
+                )
+              : undefined
+          }
+
+          onOpenShop={(shopCode) => {
+            setActiveShopCode(shopCode);
+            setNearbyServiceRequest(null);
+            setDynamicServiceRequest(null);
+
+            window.history.pushState(
+              { shopCode },
+              "",
+              `/?shop=${encodeURIComponent(shopCode)}`,
             );
           }}
+
+          onClaimShop={() => {
+            setRegistrationEmail("");
+            setRegistrationPanelOpen(true);
+          }}
+
+          onOpenAdmin={() => {
+            setPendingAdminDestination(
+              activeShopCode
+                ? "shopDashboard"
+                : "platformDashboard",
+            );
+
+            setAboutPanelOpen(true);
+          }}
+
+          onOpenChat={() => {
+            setChatOpen(true);
+          }}
+
+          onOpenMyShop={(shopCode) => {
+            setActiveShopCode(shopCode);
+            setDashboardView("shop");
+
+            window.history.pushState(
+              { shopCode },
+              "",
+              "/shop-admin",
+            );
+          }}
+
+          onRegisterMyShop={(email) => {
+            setRegistrationEmail(email);
+            setRegistrationPanelOpen(true);
+          }}
+
+          onStartOnlineService={(
+            serviceCode: string,
+            serviceName: string,
+          ) => {
+            setNearbyServiceRequest(null);
+
+            setDynamicServiceRequest({
+              code: serviceCode,
+              name: serviceName,
+              shopCode:
+                SUPPORT_INTAKE_SHOP_CODE,
+              shopName:
+                SUPPORT_INTAKE_SHOP_NAME,
+            });
+          }}
+
+          onOpenOnlineServices={() => {
+            console.log(
+              "Open online service search wizard",
+            );
+          }}
+
+          onOpenNearbyService={(
+            serviceCode: string,
+            serviceName: string,
+          ) => {
+            setDynamicServiceRequest(null);
+
+            setNearbyServiceRequest({
+              code: serviceCode,
+              name: serviceName,
+            });
+          }}
+
+          shellContent={
+            nearbyServiceRequest
+              ? (
+                <NearbyServicePanel
+                  embedded
+                  serviceCode={
+                    nearbyServiceRequest.code
+                  }
+                  serviceName={
+                    nearbyServiceRequest.name
+                  }
+                  onClose={() =>
+                    setNearbyServiceRequest(
+                      null,
+                    )
+                  }
+                />
+              )
+              : dynamicServiceRequest &&
+                  dynamicServiceRequest.shopCode
+                ? (
+                  <DynamicServiceRequestPanel
+                    embedded
+                    key={
+                      `${dynamicServiceRequest.shopCode}:${dynamicServiceRequest.code}`
+                    }
+                    shopCode={
+                      dynamicServiceRequest.shopCode
+                    }
+                    shopName={
+                      dynamicServiceRequest.shopName
+                    }
+                    serviceCode={
+                      dynamicServiceRequest.code
+                    }
+                    serviceName={
+                      dynamicServiceRequest.name
+                    }
+                    initialFieldValues={
+                      dynamicServiceRequest.initialFieldValues
+                    }
+                    onClose={() =>
+                      setDynamicServiceRequest(
+                        null,
+                      )
+                    }
+                  />
+                )
+                : activeShopCode
+                  ? (
+                    <ShopHomeContent
+                      services={services}
+                      loading={servicesLoading}
+                      onServiceSelect={(service) =>
+                        handleServiceClick({
+                          id: service.code,
+                          title: service.name,
+                          icon:
+                            service.icon ||
+                            "🧩",
+                          color:
+                            service.color ||
+                            "#607d8b",
+                          enabled:
+                            service.enabled,
+                        })
+                      }
+                    />
+                  )
+                  : undefined
+          }
         />
-        )}
       </div>
 
       {printPanelOpen && (

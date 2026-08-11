@@ -1236,3 +1236,16 @@ button:hover {
 
   color: #64748b;
 }
+
+.public-home__shop-context {
+  display: block;
+  max-width: 100%;
+  margin-top: 0.08rem;
+  overflow: hidden;
+  color: #475569;
+  font-size: 0.56rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

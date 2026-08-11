@@ -1070,6 +1070,113 @@ function formatAnswerValue(
     | undefined,
 ): string {
   if (
+    field.field_key ===
+      "items" &&
+    typeof value ===
+      "string"
+  ) {
+    try {
+      const parsed =
+        JSON.parse(
+          value,
+        ) as unknown;
+
+      if (
+        Array.isArray(
+          parsed,
+        )
+      ) {
+        const lines =
+          parsed
+            .filter(
+              (
+                item,
+              ) =>
+                typeof item ===
+                  "object" &&
+                item !== null,
+            )
+            .map(
+              (
+                item,
+                index,
+              ) => {
+                const row =
+                  item as
+                    Record<
+                      string,
+                      unknown
+                    >;
+
+                const name =
+                  typeof row.item ===
+                    "string"
+                    ? row.item.trim()
+                    : "";
+
+                if (!name) {
+                  return "";
+                }
+
+                const quantity =
+                  typeof row.quantity ===
+                    "string"
+                    ? row.quantity.trim()
+                    : "";
+
+                const unit =
+                  typeof row.unit ===
+                    "string"
+                    ? row.unit.trim()
+                    : "";
+
+                const price =
+                  typeof row.price ===
+                    "string"
+                    ? row.price.trim()
+                    : "";
+
+                const details =
+                  typeof row.details ===
+                    "string"
+                    ? row.details.trim()
+                    : "";
+
+                return [
+                  `${index + 1}. ${name}`,
+                  quantity || unit
+                    ? `Qty: ${[quantity, unit].filter(Boolean).join(" ")}`
+                    : "",
+                  price
+                    ? `Price: ${price}`
+                    : "",
+                  details,
+                ]
+                  .filter(
+                    Boolean,
+                  )
+                  .join(" · ");
+              },
+            )
+            .filter(
+              Boolean,
+            );
+
+        if (
+          lines.length >
+          0
+        ) {
+          return lines.join(
+            "\n",
+          );
+        }
+      }
+    } catch {
+      // Fall through to normal text formatting.
+    }
+  }
+
+  if (
     value === undefined ||
     value === null ||
     value === ""

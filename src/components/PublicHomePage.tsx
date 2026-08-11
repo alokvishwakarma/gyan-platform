@@ -82,6 +82,9 @@ interface PublicHomePageProps {
     email: string,
   ) => void;
 
+  shopName?: string;
+  shopAddress?: string;
+
   onStartOnlineService?: (
     serviceCode: string,
     serviceName: string,
@@ -267,6 +270,10 @@ export default function PublicHomePage({
   onOpenMyShop,
 
   onRegisterMyShop,
+
+  shopName,
+
+  shopAddress,
 
   onStartOnlineService,
 
@@ -778,6 +785,22 @@ export default function PublicHomePage({
               Order Online • Pick Up When
               Ready • No Waiting
             </span>
+
+            {shopName && (
+              <span
+                className="public-home__shop-context"
+                title={
+                  shopAddress
+                    ? `${shopName} · ${shopAddress}`
+                    : shopName
+                }
+              >
+                {shopName}
+                {shopAddress
+                  ? ` · ${shopAddress}`
+                  : ""}
+              </span>
+            )}
           </div>
         </button>
       );

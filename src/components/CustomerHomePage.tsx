@@ -17,6 +17,8 @@ interface HomeService {
   color: string;
   enabled: boolean;
   sortOrder: number;
+
+  homepageOrder?: number | null;
 }
 
 interface CustomerHomePageProps {
@@ -82,7 +84,6 @@ export default function CustomerHomePage({
   services,
   loading,
   onServiceSelect,
-  onRegisterShop,
   onOpenShopQr,
   onOpenAdmin,
 }: CustomerHomePageProps) {
@@ -101,18 +102,16 @@ export default function CustomerHomePage({
     [services],
   );
 
-  const featuredService = enabledServices[0];
-  const secondaryServices = enabledServices.slice(1);
-  const quickServices = secondaryServices.slice(0, 4);
+  const featuredServices =
+    enabledServices.slice(0, 3);
 
-  const popularServices = showAllServices
-    ? secondaryServices
-    : secondaryServices.slice(4, 12);
+  const otherServices =
+    enabledServices.slice(3);
 
-  const servicesForPopularSection =
-    popularServices.length > 0
-      ? popularServices
-      : quickServices;
+  const visibleOtherServices =
+    showAllServices
+      ? otherServices
+      : otherServices.slice(0, 12);
 
   function scrollToSection(id: string) {
     document.getElementById(id)?.scrollIntoView({
@@ -148,6 +147,14 @@ export default function CustomerHomePage({
           <span>
             <strong>GYAN</strong>
             <small>Your Digital Seva Partner</small>
+            <small className="customer-home__value">
+              Order Online • Pick Up When Ready • No Waiting
+            </small>
+            {shopName && (
+              <small className="customer-home__shop-line">
+                {shopName}{address ? ` · ${address}` : ""}
+              </small>
+            )}
           </span>
         </button>
 
@@ -173,37 +180,6 @@ export default function CustomerHomePage({
         </div>
       </header>
 
-      <section className="customer-home__shop-card">
-        <span
-          className="customer-home__location-icon"
-          aria-hidden="true"
-        >
-          ●
-        </span>
-
-        <button
-          type="button"
-          className="customer-home__shop-identity"
-          onClick={
-            shopCode ? onOpenShopQr : onRegisterShop
-          }
-        >
-          <strong>
-            {shopName || "Choose your service provider"}
-          </strong>
-
-          <span>
-            {address ||
-              "Scan a shop QR code or register a shop"}
-          </span>
-        </button>
-
-        <span className="customer-home__open-status">
-          <span aria-hidden="true">●</span>
-          Shop Open
-        </span>
-      </section>
-
       {loading && (
         <section className="customer-home__state-card">
           <strong>Loading services…</strong>
@@ -213,74 +189,52 @@ export default function CustomerHomePage({
         </section>
       )}
 
-      {!loading && featuredService && (
-        <section
-          className="customer-home__hero"
-          style={getServiceAccent(featuredService)}
-        >
-          <span
-            className="customer-home__hero-icon"
-            aria-hidden="true"
-          >
-            {featuredService.icon || "🧩"}
-          </span>
-
-          <div className="customer-home__hero-copy">
-            <span>Featured service</span>
-
-            <h1>{getServiceTitle(featuredService)}</h1>
-
-            <p>
-              {featuredService.description ||
-                "Send your request before visiting the shop."}
-            </p>
+      {!loading && featuredServices.length > 0 && (
+        <section className="customer-home__featured-section">
+          <div className="customer-home__section-heading">
+            <h2>Featured at this shop</h2>
           </div>
 
-          <button
-            type="button"
-            className="customer-home__hero-button"
-            onClick={() =>
-              onServiceSelect(featuredService)
-            }
-            aria-label={getActionLabel(featuredService)}
-          >
-            →
-          </button>
+          <div className="customer-home__featured-grid">
+            {featuredServices.map((service) => (
+              <button
+                type="button"
+                key={service.code}
+                className="customer-home__featured-card"
+                style={getServiceAccent(service)}
+                onClick={() => onServiceSelect(service)}
+              >
+                <span
+                  className="customer-home__featured-icon"
+                  aria-hidden="true"
+                >
+                  {service.icon || "🧩"}
+                </span>
+
+                <span className="customer-home__featured-copy">
+                  <strong>{getServiceTitle(service)}</strong>
+                  <small>
+                    {service.description ||
+                      getActionLabel(service)}
+                  </small>
+                </span>
+
+                <span
+                  className="customer-home__featured-arrow"
+                  aria-hidden="true"
+                >
+                  →
+                </span>
+              </button>
+            ))}
+          </div>
         </section>
       )}
 
-      {!loading && !featuredService && (
+      {!loading && featuredServices.length === 0 && (
         <section className="customer-home__state-card">
           <strong>No services available</strong>
-          <span>
-            Select a shop or enable services from
-            administration.
-          </span>
-        </section>
-      )}
-
-      {quickServices.length > 0 && (
-        <section
-          className="customer-home__quick-grid"
-          aria-label="Quick services"
-        >
-          {quickServices.map((service) => (
-            <button
-              type="button"
-              key={service.code}
-              className="customer-home__quick-tile"
-              onClick={() => onServiceSelect(service)}
-            >
-              <span
-                style={getServiceAccent(service)}
-                aria-hidden="true"
-              >
-                {service.icon || "🧩"}
-              </span>
-
-              <strong>{service.name}</strong>
-            </button>
-          ))}
+          <span>This shop has not enabled services yet.</span>
         </section>
       )}
 
@@ -289,9 +243,9 @@ export default function CustomerHomePage({
         className="customer-home__section"
       >
         <div className="customer-home__section-heading">
-          <h2>Popular Services</h2>
+          <h2>Other services</h2>
 
-          {secondaryServices.length > 4 && (
+          {otherServices.length > 12 && (
             <button
               type="button"
               onClick={() =>
@@ -306,9 +260,9 @@ export default function CustomerHomePage({
           )}
         </div>
 
-        {servicesForPopularSection.length > 0 ? (
+        {visibleOtherServices.length > 0 ? (
           <div className="customer-home__popular-grid">
-            {servicesForPopularSection.map((service) => (
+            {visibleOtherServices.map((service) => (
               <button
                 type="button"
                 key={service.code}
@@ -367,11 +321,11 @@ export default function CustomerHomePage({
             </p>
           </div>
 
-          {featuredService && (
+          {featuredServices[0] && (
             <button
               type="button"
               onClick={() =>
-                onServiceSelect(featuredService)
+                onServiceSelect(featuredServices[0])
               }
             >
               Start
