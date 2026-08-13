@@ -1,8 +1,12 @@
 import {
   type CSSProperties,
+  useEffect,
   useMemo,
   useState,
 } from "react";
+
+import ShopFeaturedManager
+  from "./ShopFeaturedManager";
 
 import "./ShopHomeContent.css";
 
@@ -19,35 +23,74 @@ export interface ShopHomeService {
 }
 
 interface ShopHomeContentProps {
-  services: ShopHomeService[];
+  shopCode?: string;
+
+  role?:
+    | "shopper"
+    | "admin"
+    | null;
+
+  services:
+    ShopHomeService[];
+
   loading: boolean;
+
   onServiceSelect: (
-    service: ShopHomeService,
+    service:
+      ShopHomeService,
   ) => void;
+
+  onOpenRequests?: () => void;
+  onRequestService?: () => void;
 }
 
 function getServiceTitle(
-  service: ShopHomeService,
+  service:
+    ShopHomeService,
 ): string {
-  return service.catalogName || service.name;
+  return (
+    service.catalogName ||
+    service.name
+  );
 }
 
 function getAccent(
-  service: ShopHomeService,
+  service:
+    ShopHomeService,
 ): CSSProperties {
   return {
     "--shop-service-accent":
-      service.color || "#2187f3",
+      service.color ||
+      "#2187f3",
   } as CSSProperties;
 }
 
 export default function ShopHomeContent({
+  shopCode = "",
+  role = null,
   services,
   loading,
   onServiceSelect,
+  onOpenRequests,
+  onRequestService,
 }: ShopHomeContentProps) {
-  const [showAll, setShowAll] =
+  const [
+    showAll,
+    setShowAll,
+  ] =
     useState(false);
+
+  const [
+    manageFeaturedOpen,
+    setManageFeaturedOpen,
+  ] =
+    useState(false);
+
+  const [
+    featuredCodes,
+    setFeaturedCodes,
+  ] =
+    useState<string[]>([]);
 
   const enabledServices =
     useMemo(
@@ -58,7 +101,10 @@ export default function ShopHomeContent({
               service.enabled,
           )
           .sort(
-            (first, second) =>
+            (
+              first,
+              second,
+            ) =>
               first.sortOrder -
                 second.sortOrder ||
               first.name.localeCompare(
@@ -68,31 +114,148 @@ export default function ShopHomeContent({
       [services],
     );
 
+  useEffect(
+    () => {
+      if (!shopCode) {
+        return undefined;
+      }
+
+      const controller =
+        new AbortController();
+
+      void (
+        async () => {
+          try {
+            const response =
+              await fetch(
+                `/api/shops/${encodeURIComponent(
+                  shopCode,
+                )}/featured-services`,
+                {
+                  credentials:
+                    "include",
+
+                  signal:
+                    controller.signal,
+                },
+              );
+
+            if (!response.ok) {
+              return;
+            }
+
+            const result =
+              (await response.json()) as {
+                serviceCodes?:
+                  string[];
+              };
+
+            if (
+              !controller.signal.aborted
+            ) {
+              setFeaturedCodes(
+                result.serviceCodes ??
+                  [],
+              );
+            }
+          } catch (
+            error
+          ) {
+            if (
+              error instanceof
+                DOMException &&
+              error.name ===
+                "AbortError"
+            ) {
+              return;
+            }
+          }
+        }
+      )();
+
+      return () =>
+        controller.abort();
+    },
+    [shopCode],
+  );
+
+  const configuredFeatured =
+    featuredCodes
+      .map(
+        (code) =>
+          enabledServices.find(
+            (service) =>
+              service.code ===
+              code,
+          ),
+      )
+      .filter(
+        (
+          service,
+        ):
+          service is
+            ShopHomeService =>
+              Boolean(
+                service,
+              ),
+      );
+
   const featuredServices =
-    enabledServices.slice(0, 3);
+    configuredFeatured.length >
+      0
+      ? configuredFeatured
+      : enabledServices.slice(
+          0,
+          3,
+        );
+
+  const featuredSet =
+    new Set(
+      featuredServices.map(
+        (service) =>
+          service.code,
+      ),
+    );
 
   const otherServices =
-    enabledServices.slice(3);
+    enabledServices.filter(
+      (service) =>
+        !featuredSet.has(
+          service.code,
+        ),
+    );
 
   const visibleOtherServices =
     showAll
       ? otherServices
-      : otherServices.slice(0, 12);
+      : otherServices.slice(
+          0,
+          12,
+        );
 
   if (loading) {
     return (
       <div className="shop-home-content__state">
-        <strong>Loading shop services…</strong>
+        <strong>
+          Loading shop services…
+        </strong>
       </div>
     );
   }
 
-  if (enabledServices.length === 0) {
+  if (
+    enabledServices.length ===
+      0
+  ) {
     return (
       <div className="shop-home-content__state">
-        <strong>No services available</strong>
+        <strong>
+          No services available
+        </strong>
+
         <span>
-          This shop has not enabled any services yet.
+          This shop has not enabled
+          any services yet.
         </span>
       </div>
     );
@@ -100,41 +263,113 @@ export default function ShopHomeContent({
 
   return (
     <div className="shop-home-content">
-      <section className="shop-home-content__section">
-        <div className="shop-home-content__heading">
+      <section
+        className="shop-home-content__section"
+      >
+        <div
+          className="shop-home-content__heading"
+        >
           <div>
-            <span>Available from this shop</span>
-            <h2>Featured services</h2>
+            <span>
+              Available from this shop
+            </span>
+
+            <h2>
+              ★ Featured services
+            </h2>
           </div>
+
+          {role &&
+          shopCode ? (
+            <div
+              className="shop-home-content__manage-actions"
+            >
+              {onOpenRequests && (
+                <button
+                  type="button"
+                  onClick={
+                    onOpenRequests
+                  }
+                >
+                  💬 Requests
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() =>
+                  setManageFeaturedOpen(
+                    true,
+                  )
+                }
+              >
+                ⚙ Manage
+              </button>
+            </div>
+          ) : onRequestService ? (
+            <div
+              className="shop-home-content__public-actions"
+            >
+              <button
+                type="button"
+                onClick={
+                  onRequestService
+                }
+              >
+                + Request Service
+              </button>
+            </div>
+          ) : null}
         </div>
 
-        <div className="shop-home-content__featured-grid">
+        <div
+          className="shop-home-content__featured-grid"
+        >
           {featuredServices.map(
             (service) => (
               <button
                 type="button"
-                key={service.code}
+                key={
+                  service.code
+                }
                 className="shop-home-content__featured-card"
-                style={getAccent(service)}
+                style={
+                  getAccent(
+                    service,
+                  )
+                }
                 onClick={() =>
-                  onServiceSelect(service)
+                  onServiceSelect(
+                    service,
+                  )
                 }
               >
                 <span
                   className="shop-home-content__featured-icon"
                   aria-hidden="true"
                 >
-                  {service.icon || "🧩"}
+                  {
+                    service.icon ||
+                    "🧩"
+                  }
                 </span>
 
-                <span className="shop-home-content__featured-copy">
+                <span
+                  className="shop-home-content__featured-copy"
+                >
                   <strong>
-                    {getServiceTitle(service)}
+                    {
+                      getServiceTitle(
+                        service,
+                      )
+                    }
                   </strong>
 
                   <small>
-                    {service.description ||
-                      "Request this service from the shop."}
+                    {
+                      service.description ||
+                      "Request this service from the shop."
+                    }
                   </small>
                 </span>
 
@@ -150,14 +385,24 @@ export default function ShopHomeContent({
         </div>
       </section>
 
-      <section className="shop-home-content__section">
-        <div className="shop-home-content__heading shop-home-content__heading--row">
+      <section
+        className="shop-home-content__section"
+      >
+        <div
+          className="shop-home-content__heading shop-home-content__heading--row"
+        >
           <div>
-            <span>More from this shop</span>
-            <h2>Other services</h2>
+            <span>
+              More from this shop
+            </span>
+
+            <h2>
+              Other services
+            </h2>
           </div>
 
-          {otherServices.length > 12 && (
+          {otherServices.length >
+            12 && (
             <button
               type="button"
               className="shop-home-content__view-all"
@@ -175,36 +420,83 @@ export default function ShopHomeContent({
           )}
         </div>
 
-        {visibleOtherServices.length > 0 ? (
-          <div className="shop-home-content__service-grid">
+        {visibleOtherServices.length >
+        0 ? (
+          <div
+            className="shop-home-content__service-grid"
+          >
             {visibleOtherServices.map(
               (service) => (
                 <button
                   type="button"
-                  key={service.code}
+                  key={
+                    service.code
+                  }
                   className="shop-home-content__service-card"
-                  style={getAccent(service)}
+                  style={
+                    getAccent(
+                      service,
+                    )
+                  }
                   onClick={() =>
-                    onServiceSelect(service)
+                    onServiceSelect(
+                      service,
+                    )
                   }
                 >
-                  <span aria-hidden="true">
-                    {service.icon || "🧩"}
+                  <span
+                    aria-hidden="true"
+                  >
+                    {
+                      service.icon ||
+                      "🧩"
+                    }
                   </span>
 
                   <strong>
-                    {getServiceTitle(service)}
+                    {
+                      getServiceTitle(
+                        service,
+                      )
+                    }
                   </strong>
                 </button>
               ),
             )}
           </div>
         ) : (
-          <div className="shop-home-content__empty">
-            Additional services will appear here when enabled.
+          <div
+            className="shop-home-content__empty"
+          >
+            Additional services will
+            appear here when enabled.
           </div>
         )}
       </section>
+
+      {manageFeaturedOpen &&
+      shopCode && (
+        <ShopFeaturedManager
+          shopCode={
+            shopCode
+          }
+          services={
+            services
+          }
+          onClose={() =>
+            setManageFeaturedOpen(
+              false,
+            )
+          }
+          onSaved={(
+            serviceCodes,
+          ) =>
+            setFeaturedCodes(
+              serviceCodes,
+            )
+          }
+        />
+      )}
     </div>
   );
 }

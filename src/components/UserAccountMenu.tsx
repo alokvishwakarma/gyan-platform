@@ -28,6 +28,7 @@ interface AuthMeResponse {
 interface UserAccountMenuProps {
   onOpenAdmin: () => void;
   onOpenChat: () => void;
+
   onOpenMyShop: (
     shopCode: string,
   ) => void;
@@ -35,6 +36,15 @@ interface UserAccountMenuProps {
   onRegisterMyShop: (
     email: string,
   ) => void;
+}
+
+interface MyShopsResponse {
+  shops?: {
+    code: string;
+    name: string;
+  }[];
+
+  error?: string;
 }
 
 export default function UserAccountMenu({
@@ -69,12 +79,22 @@ export default function UserAccountMenu({
       AuthUser | null
     >(null);
 
-
   const [
     myShopLoading,
     setMyShopLoading,
   ] =
     useState(false);
+
+  const [
+    myShops,
+    setMyShops,
+  ] =
+    useState<
+      {
+        code: string;
+        name: string;
+      }[]
+    >([]);
 
   const [
     myShopError,
@@ -96,6 +116,7 @@ export default function UserAccountMenu({
 
       if (!response.ok) {
         setUser(null);
+        setMyShops([]);
         return;
       }
 
@@ -108,117 +129,142 @@ export default function UserAccountMenu({
           ? result.user
           : null,
       );
+
+      if (
+        !result.authenticated
+      ) {
+        setMyShops(
+          [],
+        );
+      }
     } catch {
       setUser(null);
+      setMyShops([]);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    const controller =
-      new AbortController();
+  useEffect(
+    () => {
+      const controller =
+        new AbortController();
 
-    const parameters =
-      new URLSearchParams(
-        window.location.search,
-      );
+      const parameters =
+        new URLSearchParams(
+          window.location.search,
+        );
 
-    if (
-      parameters.get(
-        "auth",
-      ) ===
-      "success"
-    ) {
-      /*
-       * Remove the temporary callback flag
-       * from the address bar.
-       */
-      window.history.replaceState(
-        {},
-        "",
-        window.location.pathname,
-      );
-    }
+      if (
+        parameters.get(
+          "auth",
+        ) ===
+          "success"
+      ) {
+        window.history.replaceState(
+          {},
+          "",
+          window.location.pathname,
+        );
+      }
 
-    fetch(
-      "/api/auth/me",
+      fetch(
+        "/api/auth/me",
+        {
+          credentials:
+            "include",
+
+          signal:
+            controller.signal,
+        },
+      )
+        .then(
+          async (
+            response,
+          ) => {
+            if (
+              !response.ok
+            ) {
+              return null;
+            }
+
+            return (
+              await response.json()
+            ) as
+              AuthMeResponse;
+          },
+        )
+        .then(
+          (result) => {
+            if (
+              controller.signal
+                .aborted
+            ) {
+              return;
+            }
+
+            setUser(
+              result
+                ?.authenticated
+                ? result.user
+                : null,
+            );
+
+            setLoading(
+              false,
+            );
+          },
+        )
+        .catch(
+          (error) => {
+            if (
+              error instanceof
+                DOMException &&
+              error.name ===
+                "AbortError"
+            ) {
+              return;
+            }
+
+            if (
+              controller.signal
+                .aborted
+            ) {
+              return;
+            }
+
+            setUser(
+              null,
+            );
+
+            setMyShops(
+              [],
+            );
+
+            setLoading(
+              false,
+            );
+          },
+        );
+
+      return () => {
+        controller.abort();
+      };
+    },
+    [],
+  );
+
+  async function loadMyShops():
+    Promise<
       {
-        credentials:
-          "include",
-
-        signal:
-          controller.signal,
-      },
-    )
-      .then(
-        async (
-          response,
-        ) => {
-          if (!response.ok) {
-            return null;
-          }
-
-          return (
-            await response.json()
-          ) as AuthMeResponse;
-        },
-      )
-      .then(
-        (result) => {
-          if (
-            controller.signal.aborted
-          ) {
-            return;
-          }
-
-          setUser(
-            result?.authenticated
-              ? result.user
-              : null,
-          );
-
-          setLoading(
-            false,
-          );
-        },
-      )
-      .catch(
-        (error) => {
-          if (
-            error instanceof
-              DOMException &&
-            error.name ===
-              "AbortError"
-          ) {
-            return;
-          }
-
-          if (
-            controller.signal.aborted
-          ) {
-            return;
-          }
-
-          setUser(
-            null,
-          );
-
-          setLoading(
-            false,
-          );
-        },
-      );
-
-    return () => {
-      controller.abort();
-    };
-  }, []);
-
-  async function openMyShop():
-    Promise<void> {
-    if (myShopLoading) {
-      return;
+        code: string;
+        name: string;
+      }[]
+    > {
+    if (
+      myShopLoading
+    ) {
+      return myShops;
     }
 
     setMyShopLoading(
@@ -238,56 +284,57 @@ export default function UserAccountMenu({
         );
 
       const result =
-        (await response.json()) as {
-          shops?: {
-            code: string;
-            name: string;
-          }[];
+        (await response.json()) as
+          MyShopsResponse;
 
-          error?: string;
-        };
-
-      if (!response.ok) {
+      if (
+        !response.ok
+      ) {
         throw new Error(
           result.error ??
-            "Your shop could not be loaded.",
+            "Your shops could not be loaded.",
         );
       }
 
       const shops =
-        result.shops ?? [];
+        (result.shops ?? [])
+          .map(
+            (shop) => ({
+              code:
+                shop.code
+                  .trim()
+                  .toUpperCase(),
+
+              name:
+                shop.name,
+            }),
+          );
+
+      setMyShops(
+        shops,
+      );
 
       if (
         shops.length ===
-        0
+          0
       ) {
-        setOpen(false);
-
-        onRegisterMyShop(
-          user?.email ?? "",
+        setMyShopError(
+          "No active shop is linked to this email.",
         );
-
-        return;
       }
 
-      /*
-       * MVP: most shop owners have one shop.
-       * If more than one is linked, open the
-       * first; we can add a selector later.
-       */
-      setOpen(false);
-
-      onOpenMyShop(
-        shops[0].code,
-      );
+      return shops;
     } catch (
       caughtError
     ) {
       setMyShopError(
-        caughtError instanceof Error
+        caughtError instanceof
+          Error
           ? caughtError.message
-          : "Your shop could not be loaded.",
+          : "Your shops could not be loaded.",
       );
+
+      return [];
     } finally {
       setMyShopLoading(
         false,
@@ -296,19 +343,67 @@ export default function UserAccountMenu({
   }
 
 
+  function openMyShop(
+    shopCode: string,
+  ): void {
+    setOpen(
+      false,
+    );
+
+    onOpenMyShop(
+      shopCode,
+    );
+  }
+
+
+  function toggleMenu():
+    void {
+    const nextOpen =
+      !open;
+
+    setOpen(
+      nextOpen,
+    );
+
+    if (
+      nextOpen &&
+      user &&
+      myShops.length ===
+        0 &&
+      !myShopLoading
+    ) {
+      void loadMyShops();
+    }
+  }
+
   async function logout():
     Promise<void> {
     await fetch(
       "/api/auth/logout",
       {
-        method: "POST",
+        method:
+          "POST",
+
         credentials:
           "include",
       },
     );
 
-    setUser(null);
-    setOpen(false);
+    setUser(
+      null,
+    );
+
+    setMyShops(
+      [],
+    );
+
+    setMyShopError(
+      "",
+    );
+
+    setOpen(
+      false,
+    );
   }
 
   return (
@@ -335,12 +430,11 @@ export default function UserAccountMenu({
               ? user.email
               : "User"
           }
-          aria-expanded={open}
-          onClick={() =>
-            setOpen(
-              (current) =>
-                !current,
-            )
+          aria-expanded={
+            open
+          }
+          onClick={
+            toggleMenu
           }
         >
           <span
@@ -378,14 +472,18 @@ export default function UserAccountMenu({
                   </small>
 
                   <strong>
-                    {user.email}
+                    {
+                      user.email
+                    }
                   </strong>
                 </div>
 
                 <button
                   type="button"
                   onClick={() =>
-                    setOpen(false)
+                    setOpen(
+                      false,
+                    )
                   }
                 >
                   🎮 Player
@@ -394,7 +492,9 @@ export default function UserAccountMenu({
                 <button
                   type="button"
                   onClick={() =>
-                    setOpen(false)
+                    setOpen(
+                      false,
+                    )
                   }
                 >
                   🛍 Shopper
@@ -403,26 +503,62 @@ export default function UserAccountMenu({
                 <button
                   type="button"
                   onClick={() => {
-                    setOpen(false);
+                    setOpen(
+                      false,
+                    );
+
                     onOpenChat();
                   }}
                 >
                   💬 Chat
                 </button>
 
-                <button
-                  type="button"
-                  disabled={
-                    myShopLoading
-                  }
-                  onClick={() =>
-                    void openMyShop()
-                  }
-                >
-                  {myShopLoading
-                    ? "🏪 Opening…"
-                    : "🏪 My Shop"}
-                </button>
+                {myShopLoading ? (
+                  <button
+                    type="button"
+                    disabled
+                  >
+                    🏪 My Shop…
+                  </button>
+                ) : myShops.length >
+                  0 ? (
+                  myShops.map(
+                    (shop) => (
+                      <button
+                        type="button"
+                        key={
+                          shop.code
+                        }
+                        title={
+                          shop.name
+                        }
+                        onClick={() =>
+                          openMyShop(
+                            shop.code,
+                          )
+                        }
+                      >
+                        🏪 My Shop (
+                        {shop.code})
+                      </button>
+                    ),
+                  )
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(
+                        false,
+                      );
+
+                      onRegisterMyShop(
+                        user.email,
+                      );
+                    }}
+                  >
+                    🏪 Register My Shop
+                  </button>
+                )}
 
                 {myShopError && (
                   <div
@@ -437,7 +573,10 @@ export default function UserAccountMenu({
                 <button
                   type="button"
                   onClick={() => {
-                    setOpen(false);
+                    setOpen(
+                      false,
+                    );
+
                     onOpenAdmin();
                   }}
                 >
@@ -472,8 +611,13 @@ export default function UserAccountMenu({
                   type="button"
                   className="user-account-menu__signin"
                   onClick={() => {
-                    setOpen(false);
-                    setAuthOpen(true);
+                    setOpen(
+                      false,
+                    );
+
+                    setAuthOpen(
+                      true,
+                    );
                   }}
                 >
                   ✉️ Sign in
@@ -482,7 +626,10 @@ export default function UserAccountMenu({
                 <button
                   type="button"
                   onClick={() => {
-                    setOpen(false);
+                    setOpen(
+                      false,
+                    );
+
                     onOpenAdmin();
                   }}
                 >
@@ -492,7 +639,9 @@ export default function UserAccountMenu({
                 <button
                   type="button"
                   onClick={() =>
-                    setOpen(false)
+                    setOpen(
+                      false,
+                    )
                   }
                 >
                   Close
@@ -507,14 +656,10 @@ export default function UserAccountMenu({
         createPortal(
           <AuthPanel
             onClose={() => {
-              setAuthOpen(false);
+              setAuthOpen(
+                false,
+              );
 
-              /*
-               * If the user returns after clicking
-               * the magic link in this same tab,
-               * the component reload will pick up
-               * the authenticated session.
-               */
               void loadUser();
             }}
           />,

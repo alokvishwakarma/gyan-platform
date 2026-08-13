@@ -1,0 +1,90 @@
+.reserved-shop-claim {
+  width: min(100%, 560px);
+  margin: 0.8rem auto 0;
+  display: grid;
+  justify-items: center;
+  gap: 0.55rem;
+  padding: 1rem;
+  box-sizing: border-box;
+  border: 1px solid #d7e6f7;
+  border-radius: 12px;
+  background: #fff;
+  color: #102a56;
+  text-align: center;
+}
+
+.reserved-shop-claim__badge {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  background: #fff6f0;
+  font-size: 1.45rem;
+}
+
+.reserved-shop-claim > small {
+  color: #9a5b3d;
+  font-size: 0.58rem;
+  font-weight: 850;
+  letter-spacing: 0.05em;
+}
+
+.reserved-shop-claim h1 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.reserved-shop-claim p {
+  max-width: 420px;
+  margin: 0;
+  color: #64748b;
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+.reserved-shop-claim__code {
+  min-width: 180px;
+  display: grid;
+  gap: 0.12rem;
+  margin: 0.25rem 0;
+  padding: 0.65rem 0.85rem;
+  border: 1px dashed #d7b49f;
+  border-radius: 10px;
+  background: #fff6f0;
+}
+
+.reserved-shop-claim__code span {
+  color: #64748b;
+  font-size: 0.58rem;
+}
+
+.reserved-shop-claim__code strong {
+  color: #7d472f;
+  font-family: Consolas, monospace;
+  font-size: 1.25rem;
+  letter-spacing: 0.12em;
+}
+
+.reserved-shop-claim__primary,
+.reserved-shop-claim__secondary {
+  min-width: 180px;
+  border-radius: 9px;
+  padding: 0.62rem 0.9rem;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.reserved-shop-claim__primary {
+  border: 0;
+  background: #1565c0;
+  color: #fff;
+}
+
+.reserved-shop-claim__secondary {
+  border: 1px solid #dbe3ec;
+  background: #fff;
+  color: #475569;
+}

@@ -87,9 +87,22 @@ import {
   handleAnalyticsRoute,
 } from "./analytics";
 
+
 import {
   handleChatRoute,
 } from "./chat";
+
+import {
+  assertShopCodeCanRegister,
+  getOfflineShopCode,
+} from "./offlineShopCodes";
+
+
+import {
+  handleShopFeaturedRoute,
+} from "./shopFeatured";
+
+
 
 interface RegisterShopRequest {
   code?: unknown;
@@ -455,6 +468,71 @@ async function handleRegisterShop(
     );
   }
 
+  /*
+   * ------------------------------------------------
+   * Reserved offline namespace
+   *
+   * ??R? can never be created through ordinary
+   * online registration.
+   *
+   * A ??R? code is accepted only if GYAN already
+   * issued it in offline_shop_codes and it is
+   * still reserved.
+   * ------------------------------------------------
+   */
+
+  let registrationKind:
+    | "online"
+    | "offline";
+
+  try {
+    const codeRegistration =
+      await assertShopCodeCanRegister(
+        env,
+        code,
+      );
+
+    registrationKind =
+      codeRegistration.kind;
+  } catch (
+    error
+  ) {
+    if (
+      error instanceof
+        Error &&
+      error.message ===
+        "RESERVED_CODE_NOT_ISSUED"
+    ) {
+      return createJsonResponse(
+        {
+          error:
+            "This reserved shop code was not issued by GYAN.",
+        },
+        400,
+      );
+    }
+
+    if (
+      error instanceof
+        Error &&
+      error.message ===
+        "RESERVED_CODE_ALREADY_CLAIMED"
+    ) {
+      return createJsonResponse(
+        {
+          error:
+            "This GYAN shop QR has already been claimed.",
+        },
+        409,
+      );
+    }
+
+    throw error;
+  }
+
+  /*
+   * A shop code can only become a real shop once.
+   */
   const existingShop =
     await env.gyan_registry
       .prepare(
@@ -482,14 +560,17 @@ async function handleRegisterShop(
     return createJsonResponse(
       {
         error:
-          "This shop code is already registered. Please generate another code.",
+          registrationKind ===
+            "offline"
+            ? "This GYAN shop QR has already been claimed."
+            : "This shop code is already registered. Please generate another code.",
       },
       409,
     );
   }
 
-  try {
-    await env.gyan_registry
+  const insertShop =
+    env.gyan_registry
       .prepare(
         `
           INSERT INTO shops (
@@ -531,8 +612,88 @@ async function handleRegisterShop(
         city,
         state,
         postalCode,
-      )
-      .run();
+      );
+
+  try {
+    if (
+      registrationKind ===
+        "offline"
+    ) {
+      /*
+       * D1 batch keeps the shop creation and the
+       * permanent QR claim together.
+       */
+      const results =
+        await env.gyan_registry
+          .batch([
+            insertShop,
+
+            env.gyan_registry
+              .prepare(
+                `
+                  UPDATE offline_shop_codes
+
+                  SET
+                    status =
+                      'claimed',
+
+                    claimed_shop_code =
+                      ?,
+
+                    claimed_at =
+                      CURRENT_TIMESTAMP
+
+                  WHERE
+                    code = ?
+                    AND status =
+                      'reserved'
+                `,
+              )
+              .bind(
+                code,
+                code,
+              ),
+          ]);
+
+      const claimResult =
+        results[1];
+
+      if (
+        Number(
+          claimResult
+            ?.meta
+            ?.changes ??
+          0,
+        ) !== 1
+      ) {
+        /*
+         * Extremely unlikely race protection.
+         * Remove the shop if the QR claim did
+         * not transition from reserved.
+         */
+        await env.gyan_registry
+          .prepare(
+            `
+              DELETE FROM shops
+              WHERE code = ?
+            `,
+          )
+          .bind(
+            code,
+          )
+          .run();
+
+        return createJsonResponse(
+          {
+            error:
+              "This GYAN shop QR could not be claimed. Please refresh and try again.",
+          },
+          409,
+        );
+      }
+    } else {
+      await insertShop.run();
+    }
   } catch (
     error
   ) {
@@ -574,9 +735,67 @@ async function handleRegisterShop(
         mapShopRow(
           createdShop,
         ),
+
+      registrationKind,
     },
     201,
   );
+}
+
+
+async function handleOfflineShopCodeLookup(
+  env: Env,
+  rawCode: string,
+): Promise<Response> {
+  const code =
+    normalizeShopCode(
+      rawCode,
+    );
+
+  if (
+    !code ||
+    code[2] !== "R"
+  ) {
+    return createJsonResponse(
+      {
+        error:
+          "Invalid reserved shop code.",
+      },
+      400,
+    );
+  }
+
+  const reservedCode =
+    await getOfflineShopCode(
+      env,
+      code,
+    );
+
+  if (!reservedCode) {
+    return createJsonResponse(
+      {
+        error:
+          "Reserved shop code not found.",
+      },
+      404,
+    );
+  }
+
+  return createJsonResponse({
+    code:
+      reservedCode.code,
+
+    status:
+      reservedCode.status,
+
+    claimable:
+      reservedCode.status ===
+        "reserved",
+
+    shopCode:
+      reservedCode
+        .claimed_shop_code,
+  });
 }
 
 
@@ -617,16 +836,40 @@ async function handleApiRequest(
     return publicAuthResponse;
   }
 
-  const chatResponse =
-  await handleChatRoute(
-    request,
-    env,
-    url,
-  );
 
-if (chatResponse) {
-  return chatResponse;
-}
+  /*
+   * ------------------------------------------------
+   * Customer / shop / admin chat
+   * ------------------------------------------------
+   */
+
+  const chatResponse =
+    await handleChatRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (
+    chatResponse
+  ) {
+    return chatResponse;
+  }
+
+
+  const shopFeaturedResponse =
+    await handleShopFeaturedRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (
+    shopFeaturedResponse
+  ) {
+    return shopFeaturedResponse;
+  }
+
 
   /*
    * ------------------------------------------------
@@ -994,6 +1237,32 @@ if (
       service:
         "GYAN Cloud Shop Registry",
     });
+  }
+
+
+  /*
+   * ------------------------------------------------
+   * Offline/reserved shop QR lookup
+   *
+   * Used by the SPA when a user scans:
+   *   https://gyan.cc/?shop=ABR7
+   * ------------------------------------------------
+   */
+
+  const offlineShopCodeMatch =
+    url.pathname.match(
+      /^\/api\/offline-shop-codes\/([A-Za-z0-9]{4})$/,
+    );
+
+  if (
+    request.method ===
+      "GET" &&
+    offlineShopCodeMatch
+  ) {
+    return handleOfflineShopCodeLookup(
+      env,
+      offlineShopCodeMatch[1],
+    );
   }
 
 

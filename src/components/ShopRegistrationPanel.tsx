@@ -23,6 +23,9 @@ interface ShopRegistrationPanelProps {
 
   initialEmail?: string;
   requireRealLocation?: boolean;
+
+  initialShopCode?: string;
+  lockShopCode?: boolean;
 }
 
 export interface RegisteredShop {
@@ -56,24 +59,37 @@ const SHOP_CODE_CHARACTERS =
 
 function generateShopCode():
   string {
-  const randomValues =
-    new Uint32Array(4);
+  while (true) {
+    const randomValues =
+      new Uint32Array(4);
 
-  crypto.getRandomValues(
-    randomValues,
-  );
+    crypto.getRandomValues(
+      randomValues,
+    );
 
-  return Array.from(
-    randomValues,
-  )
-    .map(
-      (value) =>
-        SHOP_CODE_CHARACTERS[
-          value %
-          SHOP_CODE_CHARACTERS.length
-        ],
-    )
-    .join("");
+    const code =
+      Array.from(
+        randomValues,
+      )
+        .map(
+          (value) =>
+            SHOP_CODE_CHARACTERS[
+              value %
+              SHOP_CODE_CHARACTERS.length
+            ],
+        )
+        .join("");
+
+    /*
+     * Third character R belongs only
+     * to GYAN-issued offline QR cards.
+     */
+    if (
+      code[2] !== "R"
+    ) {
+      return code;
+    }
+  }
 }
 
 function normalizePhone(
@@ -135,6 +151,8 @@ export default function ShopRegistrationPanel({
   onRegistered,
   initialEmail = "",
   requireRealLocation = false,
+  initialShopCode = "",
+  lockShopCode = false,
 }: ShopRegistrationPanelProps) {
   const qrCanvasRef =
     useRef<HTMLCanvasElement>(
@@ -146,7 +164,11 @@ export default function ShopRegistrationPanel({
     setShopCode,
   ] =
     useState(
-      generateShopCode,
+      () =>
+        initialShopCode
+          .trim()
+          .toUpperCase() ||
+        generateShopCode(),
     );
 
   const [
@@ -866,6 +888,10 @@ export default function ShopRegistrationPanel({
 
   function regenerateCode():
     void {
+    if (lockShopCode) {
+      return;
+    }
+
     setShopCode(
       generateShopCode(),
     );
@@ -1312,16 +1338,24 @@ export default function ShopRegistrationPanel({
                   <strong>
                     {shopCode}
                   </strong>
+
+                  {lockShopCode && (
+                    <small>
+                      Reserved GYAN shop QR
+                    </small>
+                  )}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={
-                    regenerateCode
-                  }
-                >
-                  Generate another
-                </button>
+                {!lockShopCode && (
+                  <button
+                    type="button"
+                    onClick={
+                      regenerateCode
+                    }
+                  >
+                    Generate another
+                  </button>
+                )}
               </div>
             </section>
           )}

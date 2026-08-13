@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 .dev.vars
+
+# Cloudflare Wrangler local state
+.wrangler/

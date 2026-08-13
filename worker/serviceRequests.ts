@@ -18,6 +18,12 @@ import type {
   ServiceEmailSection,
 } from "./emailTemplates/serviceRequestEmail";
 
+import {
+  checkAnonymousRequestLimit,
+  isSignedInRequest,
+  recordAnonymousRequest,
+} from "./requestGuard";
+
 interface ShopRow {
   code: string;
   name: string;
@@ -1763,6 +1769,47 @@ async function handleCreateServiceRequest(
     );
   }
 
+  const signedIn =
+    await isSignedInRequest(
+      request,
+      env,
+    );
+
+  if (!signedIn) {
+    const limit =
+      await checkAnonymousRequestLimit(
+        env,
+        shopCode,
+      );
+
+    if (!limit.allowed) {
+      return createJsonResponse(
+        {
+          error:
+            limit.error,
+
+          requestLimit: {
+            dailyCount:
+              limit.dailyCount,
+
+            dailyLimit:
+              30,
+
+            monthlyCount:
+              limit.monthlyCount,
+
+            monthlyLimit:
+              500,
+
+            signInAvailable:
+              true,
+          },
+        },
+        limit.status,
+      );
+    }
+  }
+
   let formData:
     FormData;
 
@@ -2610,6 +2657,22 @@ async function handleCreateServiceRequest(
     if (!createdRequest) {
       throw new Error(
         "The service request could not be created.",
+      );
+    }
+
+    if (!signedIn) {
+      await recordAnonymousRequest(
+        env,
+        {
+          code:
+            shop.code,
+
+          name:
+            shop.name,
+
+          email:
+            shop.email_address,
+        },
       );
     }
 

@@ -57,6 +57,9 @@ import ShopChatPanel
 import ShopHomeContent
   from "./components/ShopHomeContent";
 
+import ReservedShopClaimContent
+  from "./components/ReservedShopClaimContent";
+
 import AdminChatPanel
   from "./components/AdminChatPanel";
 
@@ -294,12 +297,37 @@ function getInitialSharedRequest():
 
 
 function getInitialDashboardView(): DashboardView {
-  if (window.location.pathname === "/admin") {
+  if (
+    window.location.pathname ===
+      "/admin"
+  ) {
     return "platform";
   }
 
-  if (window.location.pathname === "/shop-admin") {
-    return "shop";
+  return null;
+}
+
+
+type ShopRole =
+  | "shopper"
+  | "admin"
+  | null;
+
+function getInitialShopRole():
+  ShopRole {
+  const value =
+    new URLSearchParams(
+      window.location.search,
+    )
+      .get("role")
+      ?.trim()
+      .toLowerCase();
+
+  if (
+    value === "shopper" ||
+    value === "admin"
+  ) {
+    return value;
   }
 
   return null;
@@ -346,6 +374,37 @@ export default function App() {
     () =>
       getDetectedShopCode(),
   );
+
+
+  const [
+    shopRole,
+    setShopRole,
+  ] =
+    useState<ShopRole>(
+      () =>
+        getInitialShopRole(),
+    );
+
+
+  const [
+    reservedShopCode,
+    setReservedShopCode,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+  const [
+    registrationShopCode,
+    setRegistrationShopCode,
+  ] =
+    useState("");
+
+  const [
+    registrationShopCodeLocked,
+    setRegistrationShopCodeLocked,
+  ] =
+    useState(false);
 
   const [
     shopProfile,
@@ -573,6 +632,10 @@ export default function App() {
       new AbortController();
 
     async function loadShop() {
+      setReservedShopCode(
+        null,
+      );
+
       try {
         const response =
           await fetch(
@@ -625,18 +688,71 @@ export default function App() {
           return;
         }
 
+        if (
+          controller.signal.aborted
+        ) {
+          return;
+        }
+
+        try {
+          const reservedResponse =
+            await fetch(
+              `/api/offline-shop-codes/${encodeURIComponent(
+                confirmedShopCode,
+              )}`,
+              {
+                signal:
+                  controller.signal,
+              },
+            );
+
+          const reservedResult =
+            (await reservedResponse.json()) as {
+              code?: string;
+              status?: string;
+              claimable?: boolean;
+            };
+
+          if (
+            reservedResponse.ok &&
+            reservedResult.claimable &&
+            reservedResult.code
+          ) {
+            setShopProfile(
+              null,
+            );
+
+            setReservedShopCode(
+              reservedResult.code,
+            );
+
+            return;
+          }
+        } catch (
+          reservedError
+        ) {
+          if (
+            reservedError instanceof
+              DOMException &&
+            reservedError.name ===
+              "AbortError"
+          ) {
+            return;
+          }
+        }
+
         console.error(
           "Unable to load shop:",
           error,
         );
 
-        if (
-          !controller.signal.aborted
-        ) {
-          setShopProfile(
-            null,
-          );
-        }
+        setReservedShopCode(
+          null,
+        );
+
+        setShopProfile(
+          null,
+        );
       }
     }
 
@@ -855,6 +971,10 @@ export default function App() {
 
     setRegistrationPanelOpen(
       false,
+    );
+
+    setShopRole(
+      null,
     );
 
     window.history.pushState(
@@ -1630,39 +1750,63 @@ if (
           loading={servicesLoading}
 
           shopName={
-            activeShopCode
-              ? (
-                  shopLoading
-                    ? "Loading shop..."
-                    : visibleShopProfile?.name
-                )
-              : undefined
+            reservedShopCode
+              ? "Reserved GYAN Shop"
+              : activeShopCode
+                ? (
+                    shopLoading
+                      ? "Loading shop..."
+                      : visibleShopProfile?.name
+                  )
+                : undefined
           }
 
           shopAddress={
-            activeShopCode
-              ? (
-                  shopLoading
-                    ? "Please wait"
-                    : visibleShopProfile?.address
-                )
-              : undefined
+            reservedShopCode
+              ? reservedShopCode
+              : activeShopCode
+                ? (
+                    shopLoading
+                      ? "Please wait"
+                      : visibleShopProfile?.address
+                  )
+                : undefined
           }
 
           onOpenShop={(shopCode) => {
-            setActiveShopCode(shopCode);
-            setNearbyServiceRequest(null);
-            setDynamicServiceRequest(null);
+            setActiveShopCode(
+              shopCode,
+            );
+
+            setShopRole(
+              null,
+            );
+
+            setNearbyServiceRequest(
+              null,
+            );
+
+            setDynamicServiceRequest(
+              null,
+            );
 
             window.history.pushState(
-              { shopCode },
+              {
+                shopCode,
+              },
               "",
-              `/?shop=${encodeURIComponent(shopCode)}`,
+              `/?shop=${encodeURIComponent(
+                shopCode,
+              )}`,
             );
           }}
 
           onClaimShop={() => {
             setRegistrationEmail("");
+            setRegistrationShopCode("");
+            setRegistrationShopCodeLocked(
+              false,
+            );
             setRegistrationPanelOpen(true);
           }}
 
@@ -1681,13 +1825,28 @@ if (
           }}
 
           onOpenMyShop={(shopCode) => {
-            setActiveShopCode(shopCode);
-            setDashboardView("shop");
+            setActiveShopCode(
+              shopCode,
+            );
+
+            setShopRole(
+              "shopper",
+            );
+
+            setDashboardView(
+              null,
+            );
 
             window.history.pushState(
-              { shopCode },
+              {
+                shopCode,
+                role:
+                  "shopper",
+              },
               "",
-              "/shop-admin",
+              `/?shop=${encodeURIComponent(
+                shopCode,
+              )}&role=shopper`,
             );
           }}
 
@@ -1778,11 +1937,94 @@ if (
                     }
                   />
                 )
+                : reservedShopCode
+                  ? (
+                    <ReservedShopClaimContent
+                      shopCode={
+                        reservedShopCode
+                      }
+                      onClaim={() => {
+                        setRegistrationShopCode(
+                          reservedShopCode,
+                        );
+
+                        setRegistrationShopCodeLocked(
+                          true,
+                        );
+
+                        setRegistrationPanelOpen(
+                          true,
+                        );
+                      }}
+                      onBack={() => {
+                        setReservedShopCode(
+                          null,
+                        );
+
+                        setActiveShopCode(
+                          null,
+                        );
+
+                        setShopRole(
+                          null,
+                        );
+
+                        window.history.pushState(
+                          {},
+                          "",
+                          "/",
+                        );
+                      }}
+                    />
+                  )
                 : activeShopCode
                   ? (
                     <ShopHomeContent
-                      services={services}
-                      loading={servicesLoading}
+                      shopCode={
+                        activeShopCode
+                      }
+                      role={
+                        shopRole
+                      }
+                      services={
+                        services
+                      }
+                      loading={
+                        servicesLoading
+                      }
+                      onOpenRequests={
+                        shopRole
+                          ? () =>
+                              setShopChatOpen(
+                                true,
+                              )
+                          : undefined
+                      }
+                      onRequestService={
+                        !shopRole
+                          ? () => {
+                              setNearbyServiceRequest(
+                                null,
+                              );
+
+                              setDynamicServiceRequest({
+                                code:
+                                  "GENERAL_REQUEST",
+
+                                name:
+                                  "Request Service",
+
+                                shopCode:
+                                  activeShopCode,
+
+                                shopName:
+                                  visibleShopProfile
+                                    ?.name ??
+                                  "GYAN Shop",
+                              });
+                            }
+                          : undefined
+                      }
                       onServiceSelect={(service) =>
                         handleServiceClick({
                           id: service.code,
@@ -1877,13 +2119,46 @@ if (
         />
       )}
 
+      {shopChatOpen &&
+        activeShopCode && (
+          <ShopChatPanel
+            shopCode={
+              activeShopCode
+            }
+            shopName={
+              visibleShopProfile
+                ?.name ??
+              "Your GYAN Shop"
+            }
+            onClose={() =>
+              setShopChatOpen(
+                false,
+              )
+            }
+          />
+        )}
+
       {registrationPanelOpen && (
         <ShopRegistrationPanel
-          onClose={() =>
+          initialShopCode={
+            registrationShopCode
+          }
+          lockShopCode={
+            registrationShopCodeLocked
+          }
+          onClose={() => {
             setRegistrationPanelOpen(
               false,
-            )
-          }
+            );
+
+            setRegistrationShopCode(
+              "",
+            );
+
+            setRegistrationShopCodeLocked(
+              false,
+            );
+          }}
           onRegistered={
             handleRegisteredShop
           }
@@ -1949,15 +2224,31 @@ if (
 
             if (
               pendingAdminDestination ===
-              "shopDashboard" &&
+                "shopDashboard" &&
               activeShopCode
             ) {
-              setDashboardView("shop");
-              window.history.pushState(
-                {},
-                "",
-                "/shop-admin",
+              setDashboardView(
+                null,
               );
+
+              setShopRole(
+                "admin",
+              );
+
+              window.history.pushState(
+                {
+                  shopCode:
+                    activeShopCode,
+
+                  role:
+                    "admin",
+                },
+                "",
+                `/?shop=${encodeURIComponent(
+                  activeShopCode,
+                )}&role=admin`,
+              );
+
               return;
             }
 

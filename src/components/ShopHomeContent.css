@@ -169,3 +169,110 @@
       repeat(4, minmax(0, 1fr));
   }
 }
+
+/*
+ * Shop owner/admin action buttons
+ * Append to ShopHomeContent.css
+ */
+
+.shop-home-content__manage-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.shop-home-content__manage-actions button {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+
+  border: 1px solid #d7b49f;
+  border-radius: 8px;
+
+  padding: 0.34rem 0.52rem;
+
+  background: #fff6f0;
+  color: #7d472f;
+
+  font: inherit;
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+.shop-home-content__manage-actions button:hover {
+  border-color: #c99577;
+  background: #fdf0e7;
+}
+
+.shop-home-content__manage-actions button:focus-visible {
+  outline: 2px solid #9a5b3d;
+  outline-offset: 2px;
+}
+
+/*
+ * Requests is the more frequent operational action,
+ * so give the first button a subtle GYAN-blue treatment.
+ */
+.shop-home-content__manage-actions button:first-child:not(:last-child) {
+  border-color: #c9dcf4;
+  background: #edf5ff;
+  color: #145da0;
+}
+
+.shop-home-content__manage-actions button:first-child:not(:last-child):hover {
+  border-color: #a9c9ec;
+  background: #e2efff;
+}
+
+@media (max-width: 480px) {
+  .shop-home-content__heading {
+    align-items: flex-start;
+  }
+
+  .shop-home-content__manage-actions {
+    gap: 0.24rem;
+  }
+
+  .shop-home-content__manage-actions button {
+    min-height: 28px;
+    padding: 0.3rem 0.42rem;
+    font-size: 0.55rem;
+  }
+}
+
+.shop-home-content__public-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.shop-home-content__public-actions button {
+  min-height: 30px;
+  border: 1px solid #c9dcf4;
+  border-radius: 8px;
+  padding: 0.36rem 0.58rem;
+  background: #edf5ff;
+  color: #145da0;
+  font: inherit;
+  font-size: 0.6rem;
+  font-weight: 850;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.shop-home-content__public-actions button:hover {
+  border-color: #a9c9ec;
+  background: #e2efff;
+}
+
+.shop-home-content__public-actions button:focus-visible {
+  outline: 2px solid #1565c0;
+  outline-offset: 2px;
+}
