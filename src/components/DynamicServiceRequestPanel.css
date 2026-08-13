@@ -582,6 +582,36 @@
   line-height: 1.35;
 }
 
+.dynamic-service-request__location-hint--compact {
+  align-items: center;
+  gap: 6px;
+
+  margin: 0;
+  padding: 2px 3px;
+
+  border: 0;
+  border-radius: 0;
+
+  background: transparent;
+}
+
+.dynamic-service-request__location-hint--compact
+  > span {
+  flex: 0 0 auto;
+}
+
+.dynamic-service-request__location-hint--compact
+  small {
+  overflow: hidden;
+
+  color: #5b6775;
+  font-size: 0.7rem;
+  line-height: 1.25;
+
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 /* Progressive disclosure for optional fields */
 .dynamic-service-request__optional-toggle {
   display: flex;
@@ -664,7 +694,7 @@
   min-height: 72px;
 }
 
-/* Ultra-compact online request form */
+/* Ultra-compact request form */
 .dynamic-service-request__form--compact {
   gap: 7px;
 }
@@ -796,10 +826,7 @@
 /* Placeholder-only compact form */
 .dynamic-service-request__form--compact
   .dynamic-service-request__field
-  > span,
-.dynamic-service-request__form--compact
-  .dynamic-service-request__field
-  > legend {
+  > span {
   display: none;
 }
 
@@ -1060,4 +1087,14 @@ small {
   .dynamic-service-request__item-row-grid input:last-child {
     grid-column: 1 / -1;
   }
+}
+
+/* Compact General Request / online request spacing */
+.dynamic-service-request__section--compact:not(:has(> header)) {
+  padding-block: 7px;
+}
+
+.dynamic-service-request__form--compact
+  .dynamic-service-request__location-hint--compact {
+  margin-block: 0;
 }

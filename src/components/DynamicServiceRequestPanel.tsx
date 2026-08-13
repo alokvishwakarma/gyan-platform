@@ -1307,6 +1307,21 @@ export default function DynamicServiceRequestPanel({
       ?.trim()
       .toLowerCase() === "digital";
 
+  const isGeneralRequest =
+    (
+      responseData
+        ?.service
+        ?.code ??
+      serviceCode
+    )
+      .trim()
+      .toUpperCase() ===
+    "GENERAL_REQUEST";
+
+  const isCompactRequest =
+    isOnlineRequest ||
+    isGeneralRequest;
+
   const totalFileCount =
     useMemo(
       () => {
@@ -1798,6 +1813,85 @@ export default function DynamicServiceRequestPanel({
       }
     }
 
+    if (isGeneralRequest) {
+      const contactItems =
+        allFields.filter(
+          ({ field }) =>
+            isContactField(field),
+        );
+
+      const phoneItem =
+        contactItems.find(
+          ({ field }) =>
+            isPhoneLikeField(
+              field,
+            ),
+        );
+
+      const emailItem =
+        contactItems.find(
+          ({ field }) =>
+            isEmailField(
+              field,
+            ),
+        );
+
+      const phoneValue =
+        phoneItem
+          ? values[
+              phoneItem.fieldId
+            ]
+          : "";
+
+      const emailValue =
+        emailItem
+          ? values[
+              emailItem.fieldId
+            ]
+          : "";
+
+      const hasValidPhone =
+        typeof phoneValue ===
+          "string" &&
+        hasValidPhoneForCountry(
+          phoneValue,
+          locationHint
+            ?.countryCode,
+        );
+
+      const hasValidEmail =
+        typeof emailValue ===
+          "string" &&
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+          emailValue.trim(),
+        );
+
+      if (
+        !hasValidPhone &&
+        !hasValidEmail
+      ) {
+        const targetId =
+          phoneItem
+            ?.fieldId ??
+          emailItem
+            ?.fieldId ??
+          "__online_contact";
+
+        nextErrors[targetId] =
+          locationHint
+            ?.countryCode ===
+              "US" ||
+          locationHint
+            ?.countryCode ===
+              "CA" ||
+          locationHint
+            ?.countryCode ===
+              "IN"
+            ? "Enter a 10-digit phone / WhatsApp number or a valid email address."
+            : "Enter a valid phone / WhatsApp number or email address.";
+      }
+    }
+
     setFieldErrors(nextErrors);
 
     return (
@@ -2083,7 +2177,7 @@ export default function DynamicServiceRequestPanel({
       fieldErrors[fieldId];
 
     const commonLabel =
-      isOnlineRequest &&
+      isCompactRequest &&
       !showOptionalDetails
         ? null
         : (
@@ -2347,7 +2441,7 @@ export default function DynamicServiceRequestPanel({
 
           <textarea
             rows={
-              isOnlineRequest &&
+              isCompactRequest &&
               !showOptionalDetails
                 ? 2
                 : 4
@@ -2362,7 +2456,8 @@ export default function DynamicServiceRequestPanel({
               field.required
             }
             placeholder={
-              field.placeholder
+              field.placeholder ||
+              field.label
             }
             onChange={(
               event,
@@ -2377,7 +2472,7 @@ export default function DynamicServiceRequestPanel({
 
           {field.helpText &&
             (
-              !isOnlineRequest ||
+              !isCompactRequest ||
               showOptionalDetails
             ) && (
             <small className="dynamic-service-request__help">
@@ -2427,6 +2522,7 @@ export default function DynamicServiceRequestPanel({
           >
             <option value="">
               {field.placeholder ||
+                field.label ||
                 "Select an option"}
             </option>
 
@@ -2448,7 +2544,7 @@ export default function DynamicServiceRequestPanel({
 
           {field.helpText &&
             (
-              !isOnlineRequest ||
+              !isCompactRequest ||
               showOptionalDetails
             ) && (
             <small className="dynamic-service-request__help">
@@ -2520,7 +2616,7 @@ export default function DynamicServiceRequestPanel({
 
           {field.helpText &&
             (
-              !isOnlineRequest ||
+              !isCompactRequest ||
               showOptionalDetails
             ) && (
             <small className="dynamic-service-request__help">
@@ -2570,7 +2666,7 @@ export default function DynamicServiceRequestPanel({
 
           {field.helpText &&
             (
-              !isOnlineRequest ||
+              !isCompactRequest ||
               showOptionalDetails
             ) && (
             <small className="dynamic-service-request__help">
@@ -2663,7 +2759,7 @@ export default function DynamicServiceRequestPanel({
 
           {field.helpText &&
             (
-              !isOnlineRequest ||
+              !isCompactRequest ||
               showOptionalDetails
             ) && (
             <small className="dynamic-service-request__help">
@@ -2698,7 +2794,7 @@ export default function DynamicServiceRequestPanel({
 
           <div className="dynamic-service-request__file">
             <strong>
-              {isOnlineRequest &&
+              {isCompactRequest &&
               !showOptionalDetails
                 ? "Attach file"
                 : "Choose files"}
@@ -2733,7 +2829,7 @@ export default function DynamicServiceRequestPanel({
 
           {field.helpText &&
             (
-              !isOnlineRequest ||
+              !isCompactRequest ||
               showOptionalDetails
             ) && (
             <small className="dynamic-service-request__help">
@@ -2763,7 +2859,7 @@ export default function DynamicServiceRequestPanel({
         : "text";
 
     const compactLayoutClass =
-      isOnlineRequest &&
+      isCompactRequest &&
       !showOptionalDetails
         ? isPhoneLikeField(field) ||
           isEmailField(field)
@@ -2790,7 +2886,8 @@ export default function DynamicServiceRequestPanel({
             field.required
           }
           placeholder={
-            field.placeholder
+            field.placeholder ||
+            field.label
           }
           inputMode={
             isPhoneLikeField(
@@ -2851,7 +2948,11 @@ export default function DynamicServiceRequestPanel({
           }
         />
 
-        {field.helpText && (
+        {field.helpText &&
+          (
+            !isCompactRequest ||
+            showOptionalDetails
+          ) && (
           <small className="dynamic-service-request__help">
             {field.helpText}
           </small>
@@ -2892,6 +2993,13 @@ export default function DynamicServiceRequestPanel({
       return isCompactOnlineField(
         section,
         field,
+      );
+    }
+
+    if (isGeneralRequest) {
+      return (
+        field.required ||
+        isContactField(field)
       );
     }
 
@@ -3175,7 +3283,7 @@ export default function DynamicServiceRequestPanel({
               ?.hasConfiguration && (
               <form
                 className={
-                  isOnlineRequest &&
+                  isCompactRequest &&
                   !showOptionalDetails
                     ? "dynamic-service-request__form dynamic-service-request__form--compact"
                     : "dynamic-service-request__form"
@@ -3188,7 +3296,7 @@ export default function DynamicServiceRequestPanel({
                   .service
                   ?.description &&
                   (
-                    !isOnlineRequest ||
+                    !isCompactRequest ||
                     showOptionalDetails
                   ) && (
                   <p className="dynamic-service-request__description">
@@ -3201,6 +3309,7 @@ export default function DynamicServiceRequestPanel({
                 )}
 
                 {!isOnlineRequest &&
+                  !isGeneralRequest &&
                   locationHint
                     ?.countryCode && (
                   <div className="dynamic-service-request__location-hint">
@@ -3261,27 +3370,32 @@ export default function DynamicServiceRequestPanel({
                         section.key
                       }
                       className={
-                        isOnlineRequest &&
+                        isCompactRequest &&
                         !showOptionalDetails
                           ? "dynamic-service-request__section dynamic-service-request__section--compact"
                           : "dynamic-service-request__section"
                       }
                     >
-                      <header>
-                        <h3>
-                          {
-                            section.label
-                          }
-                        </h3>
-
-                        {section.description && (
-                          <p>
+                      {(
+                        !isCompactRequest ||
+                        showOptionalDetails
+                      ) && (
+                        <header>
+                          <h3>
                             {
-                              section.description
+                              section.label
                             }
-                          </p>
-                        )}
-                      </header>
+                          </h3>
+
+                          {section.description && (
+                            <p>
+                              {
+                                section.description
+                              }
+                            </p>
+                          )}
+                        </header>
+                      )}
 
                       <div className="dynamic-service-request__fields">
                         {[
@@ -3312,6 +3426,29 @@ export default function DynamicServiceRequestPanel({
                       </div>
                     </section>
                   ),
+                )}
+
+                {isGeneralRequest &&
+                  !showOptionalDetails &&
+                  locationHint
+                    ?.countryCode && (
+                  <div className="dynamic-service-request__location-hint dynamic-service-request__location-hint--compact">
+                    <span
+                      aria-hidden="true"
+                    >
+                      📍
+                    </span>
+
+                    <small>
+                      {[
+                        locationHint.city,
+                        locationHint.region,
+                        locationHint.country,
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}
+                    </small>
+                  </div>
                 )}
 
                 <button
