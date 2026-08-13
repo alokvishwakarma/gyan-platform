@@ -211,25 +211,27 @@ export default function GyanAboutPanel({
               </div>
             </article>
 
-            <article>
-              <span
-                aria-hidden="true"
-              >
-                💻
-              </span>
+<article>
+  <span
+    aria-hidden="true"
+  >
+    🌐
+  </span>
 
-              <div>
-                <strong>
-                  Developer
-                </strong>
+  <div>
+    <strong>
+      Services
+    </strong>
 
-                <p>
-                  AAaa LLC
-                  <br />
-                  Powered by ChatGPT
-                </p>
-              </div>
-            </article>
+    <p>
+      Online Global Services
+      <br />
+      Nearby Local Services
+      <br />
+      Powered by ChatGPT
+    </p>
+  </div>
+</article>
           </div>
         </div>
 
