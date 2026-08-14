@@ -67,6 +67,11 @@ interface UpdateShopInformationRequest {
   status?: unknown;
 }
 
+
+interface DeleteShopRequest {
+  confirmName?: unknown;
+}
+
 type ShopServiceMode =
   | "inherit"
   | "enabled"
@@ -761,6 +766,465 @@ async function handleUpdateShopInformation(
   });
 }
 
+async function handleDeleteShopInformation(
+  request: Request,
+  env: Env,
+  shopCode: string,
+): Promise<Response> {
+  const unauthorized =
+    await requireAdmin(
+      request,
+      env,
+    );
+
+  if (unauthorized) {
+    return unauthorized;
+  }
+
+  const existingShop =
+    await loadShop(
+      env,
+      shopCode,
+    );
+
+  if (!existingShop) {
+    return createJsonResponse(
+      {
+        error:
+          "Shop not found.",
+      },
+      404,
+    );
+  }
+
+  let body:
+    DeleteShopRequest;
+
+  try {
+    body =
+      (await request.json()) as
+        DeleteShopRequest;
+  } catch {
+    return createJsonResponse(
+      {
+        error:
+          "Request body must be valid JSON.",
+      },
+      400,
+    );
+  }
+
+  const confirmName =
+    normalizeRequiredText(
+      body.confirmName,
+      150,
+    );
+
+  if (
+    !confirmName ||
+    confirmName !==
+      existingShop.name
+  ) {
+    return createJsonResponse(
+      {
+        error:
+          "Type the exact shop name to confirm deletion.",
+      },
+      400,
+    );
+  }
+
+  /*
+   * Count affected records first so Admin can show
+   * a useful deletion summary.
+   */
+  const chatMessageCount =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            COUNT(*) AS count
+
+          FROM chat_messages
+
+          WHERE
+            sender_shop_code = ?
+            OR thread_id IN (
+              SELECT id
+              FROM chat_threads
+              WHERE
+                shop_code = ?
+                OR request_id IN (
+                  SELECT id
+                  FROM service_requests
+                  WHERE shop_code = ?
+                )
+            )
+        `,
+      )
+      .bind(
+        shopCode,
+        shopCode,
+        shopCode,
+      )
+      .first<{
+        count: number;
+      }>();
+
+  const chatThreadCount =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            COUNT(*) AS count
+
+          FROM chat_threads
+
+          WHERE
+            shop_code = ?
+            OR request_id IN (
+              SELECT id
+              FROM service_requests
+              WHERE shop_code = ?
+            )
+        `,
+      )
+      .bind(
+        shopCode,
+        shopCode,
+      )
+      .first<{
+        count: number;
+      }>();
+
+  const serviceRequestCount =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            COUNT(*) AS count
+
+          FROM service_requests
+
+          WHERE shop_code = ?
+        `,
+      )
+      .bind(
+        shopCode,
+      )
+      .first<{
+        count: number;
+      }>();
+
+  const printRequestCount =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            COUNT(*) AS count
+
+          FROM print_requests
+
+          WHERE shop_code = ?
+        `,
+      )
+      .bind(
+        shopCode,
+      )
+      .first<{
+        count: number;
+      }>();
+
+  const localRequestCount =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            COUNT(*) AS count
+
+          FROM local_service_requests
+
+          WHERE assigned_shop_code = ?
+        `,
+      )
+      .bind(
+        shopCode,
+      )
+      .first<{
+        count: number;
+      }>();
+
+  const shopServiceCount =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            COUNT(*) AS count
+
+          FROM shop_services
+
+          WHERE shop_code = ?
+        `,
+      )
+      .bind(
+        shopCode,
+      )
+      .first<{
+        count: number;
+      }>();
+
+  const featuredServiceCount =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            COUNT(*) AS count
+
+          FROM shop_featured_services
+
+          WHERE shop_code = ?
+        `,
+      )
+      .bind(
+        shopCode,
+      )
+      .first<{
+        count: number;
+      }>();
+
+  const offlineCodeCount =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            COUNT(*) AS count
+
+          FROM offline_shop_codes
+
+          WHERE claimed_shop_code = ?
+        `,
+      )
+      .bind(
+        shopCode,
+      )
+      .first<{
+        count: number;
+      }>();
+
+  /*
+   * Delete in dependency order.
+   *
+   * chat_messages -> chat_threads -> requests -> shop
+   *
+   * service_request_files and print_request_files are
+   * removed by their ON DELETE CASCADE relationships.
+   * shop_services and shop_featured_services are also
+   * removed by ON DELETE CASCADE when the shop is deleted.
+   *
+   * Customer user accounts are intentionally preserved.
+   */
+  try {
+    await env.gyan_registry.batch([
+      env.gyan_registry
+        .prepare(
+          `
+            DELETE FROM chat_messages
+
+            WHERE
+              sender_shop_code = ?
+              OR thread_id IN (
+                SELECT id
+                FROM chat_threads
+                WHERE
+                  shop_code = ?
+                  OR request_id IN (
+                    SELECT id
+                    FROM service_requests
+                    WHERE shop_code = ?
+                  )
+              )
+          `,
+        )
+        .bind(
+          shopCode,
+          shopCode,
+          shopCode,
+        ),
+
+      env.gyan_registry
+        .prepare(
+          `
+            DELETE FROM chat_threads
+
+            WHERE
+              shop_code = ?
+              OR request_id IN (
+                SELECT id
+                FROM service_requests
+                WHERE shop_code = ?
+              )
+          `,
+        )
+        .bind(
+          shopCode,
+          shopCode,
+        ),
+
+      env.gyan_registry
+        .prepare(
+          `
+            DELETE FROM service_requests
+            WHERE shop_code = ?
+          `,
+        )
+        .bind(
+          shopCode,
+        ),
+
+      env.gyan_registry
+        .prepare(
+          `
+            DELETE FROM print_requests
+            WHERE shop_code = ?
+          `,
+        )
+        .bind(
+          shopCode,
+        ),
+
+      env.gyan_registry
+        .prepare(
+          `
+            DELETE FROM local_service_requests
+            WHERE assigned_shop_code = ?
+          `,
+        )
+        .bind(
+          shopCode,
+        ),
+
+      /*
+       * Offline claim codes tied to a deleted shop are
+       * test/claim artifacts and are removed as well.
+       */
+      env.gyan_registry
+        .prepare(
+          `
+            DELETE FROM offline_shop_codes
+            WHERE claimed_shop_code = ?
+          `,
+        )
+        .bind(
+          shopCode,
+        ),
+
+      env.gyan_registry
+        .prepare(
+          `
+            DELETE FROM shops
+            WHERE code = ?
+          `,
+        )
+        .bind(
+          shopCode,
+        ),
+    ]);
+  } catch (error) {
+    console.error(
+      "Unable to delete shop:",
+      error,
+    );
+
+    return createJsonResponse(
+      {
+        error:
+          "Shop could not be deleted. No further action was taken.",
+      },
+      500,
+    );
+  }
+
+  const totalRequests =
+    Number(
+      serviceRequestCount?.count ??
+        0,
+    ) +
+    Number(
+      printRequestCount?.count ??
+        0,
+    ) +
+    Number(
+      localRequestCount?.count ??
+        0,
+    );
+
+  return createJsonResponse({
+    deleted: true,
+
+    message:
+      "Shop and related data deleted.",
+
+    summary: {
+      shopCode,
+
+      shopName:
+        existingShop.name,
+
+      requests:
+        totalRequests,
+
+      serviceRequests:
+        Number(
+          serviceRequestCount?.count ??
+            0,
+        ),
+
+      printRequests:
+        Number(
+          printRequestCount?.count ??
+            0,
+        ),
+
+      localRequests:
+        Number(
+          localRequestCount?.count ??
+            0,
+        ),
+
+      chatThreads:
+        Number(
+          chatThreadCount?.count ??
+            0,
+        ),
+
+      chatMessages:
+        Number(
+          chatMessageCount?.count ??
+            0,
+        ),
+
+      shopServices:
+        Number(
+          shopServiceCount?.count ??
+            0,
+        ),
+
+      featuredServices:
+        Number(
+          featuredServiceCount?.count ??
+            0,
+        ),
+
+      offlineCodes:
+        Number(
+          offlineCodeCount?.count ??
+            0,
+        ),
+    },
+  });
+}
+
+
 async function handleGetShopServices(
   request: Request,
   env: Env,
@@ -1208,6 +1672,16 @@ export async function handleAdminShopsRoute(
     request.method === "PUT"
   ) {
     return handleUpdateShopInformation(
+      request,
+      env,
+      shopCode,
+    );
+  }
+
+  if (
+    request.method === "DELETE"
+  ) {
+    return handleDeleteShopInformation(
       request,
       env,
       shopCode,

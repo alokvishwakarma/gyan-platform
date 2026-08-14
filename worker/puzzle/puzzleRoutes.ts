@@ -1,7 +1,10 @@
-import type {
-  PuzzleStage,
-  PuzzleTile,
-  TileColor,
+import {
+  generateDailyPuzzlePair,
+
+  type GeneratedPuzzle,
+  type PuzzleStage,
+  type PuzzleTile,
+  type TileColor,
 } from "./puzzleGenerator";
 
 interface PuzzleRow {
@@ -259,6 +262,186 @@ function localDateKey(): string {
   return `${year}-${month}-${day}`;
 }
 
+
+
+async function nextPuzzleNumber(
+  env: Env,
+): Promise<number> {
+  const row =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            MAX(puzzle_number) AS maximum
+          FROM daily_puzzles
+        `,
+      )
+      .first<{
+        maximum:
+          number | null;
+      }>();
+
+  return (
+    Number(
+      row?.maximum ??
+        218,
+    ) + 1
+  );
+}
+
+
+function insertGeneratedPuzzle(
+  env: Env,
+  puzzle: GeneratedPuzzle,
+): D1PreparedStatement {
+  return env.gyan_registry
+    .prepare(
+      `
+        INSERT INTO daily_puzzles (
+          puzzle_date,
+          puzzle_number,
+          stage,
+          board_size,
+          max_moves,
+          mystery_count,
+          start_board_json,
+          solved_board_json,
+          solution_moves_json,
+          mystery_reveal_order_json,
+          verified,
+          status,
+          created_at,
+          updated_at
+        )
+        VALUES (
+          ?, ?, ?, ?, ?, ?,
+          ?, ?, ?, ?,
+          1,
+          'published',
+          CURRENT_TIMESTAMP,
+          CURRENT_TIMESTAMP
+        )
+      `,
+    )
+    .bind(
+      puzzle.puzzleDate,
+      puzzle.puzzleNumber,
+      puzzle.stage,
+      puzzle.size,
+      puzzle.maxMoves,
+      puzzle.mysteryCount,
+      JSON.stringify(
+        puzzle.startBoard,
+      ),
+      JSON.stringify(
+        puzzle.solvedBoard,
+      ),
+      JSON.stringify(
+        puzzle.solutionMoves,
+      ),
+      JSON.stringify(
+        puzzle.mysteryRevealOrder,
+      ),
+    );
+}
+
+
+async function ensureDailyPuzzlePair(
+  env: Env,
+  puzzleDate: string,
+): Promise<void> {
+  const existing =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT stage
+          FROM daily_puzzles
+          WHERE
+            puzzle_date = ?
+            AND verified = 1
+            AND status = 'published'
+            AND stage IN (
+              '5x5',
+              '7x7'
+            )
+        `,
+      )
+      .bind(
+        puzzleDate,
+      )
+      .all<{
+        stage: PuzzleStage;
+      }>();
+
+  const stages =
+    new Set(
+      existing.results.map(
+        (row) =>
+          row.stage,
+      ),
+    );
+
+  if (
+    stages.has("5x5") &&
+    stages.has("7x7")
+  ) {
+    return;
+  }
+
+  if (stages.size > 0) {
+    throw new Error(
+      `Puzzle date ${puzzleDate} has only one published stage.`,
+    );
+  }
+
+  const puzzleNumber =
+    await nextPuzzleNumber(
+      env,
+    );
+
+  const pair =
+    generateDailyPuzzlePair(
+      puzzleDate,
+      puzzleNumber,
+    );
+
+  try {
+    await env.gyan_registry.batch([
+      insertGeneratedPuzzle(
+        env,
+        pair.five,
+      ),
+      insertGeneratedPuzzle(
+        env,
+        pair.seven,
+      ),
+    ]);
+  } catch (error) {
+    /*
+     * If two first visitors race, unique
+     * constraints let only one pair win.
+     */
+    const five =
+      await loadPublishedByDate(
+        env,
+        puzzleDate,
+        "5x5",
+      );
+
+    const seven =
+      await loadPublishedByDate(
+        env,
+        puzzleDate,
+        "7x7",
+      );
+
+    if (five && seven) {
+      return;
+    }
+
+    throw error;
+  }
+}
 
 
 function buildAuthoritativeBoard(
@@ -578,10 +761,33 @@ export async function handlePuzzleRoute(
         ? "7x7"
         : "5x5";
 
+    const today =
+      localDateKey();
+
+    try {
+      await ensureDailyPuzzlePair(
+        env,
+        today,
+      );
+    } catch (error) {
+      console.error(
+        "Unable to ensure today's puzzle:",
+        error,
+      );
+
+      return jsonResponse(
+        {
+          error:
+            "Today's puzzle could not be generated.",
+        },
+        500,
+      );
+    }
+
     const row =
       await loadPublishedByDate(
         env,
-        localDateKey(),
+        today,
         stage,
       );
 

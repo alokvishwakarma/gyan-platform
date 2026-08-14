@@ -479,77 +479,201 @@ function createScrambleMoves(
   random: () => number,
   stage: PuzzleStage,
 ): PuzzleMove[] {
-  const positions =
+  const moves:
+    PuzzleMove[] = [];
+
+  /*
+   * Deliberately move one winning tile twice
+   * in the same direction. This guarantees
+   * that at least one tile can finish two
+   * cells away from its solved location.
+   */
+  const longDirections =
+    [-1, 1].filter(
+      (direction) => {
+        const destination =
+          lineIndex +
+          direction * 2;
+
+        return (
+          destination >= 0 &&
+          destination < size
+        );
+      },
+    );
+
+  if (
+    longDirections.length === 0
+  ) {
+    throw new Error(
+      "Winning line cannot support a two-cell scramble.",
+    );
+  }
+
+  const longDirection =
+    longDirections[
+      randomInt(
+        random,
+        longDirections.length,
+      )
+    ];
+
+  const longPosition =
+    randomInt(
+      random,
+      size,
+    );
+
+  if (
+    orientation ===
+      "horizontal"
+  ) {
+    moves.push(
+      {
+        from: {
+          row:
+            lineIndex,
+          column:
+            longPosition,
+        },
+        to: {
+          row:
+            lineIndex +
+            longDirection,
+          column:
+            longPosition,
+        },
+      },
+      {
+        from: {
+          row:
+            lineIndex +
+            longDirection,
+          column:
+            longPosition,
+        },
+        to: {
+          row:
+            lineIndex +
+            longDirection * 2,
+          column:
+            longPosition,
+        },
+      },
+    );
+  } else {
+    moves.push(
+      {
+        from: {
+          row:
+            longPosition,
+          column:
+            lineIndex,
+        },
+        to: {
+          row:
+            longPosition,
+          column:
+            lineIndex +
+            longDirection,
+        },
+      },
+      {
+        from: {
+          row:
+            longPosition,
+          column:
+            lineIndex +
+            longDirection,
+        },
+        to: {
+          row:
+            longPosition,
+          column:
+            lineIndex +
+            longDirection * 2,
+        },
+      },
+    );
+  }
+
+  const remainingPositions =
     shuffle(
       Array.from(
         {
           length:
             size,
         },
-        (
-          _,
+        (_, index) =>
           index,
-        ) => index,
+      ).filter(
+        (position) =>
+          position !==
+          longPosition,
       ),
       random,
     );
 
-  const moves:
-    PuzzleMove[] = [];
-
   for (
     let order = 0;
+    moves.length < size &&
     order <
-    positions.length;
+      remainingPositions.length;
     order += 1
   ) {
     const position =
-      positions[
+      remainingPositions[
         order
       ];
 
-    /*
-     * Medium:
-     * alternating sides gives a readable clue.
-     *
-     * Hard:
-     * random sides make the 7×7 less visually
-     * predictable.
-     */
-    const direction =
-      stage ===
-      "5x5"
-        ? (
-            order % 2 ===
-            0
-              ? -1
-              : 1
-          )
-        : (
-            random() <
-            0.5
-              ? -1
-              : 1
+    const directions =
+      [-1, 1].filter(
+        (direction) => {
+          const destination =
+            lineIndex +
+            direction;
+
+          return (
+            destination >= 0 &&
+            destination < size
           );
+        },
+      );
+
+    if (
+      directions.length === 0
+    ) {
+      continue;
+    }
+
+    const direction =
+      stage === "5x5"
+        ? directions[
+            order %
+              directions.length
+          ]
+        : directions[
+            randomInt(
+              random,
+              directions.length,
+            )
+          ];
 
     if (
       orientation ===
-      "horizontal"
+        "horizontal"
     ) {
       moves.push({
         from: {
           row:
             lineIndex,
-
           column:
             position,
         },
-
         to: {
           row:
             lineIndex +
             direction,
-
           column:
             position,
         },
@@ -559,21 +683,26 @@ function createScrambleMoves(
         from: {
           row:
             position,
-
           column:
             lineIndex,
         },
-
         to: {
           row:
             position,
-
           column:
             lineIndex +
             direction,
         },
       });
     }
+  }
+
+  if (
+    moves.length !== size
+  ) {
+    throw new Error(
+      `Expected ${size} scramble moves but generated ${moves.length}.`,
+    );
   }
 
   return moves;
@@ -1083,6 +1212,73 @@ function stageSize(
   );
 }
 
+function hasTileDisplacedByAtLeastTwo(
+  solvedBoard: PuzzleTile[],
+  scrambledBoard: PuzzleTile[],
+  size: number,
+): boolean {
+  const solvedPositionById =
+    new Map<number, PuzzlePosition>();
+
+  for (
+    let index = 0;
+    index < solvedBoard.length;
+    index += 1
+  ) {
+    solvedPositionById.set(
+      solvedBoard[index].id,
+      {
+        row:
+          Math.floor(index / size),
+
+        column:
+          index % size,
+      },
+    );
+  }
+
+  for (
+    let index = 0;
+    index < scrambledBoard.length;
+    index += 1
+  ) {
+    const tile =
+      scrambledBoard[index];
+
+    const solvedPosition =
+      solvedPositionById.get(
+        tile.id,
+      );
+
+    if (!solvedPosition) {
+      continue;
+    }
+
+    const row =
+      Math.floor(index / size);
+
+    const column =
+      index % size;
+
+    const distance =
+      Math.abs(
+        row -
+          solvedPosition.row,
+      ) +
+      Math.abs(
+        column -
+          solvedPosition.column,
+      );
+
+    if (distance >= 2) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
 function difficultyAcceptable(
   puzzle:
     GeneratedPuzzle,
@@ -1128,7 +1324,7 @@ export function generatePuzzle(
 const random =
   createRandom(
     [
-      "medium-v2",
+      "reverse-auto-v1",
       puzzleDate,
       puzzleNumber,
       stage,
@@ -1157,6 +1353,16 @@ const random =
         scrambleMoves,
         size,
       );
+
+    if (
+      !hasTileDisplacedByAtLeastTwo(
+        solved.board,
+        scrambledBoard,
+        size,
+      )
+    ) {
+      continue;
+    }
 
     const mysteryResult =
       addMysteries(

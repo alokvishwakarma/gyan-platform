@@ -38,6 +38,27 @@ interface ShopInformationResponse {
   error?: string;
 }
 
+
+interface DeleteShopResponse {
+  deleted?: boolean;
+  message?: string;
+  error?: string;
+
+  summary?: {
+    shopCode: string;
+    shopName: string;
+    requests: number;
+    serviceRequests: number;
+    printRequests: number;
+    localRequests: number;
+    chatThreads: number;
+    chatMessages: number;
+    shopServices: number;
+    featuredServices: number;
+    offlineCodes: number;
+  };
+}
+
 function sanitizePhone(
   value: string,
 ): string {
@@ -100,6 +121,21 @@ export default function AdminShopInfoScreen({
   const [
     showMore,
     setShowMore,
+  ] = useState(false);
+
+  const [
+    showDelete,
+    setShowDelete,
+  ] = useState(false);
+
+  const [
+    deleteConfirmation,
+    setDeleteConfirmation,
+  ] = useState("");
+
+  const [
+    deleting,
+    setDeleting,
   ] = useState(false);
 
   useEffect(() => {
@@ -328,6 +364,82 @@ export default function AdminShopInfoScreen({
       setSaving(false);
     }
   }
+
+  async function deleteShop():
+    Promise<void> {
+    if (
+      !shop ||
+      deleteConfirmation !==
+        shop.name
+    ) {
+      setError(
+        "Type the exact shop name to confirm deletion.",
+      );
+
+      return;
+    }
+
+    setDeleting(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const response =
+        await fetch(
+          `/api/admin/shops/${encodeURIComponent(
+            shopCode,
+          )}`,
+          {
+            method:
+              "DELETE",
+
+            credentials:
+              "include",
+
+            headers: {
+              "content-type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                confirmName:
+                  deleteConfirmation,
+              }),
+          },
+        );
+
+      const result =
+        (await response.json()) as
+          DeleteShopResponse;
+
+      if (
+        !response.ok ||
+        !result.deleted
+      ) {
+        throw new Error(
+          result.error ??
+            "Shop could not be deleted.",
+        );
+      }
+
+      /*
+       * The selected shop no longer exists,
+       * so return immediately to the shops list.
+       */
+      onBack();
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof
+          Error
+          ? caughtError.message
+          : "Shop could not be deleted.",
+      );
+
+      setDeleting(false);
+    }
+  }
+
 
   return (
     <main className="admin-shop-info">
@@ -610,7 +722,10 @@ export default function AdminShopInfoScreen({
             <div className="admin-shop-info__actions">
               <button
                 type="button"
-                disabled={saving}
+                disabled={
+                  saving ||
+                  deleting
+                }
                 onClick={onBack}
               >
                 Cancel
@@ -618,13 +733,193 @@ export default function AdminShopInfoScreen({
 
               <button
                 type="submit"
-                disabled={saving}
+                disabled={
+                  saving ||
+                  deleting
+                }
               >
                 {saving
                   ? "Saving…"
                   : "Save changes"}
               </button>
             </div>
+
+            <section
+              aria-label="Danger zone"
+              style={{
+                marginTop:
+                  "18px",
+                paddingTop:
+                  "14px",
+                borderTop:
+                  "1px solid rgba(150, 0, 0, 0.18)",
+              }}
+            >
+              {!showDelete ? (
+                <button
+                  type="button"
+                  disabled={
+                    saving ||
+                    deleting
+                  }
+                  onClick={() => {
+                    setShowDelete(
+                      true,
+                    );
+
+                    setDeleteConfirmation(
+                      "",
+                    );
+
+                    setError(
+                      "",
+                    );
+                  }}
+                  style={{
+                    width:
+                      "100%",
+                    border:
+                      "1px solid rgba(160, 0, 0, 0.32)",
+                    background:
+                      "transparent",
+                    padding:
+                      "9px 12px",
+                    borderRadius:
+                      "8px",
+                    font:
+                      "inherit",
+                    fontWeight:
+                      700,
+                    cursor:
+                      "pointer",
+                  }}
+                >
+                  Delete Shop
+                </button>
+              ) : (
+                <div
+                  style={{
+                    display:
+                      "grid",
+                    gap:
+                      "8px",
+                  }}
+                >
+                  <strong>
+                    Delete this shop permanently?
+                  </strong>
+
+                  <small>
+                    This removes the shop, its assigned
+                    requests, shop-linked chats, and
+                    service links. Customer accounts are
+                    not deleted.
+                  </small>
+
+                  <label
+                    style={{
+                      display:
+                        "grid",
+                      gap:
+                        "5px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize:
+                          "0.75rem",
+                      }}
+                    >
+                      Type{" "}
+                      <strong>
+                        {shop.name}
+                      </strong>{" "}
+                      to confirm
+                    </span>
+
+                    <input
+                      type="text"
+                      value={
+                        deleteConfirmation
+                      }
+                      placeholder={
+                        shop.name
+                      }
+                      disabled={
+                        deleting
+                      }
+                      onChange={(
+                        event,
+                      ) => {
+                        setDeleteConfirmation(
+                          event.target
+                            .value,
+                        );
+
+                        setError(
+                          "",
+                        );
+                      }}
+                    />
+                  </label>
+
+                  <div
+                    style={{
+                      display:
+                        "grid",
+                      gridTemplateColumns:
+                        "1fr 1fr",
+                      gap:
+                        "8px",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      disabled={
+                        deleting
+                      }
+                      onClick={() => {
+                        setShowDelete(
+                          false,
+                        );
+
+                        setDeleteConfirmation(
+                          "",
+                        );
+
+                        setError(
+                          "",
+                        );
+                      }}
+                    >
+                      Keep Shop
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={
+                        deleting ||
+                        deleteConfirmation !==
+                          shop.name
+                      }
+                      onClick={() =>
+                        void deleteShop()
+                      }
+                      style={{
+                        border:
+                          "1px solid rgba(160, 0, 0, 0.4)",
+                        fontWeight:
+                          800,
+                      }}
+                    >
+                      {deleting
+                        ? "Deleting…"
+                        : "Delete permanently"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
           </form>
         )}
       </section>

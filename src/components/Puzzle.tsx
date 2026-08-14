@@ -94,11 +94,27 @@ interface GqResult {
   icons: string[];
 }
 
+function elapsedSince(
+  startedAt: number | null,
+  endedAt: number,
+): number {
+  return startedAt === null
+    ? 0
+    : Math.max(
+        0,
+        endedAt -
+          startedAt,
+      );
+}
+
+
 function calculateStageGq(
   maxMoves: number,
   movesUsed: number,
   stats: PuzzleSkillStats,
   solved: boolean,
+  activeSolveMs: number,
+  stage: PuzzleStage,
 ): GqResult {
   if (!solved) {
     return {
@@ -116,64 +132,82 @@ function calculateStageGq(
         movesUsed,
     );
 
-  /*
-   * Efficiency:
-   *
-   * 7×7:
-   * 7 moves = 1.00
-   * 6 moves = 1.10
-   * 5 or fewer = 1.20
-   *
-   * 5×5 uses the same "moves saved"
-   * idea:
-   * 5 = 1.00, 4 = 1.10, 3 or fewer = 1.20.
-   *
-   * The multiplier applies only to the
-   * 50-point completion component, not
-   * the entire GQ. This keeps one lucky
-   * short solve from dominating GQ.
-   */
-  const efficiencyMultiplier =
-    movesSaved >= 2
-      ? 1.2
-      : movesSaved === 1
-        ? 1.1
-        : 1;
-
   const efficiencyLevel:
     0 | 1 | 2 =
-      efficiencyMultiplier >= 1.2
+      movesSaved >= 2
         ? 2
-        : efficiencyMultiplier >= 1.1
+        : movesSaved === 1
           ? 1
           : 0;
 
-  const completionBase =
-    50;
-
-  const reasoningBase =
-    50;
-
   const efficiencyPoints =
-    Math.round(
-      completionBase *
-      efficiencyMultiplier,
+    efficiencyLevel === 2
+      ? 10
+      : efficiencyLevel === 1
+        ? 6
+        : 0;
+
+  const seconds =
+    Math.max(
+      1,
+      Math.round(
+        activeSolveMs /
+          1000,
+      ),
     );
 
+  const speedPoints =
+    stage ===
+      "7x7"
+      ? seconds <= 45
+        ? 10
+        : seconds <= 75
+          ? 8
+          : seconds <= 120
+            ? 6
+            : seconds <= 180
+              ? 4
+              : seconds <= 300
+                ? 2
+                : 0
+      : seconds <= 20
+        ? 10
+        : seconds <= 35
+          ? 8
+          : seconds <= 60
+            ? 6
+            : seconds <= 90
+              ? 4
+              : seconds <= 150
+                ? 2
+                : 0;
+
   const revealPoints =
-    stats.strategicReveals;
+    Math.min(
+      4,
+      stats.strategicReveals,
+    );
 
   const doubleRevealPoints =
-    stats.doubleReveals *
-    2;
+    Math.min(
+      12,
+      stats.doubleReveals *
+        6,
+    );
 
   const diagonalPoints =
-    stats.diagonalMatches *
-    2;
+    Math.min(
+      8,
+      stats.diagonalMatches *
+        4,
+    );
 
   const edgePoints =
-    stats.productiveEdgeSwaps *
-    2;
+    Math.min(
+      6,
+      stats.productiveEdgeSwaps *
+        3,
+    );
 
   const mysteryFinishPoints =
     stats.mysteryFinishes >
@@ -182,13 +216,17 @@ function calculateStageGq(
       : 0;
 
   const score =
-    reasoningBase +
-    efficiencyPoints +
-    revealPoints +
-    doubleRevealPoints +
-    diagonalPoints +
-    edgePoints +
-    mysteryFinishPoints;
+    Math.min(
+      150,
+      100 +
+        efficiencyPoints +
+        speedPoints +
+        revealPoints +
+        doubleRevealPoints +
+        diagonalPoints +
+        edgePoints +
+        mysteryFinishPoints,
+    );
 
   const icons:
     string[] = [];
@@ -208,10 +246,22 @@ function calculateStageGq(
     );
   }
 
+  if (
+    speedPoints >
+    0
+  ) {
+    icons.push(
+      "⏱",
+    );
+  }
+
   for (
     let index = 0;
     index <
-      stats.strategicReveals;
+      Math.min(
+        4,
+        stats.strategicReveals,
+      );
     index += 1
   ) {
     icons.push(
@@ -219,15 +269,13 @@ function calculateStageGq(
     );
   }
 
-  /*
-   * One pair represents each Double Reveal.
-   * Keep this separate from ordinary reveal
-   * icons so the result tells the story.
-   */
   for (
     let index = 0;
     index <
-      stats.doubleReveals;
+      Math.min(
+        2,
+        stats.doubleReveals,
+      );
     index += 1
   ) {
     icons.push(
@@ -238,7 +286,10 @@ function calculateStageGq(
   for (
     let index = 0;
     index <
-      stats.diagonalMatches;
+      Math.min(
+        2,
+        stats.diagonalMatches,
+      );
     index += 1
   ) {
     icons.push(
@@ -249,7 +300,10 @@ function calculateStageGq(
   for (
     let index = 0;
     index <
-      stats.productiveEdgeSwaps;
+      Math.min(
+        2,
+        stats.productiveEdgeSwaps,
+      );
     index += 1
   ) {
     icons.push(
@@ -268,7 +322,12 @@ function calculateStageGq(
 
   return {
     score,
-    efficiencyMultiplier,
+    efficiencyMultiplier:
+      efficiencyLevel === 2
+        ? 1.2
+        : efficiencyLevel === 1
+          ? 1.1
+          : 1,
     efficiencyLevel,
     icons,
   };
@@ -374,6 +433,12 @@ interface SavedGameState {
 
   finalResultId:
     string | null;
+
+  solveStartedAt:
+    number | null;
+
+  activeSolveMs:
+    number;
 }
 
 interface PuzzleProps {
@@ -393,7 +458,7 @@ const DEV_PUZZLE_NUMBER:
   number | null = null;
 
 const STATE_KEY =
-  "gyan-d1-puzzle-state-v8";
+  "gyan-d1-puzzle-state-v9";
 
 
 /*
@@ -1505,6 +1570,18 @@ function loadSavedState():
           "string"
           ? saved.finalResultId
           : null,
+
+      solveStartedAt:
+        typeof saved.solveStartedAt ===
+          "number"
+          ? saved.solveStartedAt
+          : null,
+
+      activeSolveMs:
+        typeof saved.activeSolveMs ===
+          "number"
+          ? saved.activeSolveMs
+          : 0,
     };
   } catch {
     return null;
@@ -1880,6 +1957,20 @@ export default function Puzzle({
     >(null);
 
   const [
+    solveStartedAt,
+    setSolveStartedAt,
+  ] =
+    useState<
+      number | null
+    >(null);
+
+  const [
+    activeSolveMs,
+    setActiveSolveMs,
+  ] =
+    useState(0);
+
+  const [
     resultSaving,
     setResultSaving,
   ] =
@@ -2007,6 +2098,14 @@ export default function Puzzle({
             saved.finalResultId,
           );
 
+          setSolveStartedAt(
+            saved.solveStartedAt,
+          );
+
+          setActiveSolveMs(
+            saved.activeSolveMs,
+          );
+
           if (
             saved.qualified
           ) {
@@ -2041,6 +2140,14 @@ export default function Puzzle({
 
           setFinalResultId(
             null,
+          );
+
+          setSolveStartedAt(
+            new Date().getTime(),
+          );
+
+          setActiveSolveMs(
+            0,
           );
         }
 
@@ -2136,6 +2243,10 @@ export default function Puzzle({
       rewardedMatchSignatures,
 
       finalResultId,
+
+      solveStartedAt,
+
+      activeSolveMs,
     };
 
     localStorage.setItem(
@@ -2158,6 +2269,8 @@ export default function Puzzle({
     skillStats,
     rewardedMatchSignatures,
     finalResultId,
+    solveStartedAt,
+    activeSolveMs,
   ]);
 
 
@@ -2708,6 +2821,14 @@ export default function Puzzle({
       [],
     );
 
+    setSolveStartedAt(
+      new Date().getTime(),
+    );
+
+    setActiveSolveMs(
+      0,
+    );
+
     setCertificateBoard(
       [],
     );
@@ -2823,6 +2944,14 @@ export default function Puzzle({
         null,
       );
 
+      setSolveStartedAt(
+        new Date().getTime(),
+      );
+
+      setActiveSolveMs(
+        0,
+      );
+
       setMedalWon(
         false,
       );
@@ -2874,6 +3003,9 @@ export default function Puzzle({
     first: Position,
     second: Position,
   ) {
+    const actionNow =
+      new Date().getTime();
+
     if (
       !puzzle ||
       attemptFinished ||
@@ -3227,6 +3359,18 @@ export default function Puzzle({
         "5x5" &&
       longest >= 5
     ) {
+      if (
+        solveStartedAt !==
+          null
+      ) {
+        setActiveSolveMs(
+          elapsedSince(
+            solveStartedAt,
+            actionNow,
+          ),
+        );
+      }
+
       setQualified(
         true,
       );
@@ -3273,6 +3417,18 @@ export default function Puzzle({
         "7x7" &&
       longest >= 7
     ) {
+      if (
+        solveStartedAt !==
+          null
+      ) {
+        setActiveSolveMs(
+          elapsedSince(
+            solveStartedAt,
+            actionNow,
+          ),
+        );
+      }
+
       if (
         !finalResultId
       ) {
@@ -3595,6 +3751,8 @@ export default function Puzzle({
           moves,
           skillStats,
           true,
+          activeSolveMs,
+          "7x7",
         );
 
       async function saveResult() {
@@ -3685,6 +3843,7 @@ export default function Puzzle({
       moves,
       skillStats,
       finalResultId,
+      activeSolveMs,
     ],
   );
 
@@ -4050,6 +4209,8 @@ export default function Puzzle({
       moves,
       skillStats,
       solvedStage,
+      activeSolveMs,
+      stage,
     );
 
 
@@ -4587,6 +4748,30 @@ export default function Puzzle({
               marginTop:
                 "4px",
               fontSize:
+                "0.68rem",
+              lineHeight:
+                1.3,
+              fontWeight:
+                650,
+            }}
+          >
+            ⏱ Solved in{" "}
+            {Math.max(
+              1,
+              Math.round(
+                activeSolveMs /
+                  1000,
+              ),
+            )}s
+          </small>
+
+          <small
+            style={{
+              display:
+                "block",
+              marginTop:
+                "3px",
+              fontSize:
                 "0.6rem",
               lineHeight:
                 1.3,
@@ -4622,6 +4807,7 @@ export default function Puzzle({
               }}
             >
               ⚡ efficient solve ·
+              ⏱ fast solve ·
               👁️ chosen reveal ·
               👁️👁️ double reveal ·
               ◇ diagonal match ·
@@ -5081,6 +5267,30 @@ export default function Puzzle({
                     marginTop:
                       "3px",
                     fontSize:
+                      "0.68rem",
+                    lineHeight:
+                      1.3,
+                    fontWeight:
+                      650,
+                  }}
+                >
+                  ⏱ Solved in{" "}
+                  {Math.max(
+                    1,
+                    Math.round(
+                      activeSolveMs /
+                        1000,
+                    ),
+                  )}s
+                </small>
+
+                <small
+                  style={{
+                    display:
+                      "block",
+                    marginTop:
+                      "3px",
+                    fontSize:
                       "0.6rem",
                     lineHeight:
                       1.3,
@@ -5116,6 +5326,7 @@ export default function Puzzle({
                     }}
                   >
                     ⚡ efficient solve ·
+                    ⏱ fast solve ·
                     👁️ chosen reveal ·
                     👁️👁️ double reveal ·
                     ◇ diagonal match ·
