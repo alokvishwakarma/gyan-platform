@@ -1793,47 +1793,22 @@ return jsonResponse({
     }
 
     /*
-     * Every completed round is a leaderboard row.
+     * Every completed human round remains a real
+     * puzzle_results row.
      *
-     * A player who completes both 5×5 and 7×7
-     * appears twice, once for each stage. Both rows
-     * remain tied to the same result_id so a claimed
-     * name can update both.
+     * To keep a quiet daily board lively, we also
+     * add transparent virtual AI Bot rows at read
+     * time. They are NEVER stored as Guest/human
+     * results and are always labeled AI Bot ####.
+     *
+     * Cadence: one bot every 3 hours, capped at 6.
+     * Once 10 real round-results exist, no bots are
+     * shown. This keeps bots from crowding humans.
      */
-    const ranked =
+    const humanRowsResult =
       await env.gyan_registry
         .prepare(
           `
-          WITH ordered AS (
-            SELECT
-              result_id,
-              stage,
-              name,
-              gq_score,
-              moves_used,
-              icons_json,
-              created_at,
-
-              ROW_NUMBER()
-              OVER (
-                ORDER BY
-                  gq_score DESC,
-                  CASE
-                    WHEN stage = '7x7'
-                      THEN 1
-                    ELSE 0
-                  END DESC,
-                  moves_used ASC,
-                  created_at ASC,
-                  result_id ASC
-              ) AS rank
-
-            FROM puzzle_results
-
-            WHERE
-              puzzle_number = ?
-          )
-
           SELECT
             result_id,
             stage,
@@ -1841,22 +1816,16 @@ return jsonResponse({
             gq_score,
             moves_used,
             icons_json,
-            rank
+            created_at
 
-          FROM ordered
+          FROM puzzle_results
 
           WHERE
-            rank <= 5
-            OR result_id = ?
-
-          ORDER BY
-            rank ASC
+            puzzle_number = ?
           `,
         )
         .bind(
           puzzleNumber,
-          resultId ||
-            "__no_current_result__",
         )
         .all<{
           result_id: string;
@@ -1865,120 +1834,373 @@ return jsonResponse({
           gq_score: number;
           moves_used: number;
           icons_json: string;
-          rank: number;
+          created_at: string;
         }>();
 
-    const rows =
-      ranked.results ??
+    const humanRows =
+      humanRowsResult.results ??
       [];
 
-    const mapRow =
-      (
-        item: {
-          result_id: string;
-          stage: "5x5" | "7x7";
-          name: string;
-          gq_score: number;
-          moves_used: number;
-          icons_json: string;
-          rank: number;
-        },
-      ) => {
-        let icons:
-          string[] = [];
+    const puzzleDateRow =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT
+            puzzle_date
 
+          FROM daily_puzzles
+
+          WHERE
+            puzzle_number = ?
+
+          LIMIT 1
+          `,
+        )
+        .bind(
+          puzzleNumber,
+        )
+        .first<{
+          puzzle_date: string;
+        }>();
+
+    const mapIcons =
+      (
+        iconsJson: string,
+      ): string[] => {
         try {
           const parsed =
             JSON.parse(
-              item.icons_json,
+              iconsJson,
             );
 
-          if (
-            Array.isArray(
-              parsed,
-            )
-          ) {
-            icons =
-              parsed.map(
-                (
-                  value,
-                ) =>
+          return Array.isArray(
+            parsed,
+          )
+            ? parsed.map(
+                (value) =>
                   String(
                     value,
                   ),
-              );
-          }
+              )
+            : [];
         } catch {
-          icons = [];
+          return [];
         }
-
-        return {
-          rank:
-            item.rank,
-
-          resultId:
-            item.result_id,
-
-          name:
-            item.name,
-
-          stage:
-            item.stage,
-
-          gq:
-            item.gq_score,
-
-          fiveGq:
-            item.stage ===
-              "5x5"
-              ? item.gq_score
-              : null,
-
-          sevenGq:
-            item.stage ===
-              "7x7"
-              ? item.gq_score
-              : null,
-
-          moves:
-            item.moves_used,
-
-          icons,
-        };
       };
 
-    const top =
-      rows
-        .filter(
-          (
-            item,
-          ) =>
-            item.rank <= 5,
-        )
-        .map(
-          mapRow,
+    type RankedEntry = {
+      resultId: string;
+      stage: "5x5" | "7x7";
+      name: string;
+      gq: number;
+      moves: number;
+      icons: string[];
+      createdAt: string;
+      isBot: boolean;
+      rank?: number;
+    };
+
+    const entries:
+      RankedEntry[] =
+      humanRows.map(
+        (item) => ({
+          resultId:
+            item.result_id,
+          stage:
+            item.stage,
+          name:
+            item.name,
+          gq:
+            item.gq_score,
+          moves:
+            item.moves_used,
+          icons:
+            mapIcons(
+              item.icons_json,
+            ),
+          createdAt:
+            item.created_at,
+          isBot:
+            false,
+        }),
+      );
+
+    if (
+      puzzleDateRow
+        ?.puzzle_date
+    ) {
+      const puzzleStart =
+        new Date(
+          `${puzzleDateRow.puzzle_date}T00:00:00Z`,
+        ).getTime();
+
+      const elapsedHours =
+        Math.max(
+          0,
+          Math.floor(
+            (
+              Date.now() -
+              puzzleStart
+            ) /
+              3600000,
+          ),
         );
 
-    const yours =
+      const uniqueHumanCount =
+        new Set(
+          humanRows.map(
+            (item) =>
+              item.result_id,
+          ),
+        ).size;
+
+      /*
+       * Keep the board lively without letting bots
+       * overwhelm real players.
+       *
+       * - Always allow at least 1 transparent AI Bot.
+       * - Never show more than (2 × humans) + 1 bots.
+       * - Never show more than 10 bots total.
+       * - Keep the existing gradual 3-hour cadence.
+       *
+       * Count humans by result_id, not by round, so a
+       * player who completes both 5×5 and 7×7 still
+       * counts as one human player.
+       */
+      const timeBasedBotCount =
+        Math.floor(
+          elapsedHours /
+            3,
+        ) +
+        1;
+
+      const humanBasedBotCap =
+        uniqueHumanCount *
+          2 +
+        1;
+
+      const scaledBotCap =
+        Math.max(
+          10,
+          Math.ceil(
+            Math.sqrt(
+              uniqueHumanCount,
+            ),
+          ),
+        );
+
+      const botCount =
+        Math.max(
+          1,
+          Math.min(
+            humanBasedBotCap,
+            scaledBotCap,
+            timeBasedBotCount,
+          ),
+        );
+
+      const botIcons =
+        [
+          ["⚡", "👁️"],
+          ["👁️", "◇"],
+          ["⏱", "👁️", "↔"],
+          ["⚡", "⏱", "◇"],
+          ["👁️", "👁️👁️", "❓"],
+          ["⚡", "👁️", "◇", "↔"],
+        ];
+
+      for (
+        let index = 0;
+        index < botCount;
+        index += 1
+      ) {
+        const seed =
+          (
+            puzzleNumber *
+              7919 +
+            index *
+              104729
+          ) >>>
+          0;
+
+        const botNumber =
+          1000 +
+          (
+            seed %
+            9000
+          );
+
+        const stage:
+          "5x5" | "7x7" =
+          index %
+              2 ===
+            0
+            ? "5x5"
+            : "7x7";
+
+        const baseBonus =
+          17 +
+          (
+            seed %
+            18
+          );
+
+        const adjustedBonus =
+          stage ===
+            "7x7"
+            ? Math.round(
+                baseBonus *
+                  Math.sqrt(
+                    7 / 5,
+                  ),
+              )
+            : baseBonus;
+
+        entries.push({
+          resultId:
+            `ai-${puzzleNumber}-${index}`,
+          stage,
+          name:
+            `AI Bot ${String(
+              botNumber,
+            ).padStart(
+              4,
+              "0",
+            )}`,
+          gq:
+            Math.min(
+              150,
+              100 +
+                adjustedBonus,
+            ),
+          moves:
+            stage ===
+              "7x7"
+              ? 7
+              : 5,
+          icons:
+            botIcons[
+              index %
+                botIcons.length
+            ],
+          createdAt:
+            new Date(
+              puzzleStart +
+                index *
+                  3 *
+                  3600000,
+            ).toISOString(),
+          isBot:
+            true,
+        });
+      }
+    }
+
+    entries.sort(
+      (
+        left,
+        right,
+      ) =>
+        right.gq -
+          left.gq ||
+        (
+          right.stage ===
+            "7x7"
+            ? 1
+            : 0
+        ) -
+          (
+            left.stage ===
+              "7x7"
+              ? 1
+              : 0
+          ) ||
+        left.moves -
+          right.moves ||
+        left.createdAt.localeCompare(
+          right.createdAt,
+        ) ||
+        left.resultId.localeCompare(
+          right.resultId,
+        ),
+    );
+
+    entries.forEach(
+      (
+        entry,
+        index,
+      ) => {
+        entry.rank =
+          index +
+          1;
+      },
+    );
+
+    const toApiEntry =
+      (
+        entry: RankedEntry,
+      ) => ({
+        rank:
+          entry.rank ??
+          0,
+        resultId:
+          entry.resultId,
+        name:
+          entry.name,
+        stage:
+          entry.stage,
+        gq:
+          entry.gq,
+        fiveGq:
+          entry.stage ===
+            "5x5"
+            ? entry.gq
+            : null,
+        sevenGq:
+          entry.stage ===
+            "7x7"
+            ? entry.gq
+            : null,
+        moves:
+          entry.moves,
+        icons:
+          entry.icons,
+        isBot:
+          entry.isBot,
+      });
+
+    const top =
+      entries
+        .slice(
+          0,
+          10,
+        )
+        .map(
+          toApiEntry,
+        );
+
+    const yourEntries =
       resultId
-        ? rows.find(
-            (
-              item,
-            ) =>
-              item.result_id ===
-                resultId &&
-              item.stage ===
-                "7x7",
-          ) ??
-          rows.find(
-            (
-              item,
-            ) =>
-              item.result_id ===
-              resultId,
-          ) ??
-          null
-        : null;
+        ? entries
+            .filter(
+              (entry) =>
+                !entry.isBot &&
+                entry.resultId ===
+                  resultId,
+            )
+            .map(
+              toApiEntry,
+            )
+        : [];
+
+    const yours =
+      yourEntries.find(
+        (entry) =>
+          entry.stage ===
+          "7x7",
+      ) ??
+      yourEntries[0] ??
+      null;
 
     return jsonResponse({
       puzzleNumber,
@@ -1990,8 +2212,10 @@ return jsonResponse({
         null,
 
       yourScore:
-        yours?.gq_score ??
+        yours?.gq ??
         null,
+
+      yourEntries,
     });
   }
 

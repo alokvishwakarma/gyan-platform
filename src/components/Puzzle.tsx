@@ -408,6 +408,7 @@ interface LeaderboardEntry {
   resultId: string;
   name: string;
   stage: PuzzleStage;
+  isBot?: boolean;
 
   /*
    * Combined leaderboard score:
@@ -433,6 +434,9 @@ interface LeaderboardResponse {
     number | null;
   yourScore:
     number | null;
+
+  yourEntries?:
+    LeaderboardEntry[];
 }
 
 interface SaveResultResponse {
@@ -6811,7 +6815,17 @@ export default function Puzzle({
                               alignItems:
                                 "center",
                               padding:
-                                "5px 0",
+                                "5px 4px",
+                              borderRadius:
+                                "6px",
+                              background:
+                                isYou
+                                  ? "rgba(0, 0, 0, 0.07)"
+                                  : "transparent",
+                              outline:
+                                isYou
+                                  ? "1px solid rgba(0, 0, 0, 0.16)"
+                                  : "none",
                             }}
                           >
                             <span
@@ -6863,8 +6877,8 @@ export default function Puzzle({
                               {
                                 entry.name
                               }
-                              {isYou
-                                ? " (You)"
+                              {entry.isBot
+                                ? " 🤖"
                                 : ""}
                             </strong>
 
@@ -6901,29 +6915,120 @@ export default function Puzzle({
                         );
                       },
                     )}
+
+                    {(leaderboard.yourEntries ?? [])
+                      .filter(
+                        (entry) =>
+                          !leaderboard.top.some(
+                            (topEntry) =>
+                              topEntry.resultId ===
+                                entry.resultId &&
+                              topEntry.stage ===
+                                entry.stage,
+                          ),
+                      )
+                      .map(
+                        (entry) => (
+                          <div
+                            key={`current-${entry.resultId}-${entry.stage}`}
+                            className="daily-puzzle__recent-winner"
+                            style={{
+                              display:
+                                "grid",
+                              gridTemplateColumns:
+                                "30px 42px 112px minmax(0,1fr)",
+                              gap:
+                                "6px",
+                              alignItems:
+                                "center",
+                              marginTop:
+                                "5px",
+                              padding:
+                                "5px 4px",
+                              borderTop:
+                                "1px dashed rgba(0,0,0,0.18)",
+                              borderRadius:
+                                "6px",
+                              background:
+                                "rgba(0, 0, 0, 0.07)",
+                              outline:
+                                "1px solid rgba(0, 0, 0, 0.16)",
+                            }}
+                          >
+                            <span
+                              style={{
+                                textAlign:
+                                  "center",
+                                whiteSpace:
+                                  "nowrap",
+                              }}
+                            >
+                              #{entry.rank}
+                            </span>
+
+                            <span
+                              style={{
+                                textAlign:
+                                  "center",
+                                fontSize:
+                                  "0.62rem",
+                                fontWeight:
+                                  700,
+                                whiteSpace:
+                                  "nowrap",
+                                opacity:
+                                  0.78,
+                              }}
+                            >
+                              {entry.stage ===
+                                "7x7"
+                                ? "7×7"
+                                : "5×5"}
+                            </span>
+
+                            <strong
+                              title={entry.name}
+                              style={{
+                                minWidth:
+                                  0,
+                                overflow:
+                                  "hidden",
+                                textOverflow:
+                                  "ellipsis",
+                                whiteSpace:
+                                  "nowrap",
+                              }}
+                            >
+                              {entry.name}
+                            </strong>
+
+                            <span
+                              style={{
+                                minWidth:
+                                  0,
+                                overflow:
+                                  "hidden",
+                                textOverflow:
+                                  "ellipsis",
+                                whiteSpace:
+                                  "nowrap",
+                                textAlign:
+                                  "left",
+                              }}
+                            >
+                              <strong>
+                                GQ {entry.gq}
+                              </strong>
+                              {" "}
+                              {entry.icons.join(
+                                " ",
+                              )}
+                            </span>
+                          </div>
+                        ),
+                      )}
                   </div>
 
-                  {leaderboard.yourRank !==
-                    null &&
-                    leaderboard.yourScore !==
-                      null && (
-                    <div
-                      className="daily-puzzle__winner-count"
-                      style={{
-                        marginTop:
-                          "8px",
-                      }}
-                    >
-                      Your rank: #
-                      {
-                        leaderboard.yourRank
-                      }
-                      {" · GQ "}
-                      {
-                        leaderboard.yourScore
-                      }
-                    </div>
-                  )}
                 </>
               ) : (
                 <p className="daily-puzzle__winner-panel-message">
