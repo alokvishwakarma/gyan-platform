@@ -1318,9 +1318,15 @@ export default function DynamicServiceRequestPanel({
       .toUpperCase() ===
     "GENERAL_REQUEST";
 
+  /*
+   * All schema-driven service request forms use the
+   * compact presentation by default.
+   *
+   * The legacy Print flow is separate and therefore
+   * unaffected by this rule.
+   */
   const isCompactRequest =
-    isOnlineRequest ||
-    isGeneralRequest;
+    true;
 
   const totalFileCount =
     useMemo(
@@ -2176,9 +2182,20 @@ export default function DynamicServiceRequestPanel({
     const error =
       fieldErrors[fieldId];
 
+    const needsVisibleCompactLabel =
+      field.type ===
+        "radio" ||
+      field.type ===
+        "checkbox" ||
+      field.type ===
+        "checkbox-group" ||
+      field.type ===
+        "file";
+
     const commonLabel =
       isCompactRequest &&
-      !showOptionalDetails
+      !showOptionalDetails &&
+      !needsVisibleCompactLabel
         ? null
         : (
           <span>
@@ -3308,8 +3325,7 @@ export default function DynamicServiceRequestPanel({
                   </p>
                 )}
 
-                {!isOnlineRequest &&
-                  !isGeneralRequest &&
+                {!isCompactRequest &&
                   locationHint
                     ?.countryCode && (
                   <div className="dynamic-service-request__location-hint">
@@ -3415,7 +3431,7 @@ export default function DynamicServiceRequestPanel({
                             (field) =>
                               renderField(
                                 section,
-                                isOnlineRequest &&
+                                isCompactRequest &&
                                 !showOptionalDetails
                                   ? createCompactOnlineField(
                                       field,

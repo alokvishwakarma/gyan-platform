@@ -215,17 +215,31 @@ function calculateStageGq(
       ? 5
       : 0;
 
+  const rawBonus =
+    efficiencyPoints +
+    speedPoints +
+    revealPoints +
+    doubleRevealPoints +
+    diagonalPoints +
+    edgePoints +
+    mysteryFinishPoints;
+
+  const stageBonus =
+    stage ===
+      "7x7"
+      ? Math.round(
+          rawBonus *
+            Math.sqrt(
+              7 / 5,
+            ),
+        )
+      : rawBonus;
+
   const score =
     Math.min(
       150,
       100 +
-        efficiencyPoints +
-        speedPoints +
-        revealPoints +
-        doubleRevealPoints +
-        diagonalPoints +
-        edgePoints +
-        mysteryFinishPoints,
+        stageBonus,
     );
 
   const icons:
@@ -378,11 +392,35 @@ interface CertificateEmailResponse {
   error?: string;
 }
 
+
+interface ResultClaimResponse {
+  claimed: boolean;
+
+  result?: {
+    name: string;
+  };
+
+  error?: string;
+}
+
 interface LeaderboardEntry {
   rank: number;
   resultId: string;
   name: string;
+  stage: PuzzleStage;
+
+  /*
+   * Combined leaderboard score:
+   * average of 5×5 GQ and 7×7 GQ.
+   */
   gq: number;
+
+  fiveGq:
+    number | null;
+
+  sevenGq:
+    number | null;
+
   moves: number;
   icons: string[];
 }
@@ -400,6 +438,7 @@ interface LeaderboardResponse {
 interface SaveResultResponse {
   saved: boolean;
   resultId: string;
+  name?: string;
   error?: string;
 }
 
@@ -466,6 +505,55 @@ const STATE_KEY =
  * HELPERS
  * ========================================================
  */
+
+type EducationRegion =
+  | "US"
+  | "IN";
+
+function inferEducationRegion():
+  EducationRegion {
+  if (
+    typeof navigator ===
+      "undefined"
+  ) {
+    return "US";
+  }
+
+  const languages =
+    (
+      navigator.languages ??
+      [navigator.language]
+    )
+      .join(",")
+      .toLowerCase();
+
+  const timezone =
+    Intl.DateTimeFormat()
+      .resolvedOptions()
+      .timeZone
+      .toLowerCase();
+
+  if (
+    timezone ===
+      "asia/kolkata" ||
+    timezone ===
+      "asia/calcutta" ||
+    languages.includes(
+      "en-in",
+    ) ||
+    languages.includes(
+      "hi-in",
+    )
+  ) {
+    return "IN";
+  }
+
+  return "US";
+}
+
+const EDUCATION_REGION =
+  inferEducationRegion();
+
 
 function localDateKey(): string {
   const now =
@@ -698,7 +786,7 @@ function validEmail(
 }
 
 
-function anonymousNameForResultId(
+function guestNameForResultId(
   resultId: string,
 ): string {
   let hash = 0;
@@ -719,13 +807,18 @@ function anonymousNameForResultId(
   }
 
   const number =
-    10 +
+    1000 +
     (
       hash %
-      90
+      9000
     );
 
-  return `Anonymous ${number}`;
+  return `Guest ${String(
+    number,
+  ).padStart(
+    4,
+    "0",
+  )}`;
 }
 
 
@@ -768,6 +861,39 @@ function sameMatchIdentity(
     second.color
   );
 }
+
+function aiBotNumber(puzzleNumber: number): number {
+  return ((puzzleNumber * 37 + 17) % 90) + 10;
+}
+
+function aiBotGq(puzzleNumber: number): number {
+  const five =
+    116 +
+    (
+      puzzleNumber *
+        11 +
+      5
+    ) %
+      16;
+
+  const seven =
+    118 +
+    (
+      puzzleNumber *
+        13 +
+      7
+    ) %
+      18;
+
+  return Math.round(
+    (
+      five +
+      seven
+    ) /
+      2,
+  );
+}
+
 
 function buildShareText(
   puzzleNumber: number,
@@ -1365,6 +1491,139 @@ function longestMatch(
 }
 
 
+function findCompletedWinningLine(
+  board: Tile[],
+  size: number,
+): {
+  orientation:
+    | "horizontal"
+    | "vertical";
+  tileIds: number[];
+} | null {
+  for (
+    let row = 0;
+    row < size;
+    row += 1
+  ) {
+    const first =
+      board[
+        indexOf(
+          row,
+          0,
+          size,
+        )
+      ];
+
+    let matches =
+      true;
+
+    const tileIds:
+      number[] = [
+        first.id,
+      ];
+
+    for (
+      let column = 1;
+      column < size;
+      column += 1
+    ) {
+      const current =
+        board[
+          indexOf(
+            row,
+            column,
+            size,
+          )
+        ];
+
+      if (
+        !sameMatchIdentity(
+          first,
+          current,
+        )
+      ) {
+        matches = false;
+        break;
+      }
+
+      tileIds.push(
+        current.id,
+      );
+    }
+
+    if (matches) {
+      return {
+        orientation:
+          "horizontal",
+        tileIds,
+      };
+    }
+  }
+
+  for (
+    let column = 0;
+    column < size;
+    column += 1
+  ) {
+    const first =
+      board[
+        indexOf(
+          0,
+          column,
+          size,
+        )
+      ];
+
+    let matches =
+      true;
+
+    const tileIds:
+      number[] = [
+        first.id,
+      ];
+
+    for (
+      let row = 1;
+      row < size;
+      row += 1
+    ) {
+      const current =
+        board[
+          indexOf(
+            row,
+            column,
+            size,
+          )
+        ];
+
+      if (
+        !sameMatchIdentity(
+          first,
+          current,
+        )
+      ) {
+        matches = false;
+        break;
+      }
+
+      tileIds.push(
+        current.id,
+      );
+    }
+
+    if (matches) {
+      return {
+        orientation:
+          "vertical",
+        tileIds,
+      };
+    }
+  }
+
+  return null;
+}
+
+
 function hasHiddenWinningLine(
   board: Tile[],
   size: number,
@@ -1630,11 +1889,19 @@ async function fetchLeaderboard(
   LeaderboardResponse | null
 > {
   try {
+    const params =
+      new URLSearchParams();
+
+    if (resultId) {
+      params.set(
+        "resultId",
+        resultId,
+      );
+    }
+
     const suffix =
-      resultId
-        ? `?resultId=${encodeURIComponent(
-            resultId,
-          )}`
+      params.size > 0
+        ? `?${params.toString()}`
         : "";
 
     const response =
@@ -1869,12 +2136,24 @@ export default function Puzzle({
     useState(false);
 
   const [
+    qualifierClaimed,
+    setQualifierClaimed,
+  ] =
+    useState(false);
+
+  const [
     certificateError,
     setCertificateError,
   ] =
     useState<
       string | null
     >(null);
+
+  const [
+    educationComingSoon,
+    setEducationComingSoon,
+  ] =
+    useState("");
 
 
   /*
@@ -1949,6 +2228,14 @@ export default function Puzzle({
     >(null);
 
   const [
+    challengeLeaderboard,
+    setChallengeLeaderboard,
+  ] =
+    useState<
+      LeaderboardResponse | null
+    >(null);
+
+  const [
     finalResultId,
     setFinalResultId,
   ] =
@@ -1971,10 +2258,22 @@ export default function Puzzle({
     useState(0);
 
   const [
+    displaySolveMs,
+    setDisplaySolveMs,
+  ] =
+    useState(0);
+
+  const [
     resultSaving,
     setResultSaving,
   ] =
     useState(false);
+
+  const [
+    assignedGuestName,
+    setAssignedGuestName,
+  ] =
+    useState("");
 
 
   /*
@@ -2035,6 +2334,18 @@ export default function Puzzle({
         setStage(
           "5x5",
         );
+
+        const challenge =
+          await fetchLeaderboard(
+            loaded.puzzleNumber,
+            null,
+          );
+
+        if (!cancelled) {
+          setChallengeLeaderboard(
+            challenge,
+          );
+        }
 
         setInitialBoard(
           cloneBoard(
@@ -2142,11 +2453,19 @@ export default function Puzzle({
             null,
           );
 
+          setAssignedGuestName(
+            "",
+          );
+
           setSolveStartedAt(
-            new Date().getTime(),
+            null,
           );
 
           setActiveSolveMs(
+            0,
+          );
+
+          setDisplaySolveMs(
             0,
           );
         }
@@ -2199,6 +2518,48 @@ export default function Puzzle({
     },
     [],
   );
+
+
+  useEffect(() => {
+    if (
+      !puzzle ||
+      attemptFinished ||
+      medalWon ||
+      solveStartedAt ===
+        null
+    ) {
+      return;
+    }
+
+    const updateDisplayTimer =
+      () => {
+        setDisplaySolveMs(
+          elapsedSince(
+            solveStartedAt,
+            new Date().getTime(),
+          ),
+        );
+      };
+
+    updateDisplayTimer();
+
+    const intervalId =
+      window.setInterval(
+        updateDisplayTimer,
+        1000,
+      );
+
+    return () => {
+      window.clearInterval(
+        intervalId,
+      );
+    };
+  }, [
+    puzzle,
+    attemptFinished,
+    medalWon,
+    solveStartedAt,
+  ]);
 
 
   /*
@@ -2377,13 +2738,13 @@ export default function Puzzle({
     const nextLeaderboard =
       await fetchLeaderboard(
         puzzle.puzzleNumber,
-        stage ===
-          "7x7"
-          ? finalResultId
-          : null,
+        finalResultId,
       );
 
     setLeaderboard(
+      nextLeaderboard,
+    );
+    setChallengeLeaderboard(
       nextLeaderboard,
     );
 
@@ -2822,10 +3183,14 @@ export default function Puzzle({
     );
 
     setSolveStartedAt(
-      new Date().getTime(),
+      null,
     );
 
     setActiveSolveMs(
+      0,
+    );
+
+    setDisplaySolveMs(
       0,
     );
 
@@ -2847,6 +3212,10 @@ export default function Puzzle({
 
     setCertificateError(
       null,
+    );
+
+    setEducationComingSoon(
+      "",
     );
 
     setMessage(
@@ -2936,19 +3305,35 @@ export default function Puzzle({
         [],
       );
 
-      setFinalResultId(
-        null,
-      );
+      /*
+       * Keep finalResultId from the 5×5 qualifier.
+       * The same id links both stage scores into one
+       * combined leaderboard entry.
+       */
 
       setLeaderboard(
         null,
       );
 
+      const finalChallenge =
+        await fetchLeaderboard(
+            loaded.puzzleNumber,
+            finalResultId,
+          );
+
+      setChallengeLeaderboard(
+        finalChallenge,
+      );
+
       setSolveStartedAt(
-        new Date().getTime(),
+        null,
       );
 
       setActiveSolveMs(
+        0,
+      );
+
+      setDisplaySolveMs(
         0,
       );
 
@@ -2974,6 +3359,10 @@ export default function Puzzle({
 
       setCertificateOpen(
         false,
+      );
+
+      setEducationComingSoon(
+        "",
       );
 
       setMessage(
@@ -3029,6 +3418,23 @@ export default function Puzzle({
       !performedSwapKind
     ) {
       return;
+    }
+
+    const effectiveSolveStartedAt =
+      solveStartedAt ??
+      actionNow;
+
+    if (
+      solveStartedAt ===
+        null
+    ) {
+      setSolveStartedAt(
+        actionNow,
+      );
+
+      setDisplaySolveMs(
+        0,
+      );
     }
 
     const matchesBefore =
@@ -3360,14 +3766,29 @@ export default function Puzzle({
       longest >= 5
     ) {
       if (
+        !finalResultId
+      ) {
+        setFinalResultId(
+          crypto.randomUUID(),
+        );
+      }
+
+      if (
         solveStartedAt !==
           null
       ) {
-        setActiveSolveMs(
+        const finalElapsed =
           elapsedSince(
-            solveStartedAt,
+            effectiveSolveStartedAt,
             actionNow,
-          ),
+          );
+
+        setActiveSolveMs(
+          finalElapsed,
+        );
+
+        setDisplaySolveMs(
+          finalElapsed,
         );
       }
 
@@ -3421,11 +3842,18 @@ export default function Puzzle({
         solveStartedAt !==
           null
       ) {
-        setActiveSolveMs(
+        const finalElapsed =
           elapsedSince(
-            solveStartedAt,
+            effectiveSolveStartedAt,
             actionNow,
-          ),
+          );
+
+        setActiveSolveMs(
+          finalElapsed,
+        );
+
+        setDisplaySolveMs(
+          finalElapsed,
         );
       }
 
@@ -3444,6 +3872,18 @@ export default function Puzzle({
       setAttemptFinished(
         true,
       );
+
+      setCertificateBoard(
+        cloneBoard(
+          nextBoard,
+        ),
+      );
+
+      setCertificateOpen(
+        true,
+      );
+
+      scrollGyanShellToTop();
 
       setMessage(
         mysteryFinish
@@ -3665,9 +4105,57 @@ export default function Puzzle({
     let column =
       start.column;
 
-    if (
-      Math.abs(dx) >
-      Math.abs(dy)
+    const absoluteDx =
+      Math.abs(dx);
+
+    const absoluteDy =
+      Math.abs(dy);
+
+    /*
+     * Diagonal swipe:
+     *
+     * Both axes must cross the normal swipe
+     * threshold, and the smaller component must
+     * be at least 45% of the larger component.
+     *
+     * This keeps slightly-slanted horizontal /
+     * vertical gestures cardinal while making
+     * intentional ↖ ↗ ↙ ↘ gestures natural.
+     */
+    const largerDistance =
+      Math.max(
+        absoluteDx,
+        absoluteDy,
+      );
+
+    const smallerDistance =
+      Math.min(
+        absoluteDx,
+        absoluteDy,
+      );
+
+    const isDiagonalSwipe =
+      absoluteDx >=
+        SWIPE_THRESHOLD &&
+      absoluteDy >=
+        SWIPE_THRESHOLD &&
+      smallerDistance >=
+        largerDistance *
+          0.45;
+
+    if (isDiagonalSwipe) {
+      row +=
+        dy > 0
+          ? 1
+          : -1;
+
+      column +=
+        dx > 0
+          ? 1
+          : -1;
+    } else if (
+      absoluteDx >
+      absoluteDy
     ) {
       column +=
         dx > 0
@@ -3716,11 +4204,15 @@ export default function Puzzle({
 
   useEffect(
     () => {
+      const resultSolved =
+        stage ===
+          "5x5"
+          ? qualified
+          : medalWon;
+
       if (
         !puzzle ||
-        stage !==
-          "7x7" ||
-        !medalWon
+        !resultSolved
       ) {
         return;
       }
@@ -3738,12 +4230,15 @@ export default function Puzzle({
         finalResultId;
 
       const anonymousName =
-        anonymousNameForResultId(
+        guestNameForResultId(
           resultId,
         );
 
       const currentPuzzle =
         puzzle;
+
+      const currentStage =
+        stage;
 
       const gq =
         calculateStageGq(
@@ -3752,7 +4247,7 @@ export default function Puzzle({
           skillStats,
           true,
           activeSolveMs,
-          "7x7",
+          currentStage,
         );
 
       async function saveResult() {
@@ -3782,7 +4277,7 @@ export default function Puzzle({
                     puzzleNumber:
                       currentPuzzle.puzzleNumber,
                     stage:
-                      "7x7",
+                      currentStage,
                     gqScore:
                       gq.score,
                     movesUsed:
@@ -3803,6 +4298,15 @@ export default function Puzzle({
             !data.saved
           ) {
             return;
+          }
+
+          if (
+            !cancelled &&
+            data.name
+          ) {
+            setAssignedGuestName(
+              data.name,
+            );
           }
 
           const nextLeaderboard =
@@ -3837,6 +4341,7 @@ export default function Puzzle({
       };
     },
     [
+      qualified,
       medalWon,
       stage,
       puzzle,
@@ -3854,12 +4359,13 @@ export default function Puzzle({
    * ========================================================
    */
 
-  async function emailCertificate() {
+  async function claimQualifierScore() {
     if (
       !puzzle ||
       stage !==
         "5x5" ||
-      !qualified
+      !qualified ||
+      !finalResultId
     ) {
       return;
     }
@@ -3894,17 +4400,6 @@ export default function Puzzle({
       return;
     }
 
-    if (
-      moveHistory.length ===
-      0
-    ) {
-      setCertificateError(
-        "Completion could not be verified. Please solve the puzzle again.",
-      );
-
-      return;
-    }
-
     setCertificateSending(
       true,
     );
@@ -3913,14 +4408,10 @@ export default function Puzzle({
       null,
     );
 
-    setCertificateSent(
-      false,
-    );
-
     try {
-      const response =
+      const claimResponse =
         await fetch(
-          "/api/puzzle/certificate",
+          "/api/puzzle/result/claim",
           {
             method:
               "POST",
@@ -3935,45 +4426,133 @@ export default function Puzzle({
                 puzzleNumber:
                   puzzle.puzzleNumber,
 
+                resultId:
+                  finalResultId,
+
                 name,
 
                 email,
-
-                moves:
-                  moveHistory,
               }),
           },
         );
 
-      const data =
-        (await response.json()) as
-          CertificateEmailResponse;
+      const claimData =
+        (await claimResponse.json()) as
+          ResultClaimResponse;
 
       if (
-        !response.ok ||
-        !data.sent
+        !claimResponse.ok ||
+        !claimData.claimed
       ) {
         throw new Error(
-          data.error ??
-            "Unable to send certificate.",
+          claimData.error ??
+            "Unable to claim score.",
         );
       }
 
-      setCertificateSent(
+      setQualifierClaimed(
         true,
       );
 
-      setMessage(
-        "✉️ Certificate sent!",
+      /*
+       * Keep the useful behavior from the old
+       * 5×5 Send button: after the score is
+       * claimed, email the completion certificate.
+       *
+       * Email failure does not undo the claim.
+       */
+      try {
+        const emailResponse =
+          await fetch(
+            "/api/puzzle/certificate",
+            {
+              method:
+                "POST",
+
+              headers: {
+                "content-type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify({
+                  puzzleNumber:
+                    puzzle.puzzleNumber,
+
+                  name,
+
+                  email,
+
+                  moves:
+                    moveHistory,
+                }),
+            },
+          );
+
+        const emailData =
+          (await emailResponse.json()) as
+            CertificateEmailResponse;
+
+        if (
+          emailResponse.ok &&
+          emailData.sent
+        ) {
+          setCertificateSent(
+            true,
+          );
+
+          setMessage(
+            "✓ 5×5 score claimed and certificate emailed.",
+          );
+        } else {
+          setCertificateSent(
+            false,
+          );
+
+          setMessage(
+            "✓ 5×5 score claimed.",
+          );
+
+          setCertificateError(
+            emailData.error ??
+              "Score claimed, but the certificate email could not be sent.",
+          );
+        }
+      } catch {
+        setCertificateSent(
+          false,
+        );
+
+        setMessage(
+          "✓ 5×5 score claimed.",
+        );
+
+        setCertificateError(
+          "Score claimed, but the certificate email could not be sent.",
+        );
+      }
+
+      const nextLeaderboard =
+        await fetchLeaderboard(
+          puzzle.puzzleNumber,
+          finalResultId,
+        );
+
+      setLeaderboard(
+        nextLeaderboard,
+      );
+
+      setChallengeLeaderboard(
+        nextLeaderboard,
       );
     } catch (
       error
     ) {
       setCertificateError(
         error instanceof
-        Error
+          Error
           ? error.message
-          : "Unable to send certificate.",
+          : "Unable to claim score.",
       );
     } finally {
       setCertificateSending(
@@ -3981,6 +4560,9 @@ export default function Puzzle({
       );
     }
   }
+
+
+
 
 
   /*
@@ -4163,6 +4745,54 @@ export default function Puzzle({
   }
 
 
+  const botNumber =
+    puzzle
+      ? aiBotNumber(
+          puzzle.puzzleNumber,
+        )
+      : 0;
+
+  const botGq =
+    puzzle
+      ? aiBotGq(
+          puzzle.puzzleNumber,
+        )
+      : 0;
+
+  const humanLeader =
+    challengeLeaderboard
+      ?.top?.[0] ??
+    null;
+
+  /*
+   * AI Bot is only the fallback when nobody
+   * has completed the 7×7 Final yet.
+   *
+   * As soon as a human result exists, the
+   * current human GQ leader becomes the
+   * challenge target regardless of whether
+   * their score is above the Bot benchmark.
+   */
+  const hasHumanLeader =
+    humanLeader !==
+      null;
+
+  const challengeName =
+    hasHumanLeader
+      ? humanLeader.name
+      : `AI Bot #${botNumber}`;
+
+  const challengeGq =
+    hasHumanLeader
+      ? humanLeader.gq
+      : botGq;
+
+  const challengeIcon =
+    hasHumanLeader
+      ? "🥇"
+      : "🤖";
+
+
   /*
    * ========================================================
    * EARLY RETURNS
@@ -4202,6 +4832,38 @@ export default function Puzzle({
       "5x5"
       ? qualified
       : medalWon;
+
+  const completedWinningLine =
+    solvedStage
+      ? findCompletedWinningLine(
+          board,
+          puzzle.size,
+        )
+      : null;
+
+  const completedWinningTileIds =
+    new Set(
+      completedWinningLine
+        ?.tileIds ??
+        [],
+    );
+
+  const certificateWinningLine =
+    certificateBoard.length ===
+      puzzle.size *
+        puzzle.size
+      ? findCompletedWinningLine(
+          certificateBoard,
+          puzzle.size,
+        )
+      : null;
+
+  const certificateWinningTileIds =
+    new Set(
+      certificateWinningLine
+        ?.tileIds ??
+        [],
+    );
 
   const currentGq =
     calculateStageGq(
@@ -4284,37 +4946,48 @@ export default function Puzzle({
         </div>
       )}
 
-      <button
-        type="button"
-        className="daily-puzzle__all-winners"
-        onClick={() =>
-          void openWinners()
-        }
+      <div
         style={{
-          display:
-            "block",
-          margin:
-            "3px auto 6px",
-          padding:
-            0,
-          border:
-            0,
-          background:
-            "transparent",
-          font:
-            "inherit",
-          fontSize:
-            "0.7rem",
-          fontWeight:
-            650,
-          textDecoration:
-            "underline",
-          cursor:
-            "pointer",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "4px",
+          margin: "3px auto 7px",
+          fontSize: "0.7rem",
+          lineHeight: 1.35,
+          textAlign: "center",
         }}
       >
-        See GQ Leaders
-      </button>
+        <strong>
+          {challengeIcon}{" "}
+          {challengeName} · GQ{" "}
+          {challengeGq}
+        </strong>
+        <span aria-hidden="true">·</span>
+        <strong>
+          Beat score
+        </strong>
+        <span aria-hidden="true">·</span>
+        <button
+          type="button"
+          className="daily-puzzle__all-winners"
+          onClick={() =>
+            void openWinners()
+          }
+          style={{
+            padding: 0,
+            border: 0,
+            background: "transparent",
+            font: "inherit",
+            fontWeight: 650,
+            textDecoration: "underline",
+            cursor: "pointer",
+          }}
+        >
+          See GQ Leaders
+        </button>
+      </div>
 
 
 
@@ -4426,6 +5099,12 @@ export default function Puzzle({
                         ? "daily-puzzle__tile--last-swap"
                         : "",
 
+                      completedWinningTileIds.has(
+                        tile.id,
+                      )
+                        ? "daily-puzzle__tile--winning-line"
+                        : "",
+
                       pendingRevealCount >
                         0 &&
                       tile.hidden
@@ -4438,28 +5117,46 @@ export default function Puzzle({
                         ? "daily-puzzle__tile--reveal-dimmed"
                         : "",
                     ].join(" ")}
-                    style={
-                      pendingRevealCount >
-                      0
-                        ? tile.hidden
+                    style={{
+                      touchAction:
+                        "none",
+
+                      ...(
+                        completedWinningTileIds.has(
+                          tile.id,
+                        )
                           ? {
-                              transform:
-                                "scale(1.06)",
-                              fontWeight:
-                                900,
-                              opacity:
-                                1,
-                              filter:
-                                "none",
+                              outline:
+                                "2px solid rgba(20, 85, 55, 0.72)",
+                              outlineOffset:
+                                "-2px",
                             }
-                          : {
-                              opacity:
-                                0.34,
-                              filter:
-                                "blur(1.8px)",
-                            }
-                        : undefined
-                    }
+                          : {}
+                      ),
+
+                      ...(
+                        pendingRevealCount >
+                        0
+                          ? tile.hidden
+                            ? {
+                                transform:
+                                  "scale(1.06)",
+                                fontWeight:
+                                  900,
+                                opacity:
+                                  1,
+                                filter:
+                                  "none",
+                              }
+                            : {
+                                opacity:
+                                  0.34,
+                                filter:
+                                  "blur(1.8px)",
+                              }
+                          : {}
+                      ),
+                    }}
                     onClick={() =>
                       handleClick(
                         position.row,
@@ -4475,6 +5172,18 @@ export default function Puzzle({
                         position.column,
                       )
                     }
+                    onTouchMove={() => {
+                      /*
+                       * touchAction: "none" on the tile already prevents
+                       * browser panning/scrolling for the gesture.
+                       * Do not call preventDefault() here because some
+                       * browsers treat touchmove listeners as passive.
+                       */
+                    }}
+                    onTouchCancel={() => {
+                      touchStart.current =
+                        null;
+                    }}
                     onTouchEnd={
                       handleTouchEnd
                     }
@@ -4581,6 +5290,27 @@ export default function Puzzle({
           {" / "}
           {
             puzzle.maxMoves
+          }
+          {" · ⏱ "}
+          {
+            solveStartedAt ===
+              null
+              ? "--"
+              : `${Math.floor(
+                  displaySolveMs /
+                    60000,
+                )}:${String(
+                  Math.floor(
+                    (
+                      displaySolveMs %
+                      60000
+                    ) /
+                      1000,
+                  ),
+                ).padStart(
+                  2,
+                  "0",
+                )}`
           }
         </div>
       )}
@@ -4835,180 +5565,7 @@ export default function Puzzle({
       )}
 
 
-      {medalWon && (
-        <section className="daily-puzzle__medal">
-          <div className="daily-puzzle__medal-icon">
-            🏅
-          </div>
 
-          {medalClaimed ? (
-            <>
-              <strong>
-                Medal claimed!
-              </strong>
-
-              <span>
-                GYAN Puzzle #
-                {
-                  puzzle.puzzleNumber
-                }
-              </span>
-
-              <p>
-                Congratulations{" "}
-
-                <strong>
-                  {
-                    medalClaimName
-                  }
-                </strong>
-                .
-              </p>
-
-              <small>
-                Your medal has been saved and your
-                leaderboard name has been updated.
-              </small>
-            </>
-          ) : (
-            <>
-              <strong>
-                Medal earned!
-              </strong>
-
-              <span>
-                GYAN Puzzle #
-                {
-                  puzzle.puzzleNumber
-                }
-              </span>
-
-              <p>
-                You completed the 7×7 Final.
-              </p>
-
-              <div
-                className="daily-puzzle__medal-form"
-                style={{
-                  display:
-                    "grid",
-                  gridTemplateColumns:
-                    "minmax(0, 2fr) minmax(0, 2fr) minmax(76px, 1fr)",
-                  gap:
-                    "6px",
-                  alignItems:
-                    "center",
-                  width:
-                    "100%",
-                }}
-              >
-                <input
-                  type="text"
-                  value={
-                    winnerName
-                  }
-                  maxLength={
-                    80
-                  }
-                  autoComplete="name"
-                  aria-label="Display name"
-                  placeholder="Name"
-                  disabled={
-                    claimingMedal
-                  }
-                  onChange={(
-                    event,
-                  ) => {
-                    setWinnerName(
-                      event.target
-                        .value,
-                    );
-
-                    setMedalError(
-                      null,
-                    );
-                  }}
-                />
-
-                <input
-                  type="email"
-                  value={
-                    winnerEmail
-                  }
-                  maxLength={
-                    160
-                  }
-                  autoComplete="email"
-                  aria-label="Email"
-                  placeholder="Email"
-                  disabled={
-                    claimingMedal
-                  }
-                  onChange={(
-                    event,
-                  ) => {
-                    setWinnerEmail(
-                      event.target
-                        .value,
-                    );
-
-                    setMedalError(
-                      null,
-                    );
-                  }}
-                  onKeyDown={(
-                    event,
-                  ) => {
-                    if (
-                      event.key ===
-                        "Enter"
-                    ) {
-                      event.preventDefault();
-
-                      void claimMedal();
-                    }
-                  }}
-                />
-
-                <button
-                  type="button"
-                  disabled={
-                    claimingMedal
-                  }
-                  onClick={() =>
-                    void claimMedal()
-                  }
-                  style={{
-                    minWidth:
-                      0,
-                    padding:
-                      "8px 5px",
-                    whiteSpace:
-                      "nowrap",
-                  }}
-                >
-                  {claimingMedal
-                    ? "…"
-                    : "🏅 Claim"}
-                </button>
-              </div>
-
-              {medalError && (
-                <div className="daily-puzzle__medal-error">
-                  {
-                    medalError
-                  }
-                </div>
-              )}
-
-              <small>
-                Without claiming, your result remains
-                under its Anonymous name. Email stays private.
-              </small>
-            </>
-          )}
-        </section>
-      )}
 
 
       {!medalWon && (
@@ -5042,6 +5599,41 @@ export default function Puzzle({
       )}
 
 
+      {stage ===
+        "5x5" &&
+        qualified &&
+        !certificateOpen && (
+          <div
+            style={{
+              display:
+                "flex",
+              justifyContent:
+                "center",
+              margin:
+                "8px 0 4px",
+            }}
+          >
+            <button
+              type="button"
+              className="daily-puzzle__certificate-final"
+              onClick={() =>
+                void startFinal()
+              }
+            >
+              🏆 Play 7×7{" "}
+              <span
+                style={{
+                  fontWeight:
+                    500,
+                }}
+              >
+                to improve your GQ
+              </span>
+            </button>
+          </div>
+        )}
+
+
       <footer className="daily-puzzle__footer">
         <span>
           🗓 New puzzle tomorrow
@@ -5054,12 +5646,10 @@ export default function Puzzle({
 
 
       {/* =================================================
-          5×5 CERTIFICATE
+          SHARED COMPLETION CERTIFICATE
           ================================================= */}
 
-      {qualified &&
-        stage ===
-          "5x5" &&
+      {solvedStage &&
         certificateOpen && (
           <div
             ref={
@@ -5088,10 +5678,25 @@ export default function Puzzle({
               style={{
                 margin:
                   "0 auto 12px",
+                position:
+                  "relative",
               }}
             >
-
-              <div className="daily-puzzle__certificate-top">
+              <div
+                className="daily-puzzle__certificate-top"
+                style={{
+                  display:
+                    "grid",
+                  gridTemplateColumns:
+                    "auto minmax(0, 1fr) auto",
+                  alignItems:
+                    "center",
+                  gap:
+                    "8px",
+                  marginBottom:
+                    "8px",
+                }}
+              >
                 <div className="daily-puzzle__certificate-brand">
                   <span
                     aria-hidden="true"
@@ -5103,12 +5708,58 @@ export default function Puzzle({
                     <strong>
                       GYAN
                     </strong>
-
-                    <small>
-                      Daily Puzzle
-                    </small>
                   </div>
                 </div>
+
+                <div
+                  className="daily-puzzle__certificate-title"
+                  style={{
+                    minWidth:
+                      0,
+                    textAlign:
+                      "center",
+                  }}
+                >
+                  <small
+                    style={{
+                      display:
+                        "block",
+                      fontSize:
+                        "0.66rem",
+                      fontWeight:
+                        700,
+                      letterSpacing:
+                        "0.04em",
+                      whiteSpace:
+                        "nowrap",
+                    }}
+                  >
+                    CERTIFICATE
+                  </small>
+
+                  <strong
+                    style={{
+                      display:
+                        "block",
+                      marginTop:
+                        "2px",
+                      fontSize:
+                        "0.82rem",
+                      whiteSpace:
+                        "nowrap",
+                    }}
+                  >
+                    Puzzle #
+                    {
+                      puzzle.puzzleNumber
+                    }
+                    {stage ===
+                      "5x5"
+                      ? " (5×5)"
+                      : " (7×7)"}
+                  </strong>
+                </div>
+
 
                 {certificateQr && (
                   <img
@@ -5122,22 +5773,122 @@ export default function Puzzle({
               </div>
 
 
-              <div className="daily-puzzle__certificate-title">
-                <small>
-                  CERTIFICATE OF COMPLETION
-                </small>
 
+              <div
+                style={{
+                  display:
+                    "flex",
+                  justifyContent:
+                    "center",
+                  alignItems:
+                    "baseline",
+                  flexWrap:
+                    "wrap",
+                  gap:
+                    "4px",
+                  margin:
+                    "2px auto 7px",
+                  fontSize:
+                    "0.7rem",
+                  lineHeight:
+                    1.3,
+                  textAlign:
+                    "center",
+                }}
+              >
                 <strong>
-                  🎓 Puzzle Solver
+                  {
+                    stage ===
+                      "7x7" &&
+                    medalClaimed &&
+                    medalClaimName.trim()
+                      ? medalClaimName.trim()
+                      : qualifierClaimed &&
+                          winnerName.trim()
+                        ? winnerName.trim()
+                        : assignedGuestName ||
+                          (
+                            finalResultId
+                              ? guestNameForResultId(
+                                  finalResultId,
+                                )
+                              : "Guest"
+                          )
+                  }{" "}
+                  (GQ{" "}
+                  {currentGq.score})
                 </strong>
 
-                <span>
-                  GYAN Puzzle #
-                  {
-                    puzzle.puzzleNumber
-                  }
-                  {" (5×5)"}
+                <span
+                  aria-hidden="true"
+                >
+                  |
                 </span>
+
+                <button
+                  type="button"
+                  className="daily-puzzle__all-winners"
+                  onClick={() =>
+                    void openWinners()
+                  }
+                  style={{
+                    padding:
+                      0,
+                    border:
+                      0,
+                    background:
+                      "transparent",
+                    font:
+                      "inherit",
+                    fontSize:
+                      "inherit",
+                    fontWeight:
+                      650,
+                    textDecoration:
+                      "underline",
+                    cursor:
+                      "pointer",
+                  }}
+                >
+                  See GQ Leaders
+                </button>
+
+                <span
+                  aria-hidden="true"
+                >
+                  |
+                </span>
+
+                <button
+                  type="button"
+                  aria-label="Close completion certificate"
+                  title="Close"
+                  onClick={() =>
+                    setCertificateOpen(
+                      false,
+                    )
+                  }
+                  style={{
+                    padding:
+                      "0 2px",
+                    border:
+                      0,
+                    background:
+                      "transparent",
+                    font:
+                      "inherit",
+                    fontSize:
+                      "0.9rem",
+                    fontWeight:
+                      700,
+                    lineHeight:
+                      1,
+                    cursor:
+                      "pointer",
+                  }}
+                >
+                  ×
+                </button>
               </div>
 
 
@@ -5145,9 +5896,9 @@ export default function Puzzle({
                 className="daily-puzzle__certificate-grid"
                 style={{
                   gridTemplateColumns:
-                    "repeat(5, 1fr)",
+                    `repeat(${puzzle.size}, 1fr)`,
                 }}
-                aria-label="Solved 5 by 5 puzzle"
+                aria-label={`Solved ${puzzle.size} by ${puzzle.size} puzzle`}
               >
                 {certificateBoard.map(
                   (tile) => (
@@ -5161,7 +5912,23 @@ export default function Puzzle({
                         tile.hidden
                           ? "daily-puzzle__certificate-tile--mystery"
                           : `daily-puzzle__certificate-tile--${tile.color}`,
+
+                        certificateWinningTileIds.has(
+                          tile.id,
+                        )
+                          ? "daily-puzzle__certificate-tile--winning-line"
+                          : "",
                       ].join(" ")}
+                      style={
+                        certificateWinningTileIds.has(
+                          tile.id,
+                        )
+                          ? {
+                              boxShadow:
+                                "inset 0 0 0 2px rgba(20, 85, 55, 0.82)",
+                            }
+                          : undefined
+                      }
                     >
                       {tile.hidden
                         ? "?"
@@ -5176,53 +5943,94 @@ export default function Puzzle({
                 className="daily-puzzle__certificate-gq"
                 style={{
                   margin:
-                    "10px auto 8px",
+                    "8px auto 6px",
                   padding:
-                    "9px 10px",
+                    "7px 9px",
                   border:
                     "1px solid rgba(0,0,0,0.12)",
                   borderRadius:
                     "10px",
-                  textAlign:
-                    "center",
                   background:
                     "rgba(255,255,255,0.78)",
+                  textAlign:
+                    "center",
                 }}
               >
-                <strong
+                <div
                   style={{
+                    display:
+                      "flex",
+                    justifyContent:
+                      "center",
+                    alignItems:
+                      "center",
+                    flexWrap:
+                      "wrap",
+                    gap:
+                      "6px",
                     fontSize:
-                      "0.78rem",
-                    fontWeight:
-                      650,
+                      "0.7rem",
+                    lineHeight:
+                      1.25,
                   }}
                 >
-                  5×5 GQ{" "}
-                  {
-                    currentGq.score
-                  }
-                </strong>
-
-                {currentGq.icons.length >
-                  0 && (
-                  <span
-                    style={{
-                      marginLeft:
-                        "6px",
-                      fontSize:
-                        "0.82rem",
-                    }}
-                    aria-label="GQ achievement icons"
-                  >
+                  <strong>
+                    GQ{" "}
                     {
-                      currentGq.icons.join(
-                        " ",
-                      )
+                      currentGq.score
                     }
-                  </span>
-                )}
+                    {currentGq.icons.filter(
+                      (icon) =>
+                        icon !== "⏱",
+                    ).length > 0
+                      ? ` ${currentGq.icons
+                          .filter(
+                            (icon) =>
+                              icon !== "⏱",
+                          )
+                          .join(" ")}`
+                      : ""}
+                  </strong>
 
-                <div>
+                  <span
+                    aria-hidden="true"
+                  >
+                    ·
+                  </span>
+
+                  <strong>
+                    ⏱{" "}
+                    {Math.max(
+                      1,
+                      Math.round(
+                        activeSolveMs /
+                          1000,
+                      ),
+                    )}
+                    s
+                  </strong>
+                </div>
+
+                <div
+                  style={{
+                    display:
+                      "flex",
+                    justifyContent:
+                      "center",
+                    alignItems:
+                      "center",
+                    flexWrap:
+                      "wrap",
+                    gap:
+                      "8px",
+                    marginTop:
+                      "4px",
+                    fontSize:
+                      "0.68rem",
+                    lineHeight:
+                      1.25,
+                  }}
+                >
                   <button
                     type="button"
                     onClick={() =>
@@ -5232,22 +6040,18 @@ export default function Puzzle({
                       sharingResult
                     }
                     style={{
-                      margin:
-                        "6px auto 0",
                       padding:
-                        "5px 9px",
-                      borderRadius:
-                        "999px",
+                        0,
                       border:
-                        "1px solid rgba(0,0,0,0.14)",
+                        0,
                       background:
-                        "rgba(255,255,255,0.82)",
+                        "transparent",
                       font:
                         "inherit",
-                      fontSize:
-                        "0.7rem",
                       fontWeight:
                         650,
+                      textDecoration:
+                        "underline",
                       cursor:
                         sharingResult
                           ? "default"
@@ -5258,100 +6062,13 @@ export default function Puzzle({
                       ? "Sharing…"
                       : "📤 Share result"}
                   </button>
+
+
                 </div>
-
-                <small
-                  style={{
-                    display:
-                      "block",
-                    marginTop:
-                      "3px",
-                    fontSize:
-                      "0.68rem",
-                    lineHeight:
-                      1.3,
-                    fontWeight:
-                      650,
-                  }}
-                >
-                  ⏱ Solved in{" "}
-                  {Math.max(
-                    1,
-                    Math.round(
-                      activeSolveMs /
-                        1000,
-                    ),
-                  )}s
-                </small>
-
-                <small
-                  style={{
-                    display:
-                      "block",
-                    marginTop:
-                      "3px",
-                    fontSize:
-                      "0.6rem",
-                    lineHeight:
-                      1.3,
-                  }}
-                >
-                  GQ is a GYAN game-performance score,
-                  not a scientific IQ or intelligence test.
-                </small>
-
-                <details
-                  style={{
-                    marginTop:
-                      "5px",
-                  }}
-                >
-                  <summary
-                    style={{
-                      fontSize:
-                        "0.72rem",
-                    }}
-                  >
-                    GQ legend
-                  </summary>
-
-                  <div
-                    style={{
-                      marginTop:
-                        "4px",
-                      lineHeight:
-                        1.4,
-                      fontSize:
-                        "0.68rem",
-                    }}
-                  >
-                    ⚡ efficient solve ·
-                    ⏱ fast solve ·
-                    👁️ chosen reveal ·
-                    👁️👁️ double reveal ·
-                    ◇ diagonal match ·
-                    ↔ productive edge move ·
-                    ❓ mystery finish
-                  </div>
-                </details>
               </div>
 
+
               <div className="daily-puzzle__certificate-actions">
-                <button
-                  type="button"
-                  className="daily-puzzle__certificate-final"
-                  onClick={() => {
-                    setCertificateOpen(
-                      false,
-                    );
-
-                    void startFinal();
-                  }}
-                >
-                  🏆 Play 7×7 & join winners
-                </button>
-
-
                 <div
                   className="daily-puzzle__certificate-email-row"
                   style={{
@@ -5362,7 +6079,7 @@ export default function Puzzle({
                     gap:
                       "6px",
                     alignItems:
-                      "center",
+                      "stretch",
                     width:
                       "100%",
                   }}
@@ -5378,8 +6095,19 @@ export default function Puzzle({
                     autoComplete="name"
                     placeholder="Name"
                     aria-label="Display name"
+                    style={{
+                      height:
+                        "100%",
+                      minHeight:
+                        "42px",
+                      boxSizing:
+                        "border-box",
+                    }}
                     disabled={
-                      certificateSending
+                      stage ===
+                        "5x5"
+                        ? certificateSending
+                        : claimingMedal
                     }
                     onChange={(
                       event,
@@ -5393,7 +6121,15 @@ export default function Puzzle({
                         null,
                       );
 
+                      setMedalError(
+                        null,
+                      );
+
                       setCertificateSent(
+                        false,
+                      );
+
+                      setQualifierClaimed(
                         false,
                       );
                     }}
@@ -5402,30 +6138,63 @@ export default function Puzzle({
                   <input
                     type="email"
                     value={
-                      certificateEmail
+                      stage ===
+                        "5x5"
+                        ? certificateEmail
+                        : winnerEmail
                     }
                     maxLength={
                       160
                     }
                     autoComplete="email"
                     placeholder="Email"
-                    aria-label="Email address for certificate"
+                    aria-label="Email"
+                    style={{
+                      height:
+                        "100%",
+                      minHeight:
+                        "42px",
+                      boxSizing:
+                        "border-box",
+                    }}
                     disabled={
-                      certificateSending
+                      stage ===
+                        "5x5"
+                        ? certificateSending
+                        : claimingMedal
                     }
                     onChange={(
                       event,
                     ) => {
-                      setCertificateEmail(
-                        event.target
-                          .value,
-                      );
+                      const value =
+                        event.target.value;
+
+                      if (
+                        stage ===
+                          "5x5"
+                      ) {
+                        setCertificateEmail(
+                          value,
+                        );
+                      } else {
+                        setWinnerEmail(
+                          value,
+                        );
+                      }
 
                       setCertificateError(
                         null,
                       );
 
+                      setMedalError(
+                        null,
+                      );
+
                       setCertificateSent(
+                        false,
+                      );
+
+                      setQualifierClaimed(
                         false,
                       );
                     }}
@@ -5438,7 +6207,14 @@ export default function Puzzle({
                       ) {
                         event.preventDefault();
 
-                        void emailCertificate();
+                        if (
+                          stage ===
+                            "5x5"
+                        ) {
+                          void claimQualifierScore();
+                        } else {
+                          void claimMedal();
+                        }
                       }
                     }}
                   />
@@ -5446,15 +6222,42 @@ export default function Puzzle({
                   <button
                     type="button"
                     className="daily-puzzle__certificate-email-icon"
-                    aria-label="Email certificate"
-                    title="Email certificate"
+                    aria-label={
+                      stage ===
+                        "5x5"
+                        ? "Join GQ leaderboard"
+                        : "Claim medal"
+                    }
+                    title={
+                      stage ===
+                        "5x5"
+                        ? "Join leaderboard"
+                        : "Claim medal"
+                    }
                     disabled={
-                      certificateSending
+                      stage ===
+                        "5x5"
+                        ? certificateSending ||
+                          resultSaving ||
+                          !finalResultId
+                        : claimingMedal ||
+                          !finalResultId
                     }
-                    onClick={() =>
-                      void emailCertificate()
-                    }
+                    onClick={() => {
+                      if (
+                        stage ===
+                          "5x5"
+                      ) {
+                        void claimQualifierScore();
+                      } else {
+                        void claimMedal();
+                      }
+                    }}
                     style={{
+                      height:
+                        "100%",
+                      minHeight:
+                        "42px",
                       minWidth:
                         0,
                       padding:
@@ -5463,16 +6266,92 @@ export default function Puzzle({
                         "nowrap",
                     }}
                   >
-                    {certificateSending
-                      ? "…"
-                      : certificateSent
-                        ? "✓ Sent"
-                        : "✉️ Send"}
+                    {stage ===
+                      "5x5"
+                      ? certificateSending
+                        ? "…"
+                        : qualifierClaimed
+                          ? "✓ Joined"
+                          : (
+                            <span
+                              style={{
+                                display:
+                                  "flex",
+                                flexDirection:
+                                  "column",
+                                alignItems:
+                                  "center",
+                                justifyContent:
+                                  "center",
+                                lineHeight:
+                                  1.05,
+                              }}
+                            >
+                              <strong>
+                                JOIN
+                              </strong>
+
+                              <small
+                                style={{
+                                  marginTop:
+                                    "2px",
+                                  fontSize:
+                                    "0.56rem",
+                                  fontWeight:
+                                    650,
+                                  letterSpacing:
+                                    "0.02em",
+                                }}
+                              >
+                                LEADERBOARD
+                              </small>
+                            </span>
+                          )
+                      : claimingMedal
+                        ? "…"
+                        : medalClaimed
+                          ? "✓ Claimed"
+                          : (
+                            <span
+                              style={{
+                                display:
+                                  "flex",
+                                flexDirection:
+                                  "column",
+                                alignItems:
+                                  "center",
+                                justifyContent:
+                                  "center",
+                                lineHeight:
+                                  1.05,
+                              }}
+                            >
+                              <strong>
+                                CLAIM
+                              </strong>
+
+                              <small
+                                style={{
+                                  marginTop:
+                                    "2px",
+                                  fontSize:
+                                    "0.56rem",
+                                  fontWeight:
+                                    650,
+                                  letterSpacing:
+                                    "0.02em",
+                                }}
+                              >
+                                MEDAL
+                              </small>
+                            </span>
+                          )}
                   </button>
                 </div>
 
-
-                {certificateError && (
+                {stage ===
+                  "5x5" &&
+                  certificateError && (
                   <div className="daily-puzzle__certificate-error">
                     {
                       certificateError
@@ -5480,13 +6359,251 @@ export default function Puzzle({
                   </div>
                 )}
 
-                {certificateSent && (
-                  <div className="daily-puzzle__certificate-sent">
-                    ✓ Certificate sent to{" "}
+                {stage ===
+                  "7x7" &&
+                  medalError && (
+                  <div className="daily-puzzle__certificate-error">
                     {
-                      certificateEmail
+                      medalError
                     }
                   </div>
+                )}
+
+                {stage ===
+                  "5x5" &&
+                  qualifierClaimed && (
+                  <div className="daily-puzzle__certificate-sent">
+                    ✓ Score claimed as{" "}
+                    <strong>
+                      {
+                        winnerName.trim()
+                      }
+                    </strong>
+                    {certificateSent
+                      ? ` · Certificate sent to ${certificateEmail}`
+                      : ""}
+                  </div>
+                )}
+
+                {stage ===
+                  "7x7" &&
+                  medalClaimed && (
+                  <div className="daily-puzzle__certificate-sent">
+                    🏅 Medal claimed as{" "}
+                    <strong>
+                      {
+                        medalClaimName
+                      }
+                    </strong>
+                  </div>
+                )}
+
+                {stage ===
+                  "5x5" && (
+                  <button
+                    type="button"
+                    className="daily-puzzle__certificate-final"
+                    onClick={() => {
+                      setCertificateOpen(
+                        false,
+                      );
+
+                      void startFinal();
+                    }}
+                  >
+                    🏆 Play 7×7{" "}
+                    <span
+                      style={{
+                        fontWeight:
+                          500,
+                      }}
+                    >
+                      to improve your GQ
+                    </span>
+                  </button>
+                )}
+
+                <details
+                  style={{
+                    marginTop:
+                      "5px",
+                    textAlign:
+                      "center",
+                  }}
+                >
+                  <summary
+                    style={{
+                      cursor:
+                        "pointer",
+                      fontSize:
+                        "0.68rem",
+                    }}
+                  >
+                    GQ legend
+                  </summary>
+
+                  <div
+                    style={{
+                      marginTop:
+                        "4px",
+                      fontSize:
+                        "0.64rem",
+                      lineHeight:
+                        1.35,
+                      textAlign:
+                        "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        marginBottom:
+                          "4px",
+                      }}
+                    >
+                      GQ is a GYAN game-performance
+                      score, not a scientific IQ or
+                      intelligence test.
+                    </div>
+
+                    ⚡ efficient solve ·
+                    ⏱ fast solve ·
+                    👁️ chosen reveal ·
+                    👁️👁️ double reveal ·
+                    ◇ diagonal match ·
+                    ↔ productive edge move ·
+                    ❓ mystery finish
+                  </div>
+                </details>
+
+                <div
+                  style={{
+                    marginTop:
+                      "7px",
+                    display:
+                      "flex",
+                    alignItems:
+                      "baseline",
+                    justifyContent:
+                      "center",
+                    flexWrap:
+                      "wrap",
+                    gap:
+                      "0",
+                    maxWidth:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    textAlign:
+                      "center",
+                    fontSize:
+                      "0.66rem",
+                    lineHeight:
+                      1.25,
+                  }}
+                >
+                  <strong>
+                    Try:&nbsp;
+                  </strong>
+
+                  {(
+                    EDUCATION_REGION ===
+                      "IN"
+                      ? [
+                          "Maths Olympiad",
+                          "Vedic Maths",
+                        ]
+                      : [
+                          "OLSAT",
+                          "SAT",
+                          "Maths",
+                        ]
+                  ).map(
+                    (
+                      item,
+                      index,
+                      items,
+                    ) => (
+                      <span
+                        key={
+                          item
+                        }
+                        style={{
+                          display:
+                            "inline-flex",
+                          alignItems:
+                            "baseline",
+                          whiteSpace:
+                            "nowrap",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEducationComingSoon(
+                              `🚧 ${item} coming soon`,
+                            )
+                          }
+                          style={{
+                            padding:
+                              0,
+                            border:
+                              0,
+                            background:
+                              "transparent",
+                            font:
+                              "inherit",
+                            lineHeight:
+                              "inherit",
+                            fontWeight:
+                              650,
+                            textDecoration:
+                              "underline",
+                            cursor:
+                              "pointer",
+                            verticalAlign:
+                              "baseline",
+                          }}
+                        >
+                          {item}
+                        </button>
+
+                        {index <
+                          items.length -
+                            1 && (
+                          <span
+                            aria-hidden="true"
+                            style={{
+                              padding:
+                                "0 5px",
+                            }}
+                          >
+                            |
+                          </span>
+                        )}
+                      </span>
+                    ),
+                  )}
+                </div>
+
+                {educationComingSoon && (
+                  <small
+                    style={{
+                      display:
+                        "block",
+                      marginTop:
+                        "4px",
+                      textAlign:
+                        "center",
+                      fontSize:
+                        "0.64rem",
+                      fontWeight:
+                        650,
+                    }}
+                  >
+                    {
+                      educationComingSoon
+                    }
+                  </small>
                 )}
               </div>
 
@@ -5513,15 +6630,23 @@ export default function Puzzle({
           }
           style={{
             position:
-              "absolute",
-            top:
-              "52px",
-            left:
-              "8px",
-            right:
-              "8px",
+              "fixed",
+            inset:
+              0,
             zIndex:
-              40,
+              10000,
+            display:
+              "flex",
+            alignItems:
+              "flex-start",
+            justifyContent:
+              "center",
+            padding:
+              "calc(var(--gyan-header-height, 64px) + 8px) 8px 8px",
+            boxSizing:
+              "border-box",
+            background:
+              "rgba(0,0,0,0.18)",
           }}
         >
           <section
@@ -5540,14 +6665,16 @@ export default function Puzzle({
               event.stopPropagation()
             }
             style={{
+              width:
+                "min(calc(100vw - 16px), 420px)",
               margin:
-                "0 auto",
-              maxWidth:
-                "520px",
+                0,
               maxHeight:
                 "70vh",
               overflowY:
                 "auto",
+              boxSizing:
+                "border-box",
               boxShadow:
                 "0 10px 30px rgba(0,0,0,0.22)",
             }}
@@ -5566,7 +6693,7 @@ export default function Puzzle({
             </button>
 
             <h3>
-              🏆 7×7 GQ Leaders
+              🏆 GQ Leaders
             </h3>
 
             <small
@@ -5583,7 +6710,7 @@ export default function Puzzle({
                   0.72,
               }}
             >
-              Rankings are based on the 7×7 Championship Final.
+              Each completed round appears separately. The Stage column shows whether the score is from 5×5 or 7×7.
             </small>
 
             {winnersLoading ||
@@ -5595,7 +6722,60 @@ export default function Puzzle({
               leaderboard.top.length >
                 0 ? (
                 <>
-                  <div className="daily-puzzle__recent-winners">
+                  <div
+                    className="daily-puzzle__recent-winners"
+                    style={{
+                      fontFamily:
+                        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                      fontVariantNumeric:
+                        "tabular-nums",
+                    }}
+                  >
+                    <div
+                      aria-hidden="true"
+                      style={{
+                        display:
+                          "grid",
+                        gridTemplateColumns:
+                          "30px 42px 112px minmax(0,1fr)",
+                        gap:
+                          "6px",
+                        alignItems:
+                          "center",
+                        padding:
+                          "0 0 3px",
+                        borderBottom:
+                          "1px solid rgba(0,0,0,0.1)",
+                        fontSize:
+                          "0.56rem",
+                        fontWeight:
+                          700,
+                        opacity:
+                          0.62,
+                        textTransform:
+                          "uppercase",
+                      }}
+                    >
+                      <span />
+
+                      <span
+                        style={{
+                          textAlign:
+                            "center",
+                        }}
+                      >
+                        Stage
+                      </span>
+
+                      <span>
+                        Name
+                      </span>
+
+                      <span>
+                        Score
+                      </span>
+                    </div>
+
                     {leaderboard.top.map(
                       (
                         entry,
@@ -5618,14 +6798,14 @@ export default function Puzzle({
                         return (
                           <div
                             key={
-                              entry.resultId
+                              `${entry.resultId}-${entry.stage}`
                             }
                             className="daily-puzzle__recent-winner"
                             style={{
                               display:
                                 "grid",
                               gridTemplateColumns:
-                                "34px minmax(0,1fr) auto",
+                                "30px 42px 112px minmax(0,1fr)",
                               gap:
                                 "6px",
                               alignItems:
@@ -5634,11 +6814,52 @@ export default function Puzzle({
                                 "5px 0",
                             }}
                           >
-                            <span>
+                            <span
+                              style={{
+                                textAlign:
+                                  "center",
+                                whiteSpace:
+                                  "nowrap",
+                              }}
+                            >
                               {medal}
                             </span>
 
-                            <strong>
+                            <span
+                              style={{
+                                textAlign:
+                                  "center",
+                                fontSize:
+                                  "0.62rem",
+                                fontWeight:
+                                  700,
+                                whiteSpace:
+                                  "nowrap",
+                                opacity:
+                                  0.78,
+                              }}
+                            >
+                              {entry.stage ===
+                                "7x7"
+                                ? "7×7"
+                                : "5×5"}
+                            </span>
+
+                            <strong
+                              title={
+                                entry.name
+                              }
+                              style={{
+                                minWidth:
+                                  0,
+                                overflow:
+                                  "hidden",
+                                textOverflow:
+                                  "ellipsis",
+                                whiteSpace:
+                                  "nowrap",
+                              }}
+                            >
                               {
                                 entry.name
                               }
@@ -5649,16 +6870,26 @@ export default function Puzzle({
 
                             <span
                               style={{
-                                textAlign:
-                                  "right",
+                                minWidth:
+                                  0,
+                                overflow:
+                                  "hidden",
+                                textOverflow:
+                                  "ellipsis",
                                 whiteSpace:
                                   "nowrap",
+                                textAlign:
+                                  "left",
+                                fontVariantNumeric:
+                                  "tabular-nums",
                               }}
                             >
-                              GQ{" "}
-                              {
-                                entry.gq
-                              }
+                              <strong>
+                                GQ{" "}
+                                {
+                                  entry.gq
+                                }
+                              </strong>
                               {" "}
                               {
                                 entry.icons.join(

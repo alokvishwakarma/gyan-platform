@@ -678,6 +678,156 @@ async function sendMedalEmail(
 }
 
 
+function guestStartNumber(
+  resultId: string,
+): number {
+  let hash = 0;
+
+  for (
+    let index = 0;
+    index <
+      resultId.length;
+    index += 1
+  ) {
+    hash =
+      (
+        hash * 31 +
+        resultId.charCodeAt(
+          index,
+        )
+      ) >>> 0;
+  }
+
+  return (
+    1000 +
+    (
+      hash %
+      9000
+    )
+  );
+}
+
+
+async function allocateGuestName(
+  env: Env,
+  puzzleNumber: number,
+  resultId: string,
+): Promise<string> {
+  const existing =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          guest_name
+
+        FROM puzzle_guest_names
+
+        WHERE
+          puzzle_number = ?
+          AND result_id = ?
+
+        LIMIT 1
+        `,
+      )
+      .bind(
+        puzzleNumber,
+        resultId,
+      )
+      .first<{
+        guest_name: string;
+      }>();
+
+  if (existing?.guest_name) {
+    return existing.guest_name;
+  }
+
+  const start =
+    guestStartNumber(
+      resultId,
+    );
+
+  for (
+    let offset = 0;
+    offset < 9000;
+    offset += 1
+  ) {
+    const number =
+      1000 +
+      (
+        (
+          start -
+          1000 +
+          offset
+        ) %
+        9000
+      );
+
+    const guestName =
+      `Guest ${String(
+        number,
+      ).padStart(
+        4,
+        "0",
+      )}`;
+
+    await env.gyan_registry
+      .prepare(
+        `
+        INSERT OR IGNORE INTO
+          puzzle_guest_names (
+            puzzle_number,
+            result_id,
+            guest_name
+          )
+        VALUES (
+          ?,
+          ?,
+          ?
+        )
+        `,
+      )
+      .bind(
+        puzzleNumber,
+        resultId,
+        guestName,
+      )
+      .run();
+
+    const allocated =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT
+            guest_name
+
+          FROM puzzle_guest_names
+
+          WHERE
+            puzzle_number = ?
+            AND result_id = ?
+
+          LIMIT 1
+          `,
+        )
+        .bind(
+          puzzleNumber,
+          resultId,
+        )
+        .first<{
+          guest_name: string;
+        }>();
+
+    if (allocated?.guest_name) {
+      return allocated.guest_name;
+    }
+  }
+
+  throw new Error(
+    "No Guest numbers are available for this puzzle.",
+  );
+}
+
+
 export async function handlePuzzleRoute(
   request: Request,
   env: Env,
@@ -1259,9 +1409,6 @@ return jsonResponse({
         8 ||
       resultId.length >
         100 ||
-      !/^Anonymous \d{2}$/.test(
-        anonymousName,
-      ) ||
       !Number.isInteger(
         puzzleNumber,
       ) ||
@@ -1312,6 +1459,66 @@ return jsonResponse({
       );
     }
 
+    const knownIdentity =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT
+            name,
+            email,
+            claimed
+
+          FROM puzzle_results
+
+          WHERE
+            puzzle_number = ?
+            AND result_id = ?
+            AND claimed = 1
+
+          ORDER BY
+            CASE
+              WHEN stage = '7x7'
+                THEN 1
+              ELSE 0
+            END DESC,
+            updated_at DESC
+
+          LIMIT 1
+          `,
+        )
+        .bind(
+          puzzleNumber,
+          resultId,
+        )
+        .first<{
+          name: string;
+          email: string | null;
+          claimed: number;
+        }>();
+
+    const allocatedGuestName =
+      knownIdentity
+        ? null
+        : await allocateGuestName(
+            env,
+            puzzleNumber,
+            resultId,
+          );
+
+    const storedName =
+      knownIdentity?.name ??
+      allocatedGuestName ??
+      anonymousName;
+
+    const storedEmail =
+      knownIdentity?.email ??
+      null;
+
+    const storedClaimed =
+      knownIdentity
+        ? 1
+        : 0;
+
     try {
       await env.gyan_registry
         .prepare(
@@ -1325,9 +1532,13 @@ return jsonResponse({
             moves_used,
             icons_json,
             skill_stats_json,
-            name
+            name,
+            email,
+            claimed
           )
           VALUES (
+            ?,
+            ?,
             ?,
             ?,
             ?,
@@ -1359,6 +1570,18 @@ return jsonResponse({
                   THEN name
                 ELSE excluded.name
               END,
+            email =
+              CASE
+                WHEN claimed = 1
+                  THEN email
+                ELSE excluded.email
+              END,
+            claimed =
+              CASE
+                WHEN claimed = 1
+                  THEN claimed
+                ELSE excluded.claimed
+              END,
             updated_at =
               CURRENT_TIMESTAMP
           `,
@@ -1381,7 +1604,9 @@ return jsonResponse({
               {},
           ),
 
-          anonymousName,
+          storedName,
+          storedEmail,
+          storedClaimed,
         )
         .run();
     } catch {
@@ -1397,6 +1622,127 @@ return jsonResponse({
     return jsonResponse({
       saved: true,
       resultId,
+      name:
+        storedName,
+    });
+  }
+
+
+  /*
+   * ----------------------------------------
+   * Claim a saved puzzle result identity.
+   *
+   * POST /api/puzzle/result/claim
+   *
+   * Used by the 5×5 qualifier and intentionally
+   * separate from medal/winner claiming.
+   * ----------------------------------------
+   */
+  if (
+    request.method ===
+      "POST" &&
+    url.pathname ===
+      "/api/puzzle/result/claim"
+  ) {
+    const body =
+      await request.json<{
+        puzzleNumber: number;
+        resultId: string;
+        name: string;
+        email: string;
+      }>();
+
+    const puzzleNumber =
+      Number(
+        body.puzzleNumber,
+      );
+
+    const resultId =
+      String(
+        body.resultId ?? "",
+      ).trim();
+
+    const name =
+      String(
+        body.name ?? "",
+      ).trim();
+
+    const email =
+      String(
+        body.email ?? "",
+      )
+        .trim()
+        .toLowerCase();
+
+    const emailPattern =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (
+      !Number.isInteger(
+        puzzleNumber,
+      ) ||
+      puzzleNumber <= 0 ||
+      resultId.length < 8 ||
+      resultId.length > 100 ||
+      name.length < 2 ||
+      name.length > 80 ||
+      !emailPattern.test(
+        email,
+      )
+    ) {
+      return jsonResponse(
+        {
+          error:
+            "Please provide a valid result, name and email.",
+        },
+        400,
+      );
+    }
+
+    const result =
+      await env.gyan_registry
+        .prepare(
+          `
+          UPDATE puzzle_results
+
+          SET
+            name = ?,
+            email = ?,
+            claimed = 1,
+            updated_at =
+              CURRENT_TIMESTAMP
+
+          WHERE
+            puzzle_number = ?
+            AND result_id = ?
+          `,
+        )
+        .bind(
+          name,
+          email,
+          puzzleNumber,
+          resultId,
+        )
+        .run();
+
+    if (
+      !result.meta.changes
+    ) {
+      return jsonResponse(
+        {
+          error:
+            "Puzzle result was not found. Please wait a moment and try again.",
+        },
+        404,
+      );
+    }
+
+    return jsonResponse({
+      claimed: true,
+
+      result: {
+        name,
+      },
     });
   }
 
@@ -1446,210 +1792,206 @@ return jsonResponse({
       );
     }
 
-    const topResult =
+    /*
+     * Every completed round is a leaderboard row.
+     *
+     * A player who completes both 5×5 and 7×7
+     * appears twice, once for each stage. Both rows
+     * remain tied to the same result_id so a claimed
+     * name can update both.
+     */
+    const ranked =
       await env.gyan_registry
         .prepare(
           `
-          SELECT
-            result_id,
-            name,
-            gq_score,
-            moves_used,
-            icons_json,
-            created_at
-
-          FROM puzzle_results
-
-          WHERE
-            puzzle_number = ?
-            AND stage = '7x7'
-
-          ORDER BY
-            gq_score DESC,
-            moves_used ASC,
-            created_at ASC,
-            id ASC
-
-          LIMIT 5
-          `,
-        )
-        .bind(
-          puzzleNumber,
-        )
-        .all<{
-          result_id: string;
-          name: string | null;
-          gq_score: number;
-          moves_used: number;
-          icons_json: string;
-          created_at: string;
-        }>();
-
-    let yourRank:
-      number | null =
-        null;
-
-    let yourScore:
-      number | null =
-        null;
-
-    if (resultId) {
-      const yourRow =
-        await env.gyan_registry
-          .prepare(
-            `
+          WITH ordered AS (
             SELECT
-              id,
+              result_id,
+              stage,
+              name,
               gq_score,
               moves_used,
-              created_at
+              icons_json,
+              created_at,
+
+              ROW_NUMBER()
+              OVER (
+                ORDER BY
+                  gq_score DESC,
+                  CASE
+                    WHEN stage = '7x7'
+                      THEN 1
+                    ELSE 0
+                  END DESC,
+                  moves_used ASC,
+                  created_at ASC,
+                  result_id ASC
+              ) AS rank
 
             FROM puzzle_results
 
             WHERE
               puzzle_number = ?
-              AND stage = '7x7'
-              AND result_id = ?
-
-            LIMIT 1
-            `,
           )
-          .bind(
-            puzzleNumber,
-            resultId,
-          )
-          .first<{
-            id: number;
-            gq_score: number;
-            moves_used: number;
-            created_at: string;
-          }>();
 
-      if (yourRow) {
-        yourScore =
-          yourRow.gq_score;
+          SELECT
+            result_id,
+            stage,
+            name,
+            gq_score,
+            moves_used,
+            icons_json,
+            rank
 
-        const better =
-          await env.gyan_registry
-            .prepare(
-              `
-              SELECT
-                COUNT(*) AS count
+          FROM ordered
 
-              FROM puzzle_results
+          WHERE
+            rank <= 5
+            OR result_id = ?
 
-              WHERE
-                puzzle_number = ?
-                AND stage = '7x7'
-                AND (
-                  gq_score > ?
-                  OR (
-                    gq_score = ?
-                    AND moves_used < ?
-                  )
-                  OR (
-                    gq_score = ?
-                    AND moves_used = ?
-                    AND created_at < ?
-                  )
-                  OR (
-                    gq_score = ?
-                    AND moves_used = ?
-                    AND created_at = ?
-                    AND id < ?
-                  )
-                )
-              `,
+          ORDER BY
+            rank ASC
+          `,
+        )
+        .bind(
+          puzzleNumber,
+          resultId ||
+            "__no_current_result__",
+        )
+        .all<{
+          result_id: string;
+          stage: "5x5" | "7x7";
+          name: string;
+          gq_score: number;
+          moves_used: number;
+          icons_json: string;
+          rank: number;
+        }>();
+
+    const rows =
+      ranked.results ??
+      [];
+
+    const mapRow =
+      (
+        item: {
+          result_id: string;
+          stage: "5x5" | "7x7";
+          name: string;
+          gq_score: number;
+          moves_used: number;
+          icons_json: string;
+          rank: number;
+        },
+      ) => {
+        let icons:
+          string[] = [];
+
+        try {
+          const parsed =
+            JSON.parse(
+              item.icons_json,
+            );
+
+          if (
+            Array.isArray(
+              parsed,
             )
-            .bind(
-              puzzleNumber,
-              yourRow.gq_score,
-              yourRow.gq_score,
-              yourRow.moves_used,
-              yourRow.gq_score,
-              yourRow.moves_used,
-              yourRow.created_at,
-              yourRow.gq_score,
-              yourRow.moves_used,
-              yourRow.created_at,
-              yourRow.id,
-            )
-            .first<{
-              count: number;
-            }>();
+          ) {
+            icons =
+              parsed.map(
+                (
+                  value,
+                ) =>
+                  String(
+                    value,
+                  ),
+              );
+          }
+        } catch {
+          icons = [];
+        }
 
-        yourRank =
-          Number(
-            better?.count ??
-              0,
-          ) + 1;
-      }
-    }
+        return {
+          rank:
+            item.rank,
+
+          resultId:
+            item.result_id,
+
+          name:
+            item.name,
+
+          stage:
+            item.stage,
+
+          gq:
+            item.gq_score,
+
+          fiveGq:
+            item.stage ===
+              "5x5"
+              ? item.gq_score
+              : null,
+
+          sevenGq:
+            item.stage ===
+              "7x7"
+              ? item.gq_score
+              : null,
+
+          moves:
+            item.moves_used,
+
+          icons,
+        };
+      };
+
+    const top =
+      rows
+        .filter(
+          (
+            item,
+          ) =>
+            item.rank <= 5,
+        )
+        .map(
+          mapRow,
+        );
+
+    const yours =
+      resultId
+        ? rows.find(
+            (
+              item,
+            ) =>
+              item.result_id ===
+                resultId &&
+              item.stage ===
+                "7x7",
+          ) ??
+          rows.find(
+            (
+              item,
+            ) =>
+              item.result_id ===
+              resultId,
+          ) ??
+          null
+        : null;
 
     return jsonResponse({
       puzzleNumber,
 
-      top:
-        (
-          topResult.results ??
-          []
-        ).map(
-          (
-            item,
-            index,
-          ) => {
-            let icons:
-              string[] = [];
+      top,
 
-            try {
-              const parsed =
-                JSON.parse(
-                  item.icons_json,
-                );
+      yourRank:
+        yours?.rank ??
+        null,
 
-              if (
-                Array.isArray(
-                  parsed,
-                )
-              ) {
-                icons =
-                  parsed.map(
-                    (
-                      value,
-                    ) =>
-                      String(
-                        value,
-                      ),
-                  );
-              }
-            } catch {
-              icons = [];
-            }
-
-            return {
-              rank:
-                index + 1,
-
-              resultId:
-                item.result_id,
-
-              name:
-                item.name ??
-                "Anonymous",
-
-              gq:
-                item.gq_score,
-
-              moves:
-                item.moves_used,
-
-              icons,
-            };
-          },
-        ),
-
-      yourRank,
-      yourScore,
+      yourScore:
+        yours?.gq_score ??
+        null,
     });
   }
 
@@ -1794,7 +2136,6 @@ return jsonResponse({
 
             WHERE
               puzzle_number = ?
-              AND stage = '7x7'
               AND result_id = ?
             `,
           )
@@ -1844,13 +2185,61 @@ return jsonResponse({
 
     if (existing) {
       /*
-       * The user explicitly requested the medal again.
-       * Send the confirmation email again rather than
-       * silently returning the old claim.
+       * Same puzzle + same email:
+       * the latest explicit claim name wins.
        *
-       * This also leaves room for future multiple-attempt
-       * support where a player may improve their GQ.
+       * This is useful for corrected display names,
+       * testing, and future improved-score attempts.
        */
+      await env.gyan_registry
+        .prepare(
+          `
+          UPDATE puzzle_winners
+
+          SET
+            name = ?
+
+          WHERE
+            id = ?
+          `,
+        )
+        .bind(
+          name,
+          existing.id,
+        )
+        .run();
+
+      /*
+       * Keep puzzle_results aligned with the latest
+       * claim identity for this resultId.
+       */
+      if (resultId) {
+        await env.gyan_registry
+          .prepare(
+            `
+            UPDATE puzzle_results
+
+            SET
+              name = ?,
+              email = ?,
+              claimed = 1,
+              updated_at =
+                CURRENT_TIMESTAMP
+
+            WHERE
+              puzzle_number = ?
+              AND result_id = ?
+            `,
+          )
+          .bind(
+            name,
+            email,
+            puzzleNumber,
+            resultId,
+          )
+          .run();
+      }
+
       let existingGq:
         number | null =
           null;
@@ -1935,7 +2324,7 @@ return jsonResponse({
         await sendMedalEmail(
           env,
           email,
-          existing.name,
+          name,
           puzzleNumber,
           existingGq,
           existingIcons,
@@ -1949,8 +2338,7 @@ return jsonResponse({
           repeatedEmailSent,
 
         winner: {
-          name:
-            existing.name,
+          name,
         },
       });
     }
