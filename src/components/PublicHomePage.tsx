@@ -14,6 +14,9 @@ import Puzzle
 import GyanAboutPanel
   from "./GyanAboutPanel";
 
+import GyanCalendarPage
+  from "./GyanCalendarPage";
+
 import GyanShell
   from "./GyanShell";
 
@@ -286,6 +289,13 @@ export default function PublicHomePage({
   const [
     gyanAboutOpen,
     setGyanAboutOpen,
+  ] =
+    useState(false);
+
+
+  const [
+    calendarOpen,
+    setCalendarOpen,
   ] =
     useState(false);
 
@@ -752,12 +762,12 @@ export default function PublicHomePage({
           type="button"
           className="public-home__brand public-home__brand-button"
           onClick={() =>
-            setGyanAboutOpen(
+            setCalendarOpen(
               true,
             )
           }
-          aria-label="About GYAN"
-          title="About GYAN"
+          aria-label="Open GYAN Calendar"
+          title="GYAN Calendar"
         >
           <span
             className="public-home__brand-icon"
@@ -1030,12 +1040,22 @@ export default function PublicHomePage({
         bodyClassName="public-home__content"
       >
         {
-          shellContent
+          calendarOpen
             ? (
-              shellContent
+              <GyanCalendarPage
+                onClose={() =>
+                  setCalendarOpen(
+                    false,
+                  )
+                }
+              />
             )
-            : (
-              <>
+            : shellContent
+              ? (
+                shellContent
+              )
+              : (
+                <>
         {/*
          * =================================================
          * DAILY PUZZLE

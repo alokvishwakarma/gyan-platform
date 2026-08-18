@@ -1,0 +1,988 @@
+.gyan-calendar-page,
+.gyan-calendar-print {
+  width: 100%;
+  min-height: 100%;
+  padding: 0 0 2rem;
+}
+
+.gyan-calendar-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+
+  min-height: 58px;
+  padding: 0.45rem 0.6rem;
+
+  display: grid;
+  grid-template-columns:
+    48px minmax(0, 1fr) auto;
+  gap: 0.4rem;
+  align-items: center;
+
+  background:
+    rgba(255, 253, 248, 0.96);
+
+  border-bottom:
+    1px solid
+    rgba(48, 67, 88, 0.12);
+
+  backdrop-filter:
+    blur(12px);
+}
+
+.gyan-calendar-toolbar button {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.gyan-calendar-toolbar__back {
+  width: 42px;
+  height: 42px;
+
+  border-radius: 50%;
+
+  background: transparent;
+
+  font-size: 1.35rem;
+}
+
+.gyan-calendar-toolbar__title {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  text-align: center;
+}
+
+.gyan-calendar-toolbar__title strong {
+  color: #174a73;
+  font-size: 1rem;
+}
+
+.gyan-calendar-toolbar__title span {
+  margin-top: 0.08rem;
+
+  color: #6c7780;
+  font-size: 0.7rem;
+}
+
+.gyan-calendar-toolbar__print {
+  min-height: 38px;
+  padding: 0 0.75rem;
+
+  border-radius: 999px !important;
+
+  background: #e97825;
+  color: #fff;
+
+  font-size: 0.78rem !important;
+  font-weight: 800 !important;
+}
+
+.gyan-calendar-card {
+  width:
+    min(
+      calc(100% - 1rem),
+      760px
+    );
+
+  margin: 0.75rem auto 0;
+
+  overflow: hidden;
+
+  border:
+    1px solid
+    rgba(35, 67, 92, 0.16);
+
+  border-radius: 18px;
+
+  background: #fffdf7;
+
+  box-shadow:
+    0 14px 40px
+    rgba(30, 48, 65, 0.1);
+}
+
+.gyan-calendar-card__header {
+  min-height: 68px;
+  padding: 0.75rem 1rem;
+
+  display: grid;
+  grid-template-columns:
+    1fr auto;
+  align-items: center;
+
+  background:
+    linear-gradient(
+      105deg,
+      #fdf2df,
+      #fffdf7 56%,
+      #eff8ff
+    );
+
+  border-bottom:
+    1px solid
+    rgba(35, 67, 92, 0.1);
+}
+
+.gyan-calendar-card__header span {
+  grid-row: 1 / 3;
+
+  color: #174a73;
+
+  font-size:
+    clamp(
+      1.45rem,
+      5vw,
+      2.2rem
+    );
+
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.gyan-calendar-card__header strong {
+  color: #e97825;
+
+  font-size:
+    clamp(
+      0.92rem,
+      3.7vw,
+      1.45rem
+    );
+
+  line-height: 1;
+  text-align: right;
+}
+
+.gyan-calendar-card__header small {
+  color: #516677;
+  font-size: 0.64rem;
+  text-align: right;
+}
+
+.gyan-calendar-promo {
+  min-height: 270px;
+
+  display: grid;
+  grid-template-columns:
+    minmax(0, 0.95fr)
+    minmax(0, 1.05fr);
+
+  background:
+    radial-gradient(
+      circle at 15% 20%,
+      rgba(255, 197, 87, 0.23),
+      transparent 38%
+    ),
+    linear-gradient(
+      135deg,
+      #fff8e9,
+      #fffdf8
+    );
+}
+
+.gyan-calendar-promo__art {
+  min-height: 260px;
+  padding: 1rem;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+
+  background:
+    radial-gradient(
+      circle,
+      #fffdf4,
+      #ffe8b6
+    );
+}
+
+.gyan-calendar-promo__lotus {
+  width:
+    clamp(
+      92px,
+      25vw,
+      150px
+    );
+
+  aspect-ratio: 1;
+
+  margin-bottom: 0.65rem;
+
+  display: grid;
+  place-items: center;
+
+  border:
+    1px solid
+    rgba(198, 116, 31, 0.18);
+
+  border-radius: 50%;
+
+  background:
+    rgba(255, 255, 255, 0.72);
+
+  font-size:
+    clamp(
+      3.2rem,
+      12vw,
+      5rem
+    );
+
+  box-shadow:
+    0 10px 30px
+    rgba(149, 91, 24, 0.12);
+}
+
+.gyan-calendar-promo__art strong {
+  color: #a45d18;
+
+  font-size:
+    clamp(
+      1rem,
+      3.4vw,
+      1.35rem
+    );
+}
+
+.gyan-calendar-promo__art span {
+  margin-top: 0.2rem;
+
+  color: #775535;
+  font-size: 0.72rem;
+}
+
+.gyan-calendar-promo__message {
+  padding:
+    clamp(
+      0.8rem,
+      3vw,
+      1.5rem
+    );
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.gyan-calendar-promo__eyebrow {
+  color: #e97825;
+
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+}
+
+.gyan-calendar-promo__message h2 {
+  margin:
+    0.3rem 0
+    0.45rem;
+
+  color: #174a73;
+
+  font-size:
+    clamp(
+      1.15rem,
+      4.5vw,
+      1.9rem
+    );
+
+  line-height: 1.05;
+}
+
+.gyan-calendar-promo__message > p {
+  margin: 0 0 0.75rem;
+
+  color: #536776;
+
+  font-size:
+    clamp(
+      0.7rem,
+      2.4vw,
+      0.9rem
+    );
+}
+
+.gyan-calendar-promo__services {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+
+  gap: 0.32rem;
+}
+
+.gyan-calendar-promo__services span {
+  padding: 0.38rem;
+
+  border-radius: 7px;
+
+  background:
+    rgba(23, 74, 115, 0.06);
+
+  color: #36556e;
+
+  font-size:
+    clamp(
+      0.58rem,
+      2vw,
+      0.72rem
+    );
+
+  font-weight: 700;
+}
+
+.gyan-calendar-promo__qr-placeholder {
+  margin-top: 0.8rem;
+
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.gyan-calendar-promo__qr-placeholder > div {
+  width: 58px;
+  aspect-ratio: 1;
+
+  display: grid;
+  place-items: center;
+
+  border:
+    5px solid
+    #1c3345;
+
+  background:
+    repeating-linear-gradient(
+      45deg,
+      #1c3345 0 4px,
+      #fff 4px 8px
+    );
+
+  color: #fff;
+
+  font-size: 0.65rem;
+  font-weight: 900;
+
+  text-shadow:
+    0 1px 2px
+    #000;
+}
+
+.gyan-calendar-promo__qr-placeholder p {
+  margin: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  color: #5a6872;
+
+  font-size: 0.67rem;
+}
+
+.gyan-calendar-promo__qr-placeholder strong {
+  margin-top: 0.12rem;
+
+  color: #174a73;
+
+  font-size: 0.88rem;
+}
+
+.gyan-calendar-year {
+  padding:
+    0.8rem
+    clamp(
+      0.45rem,
+      2vw,
+      1rem
+    )
+    1rem;
+
+  background: #fff;
+}
+
+.gyan-calendar-year__heading {
+  margin-bottom: 0.55rem;
+  padding: 0 0.3rem;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.gyan-calendar-year__heading strong {
+  color: #174a73;
+
+  font-size:
+    clamp(
+      0.82rem,
+      2.7vw,
+      1.1rem
+    );
+}
+
+.gyan-calendar-year__heading span {
+  color: #e97825;
+
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.gyan-calendar-year__grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(0, 1fr)
+    );
+
+  gap:
+    clamp(
+      0.3rem,
+      1.5vw,
+      0.65rem
+    );
+}
+
+.gyan-calendar-month {
+  padding:
+    clamp(
+      0.28rem,
+      1vw,
+      0.48rem
+    );
+
+  border:
+    1px solid
+    rgba(30, 66, 94, 0.11);
+
+  border-radius: 8px;
+
+  background: #fffdfa;
+}
+
+.gyan-calendar-month h3 {
+  margin:
+    0 0 0.25rem;
+
+  color: #174a73;
+
+  font-size:
+    clamp(
+      0.58rem,
+      2.1vw,
+      0.82rem
+    );
+
+  text-align: center;
+}
+
+.gyan-calendar-month h3 small {
+  color: #7c8790;
+  font-size: 0.78em;
+  font-weight: 700;
+}
+
+.gyan-calendar-month__week,
+.gyan-calendar-month__days {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      7,
+      minmax(0, 1fr)
+    );
+}
+
+.gyan-calendar-month__week span {
+  padding-bottom: 0.08rem;
+
+  color: #d76724;
+
+  font-size:
+    clamp(
+      0.4rem,
+      1.55vw,
+      0.58rem
+    );
+
+  font-weight: 800;
+  text-align: center;
+}
+
+.gyan-calendar-month__days span {
+  min-height:
+    clamp(
+      13px,
+      3vw,
+      20px
+    );
+
+  display: grid;
+  place-items: center;
+
+  color: #334957;
+
+  font-size:
+    clamp(
+      0.42rem,
+      1.55vw,
+      0.61rem
+    );
+
+  line-height: 1;
+}
+
+.gyan-calendar-month__days
+span:nth-child(7n + 1) {
+  color: #d45138;
+}
+
+.gyan-calendar-month__days
+.is-empty {
+  visibility: hidden;
+}
+
+.gyan-calendar-card__footer {
+  min-height: 42px;
+  padding: 0.55rem 1rem;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  background: #174a73;
+  color: #fff;
+}
+
+.gyan-calendar-card__footer strong {
+  font-size: 0.9rem;
+}
+
+.gyan-calendar-card__footer span {
+  font-size: 0.62rem;
+}
+
+
+/* PRINT SIZE CHOOSER */
+
+.gyan-calendar-print {
+  width:
+    min(
+      calc(100% - 0.75rem),
+      720px
+    );
+
+  margin: 0 auto;
+  padding-bottom: 92px;
+}
+
+.gyan-calendar-print__heading {
+  min-height: 54px;
+
+  display: grid;
+  grid-template-columns:
+    42px 1fr 42px;
+  align-items: center;
+
+  border-bottom:
+    1px solid
+    rgba(30, 66, 94, 0.11);
+}
+
+.gyan-calendar-print__heading button {
+  width: 38px;
+  height: 38px;
+
+  border: 0;
+  border-radius: 50%;
+
+  background: transparent;
+
+  font-size: 1.2rem;
+
+  cursor: pointer;
+}
+
+.gyan-calendar-print__heading div {
+  display: flex;
+  flex-direction: column;
+
+  text-align: center;
+}
+
+.gyan-calendar-print__heading strong {
+  color: #174a73;
+}
+
+.gyan-calendar-print__heading small {
+  margin-top: 0.1rem;
+
+  color: #6f7d87;
+  font-size: 0.65rem;
+}
+
+.gyan-calendar-print__instruction {
+  margin:
+    0.65rem
+    0.2rem
+    0.5rem;
+
+  color: #60717d;
+
+  font-size: 0.76rem;
+}
+
+.gyan-calendar-print__sizes {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+
+  gap: 0.45rem;
+}
+
+.gyan-calendar-print__size {
+  min-height: 74px;
+
+  padding:
+    0.55rem
+    0.65rem;
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  border:
+    1px solid
+    rgba(30, 66, 94, 0.15);
+
+  border-radius: 9px;
+
+  background: #fff;
+
+  color: #263e50;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.gyan-calendar-print__size strong {
+  color: #174a73;
+
+  font-size: 0.92rem;
+}
+
+.gyan-calendar-print__size span {
+  margin-top: 0.12rem;
+
+  color: #65747e;
+
+  font-size: 0.62rem;
+}
+
+.gyan-calendar-print__size small {
+  margin-top: auto;
+
+  color: #e97825;
+
+  font-size: 0.59rem;
+  font-weight: 700;
+}
+
+.gyan-calendar-print__size.is-selected {
+  border-color: #e97825;
+
+  box-shadow:
+    inset 0 0 0 1px
+    #e97825;
+}
+
+.gyan-calendar-print__next {
+  position: fixed;
+
+  left: 50%;
+  bottom: 0;
+
+  z-index: 30;
+
+  width:
+    min(
+      calc(100% - 0.75rem),
+      720px
+    );
+
+  transform:
+    translateX(-50%);
+
+  margin: 0;
+
+  padding:
+    0.55rem
+    0.7rem
+    calc(
+      0.55rem +
+      env(safe-area-inset-bottom)
+    );
+
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    auto;
+
+  column-gap: 0.65rem;
+  row-gap: 0.05rem;
+
+  align-items: center;
+
+  border:
+    1px solid
+    rgba(30, 66, 94, 0.12);
+
+  border-bottom: 0;
+
+  border-radius:
+    12px 12px 0 0;
+
+  background:
+    rgba(255, 253, 248, 0.97);
+
+  box-shadow:
+    0 -5px 20px
+    rgba(30, 48, 65, 0.12);
+
+  backdrop-filter:
+    blur(10px);
+}
+
+.gyan-calendar-print__next strong {
+  grid-column: 1;
+
+  color: #174a73;
+
+  font-size: 0.8rem;
+}
+
+.gyan-calendar-print__next span {
+  grid-column: 1;
+
+  color: #687782;
+
+  font-size: 0.61rem;
+}
+
+.gyan-calendar-print__next button {
+  grid-column: 2;
+  grid-row: 1 / 3;
+
+  min-height: 40px;
+
+  margin: 0;
+  padding:
+    0 0.9rem;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: #d9dee2;
+  color: #7c868d;
+
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.gyan-calendar-print__next button:not(:disabled) {
+  background: #e97825;
+  color: #fff;
+  cursor: pointer;
+}
+
+
+/* SMALL PHONES */
+
+@media (
+  max-width: 420px
+) {
+  .gyan-calendar-card {
+    width:
+      calc(
+        100% - 0.5rem
+      );
+
+    margin-top: 0.35rem;
+
+    border-radius: 12px;
+  }
+
+  .gyan-calendar-promo {
+    min-height: 220px;
+
+    grid-template-columns:
+      0.9fr 1.1fr;
+  }
+
+  .gyan-calendar-promo__art {
+    min-height: 220px;
+    padding: 0.6rem;
+  }
+
+  .gyan-calendar-promo__message {
+    padding: 0.65rem;
+  }
+
+  .gyan-calendar-promo__services {
+    gap: 0.2rem;
+  }
+
+  .gyan-calendar-promo__qr-placeholder
+  > div {
+    width: 46px;
+  }
+
+  .gyan-calendar-year {
+    padding:
+      0.55rem 0.25rem
+      0.7rem;
+  }
+
+  .gyan-calendar-year__grid {
+    gap: 0.2rem;
+  }
+
+  .gyan-calendar-month {
+    padding: 0.18rem;
+
+    border-radius: 5px;
+  }
+}
+
+
+/* VERY NARROW SCREEN */
+
+@media (
+  max-width: 330px
+) {
+  .gyan-calendar-promo {
+    grid-template-columns: 1fr;
+  }
+
+  .gyan-calendar-promo__art {
+    min-height: 150px;
+  }
+
+  .gyan-calendar-promo__lotus {
+    width: 76px;
+  }
+
+  .gyan-calendar-promo__message {
+    text-align: center;
+  }
+
+  .gyan-calendar-promo__services {
+    grid-template-columns:
+      repeat(
+        4,
+        minmax(0, 1fr)
+      );
+  }
+
+  .gyan-calendar-promo__qr-placeholder {
+    justify-content: center;
+  }
+
+  .gyan-calendar-print__sizes {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* SHORT SCREENS */
+
+@media (
+  max-height: 650px
+) {
+  .gyan-calendar-print__heading {
+    min-height: 48px;
+  }
+
+  .gyan-calendar-print__instruction {
+    margin:
+      0.4rem
+      0.2rem;
+  }
+
+  .gyan-calendar-print__sizes {
+    gap: 0.32rem;
+  }
+
+  .gyan-calendar-print__size {
+    min-height: 64px;
+
+    padding:
+      0.4rem
+      0.55rem;
+  }
+
+  .gyan-calendar-print__size strong {
+    font-size: 0.84rem;
+  }
+
+  .gyan-calendar-print__size small {
+    font-size: 0.55rem;
+  }
+}
+
+
+.gyan-calendar-print__top-generate {
+  justify-self: end;
+
+  display: grid;
+  place-items: center;
+
+  background:
+    rgba(233, 120, 37, 0.1) !important;
+
+  color: #174a73;
+
+  font-size: 1rem !important;
+}
+
+.gyan-calendar-print__top-generate:disabled {
+  opacity: 0.48;
+  cursor: default;
+}
+
+.gyan-calendar-print__error {
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.7rem;
+
+  border:
+    1px solid
+    rgba(176, 45, 45, 0.2);
+
+  border-radius: 8px;
+
+  background:
+    rgba(176, 45, 45, 0.06);
+
+  color: #8b2f2f;
+
+  font-size: 0.7rem;
+}
+
+.gyan-calendar-print__next button:not(:disabled) {
+  background: #e97825;
+  color: #fff;
+  cursor: pointer;
+}

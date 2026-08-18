@@ -11,6 +11,7 @@
     "test:puzzle": "tsx worker/puzzle/puzzleGenerator.smoke.ts"
   },
   "dependencies": {
+    "jspdf": "^2.5.2",
     "maplibre-gl": "^6.2.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",

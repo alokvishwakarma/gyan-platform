@@ -102,6 +102,10 @@ import {
   handleShopFeaturedRoute,
 } from "./shopFeatured";
 
+import {
+  handleStudentInviteCodeRoute,
+} from "./studentInviteCodes";
+
 
 
 interface RegisterShopRequest {
@@ -1217,6 +1221,20 @@ if (
 ) {
   return homeFeaturedResponse;
 }
+
+  const studentInviteCodeResponse =
+    await handleStudentInviteCodeRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (
+    studentInviteCodeResponse
+  ) {
+    return studentInviteCodeResponse;
+  }
+
 
   /*
    * ------------------------------------------------
