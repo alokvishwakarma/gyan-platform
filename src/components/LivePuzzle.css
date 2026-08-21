@@ -1,0 +1,244 @@
+.live-puzzle {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  width: 100vw;
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  box-sizing: border-box;
+  background: #fffdf8;
+  color: #111827;
+}
+
+.live-puzzle__topbar {
+  min-height: 44px;
+  padding: 0.3rem 0.55rem;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.1);
+}
+
+.live-puzzle__back {
+  justify-self: start;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.live-puzzle__brand {
+  justify-self: center;
+  font-size: 0.84rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+}
+
+.live-puzzle__status {
+  justify-self: end;
+  font-size: 0.64rem;
+  font-weight: 900;
+}
+
+.live-puzzle__game {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto auto;
+  overflow: hidden;
+  padding: 0.25rem 0.25rem 0.4rem;
+  box-sizing: border-box;
+}
+
+.live-puzzle__world {
+  position: relative;
+  width: min(calc(100vw - 0.5rem), calc(100dvh - 124px));
+  height: min(calc(100vw - 0.5rem), calc(100dvh - 124px));
+  max-width: 920px;
+  max-height: 920px;
+  align-self: center;
+  justify-self: center;
+  overflow: auto;
+  border: 2px solid rgba(17, 24, 39, 0.18);
+  border-radius: 10px;
+  background: #f4f1ea;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+}
+
+.live-puzzle__board {
+  width: max-content;
+  height: max-content;
+  display: grid;
+  grid-template-columns: repeat(36, 30px);
+  grid-template-rows: repeat(36, 30px);
+}
+
+.live-puzzle__tile {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 850;
+  user-select: none;
+}
+
+.live-puzzle__board-tile {
+  cursor: default;
+}
+
+.live-puzzle__board-tile:disabled {
+  opacity: 1;
+  color: inherit;
+}
+
+.live-puzzle__neighbor {
+  z-index: 3;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: inset 0 0 0 2px rgba(17, 24, 39, 0.28);
+}
+
+.live-puzzle__diagonal-blocked {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(17, 24, 39, 0.06),
+      rgba(17, 24, 39, 0.06) 3px,
+      transparent 3px,
+      transparent 6px
+    );
+}
+
+.live-puzzle__growth {
+  background: rgba(255, 250, 205, 0.9);
+  box-shadow:
+    inset 0 0 0 2px rgba(110, 85, 0, 0.6);
+}
+
+.live-puzzle__exact {
+  box-shadow:
+    inset 0 0 0 3px rgba(17, 24, 39, 0.7);
+}
+
+.live-puzzle__grow-mark {
+  position: absolute;
+  right: 1px;
+  top: -2px;
+  z-index: 8;
+  font-size: 10px;
+  font-weight: 950;
+  color: #111827;
+  line-height: 1;
+}
+
+.live-puzzle__linked {
+  z-index: 5;
+  color: #111827;
+  border: 2px solid rgba(125, 94, 0, 0.5);
+  font-size: 16px;
+}
+
+.live-puzzle__head {
+  z-index: 10;
+  border: 4px solid #111827;
+  border-radius: 5px;
+  font-size: 17px;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.95),
+    0 0 12px rgba(17, 24, 39, 0.4);
+}
+
+.live-puzzle__bot {
+  z-index: 4;
+  color: #ffffff;
+  border: 2px solid rgba(17, 24, 39, 0.48);
+  font-size: 15px;
+}
+
+.live-puzzle__bot-head {
+  z-index: 7;
+  border: 3px solid rgba(17, 24, 39, 0.9);
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);
+}
+
+.live-puzzle__placed {
+  animation: livePlaced 0.26s ease-out;
+}
+
+.live-puzzle__tail-warning {
+  animation: tailWarn 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes livePlaced {
+  from {
+    transform: scale(1.25);
+  }
+
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes tailWarn {
+  from {
+    filter: brightness(1);
+  }
+
+  to {
+    filter: brightness(0.68);
+    transform: scale(0.9);
+  }
+}
+
+.live-puzzle__hud {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.65rem;
+  padding-top: 0.2rem;
+  font-size: 0.64rem;
+  font-weight: 750;
+}
+
+.live-puzzle__message {
+  min-height: 1.2em;
+  margin-top: 0.16rem;
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 650;
+}
+
+.live-puzzle__restart {
+  display: block;
+  margin: 0.3rem auto 0;
+  padding: 0.5rem 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+
+/*
+ * Draft 010 territory capture.
+ * Enclosed cells become ordinary Yellow Stars immediately.
+ * The linked loop itself keeps the normal linked-body styling.
+ */

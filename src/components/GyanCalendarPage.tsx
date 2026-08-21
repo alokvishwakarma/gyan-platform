@@ -14,11 +14,12 @@ import {
   type CalendarPdfSize,
 } from "./calendarPdf";
 
-import "./GyanCalendarPage.css";
+import {
+  getCalendarHeroConfig,
+  type CalendarMarket,
+} from "./calendarHero";
 
-type CalendarMarket =
-  | "IN"
-  | "US";
+import "./GyanCalendarPage.css";
 
 type PrintSize =
   CalendarPdfSize;
@@ -120,7 +121,18 @@ function getCalendarMarket():
       ?.trim()
       .toUpperCase();
 
-  if (countryCode === "IN") {
+  const phoneCountryCode =
+    adminLocation
+      ?.phoneCountryCode
+      ?.trim();
+
+  if (
+    countryCode === "IN" ||
+    countryCode === "IND" ||
+    countryCode === "INDIA" ||
+    phoneCountryCode === "+91" ||
+    phoneCountryCode === "91"
+  ) {
     return "IN";
   }
 
@@ -412,29 +424,71 @@ function CalendarMonth({
   );
 }
 
-function IndiaHero() {
+function CalendarHero({
+  market,
+}: {
+  market: CalendarMarket;
+}) {
+  const hero =
+    getCalendarHeroConfig(
+      market,
+    );
+
+  const [
+    imageFailed,
+    setImageFailed,
+  ] =
+    useState(false);
+
+  useEffect(() => {
+    setImageFailed(
+      false,
+    );
+  }, [hero.imageSrc]);
+
   return (
     <section className="gyan-calendar-promo">
       <div className="gyan-calendar-promo__art">
-        <div
-          className="gyan-calendar-promo__lotus"
-          aria-hidden="true"
-        >
-          🪷
-        </div>
+        {!imageFailed
+          ? (
+            <img
+              className="gyan-calendar-promo__image"
+              src={
+                hero.imageSrc
+              }
+              alt={
+                hero.imageAlt
+              }
+              onError={() =>
+                setImageFailed(
+                  true,
+                )
+              }
+            />
+          )
+          : (
+            <div
+              className="gyan-calendar-promo__lotus"
+              aria-hidden="true"
+            >
+              {market === "IN"
+                ? "🪷"
+                : "📚"}
+            </div>
+          )}
 
         <strong>
-          माँ सरस्वती
+          {hero.title}
         </strong>
 
         <span>
-          विद्या • ज्ञान • अभ्यास
+          {hero.subtitle}
         </span>
       </div>
 
       <div className="gyan-calendar-promo__message">
         <span className="gyan-calendar-promo__eyebrow">
-          GYAN
+          {hero.eyebrow}
         </span>
 
         <h2>
@@ -442,9 +496,9 @@ function IndiaHero() {
         </h2>
 
         <p>
-          Online learning,
-          puzzles and useful
-          digital services.
+          {market === "IN"
+            ? "Online learning, puzzles and useful digital services."
+            : "Practice, puzzles and useful online services."}
         </p>
 
         <div className="gyan-calendar-promo__services">
@@ -471,60 +525,7 @@ function IndiaHero() {
           </div>
 
           <p>
-            Print a calendar to
-            receive a unique code.
-            <strong>
-              gyan.cc
-            </strong>
-          </p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function UsHero() {
-  return (
-    <section className="gyan-calendar-promo">
-      <div className="gyan-calendar-promo__art">
-        <div
-          className="gyan-calendar-promo__lotus"
-          aria-hidden="true"
-        >
-          📚
-        </div>
-
-        <strong>
-          GYAN Learning
-        </strong>
-
-        <span>
-          Learn • Practice • Grow
-        </span>
-      </div>
-
-      <div className="gyan-calendar-promo__message">
-        <span className="gyan-calendar-promo__eyebrow">
-          GYAN
-        </span>
-
-        <h2>
-          Learning for everyone
-        </h2>
-
-        <p>
-          Practice, puzzles and
-          useful online services.
-        </p>
-
-        <div className="gyan-calendar-promo__qr-placeholder">
-          <div>
-            QR
-          </div>
-
-          <p>
-            Print a calendar to
-            receive a unique code.
+            GYAN से जुड़ें
             <strong>
               gyan.cc
             </strong>
@@ -909,14 +910,11 @@ export default function GyanCalendarPage({
           </small>
         </header>
 
-        {market ===
-          "IN"
-          ? (
-            <IndiaHero />
-          )
-          : (
-            <UsHero />
-          )}
+        <CalendarHero
+          market={
+            market
+          }
+        />
 
         <section className="gyan-calendar-year">
           <div className="gyan-calendar-year__heading">

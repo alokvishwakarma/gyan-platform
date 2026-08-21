@@ -17,6 +17,14 @@ import GyanAboutPanel
 import GyanCalendarPage
   from "./GyanCalendarPage";
 
+import EducationLearningHub
+  from "./EducationLearningHub";
+
+import {
+  ADMIN_LOCATION_CHANGED_EVENT,
+  getAdminLocationOverride,
+} from "../location/adminLocation";
+
 import GyanShell
   from "./GyanShell";
 
@@ -261,6 +269,78 @@ function getServiceName(
 }
 
 
+type EducationCountry =
+  | "US"
+  | "IN";
+
+
+function getEffectiveEducationCountry():
+  EducationCountry {
+  const override =
+    getAdminLocationOverride();
+
+  const countryCode =
+    override
+      ?.countryCode
+      ?.trim()
+      .toUpperCase();
+
+  const phoneCountryCode =
+    override
+      ?.phoneCountryCode
+      ?.trim();
+
+  if (
+    countryCode === "IN" ||
+    countryCode === "IND" ||
+    countryCode === "INDIA" ||
+    phoneCountryCode === "+91" ||
+    phoneCountryCode === "91"
+  ) {
+    return "IN";
+  }
+
+  if (
+    countryCode === "US" ||
+    countryCode === "USA" ||
+    countryCode === "UNITED STATES" ||
+    phoneCountryCode === "+1" ||
+    phoneCountryCode === "1"
+  ) {
+    return "US";
+  }
+
+  if (
+    typeof navigator !== "undefined"
+  ) {
+    const languages =
+      (
+        navigator.languages ??
+        [navigator.language]
+      )
+        .join(",")
+        .toLowerCase();
+
+    const timezone =
+      Intl.DateTimeFormat()
+        .resolvedOptions()
+        .timeZone
+        .toLowerCase();
+
+    if (
+      timezone === "asia/kolkata" ||
+      timezone === "asia/calcutta" ||
+      languages.includes("en-in") ||
+      languages.includes("hi-in")
+    ) {
+      return "IN";
+    }
+  }
+
+  return "US";
+}
+
+
 export default function PublicHomePage({
   services,
 
@@ -298,6 +378,52 @@ export default function PublicHomePage({
     setCalendarOpen,
   ] =
     useState(false);
+
+
+  const [
+    activeView,
+    setActiveView,
+  ] =
+    useState<
+      "home" |
+      "education"
+    >(
+      "home",
+    );
+
+
+  const [
+    educationCountry,
+    setEducationCountry,
+  ] =
+    useState<EducationCountry>(
+      getEffectiveEducationCountry,
+    );
+
+
+  useEffect(
+    () => {
+      const refreshCountry =
+        (): void => {
+          setEducationCountry(
+            getEffectiveEducationCountry(),
+          );
+        };
+
+      window.addEventListener(
+        ADMIN_LOCATION_CHANGED_EVENT,
+        refreshCountry,
+      );
+
+      return () => {
+        window.removeEventListener(
+          ADMIN_LOCATION_CHANGED_EVENT,
+          refreshCountry,
+        );
+      };
+    },
+    [],
+  );
 
 
   const [
@@ -723,9 +849,88 @@ export default function PublicHomePage({
     }
 
 
-    onStartOnlineService?.(
+    startOnlineService(
       service.code,
+      serviceName,
+    );
+  }
 
+
+  function openEducation():
+    void {
+    setSearchText(
+      "",
+    );
+
+    setSearchFocused(
+      false,
+    );
+
+    setCalendarOpen(
+      false,
+    );
+
+    setEducationCountry(
+      getEffectiveEducationCountry(),
+    );
+
+    setShowPuzzle(
+      false,
+    );
+
+    setActiveView(
+      "education",
+    );
+
+    window.history.pushState(
+      {},
+      "",
+      "/education",
+    );
+  }
+
+
+  function isEducationService(
+    serviceCode: string,
+    serviceName: string,
+  ): boolean {
+    const values = [
+      serviceCode,
+      serviceName,
+    ]
+      .map(
+        (value) =>
+          value
+            .trim()
+            .toLowerCase(),
+      );
+
+    return values.some(
+      (value) =>
+        value === "education" ||
+        value === "education_portal" ||
+        value === "education portal",
+    );
+  }
+
+
+  function startOnlineService(
+    serviceCode: string,
+    serviceName: string,
+  ): void {
+    if (
+      isEducationService(
+        serviceCode,
+        serviceName,
+      )
+    ) {
+      openEducation();
+
+      return;
+    }
+
+    onStartOnlineService?.(
+      serviceCode,
       serviceName,
     );
   }
@@ -792,8 +997,7 @@ export default function PublicHomePage({
             <span
               className="public-home__value"
             >
-              Order Online • Pick Up When
-              Ready • No Waiting
+              Learn • Discover • Get Things Done
             </span>
 
             {shopName && (
@@ -1000,6 +1204,28 @@ export default function PublicHomePage({
             🔎
           </button>
 
+<button
+  type="button"
+  className={[
+    "public-home__search-button",
+    "public-home__education-button",
+
+    activeView ===
+      "education"
+      ? "public-home__education-button--active"
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ")}
+  aria-label="Open Education Portal"
+  title="Education"
+  onClick={
+    openEducation
+  }
+>
+  🎓
+</button>
+
           <UserAccountMenu
             onOpenAdmin={
               onOpenAdmin
@@ -1050,12 +1276,37 @@ export default function PublicHomePage({
                 }
               />
             )
-            : shellContent
+            : activeView ===
+                "education"
               ? (
-                shellContent
+                <EducationLearningHub
+  country={
+    educationCountry
+  }
+
+  onBack={() => {
+    setActiveView(
+      "home",
+    );
+
+    setShowPuzzle(
+      true,
+    );
+
+    window.history.pushState(
+      {},
+      "",
+      "/",
+    );
+  }}
+/>
               )
-              : (
-                <>
+              : shellContent
+                ? (
+                  shellContent
+                )
+                : (
+                  <>
         {/*
          * =================================================
          * DAILY PUZZLE
@@ -1070,6 +1321,10 @@ export default function PublicHomePage({
                   false,
                 )
               }
+
+              onOpenEducation={
+                openEducation
+              }
             />
           )
         }
@@ -1082,7 +1337,7 @@ export default function PublicHomePage({
          */}
         <FeaturedServiceCard
           onStartService={
-            onStartOnlineService
+            startOnlineService
           }
           onOpenRequestService={() =>
             onOpenNearbyService?.(
@@ -1151,7 +1406,7 @@ export default function PublicHomePage({
                             }
                             className="public-home__task-card"
                             onClick={() =>
-                              onStartOnlineService?.(
+                              startOnlineService(
                                 service.code,
 
                                 getServiceName(

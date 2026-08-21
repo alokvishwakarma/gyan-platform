@@ -45,6 +45,31 @@ function validEmail(
   );
 }
 
+
+function safeAuthReturnTo(
+  value: unknown,
+): string {
+  if (
+    typeof value !==
+      "string"
+  ) {
+    return "/";
+  }
+
+  const normalized =
+    value.trim();
+
+  /*
+   * Student-card redirects only.
+   * Do not allow arbitrary URLs here.
+   */
+  return /^\/student\/[A-Z2-9]{4}\/?$/i.test(
+    normalized,
+  )
+    ? normalized
+    : "/";
+}
+
 function bytesToHex(
   bytes: Uint8Array,
 ): string {
@@ -422,7 +447,7 @@ function getNetworkLocation(
 }
 
 
-async function currentUser(
+export async function currentUser(
   request: Request,
   env: Env,
 ): Promise<AuthUserRow | null> {
@@ -538,6 +563,7 @@ export async function handlePublicAuthRoute(
     let body:
       {
         email?: string;
+        returnTo?: string;
       };
 
     try {
@@ -556,6 +582,12 @@ export async function handlePublicAuthRoute(
     const email =
       normalizeEmail(
         body.email,
+      );
+
+
+    const returnTo =
+      safeAuthReturnTo(
+        body.returnTo,
       );
 
     if (
@@ -646,6 +678,12 @@ export async function handlePublicAuthRoute(
       token,
     );
 
+
+    verifyUrl.searchParams.set(
+      "returnTo",
+      returnTo,
+    );
+
     try {
       await sendMagicLinkEmail(
         env,
@@ -691,6 +729,13 @@ export async function handlePublicAuthRoute(
     url.pathname ===
       "/api/auth/verify"
   ) {
+    const returnTo =
+      safeAuthReturnTo(
+        url.searchParams.get(
+          "returnTo",
+        ),
+      );
+
     const token =
       url.searchParams.get(
         "token",
@@ -922,9 +967,14 @@ export async function handlePublicAuthRoute(
 
     const redirectUrl =
       new URL(
-        "/?auth=success",
+        returnTo,
         url.origin,
       );
+
+    redirectUrl.searchParams.set(
+      "auth",
+      "success",
+    );
 
     return new Response(
       null,

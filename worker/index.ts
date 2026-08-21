@@ -3,6 +3,19 @@ import {
 } from "./adminAuth";
 
 import {
+  handleEducationRoute,
+} from "./education";
+
+import {
+  handleEducationLearningRoute,
+} from "./educationLearning";
+
+
+import {
+  handleEducationProgressRoute,
+} from "./educationProgress";
+
+import {
   handleAdminServicesRoute,
 } from "./adminServices";
 
@@ -1484,6 +1497,45 @@ if (
   return localServiceRequestResponse;
 }
 
+const educationResponse =
+  await handleEducationRoute(
+    request,
+    env,
+    url,
+  );
+
+if (
+  educationResponse
+) {
+  return educationResponse;
+}
+
+const educationLearningResponse =
+  await handleEducationLearningRoute(
+    request,
+    env,
+    url,
+  );
+
+if (
+  educationLearningResponse
+) {
+  return educationLearningResponse;
+}
+
+
+const educationProgressResponse =
+  await handleEducationProgressRoute(
+    request,
+    env,
+    url,
+  );
+
+if (
+  educationProgressResponse
+) {
+  return educationProgressResponse;
+}
   /*
    * ------------------------------------------------
    * Public shop lookup

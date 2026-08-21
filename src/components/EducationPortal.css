@@ -1,0 +1,176 @@
+.education-portal {
+  width: min(100%, 760px);
+  margin: 0 auto;
+  padding: 0 10px 32px;
+  box-sizing: border-box;
+  color: #102a56;
+}
+
+.education-portal__header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+
+  display: grid;
+  grid-template-columns:
+    38px minmax(0, 1fr) 38px;
+
+  align-items: center;
+
+  min-height: 54px;
+
+  background: #f6f8fc;
+}
+
+.education-portal__header > button {
+  width: 34px;
+  height: 34px;
+
+  border: 0;
+  border-radius: 999px;
+
+  background: #fff;
+
+  cursor: pointer;
+}
+
+.education-portal__header > div {
+  grid-column: 2;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.education-portal__header strong {
+  font-size: 0.9rem;
+}
+
+.education-portal__header small {
+  margin-top: 1px;
+
+  font-size: 0.62rem;
+
+  opacity: 0.68;
+}
+
+
+/* Compact intro: no card / no large vertical block */
+.education-portal__compact-intro {
+  margin: 3px 2px 8px;
+
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+
+  gap: 4px 7px;
+
+  text-align: center;
+  line-height: 1.25;
+}
+
+.education-portal__compact-intro strong {
+  font-size: 0.76rem;
+}
+
+.education-portal__compact-intro span {
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.education-portal__compact-intro small {
+  font-size: 0.65rem;
+
+  opacity: 0.68;
+}
+
+
+.education-portal__section {
+  margin-top: 11px;
+}
+
+.education-portal__section--grades {
+  margin-top: 4px;
+}
+
+.education-portal__section h2 {
+  margin: 0 3px 7px;
+
+  font-size: 0.82rem;
+}
+
+.education-portal__grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 7px;
+}
+
+.education-portal__grid--grades {
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+}
+
+.education-portal__grid button {
+  min-width: 0;
+  min-height: 60px;
+
+  padding: 7px 4px;
+
+  border:
+    1px solid
+    #dbe4f0;
+
+  border-radius: 11px;
+
+  background: #fff;
+  color: inherit;
+
+  font: inherit;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 2px 7px
+    rgb(15 23 42 / 5%);
+}
+
+.education-portal__grid button span {
+  display: block;
+
+  margin-bottom: 2px;
+
+  font-size: 0.95rem;
+}
+
+.education-portal__grid button strong {
+  display: block;
+
+  font-size: 0.68rem;
+  line-height: 1.1;
+}
+
+.education-portal__state {
+  padding: 14px;
+
+  text-align: center;
+
+  font-size: 0.72rem;
+
+  opacity: 0.7;
+}
+
+@media (
+  max-width: 380px
+) {
+  .education-portal__grid--grades {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+
+  .education-portal__compact-intro small {
+    flex-basis: 100%;
+  }
+}

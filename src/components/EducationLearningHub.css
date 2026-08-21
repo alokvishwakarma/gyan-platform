@@ -1,0 +1,675 @@
+.education-learning {
+  width: min(100%, 760px);
+  margin: 0 auto;
+  padding: 0 10px 32px;
+  box-sizing: border-box;
+  color: #102a56;
+}
+
+.education-learning__header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+
+  display: grid;
+  grid-template-columns:
+    40px minmax(0, 1fr) 40px;
+
+  align-items: center;
+
+  min-height: 54px;
+
+  background: #f6f8fc;
+}
+
+.education-learning__header > button {
+  width: 34px;
+  height: 34px;
+
+  border: 0;
+  border-radius: 50%;
+
+  background: #fff;
+
+  cursor: pointer;
+}
+
+.education-learning__header > div {
+  grid-column: 2;
+
+  display: flex;
+  flex-direction: column;
+
+  min-width: 0;
+
+  text-align: center;
+}
+
+.education-learning__header strong {
+  font-size: 0.86rem;
+}
+
+.education-learning__header small {
+  margin-top: 1px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  font-size: 0.61rem;
+
+  opacity: 0.68;
+}
+
+.education-learning h1 {
+  margin:
+    8px
+    2px
+    8px;
+
+  font-size: 0.95rem;
+}
+
+.education-learning__cards {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(
+        0,
+        1fr
+      )
+    );
+
+  gap: 7px;
+}
+
+.education-learning__cards button {
+  min-height: 64px;
+
+  padding: 9px;
+
+  border:
+    1px solid
+    #dbe4f0;
+
+  border-radius: 11px;
+
+  background: #fff;
+  color: inherit;
+
+  font: inherit;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.education-learning__cards button strong,
+.education-learning__cards button small {
+  display: block;
+}
+
+.education-learning__cards button strong {
+  font-size: 0.74rem;
+}
+
+.education-learning__cards button small {
+  margin-top: 3px;
+
+  font-size: 0.61rem;
+
+  opacity: 0.65;
+}
+
+.education-learning__cards button:disabled {
+  opacity: 0.42;
+
+  cursor: not-allowed;
+}
+
+.education-learning__state,
+.education-learning__error {
+  margin:
+    8px
+    0;
+
+  padding: 9px;
+
+  border-radius: 9px;
+
+  text-align: center;
+
+  font-size: 0.7rem;
+}
+
+.education-learning__error {
+  background: #fff1f1;
+
+  color: #9b1c1c;
+}
+
+
+.education-learning__questions {
+  padding-bottom: 12px;
+}
+
+.education-learning__questions-heading {
+  position: sticky;
+  top: 54px;
+  z-index: 4;
+
+  margin:
+    0
+    0
+    8px;
+
+  padding:
+    6px
+    2px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  background: #f6f8fc;
+}
+
+.education-learning__questions-heading h1 {
+  margin: 0;
+
+  font-size: 0.9rem;
+}
+
+.education-learning__questions-heading small {
+  display: block;
+
+  margin-top: 2px;
+
+  font-size: 0.6rem;
+
+  opacity: 0.62;
+}
+
+.education-learning__questions-heading > button {
+  padding:
+    6px
+    9px;
+
+  border:
+    1px solid
+    #ccd8e7;
+
+  border-radius: 999px;
+
+  background: #fff;
+  color: #174a73;
+
+  font: inherit;
+  font-size: 0.65rem;
+  font-weight: 750;
+
+  cursor: pointer;
+}
+
+
+.education-learning__question-card {
+  margin-bottom: 9px;
+
+  padding: 12px;
+
+  border:
+    1px solid
+    #dfe7f1;
+
+  border-radius: 13px;
+
+  background: #fff;
+
+  box-shadow:
+    0 2px 8px
+    rgb(15 23 42 / 5%);
+}
+
+.education-learning__question-number {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.education-learning__question-number strong {
+  font-size: 0.72rem;
+}
+
+.education-learning__question-number small {
+  padding:
+    2px
+    6px;
+
+  border-radius: 999px;
+
+  background: #f1f4f8;
+
+  font-size: 0.56rem;
+
+  text-transform: capitalize;
+}
+
+.education-learning__question-card h2 {
+  margin:
+    8px
+    0
+    9px;
+
+  font-size: 0.85rem;
+
+  line-height: 1.35;
+}
+
+.education-learning__choices {
+  display: grid;
+
+  gap: 6px;
+}
+
+.education-learning__choices button {
+  padding:
+    9px
+    10px;
+
+  border:
+    1px solid
+    #d9e2ef;
+
+  border-radius: 9px;
+
+  background: #fff;
+  color: inherit;
+
+  font: inherit;
+  font-size: 0.72rem;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.education-learning__choices button.selected {
+  outline:
+    2px solid
+    #315fa7;
+}
+
+.education-learning__choices button.correct {
+  border-color: #5fa36a;
+
+  background: #eef9f0;
+}
+
+.education-learning__choices button.wrong {
+  border-color: #c88065;
+
+  background: #fff1ec;
+}
+
+.education-learning__answer {
+  margin-top: 8px;
+
+  padding: 8px;
+
+  border-radius: 8px;
+
+  font-size: 0.66rem;
+}
+
+.education-learning__answer strong,
+.education-learning__answer span {
+  display: block;
+}
+
+.education-learning__answer span {
+  margin-top: 2px;
+
+  line-height: 1.3;
+}
+
+.education-learning__answer.correct {
+  background: #eef9f0;
+}
+
+.education-learning__answer.wrong {
+  background: #fff3e8;
+}
+
+.education-learning__primary,
+.education-learning__secondary,
+.education-learning__save {
+  width: 100%;
+
+  margin-top: 9px;
+
+  padding: 10px;
+
+  border-radius: 9px;
+
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 750;
+
+  cursor: pointer;
+}
+
+.education-learning__primary {
+  border: 0;
+
+  background: #174a73;
+  color: #fff;
+}
+
+.education-learning__secondary {
+  border:
+    1px solid
+    #cad6e5;
+
+  background: #fff;
+  color: #174a73;
+}
+
+.education-learning__save {
+  border:
+    1px dashed
+    #d6b06a;
+
+  background: #fffaf0;
+  color: #805b12;
+}
+
+.education-learning__result-summary {
+  padding:
+    12px;
+
+  border-radius: 12px;
+
+  background: #fff;
+
+  text-align: center;
+}
+
+.education-learning__result-summary > strong,
+.education-learning__result-summary > span {
+  display: block;
+}
+
+.education-learning__result-summary > strong {
+  font-size: 1rem;
+}
+
+.education-learning__result-summary > span {
+  margin-top: 3px;
+
+  font-size: 0.72rem;
+}
+
+
+@media (
+  max-width: 420px
+) {
+  .education-learning__cards {
+    grid-template-columns:
+      1fr;
+  }
+}
+
+
+/* ------------------------------------------------------
+ * Question screen toolbar
+ * ------------------------------------------------------ */
+
+.education-learning {
+  min-height: 0;
+  padding-bottom:
+    calc(
+      120px +
+      env(
+        safe-area-inset-bottom
+      )
+    );
+}
+
+.education-learning__questions {
+  min-height: 0;
+  padding-bottom:
+    calc(
+      110px +
+      env(
+        safe-area-inset-bottom
+      )
+    );
+}
+
+.education-learning__questions-heading {
+  gap: 8px;
+}
+
+.education-learning__question-actions {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.education-learning__question-actions > button {
+  padding: 6px 8px;
+  border: 1px solid #ccd8e7;
+  border-radius: 999px;
+  background: #fff;
+  color: #174a73;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.education-learning__question-actions > button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+
+/* ------------------------------------------------------
+ * Learning map / heatmap
+ * ------------------------------------------------------ */
+
+.education-learning__report {
+  padding: 4px 0 100px;
+}
+
+.education-learning__report-title {
+  margin: 4px 0 9px;
+  text-align: center;
+}
+
+.education-learning__report-title h1 {
+  margin: 0;
+}
+
+.education-learning__report-title small {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.6rem;
+  line-height: 1.35;
+  opacity: 0.72;
+}
+
+.education-learning__heatmap {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(
+        0,
+        1fr
+      )
+    );
+  gap: 7px;
+}
+
+.education-learning__heatmap-item {
+  min-height: 64px;
+  padding: 9px;
+  border: 1px solid #d9e2ec;
+  border-radius: 11px;
+  color: #102a56;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.education-learning__heatmap-item strong,
+.education-learning__heatmap-item small {
+  display: block;
+}
+
+.education-learning__heatmap-item strong {
+  font-size: 0.7rem;
+}
+
+.education-learning__heatmap-item small {
+  margin-top: 4px;
+  font-size: 0.6rem;
+}
+
+.education-learning__heatmap-item--green {
+  background: #eaf7ed;
+  border-color: #78b985;
+}
+
+.education-learning__heatmap-item--yellow {
+  background: #fff9dc;
+  border-color: #d8bd54;
+}
+
+.education-learning__heatmap-item--red {
+  background: #fff0ec;
+  border-color: #ce826b;
+}
+
+.education-learning__heatmap-item--none {
+  background: #f3f5f7;
+  border-color: #d5dce4;
+}
+
+
+/* ------------------------------------------------------
+ * Save / student card
+ * ------------------------------------------------------ */
+
+.education-learning__save-form {
+  margin-top: 9px;
+  padding: 10px;
+  display: grid;
+  gap: 7px;
+  border: 1px solid #dfe6ee;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.education-learning__save-form input {
+  width: 100%;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 8px 9px;
+  border: 1px solid #ccd7e5;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+.education-learning__student-card {
+  width: min(100%, 420px);
+  margin: 10px auto 100px;
+  padding: 18px;
+  box-sizing: border-box;
+  border: 1px solid #dce5ee;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow:
+    0 6px 20px
+    rgb(15 23 42 / 8%);
+  text-align: center;
+}
+
+.education-learning__student-card-icon {
+  font-size: 1.8rem;
+}
+
+.education-learning__student-card h1 {
+  margin: 5px 0;
+  font-size: 1rem;
+}
+
+.education-learning__student-card > strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.8rem;
+}
+
+.education-learning__student-card > img {
+  display: block;
+  width: min(210px, 70vw);
+  height: auto;
+  margin: 10px auto;
+}
+
+.education-learning__student-card > small {
+  display: block;
+  font-size: 0.62rem;
+  line-height: 1.35;
+  opacity: 0.72;
+}
+
+.education-learning__student-code {
+  width: fit-content;
+  min-width: 110px;
+  margin: 9px auto;
+  padding: 7px 14px;
+  border-radius: 10px;
+  background: #f3f6fa;
+}
+
+.education-learning__student-code small,
+.education-learning__student-code b {
+  display: block;
+}
+
+.education-learning__student-code small {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.education-learning__student-code b {
+  margin-top: 2px;
+  font-size: 1.25rem;
+  letter-spacing: 0.16em;
+}
+
+@media (max-width: 420px) {
+  .education-learning__heatmap {
+    grid-template-columns: 1fr;
+  }
+
+  .education-learning__questions-heading {
+    align-items: flex-start;
+  }
+
+  .education-learning__question-actions {
+    gap: 3px;
+  }
+
+  .education-learning__question-actions > button {
+    padding: 5px 6px;
+    font-size: 0.58rem;
+  }
+}

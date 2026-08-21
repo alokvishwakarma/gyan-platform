@@ -7,6 +7,7 @@ import {
 import QRCode from "qrcode";
 
 import "./Puzzle.css";
+import LivePuzzle from "./LivePuzzle";
 
 type TileColor =
   | "red"
@@ -267,7 +268,7 @@ function calculateStageGq(
     icons.push(
       "⏱",
     );
-  }
+  } 
 
   for (
     let index = 0;
@@ -486,6 +487,7 @@ interface SavedGameState {
 
 interface PuzzleProps {
   onClose?: () => void;
+  onOpenEducation?: () => void;
 }
 
 const MAX_CHANCES = 5;
@@ -509,55 +511,6 @@ const STATE_KEY =
  * HELPERS
  * ========================================================
  */
-
-type EducationRegion =
-  | "US"
-  | "IN";
-
-function inferEducationRegion():
-  EducationRegion {
-  if (
-    typeof navigator ===
-      "undefined"
-  ) {
-    return "US";
-  }
-
-  const languages =
-    (
-      navigator.languages ??
-      [navigator.language]
-    )
-      .join(",")
-      .toLowerCase();
-
-  const timezone =
-    Intl.DateTimeFormat()
-      .resolvedOptions()
-      .timeZone
-      .toLowerCase();
-
-  if (
-    timezone ===
-      "asia/kolkata" ||
-    timezone ===
-      "asia/calcutta" ||
-    languages.includes(
-      "en-in",
-    ) ||
-    languages.includes(
-      "hi-in",
-    )
-  ) {
-    return "IN";
-  }
-
-  return "US";
-}
-
-const EDUCATION_REGION =
-  inferEducationRegion();
-
 
 function localDateKey(): string {
   const now =
@@ -1936,7 +1889,18 @@ async function fetchLeaderboard(
 
 export default function Puzzle({
   onClose,
+  onOpenEducation,
 }: PuzzleProps) {
+  /*
+   * Live Puzzle is deliberately isolated from the
+   * Daily Puzzle. Future Live gameplay changes belong
+   * in LivePuzzle.tsx, not in this component.
+   */
+  const [
+    livePuzzleOpen,
+    setLivePuzzleOpen,
+  ] = useState(false);
+
   const [
     visible,
     setVisible,
@@ -4656,7 +4620,7 @@ export default function Puzzle({
       ) {
         throw new Error(
           data.error ??
-            "Unable to claim medal.",
+            "Unable to join leaderboard.",
         );
       }
 
@@ -4670,8 +4634,8 @@ export default function Puzzle({
 
       setMessage(
         data.alreadyClaimed
-          ? "🏅 This medal was already saved."
-          : "🏅 Medal claimed!",
+          ? "✓ Already joined leaderboard."
+          : "✓ Joined leaderboard!",
       );
 
       if (
@@ -4695,7 +4659,7 @@ export default function Puzzle({
         error instanceof
         Error
           ? error.message
-          : "Unable to claim medal.",
+          : "Unable to join leaderboard.",
       );
     } finally {
       setClaimingMedal(
@@ -4807,6 +4771,16 @@ export default function Puzzle({
     return null;
   }
 
+  if (livePuzzleOpen) {
+    return (
+      <LivePuzzle
+        onBack={() =>
+          setLivePuzzleOpen(false)
+        }
+      />
+    );
+  }
+
   if (
     loading &&
     !puzzle
@@ -4915,6 +4889,18 @@ export default function Puzzle({
       >
         ×
       </button>
+
+      {stage === "5x5" && (
+        <button
+          type="button"
+          className="daily-puzzle__live-button"
+          onClick={() =>
+            setLivePuzzleOpen(true)
+          }
+        >
+          ● Play Live
+        </button>
+      )}
 
       <header className="daily-puzzle__header">
         <span>
@@ -5643,10 +5629,31 @@ export default function Puzzle({
           🗓 New puzzle tomorrow
         </span>
 
+        <button
+          type="button"
+          className="daily-puzzle__education-entry"
+          onClick={() => {
+            if (
+              onOpenEducation
+            ) {
+              onOpenEducation();
+
+              return;
+            }
+
+            setEducationComingSoon(
+              "🎓 Education Portal",
+            );
+          }}
+        >
+          🎓 Education Portal
+        </button>
+
         <span>
           🏅 Medals: 0 / 7
         </span>
       </footer>
+
 
 
       {/* =================================================
@@ -6227,16 +6234,10 @@ export default function Puzzle({
                     type="button"
                     className="daily-puzzle__certificate-email-icon"
                     aria-label={
-                      stage ===
-                        "5x5"
-                        ? "Join GQ leaderboard"
-                        : "Claim medal"
+                      "Join GQ leaderboard"
                     }
                     title={
-                      stage ===
-                        "5x5"
-                        ? "Join leaderboard"
-                        : "Claim medal"
+                      "Join leaderboard"
                     }
                     disabled={
                       stage ===
@@ -6314,7 +6315,7 @@ export default function Puzzle({
                       : claimingMedal
                         ? "…"
                         : medalClaimed
-                          ? "✓ Claimed"
+                          ? "✓ Joined"
                           : (
                             <span
                               style={{
@@ -6331,7 +6332,7 @@ export default function Puzzle({
                               }}
                             >
                               <strong>
-                                CLAIM
+                                JOIN
                               </strong>
 
                               <small
@@ -6346,7 +6347,7 @@ export default function Puzzle({
                                     "0.02em",
                                 }}
                               >
-                                MEDAL
+                                LEADERBOARD
                               </small>
                             </span>
                           )}
@@ -6393,7 +6394,7 @@ export default function Puzzle({
                   "7x7" &&
                   medalClaimed && (
                   <div className="daily-puzzle__certificate-sent">
-                    🏅 Medal claimed as{" "}
+                    ✓ Joined leaderboard as{" "}
                     <strong>
                       {
                         medalClaimName
@@ -6483,110 +6484,29 @@ export default function Puzzle({
                   style={{
                     marginTop:
                       "7px",
-                    display:
-                      "flex",
-                    alignItems:
-                      "baseline",
-                    justifyContent:
-                      "center",
-                    flexWrap:
-                      "wrap",
-                    gap:
-                      "0",
-                    maxWidth:
-                      "100%",
-                    boxSizing:
-                      "border-box",
                     textAlign:
                       "center",
-                    fontSize:
-                      "0.66rem",
-                    lineHeight:
-                      1.25,
                   }}
                 >
-                  <strong>
-                    Try:&nbsp;
-                  </strong>
+                  <button
+                    type="button"
+                    className="daily-puzzle__education-entry"
+                    onClick={() => {
+                      if (
+                        onOpenEducation
+                      ) {
+                        onOpenEducation();
 
-                  {(
-                    EDUCATION_REGION ===
-                      "IN"
-                      ? [
-                          "Maths Olympiad",
-                          "Vedic Maths",
-                        ]
-                      : [
-                          "OLSAT",
-                          "SAT",
-                          "Maths",
-                        ]
-                  ).map(
-                    (
-                      item,
-                      index,
-                      items,
-                    ) => (
-                      <span
-                        key={
-                          item
-                        }
-                        style={{
-                          display:
-                            "inline-flex",
-                          alignItems:
-                            "baseline",
-                          whiteSpace:
-                            "nowrap",
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setEducationComingSoon(
-                              `🚧 ${item} coming soon`,
-                            )
-                          }
-                          style={{
-                            padding:
-                              0,
-                            border:
-                              0,
-                            background:
-                              "transparent",
-                            font:
-                              "inherit",
-                            lineHeight:
-                              "inherit",
-                            fontWeight:
-                              650,
-                            textDecoration:
-                              "underline",
-                            cursor:
-                              "pointer",
-                            verticalAlign:
-                              "baseline",
-                          }}
-                        >
-                          {item}
-                        </button>
+                        return;
+                      }
 
-                        {index <
-                          items.length -
-                            1 && (
-                          <span
-                            aria-hidden="true"
-                            style={{
-                              padding:
-                                "0 5px",
-                            }}
-                          >
-                            |
-                          </span>
-                        )}
-                      </span>
-                    ),
-                  )}
+                      setEducationComingSoon(
+                        "🎓 Education Portal",
+                      );
+                    }}
+                  >
+                    🎓 Education Portal
+                  </button>
                 </div>
 
                 {educationComingSoon && (

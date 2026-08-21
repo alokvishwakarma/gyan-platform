@@ -2889,3 +2889,96 @@ input:focus {
     3px auto
     6px;
 }
+
+.daily-puzzle__live-button {
+  display: block;
+  margin: 0 auto 0.55rem;
+  padding: 0.48rem 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+  cursor: pointer;
+}
+
+.daily-puzzle__live-button:hover {
+  transform: translateY(-1px);
+}
+
+.daily-puzzle__live-button:active {
+  transform: translateY(0);
+}
+
+.daily-puzzle__live-button {
+  display: none !important;
+}
+
+.daily-puzzle__education-entry {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.daily-puzzle__education-entry:hover,
+.daily-puzzle__education-entry:focus-visible {
+  color: #1976d2;
+}
+
+.daily-puzzle__education-subtitle {
+  margin-top: 3px;
+  color: #6b7a90;
+  font-size: 0.6rem;
+  font-weight: 650;
+  line-height: 1.2;
+  text-align: center;
+}
+
+@media (max-width: 420px) {
+  .daily-puzzle__footer {
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .daily-puzzle__education-subtitle {
+    font-size: 0.58rem;
+  }
+}
+
+/* Add to the Puzzle stylesheet */
+
+.daily-puzzle__education-entry {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.daily-puzzle__education-entry:hover,
+.daily-puzzle__education-entry:focus-visible {
+  color: #1976d2;
+}
+
+
+@media (max-width: 420px) {
+  .daily-puzzle__footer {
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}

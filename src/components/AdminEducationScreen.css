@@ -1,0 +1,22 @@
+.admin-education{width:min(100%,680px);margin:0 auto;padding:0 12px 32px;box-sizing:border-box;color:#102a56}
+.admin-education__header{display:grid;grid-template-columns:40px 1fr 40px;align-items:center;min-height:64px}
+.admin-education__header>button{width:34px;height:34px;border:0;border-radius:999px;background:#fff;cursor:pointer}
+.admin-education__header>div{grid-column:2;display:flex;flex-direction:column;text-align:center}
+.admin-education__header strong{font-size:.72rem}.admin-education__header span{font-size:.68rem;opacity:.7}
+.admin-education__tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:4px 0 12px}
+.admin-education__tabs button{padding:9px;border:1px solid #d8e1ee;border-radius:10px;background:#fff;font:inherit;font-size:.72rem;cursor:pointer}
+.admin-education__tabs button.active{border-color:#315fa7;font-weight:800}
+.admin-education__card{padding:16px;border-radius:16px;background:#fff;box-shadow:0 5px 18px rgb(15 23 42 / 8%)}
+.admin-education__card h1{margin:0 0 10px;font-size:1rem}
+.admin-education__row{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #edf1f6}
+.admin-education__option{display:flex;align-items:center;gap:9px;min-height:40px;font-size:.78rem;font-weight:650}
+.admin-education__delete{border:0;background:transparent;cursor:pointer}
+.admin-education__other{margin-top:14px;padding-top:12px;border-top:1px solid #dfe6ef}
+.admin-education__other>strong{display:block;margin-bottom:6px;font-size:.75rem}
+.admin-education__other>div{display:grid;grid-template-columns:1fr auto;gap:6px}
+.admin-education__other input{min-width:0;padding:9px;border:1px solid #ccd7e5;border-radius:9px;font:inherit}
+.admin-education__other button,.admin-education__save{border:0;border-radius:9px;background:#174a73;color:#fff;font:inherit;font-weight:750;cursor:pointer}
+.admin-education__other button{padding:0 14px}.admin-education__save{width:100%;margin-top:16px;padding:10px}
+.admin-education__status{margin-top:8px;text-align:center;font-size:.7rem;font-weight:700}
+
+.admin-education__state{padding:22px;text-align:center;font-size:.76rem}.admin-education__error{margin-top:10px;padding:10px;border-radius:10px;background:#fff0f0;color:#9b1c1c;font-size:.72rem;font-weight:650;text-align:center}

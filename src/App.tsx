@@ -17,6 +17,12 @@ import AdminShopServicesScreen from "./components/AdminShopServicesScreen";
 import AdminStoragePanel from "./components/AdminStoragePanel";
 import PlatformDashboardPage from "./components/PlatformDashboardPage";
 import PublicHomePage from "./components/PublicHomePage";
+import StudentProgressPage
+  from "./components/StudentProgressPage";
+
+import {
+  studentCodeFromPath,
+} from "./config/studentProgress";
 import ShopDashboardPage from "./components/ShopDashboardPage";
 import type { ServiceItem } from "./components/CategoryRow";
 import PrintOrderPanel from "./components/PrintOrderPanel";
@@ -66,8 +72,6 @@ import AdminChatPanel
 import {
   clearAdminLocationOverride,
 } from "./location/adminLocation";
-
-
 
 interface ShopProfile {
   code: string;
@@ -340,6 +344,41 @@ const SUPPORT_INTAKE_SHOP_NAME =
   "GYAN Support";
 
 export default function App() {
+
+
+  const [
+    studentRouteCode,
+    setStudentRouteCode,
+  ] =
+    useState<string | null>(
+      () =>
+        studentCodeFromPath(),
+    );
+
+
+  useEffect(
+    () => {
+      const refreshStudentRoute =
+        (): void => {
+          setStudentRouteCode(
+            studentCodeFromPath(),
+          );
+        };
+
+      window.addEventListener(
+        "popstate",
+        refreshStudentRoute,
+      );
+
+      return () => {
+        window.removeEventListener(
+          "popstate",
+          refreshStudentRoute,
+        );
+      };
+    },
+    [],
+  );
 
 
   
@@ -1742,6 +1781,47 @@ if (
     );
   }
 
+  const studentContent =
+    studentRouteCode
+      ? (
+          <StudentProgressPage
+            studentCode={
+              studentRouteCode
+            }
+
+            onBack={() => {
+              window.history.pushState(
+                {},
+                "",
+                "/",
+              );
+
+              setStudentRouteCode(
+                null,
+              );
+            }}
+
+            onContinueLearning={() => {
+              /*
+               * Return to the normal home shell.
+               * The Education icon in the header opens
+               * the existing Education Portal.
+               */
+              window.history.pushState(
+                {},
+                "",
+                "/",
+              );
+
+              setStudentRouteCode(
+                null,
+              );
+            }}
+          />
+        )
+      : undefined;
+
+
   return (
     <main className="app-shell">
       <div className="app-content">
@@ -1890,7 +1970,9 @@ if (
           }}
 
           shellContent={
-            nearbyServiceRequest
+            studentContent
+              ? studentContent
+              : nearbyServiceRequest
               ? (
                 <NearbyServicePanel
                   embedded

@@ -1,6 +1,10 @@
 import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
 
+import {
+  getCalendarHeroConfig,
+} from "./calendarHero";
+
 export type CalendarPdfSize =
   | "A5"
   | "A6"
@@ -67,6 +71,132 @@ const SIZE_MM: Record<
     height: 50.8,
   },
 };
+
+async function loadImageAsDataUrl(
+  src: string,
+): Promise<string | null> {
+  try {
+    const response =
+      await fetch(
+        src,
+        {
+          cache:
+            "force-cache",
+        },
+      );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const blob =
+      await response.blob();
+
+    const objectUrl =
+      URL.createObjectURL(
+        blob,
+      );
+
+    try {
+      const image =
+        await new Promise<HTMLImageElement>(
+          (
+            resolve,
+            reject,
+          ) => {
+            const element =
+              new Image();
+
+            element.onload =
+              () => {
+                resolve(
+                  element,
+                );
+              };
+
+            element.onerror =
+              () => {
+                reject(
+                  new Error(
+                    "Unable to load calendar hero image.",
+                  ),
+                );
+              };
+
+            element.src =
+              objectUrl;
+          },
+        );
+
+      const canvas =
+        document.createElement(
+          "canvas",
+        );
+
+      canvas.width =
+        image.naturalWidth;
+
+      canvas.height =
+        image.naturalHeight;
+
+      const context =
+        canvas.getContext(
+          "2d",
+        );
+
+      if (!context) {
+        return null;
+      }
+
+      context.drawImage(
+        image,
+        0,
+        0,
+      );
+
+      return canvas.toDataURL(
+        "image/png",
+      );
+    } finally {
+      URL.revokeObjectURL(
+        objectUrl,
+      );
+    }
+  } catch {
+    return null;
+  }
+}
+
+function addHeroImage(
+  pdf: jsPDF,
+  dataUrl: string | null,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): void {
+  if (!dataUrl) {
+    return;
+  }
+
+  try {
+    pdf.addImage(
+      dataUrl,
+      "PNG",
+      x,
+      y,
+      width,
+      height,
+      undefined,
+      "FAST",
+    );
+  } catch {
+    /*
+     * Some jsPDF builds do not decode WEBP.
+     * The textual hero remains as fallback.
+     */
+  }
+}
 
 function setTextColor(
   pdf: jsPDF,
@@ -771,6 +901,7 @@ function drawA6(
   pdf: jsPDF,
   options: CalendarPdfOptions,
   qrDataUrl: string,
+  heroDataUrl: string | null,
   width: number,
   height: number,
 ): void {
@@ -823,6 +954,15 @@ function drawA6(
     "F",
   );
 
+  addHeroImage(
+    pdf,
+    heroDataUrl,
+    margin + 3,
+    top + 3,
+    width * 0.42,
+    heroHeight - 6,
+  );
+
   pdf.setFont(
     "helvetica",
     "bold",
@@ -839,7 +979,9 @@ function drawA6(
     options.market === "IN"
       ? "VIDYA"
       : "LEARN",
-    margin + 7,
+    heroDataUrl
+      ? width * 0.48
+      : margin + 7,
     top + 15,
   );
 
@@ -854,7 +996,9 @@ function drawA6(
     options.market === "IN"
       ? "Maa Saraswati"
       : "GYAN Learning",
-    margin + 7,
+    heroDataUrl
+      ? width * 0.48
+      : margin + 7,
     top + 24,
   );
 
@@ -874,7 +1018,9 @@ function drawA6(
     options.market === "IN"
       ? "Knowledge - Learning - Practice"
       : "Learn - Practice - Grow",
-    margin + 7,
+    heroDataUrl
+      ? width * 0.48
+      : margin + 7,
     top + 31,
   );
 
@@ -1255,6 +1401,16 @@ export async function downloadCalendarPdf(
       },
     );
 
+  const hero =
+    getCalendarHeroConfig(
+      options.market,
+    );
+
+  const heroDataUrl =
+    await loadImageAsDataUrl(
+      hero.imageSrc,
+    );
+
   if (
     options.size ===
     "A5"
@@ -1274,6 +1430,7 @@ export async function downloadCalendarPdf(
       pdf,
       options,
       qrDataUrl,
+      heroDataUrl,
       physical.width,
       physical.height,
     );

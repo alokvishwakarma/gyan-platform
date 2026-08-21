@@ -203,6 +203,43 @@
     );
 }
 
+.gyan-calendar-promo__image {
+  width:
+    min(
+      92%,
+      240px
+    );
+
+  max-height:
+    185px;
+
+  margin-bottom:
+    0.65rem;
+
+  object-fit:
+    contain;
+
+  border-radius:
+    14px;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.7
+    );
+
+  box-shadow:
+    0 10px 30px
+    rgba(
+      72,
+      71,
+      69,
+      0.12
+    );
+}
+
 .gyan-calendar-promo__lotus {
   width:
     clamp(
