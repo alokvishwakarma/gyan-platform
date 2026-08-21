@@ -8,6 +8,9 @@ import QRCode
 import EducationPortal
   from "./EducationPortal";
 
+import LittleLearnersExperience
+  from "./LittleLearnersExperience";
+
 import {
   checkPracticeAnswer,
   loadPracticeQuestions,
@@ -45,7 +48,8 @@ type Step =
   | "topics"
   | "questions"
   | "report"
-  | "student-card";
+  | "student-card"
+  | "little-learners";
 
 
 type AnswerState = {
@@ -210,6 +214,7 @@ export default function EducationLearningHub({
       false,
     );
 
+
   const [
     loading,
     setLoading,
@@ -257,6 +262,20 @@ export default function EducationLearningHub({
     selection:
       PortalSelection,
   ): Promise<void> {
+    if (
+      selection.type ===
+        "program" &&
+      selection.code ===
+        "LITTLE_LEARNERS"
+    ) {
+      setStep(
+        "little-learners",
+      );
+
+      return;
+    }
+
+
     if (
       selection.type !==
         "grade"
@@ -821,6 +840,22 @@ export default function EducationLearningHub({
 
   if (
     step ===
+      "little-learners"
+  ) {
+    return (
+      <LittleLearnersExperience
+        onBack={() => {
+          setStep(
+            "portal",
+          );
+        }}
+      />
+    );
+  }
+
+
+  if (
+    step ===
       "portal"
   ) {
     return (
@@ -1015,53 +1050,35 @@ export default function EducationLearningHub({
                 </small>
               </div>
 
-<div
-  className="education-learning__question-actions"
->
-  <button
-    type="button"
-    aria-label="New 5 questions"
-    title="New 5 questions"
-    onClick={() =>
-      void newFive()
-    }
-  >
-    🔄
-  </button>
+              <div
+                className="education-learning__question-actions"
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    void newFive()
+                  }
+                >
+                  🔄 New 5
+                </button>
 
-  <button
-    type="button"
-    aria-label="Submit answers"
-    title="Submit answers"
-    disabled={
-      !canSubmit
-    }
-    onClick={() =>
-      void submitAnswers()
-    }
-  >
-    ✓
-  </button>
-
-  {submitted && (
-    <button
-      type="button"
-      aria-label="View Learning Map"
-      title="Learning Map"
-      onClick={() => {
-        setReportTopics(
-          currentHeatmap(),
-        );
-
-        setStep(
-          "report",
-        );
-      }}
-    >
-      🗺️
-    </button>
-  )}
-</div>
+                <button
+                  type="button"
+                  disabled={
+                    !canSubmit
+                  }
+                  onClick={() =>
+                    void submitAnswers()
+                  }
+                  title={
+                    canSubmit
+                      ? "Submit 5 answers"
+                      : "Answer all 5 questions first"
+                  }
+                >
+                  ✓ Submit
+                </button>
+              </div>
             </div>
 
 

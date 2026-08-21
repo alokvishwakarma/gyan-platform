@@ -257,9 +257,7 @@ export default function EducationPortal({
       }
 
       {
-        !loading &&
-        programs.length >
-          0 && (
+        !loading && (
           <section
             className="education-portal__section"
           >
@@ -270,6 +268,35 @@ export default function EducationPortal({
             <div
               className="education-portal__grid"
             >
+              <button
+                type="button"
+                className="education-portal__little-learners"
+                onClick={() =>
+                  onSelect({
+                    type:
+                      "program",
+
+                    code:
+                      "LITTLE_LEARNERS",
+
+                    name:
+                      "Little Learners",
+                  })
+                }
+              >
+                <span>
+                  🌱
+                </span>
+
+                <strong>
+                  Little Learners
+                </strong>
+
+                <small>
+                  ABA Practice
+                </small>
+              </button>
+
               {
                 programs.map(
                   (

@@ -3,6 +3,10 @@ import {
 } from "./adminAuth";
 
 import {
+  handleLittleLearnersRoute,
+} from "./littleLearners";
+
+import {
   handleEducationRoute,
 } from "./education";
 
@@ -118,7 +122,6 @@ import {
 import {
   handleStudentInviteCodeRoute,
 } from "./studentInviteCodes";
-
 
 
 interface RegisterShopRequest {
@@ -1523,6 +1526,18 @@ if (
   return educationLearningResponse;
 }
 
+const littleLearnersResponse =
+  await handleLittleLearnersRoute(
+    request,
+    env,
+    url,
+  );
+
+if (
+  littleLearnersResponse
+) {
+  return littleLearnersResponse;
+}
 
 const educationProgressResponse =
   await handleEducationProgressRoute(

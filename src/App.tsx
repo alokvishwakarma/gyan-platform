@@ -20,6 +20,9 @@ import PublicHomePage from "./components/PublicHomePage";
 import StudentProgressPage
   from "./components/StudentProgressPage";
 
+import LittleLearnersExperience
+  from "./components/LittleLearnersExperience";
+
 import {
   studentCodeFromPath,
 } from "./config/studentProgress";
@@ -347,6 +350,17 @@ export default function App() {
 
 
   const [
+    abaRouteOpen,
+    setAbaRouteOpen,
+  ] =
+    useState(
+      () =>
+        window.location.pathname ===
+          "/aba",
+    );
+
+
+  const [
     studentRouteCode,
     setStudentRouteCode,
   ] =
@@ -362,6 +376,11 @@ export default function App() {
         (): void => {
           setStudentRouteCode(
             studentCodeFromPath(),
+          );
+
+          setAbaRouteOpen(
+            window.location.pathname ===
+              "/aba",
           );
         };
 
@@ -1781,6 +1800,26 @@ if (
     );
   }
 
+  const abaContent =
+    abaRouteOpen
+      ? (
+          <LittleLearnersExperience
+            onBack={() => {
+              window.history.pushState(
+                {},
+                "",
+                "/",
+              );
+
+              setAbaRouteOpen(
+                false,
+              );
+            }}
+          />
+        )
+      : undefined;
+
+
   const studentContent =
     studentRouteCode
       ? (
@@ -1970,7 +2009,9 @@ if (
           }}
 
           shellContent={
-            studentContent
+            abaContent
+              ? abaContent
+              : studentContent
               ? studentContent
               : nearbyServiceRequest
               ? (

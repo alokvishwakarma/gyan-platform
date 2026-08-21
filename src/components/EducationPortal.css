@@ -174,3 +174,10 @@
     flex-basis: 100%;
   }
 }
+
+.education-portal__grid button small {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.54rem;
+  opacity: 0.62;
+}
