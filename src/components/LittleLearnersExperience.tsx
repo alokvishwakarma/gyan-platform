@@ -96,6 +96,8 @@ export default function LittleLearnersExperience({
 
   return (
     <LittleLearnersPage
+      title="Education ABA"
+
       level={
         2
       }

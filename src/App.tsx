@@ -346,6 +346,18 @@ const SUPPORT_INTAKE_SHOP_CODE =
 const SUPPORT_INTAKE_SHOP_NAME =
   "GYAN Support";
 
+function isEducationAbaPath(
+  pathname =
+    window.location.pathname,
+): boolean {
+  return (
+    pathname ===
+      "/aba" ||
+    pathname ===
+      "/education/aba"
+  );
+}
+
 export default function App() {
 
 
@@ -355,8 +367,7 @@ export default function App() {
   ] =
     useState(
       () =>
-        window.location.pathname ===
-          "/aba",
+        isEducationAbaPath(),
     );
 
 
@@ -379,8 +390,7 @@ export default function App() {
           );
 
           setAbaRouteOpen(
-            window.location.pathname ===
-              "/aba",
+            isEducationAbaPath(),
           );
         };
 

@@ -2,6 +2,7 @@ import {
   currentUser,
 } from "./auth";
 
+
 function jsonResponse(
   value: unknown,
   status = 200,
@@ -20,6 +21,7 @@ function jsonResponse(
     },
   );
 }
+
 
 function normalizeWord(
   value: unknown,
@@ -89,7 +91,7 @@ async function getQuestions(
     Math.max(
       1,
       Math.min(
-        6,
+        5,
         Number(
           url.searchParams.get(
             "level",
@@ -99,169 +101,326 @@ async function getQuestions(
       ),
     );
 
-  const skill =
-    normalizeWord(
+  const mode =
+    url.searchParams.get(
+      "mode",
+    ) ===
+      "upTo"
+      ? "upTo"
+      : "exact";
+
+  const topic =
+    (
       url.searchParams.get(
-        "skill",
-      ),
+        "topic",
+      ) ??
+      ""
     )
+      .trim()
       .toUpperCase();
 
-  let statement;
+  const subtopic =
+    (
+      url.searchParams.get(
+        "subtopic",
+      ) ??
+      ""
+    )
+      .trim()
+      .toUpperCase();
 
-  if (skill) {
-    statement =
-      env.gyan_registry
-        .prepare(
-          `
-          SELECT
-            id,
-            skill_code AS skillCode,
-            level,
-            prompt_text AS promptText,
-            question_type AS questionType,
-            option_a AS optionA,
-            option_b AS optionB,
-            option_c AS optionC,
-            correct_option AS correctOption,
-            accepted_words AS acceptedWords
+  const limit =
+    Math.max(
+      1,
+      Math.min(
+        20,
+        Number(
+          url.searchParams.get(
+            "limit",
+          ) ??
+          "5",
+        ) || 5,
+      ),
+    );
 
-          FROM education_little_questions
+  const clauses:
+    string[] = [
+    "active = 1",
+  ];
 
-          WHERE
-            active = 1
-            AND level <= ?
-            AND skill_code = ?
+  const bindings:
+    Array<
+      string |
+      number
+    > = [];
 
-          ORDER BY RANDOM()
+  if (
+    mode ===
+      "upTo"
+  ) {
+    clauses.push(
+      "level <= ?",
+    );
 
-          LIMIT 5
-          `,
-        )
-        .bind(
-          level,
-          skill,
-        );
+    bindings.push(
+      level,
+    );
   } else {
-    statement =
-      env.gyan_registry
-        .prepare(
-          `
-          SELECT
-            id,
-            skill_code AS skillCode,
-            level,
-            prompt_text AS promptText,
-            question_type AS questionType,
-            option_a AS optionA,
-            option_b AS optionB,
-            option_c AS optionC,
-            correct_option AS correctOption,
-            accepted_words AS acceptedWords
+    clauses.push(
+      "level = ?",
+    );
 
-          FROM education_little_questions
+    bindings.push(
+      level,
+    );
+  }
 
-          WHERE
-            active = 1
-            AND level <= ?
+  if (
+    topic
+  ) {
+    clauses.push(
+      "topic_code = ?",
+    );
 
-          ORDER BY RANDOM()
+    bindings.push(
+      topic,
+    );
+  }
 
-          LIMIT 5
-          `,
-        )
-        .bind(
-          level,
-        );
+  if (
+    subtopic
+  ) {
+    clauses.push(
+      "subtopic_code = ?",
+    );
+
+    bindings.push(
+      subtopic,
+    );
   }
 
   const result =
-    await statement.all<{
-      id: number;
-      skillCode: string;
-      level: number;
-      promptText: string;
-      questionType:
-        | "tap"
-        | "speak";
-      optionA:
-        string |
-        null;
-      optionB:
-        string |
-        null;
-      optionC:
-        string |
-        null;
-      correctOption:
-        string |
-        null;
-      acceptedWords:
-        string |
-        null;
-    }>();
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          id,
+          skill_code AS skillCode,
+          level,
+          prompt_text AS promptText,
+          question_type AS questionType,
+
+          option_a AS optionA,
+          option_b AS optionB,
+          option_c AS optionC,
+
+          option_a_scale AS optionAScale,
+          option_b_scale AS optionBScale,
+          option_c_scale AS optionCScale,
+
+          visual_type AS visualType,
+          visual_object AS visualObject,
+
+          correct_option AS correctOption,
+          accepted_words AS acceptedWords,
+
+          topic_code AS topicCode,
+          topic_name AS topicName,
+          subtopic_code AS subtopicCode,
+          subtopic_name AS subtopicName
+
+        FROM education_little_questions
+
+        WHERE
+          ${clauses.join(
+            "\n          AND ",
+          )}
+
+        ORDER BY
+          RANDOM()
+
+        LIMIT ?
+        `,
+      )
+      .bind(
+        ...bindings,
+        limit,
+      )
+      .all<{
+        id: number;
+        skillCode: string;
+        level: number;
+        promptText: string;
+        questionType:
+          | "tap"
+          | "speak";
+
+        optionA:
+          string |
+          null;
+        optionB:
+          string |
+          null;
+        optionC:
+          string |
+          null;
+
+        optionAScale:
+          "small" |
+          "medium" |
+          "big" |
+          null;
+        optionBScale:
+          "small" |
+          "medium" |
+          "big" |
+          null;
+        optionCScale:
+          "small" |
+          "medium" |
+          "big" |
+          null;
+
+        visualType:
+          string |
+          null;
+        visualObject:
+          string |
+          null;
+
+        correctOption:
+          string |
+          null;
+
+        acceptedWords:
+          string |
+          null;
+
+        topicCode:
+          string |
+          null;
+        topicName:
+          string |
+          null;
+        subtopicCode:
+          string |
+          null;
+        subtopicName:
+          string |
+          null;
+      }>();
 
   return jsonResponse({
     questions:
       result.results.map(
         (
           row,
-        ) => ({
-          id:
-            row.id,
-
-          skillCode:
-            row.skillCode,
-
-          level:
-            row.level,
-
-          promptText:
-            row.promptText,
-
-          questionType:
-            row.questionType,
-
-          options:
+        ) => {
+          const rawOptions =
             [
               row.optionA,
               row.optionB,
               row.optionC,
-            ]
-              .filter(
-                (
-                  value,
-                ):
-                  value is string =>
-                    Boolean(
-                      value,
-                    ),
-              ),
+            ];
 
-          /*
-           * V1 returns correctOption to the client so
-           * feedback can be instant/offline-ish.
-           * Do not use this pattern for scored exams.
-           */
-          correctOption:
-            row.correctOption,
+          const rawScales =
+            [
+              row.optionAScale,
+              row.optionBScale,
+              row.optionCScale,
+            ];
 
-          acceptedWords:
+          const options:
+            string[] = [];
+
+          const optionScales:
+            Array<
+              "small" |
+              "medium" |
+              "big" |
+              null
+            > = [];
+
+          rawOptions.forEach(
             (
-              row.acceptedWords ??
-              ""
-            )
-              .split("|")
-              .map(
-                (
-                  word,
-                ) =>
-                  word.trim(),
+              value,
+              index,
+            ) => {
+              if (
+                value
+              ) {
+                options.push(
+                  value,
+                );
+
+                optionScales.push(
+                  rawScales[
+                    index
+                  ],
+                );
+              }
+            },
+          );
+
+          return {
+            id:
+              row.id,
+
+            skillCode:
+              row.skillCode,
+
+            level:
+              row.level,
+
+            promptText:
+              row.promptText,
+
+            questionType:
+              row.questionType,
+
+            options,
+            optionScales,
+
+            visualType:
+              row.visualType,
+
+            visualObject:
+              row.visualObject,
+
+            correctOption:
+              row.correctOption,
+
+            acceptedWords:
+              (
+                row.acceptedWords ??
+                ""
               )
-              .filter(
-                Boolean,
-              ),
-        }),
+                .split(
+                  "|",
+                )
+                .map(
+                  (
+                    word,
+                  ) =>
+                    word.trim(),
+                )
+                .filter(
+                  Boolean,
+                ),
+
+            topicCode:
+              row.topicCode,
+
+            topicName:
+              row.topicName,
+
+            subtopicCode:
+              row.subtopicCode,
+
+            subtopicName:
+              row.subtopicName,
+          };
+        },
       ),
   });
 }

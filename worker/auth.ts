@@ -50,8 +50,7 @@ function safeAuthReturnTo(
   value: unknown,
 ): string {
   if (
-    typeof value !==
-      "string"
+    typeof value !== "string"
   ) {
     return "/";
   }
@@ -60,8 +59,8 @@ function safeAuthReturnTo(
     value.trim();
 
   /*
-   * Student-card redirects only.
-   * Do not allow arbitrary URLs here.
+   * Allow only the GYAN student-card route.
+   * This prevents arbitrary/open redirects.
    */
   return /^\/student\/[A-Z2-9]{4}\/?$/i.test(
     normalized,
@@ -167,7 +166,6 @@ function cookieValue(
 
 function sessionCookie(
   token: string,
-  secure: boolean,
 ): string {
   const maxAge =
     SESSION_DAYS *
@@ -175,47 +173,28 @@ function sessionCookie(
     60 *
     60;
 
-  const parts = [
+  return [
     `${SESSION_COOKIE}=${encodeURIComponent(
       token,
     )}`,
     "Path=/",
     `Max-Age=${maxAge}`,
     "HttpOnly",
+    "Secure",
     "SameSite=Lax",
-  ];
-
-  if (secure) {
-    parts.push(
-      "Secure",
-    );
-  }
-
-  return parts.join(
-    "; ",
-  );
+  ].join("; ");
 }
 
-function clearSessionCookie(
-  secure: boolean,
-): string {
-  const parts = [
+function clearSessionCookie():
+  string {
+  return [
     `${SESSION_COOKIE}=`,
     "Path=/",
     "Max-Age=0",
     "HttpOnly",
+    "Secure",
     "SameSite=Lax",
-  ];
-
-  if (secure) {
-    parts.push(
-      "Secure",
-    );
-  }
-
-  return parts.join(
-    "; ",
-  );
+  ].join("; ");
 }
 
 async function sendMagicLinkEmail(
@@ -294,158 +273,6 @@ async function sendMagicLinkEmail(
     );
   }
 }
-
-function networkRegionCode(
-  region: string,
-  countryCode: string,
-): string {
-  const key =
-    region
-      .trim()
-      .toLowerCase();
-
-  const country =
-    countryCode
-      .trim()
-      .toUpperCase();
-
-  const us:
-    Record<string, string> = {
-    california: "CA",
-    texas: "TX",
-    florida: "FL",
-    "new york": "NY",
-    washington: "WA",
-    illinois: "IL",
-    pennsylvania: "PA",
-    ohio: "OH",
-    georgia: "GA",
-    "north carolina": "NC",
-    "new jersey": "NJ",
-    virginia: "VA",
-    massachusetts: "MA",
-    arizona: "AZ",
-    michigan: "MI",
-    maryland: "MD",
-    colorado: "CO",
-    minnesota: "MN",
-    wisconsin: "WI",
-    oregon: "OR",
-    nevada: "NV",
-    utah: "UT",
-    "district of columbia": "DC",
-  };
-
-  const india:
-    Record<string, string> = {
-    "andhra pradesh": "AP",
-    "arunachal pradesh": "AR",
-    assam: "AS",
-    bihar: "BR",
-    chhattisgarh: "CG",
-    goa: "GA",
-    gujarat: "GJ",
-    haryana: "HR",
-    "himachal pradesh": "HP",
-    jharkhand: "JH",
-    karnataka: "KA",
-    kerala: "KL",
-    "madhya pradesh": "MP",
-    maharashtra: "MH",
-    manipur: "MN",
-    meghalaya: "ML",
-    mizoram: "MZ",
-    nagaland: "NL",
-    odisha: "OD",
-    punjab: "PB",
-    rajasthan: "RJ",
-    sikkim: "SK",
-    "tamil nadu": "TN",
-    telangana: "TS",
-    tripura: "TR",
-    "uttar pradesh": "UP",
-    uttarakhand: "UK",
-    "west bengal": "WB",
-    delhi: "DL",
-    chandigarh: "CH",
-    puducherry: "PY",
-    "jammu and kashmir": "JK",
-    ladakh: "LA",
-  };
-
-  if (country === "US") {
-    return us[key] ?? "";
-  }
-
-  if (country === "IN") {
-    return india[key] ?? "";
-  }
-
-  return "";
-}
-
-
-function getNetworkLocation(
-  request: Request,
-): {
-  city: string;
-  region: string;
-  regionCode: string;
-  countryCode: string;
-  postalCode: string;
-} {
-  const cf =
-    request.cf;
-
-  const city =
-    String(
-      cf?.city ?? "",
-    ).trim();
-
-  const region =
-    String(
-      cf?.region ?? "",
-    ).trim();
-
-  const countryCode =
-    String(
-      cf?.country ?? "",
-    )
-      .trim()
-      .toUpperCase();
-
-  /*
-   * Cloudflare may expose regionCode directly.
-   * Fall back to our compact US/India mapping.
-   */
-  const rawRegionCode =
-    String(
-      cf?.regionCode ?? "",
-    )
-      .trim()
-      .toUpperCase();
-
-  const regionCode =
-    rawRegionCode ||
-    networkRegionCode(
-      region,
-      countryCode,
-    );
-
-  const postalCode =
-    String(
-      cf?.postalCode ?? "",
-    ).trim();
-
-  return {
-    city,
-    region,
-    regionCode,
-    countryCode,
-    postalCode,
-  };
-}
-
 
 export async function currentUser(
   request: Request,
@@ -615,6 +442,10 @@ export async function handlePublicAuthRoute(
           FROM auth_magic_links
           WHERE
             email = ?
+            AND COALESCE(
+              return_to,
+              '/'
+            ) = ?
             AND used_at IS NULL
             AND created_at >
               datetime(
@@ -624,7 +455,10 @@ export async function handlePublicAuthRoute(
           LIMIT 1
           `,
         )
-        .bind(email)
+        .bind(
+          email,
+          returnTo,
+        )
         .first<{
           id: number;
         }>();
@@ -649,7 +483,8 @@ export async function handlePublicAuthRoute(
         INSERT INTO auth_magic_links (
           email,
           token_hash,
-          expires_at
+          expires_at,
+          return_to
         )
         VALUES (
           ?,
@@ -657,13 +492,15 @@ export async function handlePublicAuthRoute(
           datetime(
             'now',
             '+${MAGIC_LINK_MINUTES} minutes'
-          )
+          ),
+          ?
         )
         `,
       )
       .bind(
         email,
         tokenHash,
+        returnTo,
       )
       .run();
 
@@ -762,7 +599,8 @@ export async function handlePublicAuthRoute(
           `
           SELECT
             id,
-            email
+            email,
+            return_to AS returnTo
 
           FROM auth_magic_links
 
@@ -781,6 +619,9 @@ export async function handlePublicAuthRoute(
         .first<{
           id: number;
           email: string;
+          returnTo:
+            string |
+            null;
         }>();
 
     if (!magic) {
@@ -793,33 +634,14 @@ export async function handlePublicAuthRoute(
       );
     }
 
-    const networkLocation =
-      getNetworkLocation(
-        request,
-      );
-
     await env.gyan_registry
       .prepare(
         `
         INSERT INTO users (
           email,
-          last_login_at,
-
-          last_city,
-          last_region,
-          last_region_code,
-          last_country_code,
-          last_postal_code,
-          last_location_at
+          last_login_at
         )
         VALUES (
-          ?,
-          CURRENT_TIMESTAMP,
-
-          ?,
-          ?,
-          ?,
-          ?,
           ?,
           CURRENT_TIMESTAMP
         )
@@ -828,63 +650,12 @@ export async function handlePublicAuthRoute(
         DO UPDATE SET
           updated_at =
             CURRENT_TIMESTAMP,
-
           last_login_at =
-            CURRENT_TIMESTAMP,
-
-          last_city =
-            CASE
-              WHEN excluded.last_city != ''
-                THEN excluded.last_city
-              ELSE users.last_city
-            END,
-
-          last_region =
-            CASE
-              WHEN excluded.last_region != ''
-                THEN excluded.last_region
-              ELSE users.last_region
-            END,
-
-          last_region_code =
-            CASE
-              WHEN excluded.last_region_code != ''
-                THEN excluded.last_region_code
-              ELSE users.last_region_code
-            END,
-
-          last_country_code =
-            CASE
-              WHEN excluded.last_country_code != ''
-                THEN excluded.last_country_code
-              ELSE users.last_country_code
-            END,
-
-          last_postal_code =
-            CASE
-              WHEN excluded.last_postal_code != ''
-                THEN excluded.last_postal_code
-              ELSE users.last_postal_code
-            END,
-
-          last_location_at =
-            CASE
-              WHEN excluded.last_city != ''
-                OR excluded.last_region != ''
-                OR excluded.last_country_code != ''
-                THEN CURRENT_TIMESTAMP
-              ELSE users.last_location_at
-            END
+            CURRENT_TIMESTAMP
         `,
       )
       .bind(
         magic.email,
-
-        networkLocation.city,
-        networkLocation.region,
-        networkLocation.regionCode,
-        networkLocation.countryCode,
-        networkLocation.postalCode,
       )
       .run();
 
@@ -965,9 +736,15 @@ export async function handlePublicAuthRoute(
         ),
     ]);
 
+    const verifiedReturnTo =
+      safeAuthReturnTo(
+        magic.returnTo ??
+        returnTo,
+      );
+
     const redirectUrl =
       new URL(
-        returnTo,
+        verifiedReturnTo,
         url.origin,
       );
 
@@ -976,10 +753,17 @@ export async function handlePublicAuthRoute(
       "success",
     );
 
+    /*
+     * Response.redirect() creates a response whose Headers
+     * object is immutable in Cloudflare Workers / Miniflare.
+     * Build the redirect response ourselves so Set-Cookie can
+     * be supplied at construction time.
+     */
     return new Response(
       null,
       {
-        status: 302,
+        status:
+          302,
 
         headers: {
           location:
@@ -988,8 +772,6 @@ export async function handlePublicAuthRoute(
           "set-cookie":
             sessionCookie(
               sessionToken,
-              url.protocol ===
-                "https:",
             ),
 
           "cache-control":
@@ -1034,28 +816,17 @@ export async function handlePublicAuthRoute(
         .run();
     }
 
-    return new Response(
-      JSON.stringify({
+    const response =
+      jsonResponse({
         loggedOut: true,
-      }),
-      {
-        status: 200,
+      });
 
-        headers: {
-          "content-type":
-            "application/json; charset=utf-8",
-
-          "cache-control":
-            "no-store",
-
-          "set-cookie":
-            clearSessionCookie(
-              url.protocol ===
-                "https:",
-            ),
-        },
-      },
+    response.headers.append(
+      "set-cookie",
+      clearSessionCookie(),
     );
+
+    return response;
   }
 
   return null;

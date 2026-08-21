@@ -1,6 +1,5 @@
 import {
   useEffect,
-  useRef,
   useState,
 } from "react";
 
@@ -10,55 +9,20 @@ import {
   type LittleQuestion,
 } from "../config/littleLearners";
 
+import LittleLearnerSettings
+  from "./LittleLearnerSettings";
+
+import {
+  LITTLE_LEARNER_TOPICS,
+} from "../config/littleLearnerTopics";
+
 import "./LittleLearnersPage.css";
 
 
-type SpeechRecognitionConstructor =
-  new () => {
-    lang: string;
-    interimResults: boolean;
-    maxAlternatives: number;
-
-    onresult:
-      (
-        event: {
-          results: {
-            0?: {
-              0?: {
-                transcript?:
-                  string;
-              };
-            };
-          };
-        },
-      ) => void;
-
-    onerror:
-      () => void;
-
-    onend:
-      () => void;
-
-    start:
-      () => void;
-
-    stop:
-      () => void;
-  };
-
-
-declare global {
-  interface Window {
-    SpeechRecognition?:
-      SpeechRecognitionConstructor;
-
-    webkitSpeechRecognition?:
-      SpeechRecognitionConstructor;
-  }
-}
-
-
 interface LittleLearnersPageProps {
+  title?:
+    string;
+
   level?:
     number;
 
@@ -73,25 +37,47 @@ interface LittleLearnersPageProps {
 }
 
 
-function normalizeSpeech(
-  value: string,
-): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(
-      /[^a-z0-9 ]/g,
-      "",
-    );
-}
-
-
 export default function LittleLearnersPage({
-  level = 2,
+  title =
+    "Education ABA",
+
+  level:
+    initialLevel = 2,
+
   studentCode,
   onBack,
   onOpenWords,
 }: LittleLearnersPageProps) {
+  const [
+    level,
+    setLevel,
+  ] =
+    useState(
+      initialLevel,
+    );
+
+  const [
+    topic,
+    setTopic,
+  ] =
+    useState(
+      "ALL",
+    );
+
+  const [
+    subtopic,
+    setSubtopic,
+  ] =
+    useState("");
+
+  const [
+    settingsOpen,
+    setSettingsOpen,
+  ] =
+    useState(
+      false,
+    );
+
   const [
     questions,
     setQuestions,
@@ -128,29 +114,57 @@ export default function LittleLearnersPage({
       ""
     >("");
 
-  const [
-    listening,
-    setListening,
-  ] =
-    useState(
-      false,
-    );
 
   const [
-    heard,
-    setHeard,
+    selectedOption,
+    setSelectedOption,
   ] =
-    useState("");
-
-  const recognitionRef =
-    useRef<
-      InstanceType<
-        SpeechRecognitionConstructor
-      > |
+    useState<
+      number |
       null
     >(
       null,
     );
+
+
+  const selectedTopic =
+    LITTLE_LEARNER_TOPICS
+      .find(
+        (
+          item,
+        ) =>
+          item.code ===
+          topic,
+      );
+
+  const selectedSubtopic =
+    selectedTopic
+      ?.subtopics
+      .find(
+        (
+          item,
+        ) =>
+          item.code ===
+          subtopic,
+      );
+
+  const compactHeading =
+    [
+      title,
+      `L${level}`,
+      selectedTopic
+        ?.name ??
+        "Mixed",
+      selectedSubtopic
+        ?.name,
+    ]
+      .filter(
+        Boolean,
+      )
+      .join(
+        " · ",
+      );
+
 
   const question =
     questions[
@@ -159,7 +173,8 @@ export default function LittleLearnersPage({
 
 
   function speak(
-    text: string,
+    text:
+      string,
   ): void {
     if (
       !(
@@ -182,9 +197,6 @@ export default function LittleLearnersPage({
     utterance.rate =
       0.82;
 
-    utterance.pitch =
-      1.0;
-
     window
       .speechSynthesis
       .speak(
@@ -201,9 +213,17 @@ export default function LittleLearnersPage({
 
     try {
       const next =
-        await loadLittleQuestions(
+        await loadLittleQuestions({
           level,
-        );
+          mode:
+            "exact",
+          topic,
+          subtopic:
+            subtopic ||
+            undefined,
+          limit:
+            5,
+        });
 
       setQuestions(
         next,
@@ -215,6 +235,10 @@ export default function LittleLearnersPage({
 
       setFeedback(
         "",
+      );
+
+      setSelectedOption(
+        null,
       );
     } finally {
       setLoading(
@@ -230,6 +254,8 @@ export default function LittleLearnersPage({
     },
     [
       level,
+      topic,
+      subtopic,
     ],
   );
 
@@ -237,25 +263,35 @@ export default function LittleLearnersPage({
   useEffect(
     () => {
       if (
-        question
+        !question
       ) {
-        const timer =
-          window.setTimeout(
-            () => {
-              speak(
-                question.promptText,
-              );
-            },
-            250,
-          );
-
-        return () =>
-          window.clearTimeout(
-            timer,
-          );
+        return;
       }
 
-      return;
+      const timer =
+        window.setTimeout(
+          () => {
+            speak(
+              question.promptText,
+            );
+          },
+          350,
+        );
+
+      return () => {
+        window.clearTimeout(
+          timer,
+        );
+
+        if (
+          "speechSynthesis"
+          in window
+        ) {
+          window
+            .speechSynthesis
+            .cancel();
+        }
+      };
     },
     [
       question?.id,
@@ -269,8 +305,8 @@ export default function LittleLearnersPage({
       "",
     );
 
-    setHeard(
-      "",
+    setSelectedOption(
+      null,
     );
 
     if (
@@ -301,6 +337,10 @@ export default function LittleLearnersPage({
     ) {
       return;
     }
+
+    setSelectedOption(
+      optionIndex,
+    );
 
     const key =
       [
@@ -340,16 +380,12 @@ export default function LittleLearnersPage({
       correct
     ) {
       speak(
-        question
-          .acceptedWords[
-            0
-          ] ??
-        "Good",
+        "Good Job",
       );
 
       window.setTimeout(
         next,
-        900,
+        500,
       );
     } else {
       speak(
@@ -362,164 +398,70 @@ export default function LittleLearnersPage({
             "",
           );
 
+          setSelectedOption(
+            null,
+          );
+
           speak(
             question.promptText,
           );
         },
-        850,
+        500,
       );
     }
-  }
-
-
-  function startListening():
-    void {
-    if (
-      !question
-    ) {
-      return;
-    }
-
-    const Constructor =
-      window.SpeechRecognition ??
-      window.webkitSpeechRecognition;
-
-    if (
-      !Constructor
-    ) {
-      setHeard(
-        "Listening is not available on this browser.",
-      );
-
-      return;
-    }
-
-    recognitionRef
-      .current
-      ?.stop();
-
-    const recognition =
-      new Constructor();
-
-    recognition.lang =
-      "en-US";
-
-    recognition.interimResults =
-      false;
-
-    recognition.maxAlternatives =
-      1;
-
-    recognition.onresult =
-      (
-        event,
-      ) => {
-        const transcript =
-          event.results[
-            0
-          ]?.[
-            0
-          ]
-            ?.transcript ??
-          "";
-
-        setHeard(
-          transcript,
-        );
-
-        const normalized =
-          normalizeSpeech(
-            transcript,
-          );
-
-        const correct =
-          question
-            .acceptedWords
-            .some(
-              (
-                word,
-              ) =>
-                normalized ===
-                normalizeSpeech(
-                  word,
-                ),
-            );
-
-        setFeedback(
-          correct
-            ? "good"
-            : "try",
-        );
-
-        void saveLittleAttempt({
-          studentCode,
-
-          questionId:
-            question.id,
-
-          responseType:
-            "speech",
-
-          responseValue:
-            transcript,
-
-          correct,
-        });
-
-        if (
-          correct
-        ) {
-          speak(
-            "Good",
-          );
-
-          window.setTimeout(
-            next,
-            1000,
-          );
-        } else {
-          speak(
-            "Try again",
-          );
-        }
-      };
-
-    recognition.onerror =
-      () => {
-        setListening(
-          false,
-        );
-
-        setHeard(
-          "I couldn't hear that.",
-        );
-      };
-
-    recognition.onend =
-      () => {
-        setListening(
-          false,
-        );
-      };
-
-    recognitionRef.current =
-      recognition;
-
-    setListening(
-      true,
-    );
-
-    setHeard(
-      "",
-    );
-
-    recognition.start();
   }
 
 
   if (
-    loading ||
-    !question
+    settingsOpen
+  ) {
+    return (
+      <LittleLearnerSettings
+        level={
+          level
+        }
+
+        topic={
+          topic
+        }
+
+        subtopic={
+          subtopic
+        }
+
+        onChangeLevel={(
+          value,
+        ) => {
+          setLevel(
+            value,
+          );
+        }}
+
+        onChangeTopic={(
+          nextTopic,
+          nextSubtopic,
+        ) => {
+          setTopic(
+            nextTopic,
+          );
+
+          setSubtopic(
+            nextSubtopic,
+          );
+        }}
+
+        onClose={() => {
+          setSettingsOpen(
+            false,
+          );
+        }}
+      />
+    );
+  }
+
+
+  if (
+    loading
   ) {
     return (
       <main
@@ -529,6 +471,50 @@ export default function LittleLearnersPage({
           className="little-learners__loading"
         >
           🌱
+        </div>
+      </main>
+    );
+  }
+
+
+  if (
+    !question
+  ) {
+    return (
+      <main
+        className="little-learners"
+      >
+        <header
+          className="little-learners__top"
+        >
+          <button
+            type="button"
+            aria-label="Back"
+            onClick={
+              onBack
+            }
+          >
+            ←
+          </button>
+
+          <button
+            type="button"
+            aria-label="Settings"
+            onClick={() =>
+              setSettingsOpen(
+                true,
+              )
+            }
+          >
+            ⚙️
+          </button>
+        </header>
+
+        <div
+          className="little-learners__no-questions"
+        >
+          No questions at this level/topic yet.
+          Choose another level or topic.
         </div>
       </main>
     );
@@ -566,6 +552,19 @@ export default function LittleLearnersPage({
           🔊
         </button>
 
+        <button
+          type="button"
+          aria-label="Settings"
+          title="Parent settings"
+          onClick={() =>
+            setSettingsOpen(
+              true,
+            )
+          }
+        >
+          ⚙️
+        </button>
+
         {
           onOpenWords && (
             <button
@@ -582,87 +581,80 @@ export default function LittleLearnersPage({
         }
       </header>
 
+      <div
+        className="little-learners__context"
+      >
+        {
+          compactHeading
+        }
+      </div>
 
       <section
         className="little-learners__stage"
       >
-        {
-          question.questionType ===
-            "tap"
-            ? (
-              <div
-                className={[
-                  "little-learners__options",
-                  question.options.length ===
-                    1
-                    ? "little-learners__options--one"
-                    : "",
-                ]
-                  .filter(
-                    Boolean,
-                  )
-                  .join(
-                    " "
-                  )}
-              >
-                {
-                  question.options.map(
-                    (
-                      option,
-                      optionIndex,
-                    ) => (
-                      <button
-                        type="button"
-                        key={
-                          `${question.id}-${optionIndex}`
-                        }
-                        onClick={() =>
-                          void choose(
-                            optionIndex,
-                          )
-                        }
-                      >
-                        {
-                          option
-                        }
-                      </button>
-                    ),
-                  )
-                }
-              </div>
+        <div
+          className={[
+            "little-learners__options",
+            question.options.length ===
+              1
+              ? "little-learners__options--one"
+              : "",
+          ]
+            .filter(
+              Boolean,
             )
-            : (
-              <div
-                className="little-learners__speak"
-              >
-                <button
-                  type="button"
-                  aria-label="Speak"
-                  title="Speak"
-                  className={
-                    listening
-                      ? "listening"
-                      : ""
-                  }
-                  onClick={
-                    startListening
-                  }
-                >
-                  🎤
-                </button>
+            .join(
+              " ",
+            )}
+        >
+          {
+            question.options.map(
+              (
+                option,
+                optionIndex,
+              ) => {
+                const scale =
+                  question
+                    .optionScales[
+                      optionIndex
+                    ];
 
-                {
-                  heard && (
-                    <small>
-                      {
-                        heard
+                return (
+                  <button
+                    type="button"
+                    key={
+                      `${question.id}-${optionIndex}`
+                    }
+                    className={
+                      selectedOption ===
+                        optionIndex &&
+                      feedback
+                        ? `little-learners__choice--${feedback}`
+                        : ""
+                    }
+                    onClick={() =>
+                      void choose(
+                        optionIndex,
+                      )
+                    }
+                  >
+                    <span
+                      className={
+                        scale
+                          ? `little-learners__visual little-learners__visual--${scale}`
+                          : "little-learners__visual"
                       }
-                    </small>
-                  )
-                }
-              </div>
+                    >
+                      {
+                        option
+                      }
+                    </span>
+                  </button>
+                );
+              },
             )
-        }
+          }
+        </div>
 
 
         {

@@ -17,25 +17,113 @@ export type LittleQuestion = {
   options:
     string[];
 
+  optionScales:
+    Array<
+      "small" |
+      "medium" |
+      "big" |
+      null
+    >;
+
+  visualType:
+    string |
+    null;
+
+  visualObject:
+    string |
+    null;
+
   correctOption:
     string |
     null;
 
   acceptedWords:
     string[];
+
+  topicCode:
+    string |
+    null;
+
+  topicName:
+    string |
+    null;
+
+  subtopicCode:
+    string |
+    null;
+
+  subtopicName:
+    string |
+    null;
 };
 
 
 export async function loadLittleQuestions(
-  level = 2,
+  input: {
+    level:
+      number;
+
+    mode?:
+      "exact" |
+      "upTo";
+
+    topic?:
+      string;
+
+    subtopic?:
+      string;
+
+    limit?:
+      number;
+  },
 ): Promise<LittleQuestion[]> {
+  const parameters =
+    new URLSearchParams();
+
+  parameters.set(
+    "level",
+    String(
+      input.level,
+    ),
+  );
+
+  parameters.set(
+    "mode",
+    input.mode ??
+      "exact",
+  );
+
+  parameters.set(
+    "limit",
+    String(
+      input.limit ??
+      5,
+    ),
+  );
+
+  if (
+    input.topic &&
+    input.topic !==
+      "ALL"
+  ) {
+    parameters.set(
+      "topic",
+      input.topic,
+    );
+  }
+
+  if (
+    input.subtopic
+  ) {
+    parameters.set(
+      "subtopic",
+      input.subtopic,
+    );
+  }
+
   const response =
     await fetch(
-      `/api/education/little/questions?level=${encodeURIComponent(
-        String(
-          level,
-        ),
-      )}`,
+      `/api/education/little/questions?${parameters.toString()}`,
       {
         credentials:
           "include",
@@ -222,18 +310,18 @@ export async function saveChildWord(
         method:
           "POST",
 
-        credentials:
-          "include",
+      credentials:
+        "include",
 
-        headers: {
-          "content-type":
-            "application/json",
-        },
+      headers: {
+        "content-type":
+          "application/json",
+      },
 
-        body:
-          JSON.stringify(
-            input,
-          ),
+      body:
+        JSON.stringify(
+          input,
+        ),
       },
     );
 
