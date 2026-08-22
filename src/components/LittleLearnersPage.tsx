@@ -5,6 +5,7 @@ import {
 
 import {
   loadLittleQuestions,
+  rememberLittleStudentCode,
   saveLittleAttempt,
   type LittleQuestion,
 } from "../config/littleLearners";
@@ -34,6 +35,15 @@ interface LittleLearnersPageProps {
 
   onOpenWords?:
     () => void;
+
+  onOpenProgress?:
+    () => void;
+
+  reviewQuestions?:
+    LittleQuestion[];
+
+  onReviewComplete?:
+    () => void;
 }
 
 
@@ -47,6 +57,9 @@ export default function LittleLearnersPage({
   studentCode,
   onBack,
   onOpenWords,
+  onOpenProgress,
+  reviewQuestions,
+  onReviewComplete,
 }: LittleLearnersPageProps) {
   const [
     level,
@@ -125,6 +138,13 @@ export default function LittleLearnersPage({
     >(
       null,
     );
+
+
+  const [
+    saveWarning,
+    setSaveWarning,
+  ] =
+    useState("");
 
 
   const selectedTopic =
@@ -212,6 +232,30 @@ export default function LittleLearnersPage({
     );
 
     try {
+      if (
+        reviewQuestions &&
+        reviewQuestions.length >
+          0
+      ) {
+        setQuestions(
+          reviewQuestions,
+        );
+
+        setIndex(
+          0,
+        );
+
+        setFeedback(
+          "",
+        );
+
+        setSelectedOption(
+          null,
+        );
+
+        return;
+      }
+
       const next =
         await loadLittleQuestions({
           level,
@@ -256,6 +300,7 @@ export default function LittleLearnersPage({
       level,
       topic,
       subtopic,
+      reviewQuestions,
     ],
   );
 
@@ -313,6 +358,16 @@ export default function LittleLearnersPage({
       index + 1 >=
         questions.length
     ) {
+      if (
+        reviewQuestions &&
+        reviewQuestions.length >
+          0
+      ) {
+        onReviewComplete?.();
+
+        return;
+      }
+
       void refresh();
 
       return;
@@ -374,7 +429,31 @@ export default function LittleLearnersPage({
         key,
 
       correct,
-    });
+    })
+      .then(
+        (
+          result,
+        ) => {
+          setSaveWarning(
+            "",
+          );
+
+          if (
+            result.studentCode
+          ) {
+            rememberLittleStudentCode(
+              result.studentCode,
+            );
+          }
+        },
+      )
+      .catch(
+        () => {
+          setSaveWarning(
+            "Progress not saved",
+          );
+        },
+      );
 
     if (
       correct
@@ -385,7 +464,7 @@ export default function LittleLearnersPage({
 
       window.setTimeout(
         next,
-        500,
+        1000,
       );
     } else {
       speak(
@@ -406,7 +485,7 @@ export default function LittleLearnersPage({
             question.promptText,
           );
         },
-        500,
+        1000,
       );
     }
   }
@@ -566,6 +645,21 @@ export default function LittleLearnersPage({
         </button>
 
         {
+          onOpenProgress && (
+            <button
+              type="button"
+              aria-label="ABA Progress"
+              title="ABA Progress"
+              onClick={
+                onOpenProgress
+              }
+            >
+              📊
+            </button>
+          )
+        }
+
+        {
           onOpenWords && (
             <button
               type="button"
@@ -675,6 +769,18 @@ export default function LittleLearnersPage({
         }
       </section>
 
+
+      {
+        saveWarning && (
+          <div
+            className="little-learners__save-warning"
+          >
+            ⚠ {
+              saveWarning
+            }
+          </div>
+        )
+      }
 
       <footer
         className="little-learners__progress"

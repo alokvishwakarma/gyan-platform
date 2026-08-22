@@ -172,27 +172,68 @@ export async function saveLittleAttempt(
     correct:
       boolean;
   },
-): Promise<void> {
-  await fetch(
-    "/api/education/little/attempt",
-    {
-      method:
-        "POST",
+): Promise<{
+  saved:
+    boolean;
 
-      credentials:
-        "include",
+  linked:
+    boolean;
 
-      headers: {
-        "content-type":
-          "application/json",
+  studentCode?:
+    string;
+}> {
+  const response =
+    await fetch(
+      "/api/education/little/attempt",
+      {
+        method:
+          "POST",
+
+        credentials:
+          "include",
+
+        headers: {
+          "content-type":
+            "application/json",
+        },
+
+        body:
+          JSON.stringify(
+            input,
+          ),
       },
+    );
 
-      body:
-        JSON.stringify(
-          input,
-        ),
-    },
-  );
+  const result =
+    await response.json() as {
+      saved?: boolean;
+      linked?: boolean;
+      studentCode?: string;
+      error?: string;
+    };
+
+  if (
+    !response.ok ||
+    !result.saved
+  ) {
+    throw new Error(
+      result.error ??
+        "Learning progress could not be saved.",
+    );
+  }
+
+  return {
+    saved:
+      true,
+
+    linked:
+      Boolean(
+        result.linked,
+      ),
+
+    studentCode:
+      result.studentCode,
+  };
 }
 
 
@@ -376,4 +417,234 @@ export function rememberLittleStudentCode(
   } catch {
     // Optional convenience only.
   }
+}
+
+
+export type AbaQuestionMastery = {
+  questionId:
+    number;
+
+  level:
+    number;
+
+  promptText:
+    string;
+
+  topicCode:
+    string;
+
+  topicName:
+    string;
+
+  subtopicCode:
+    string;
+
+  subtopicName:
+    string;
+
+  attempts:
+    number;
+
+  correctCount:
+    number;
+
+  wrongCount:
+    number;
+
+  accuracyPercent:
+    number;
+
+  latestCorrect:
+    boolean;
+
+  recentCorrect:
+    number;
+
+  recentAttempts:
+    number;
+
+  state:
+    "green" |
+    "yellow" |
+    "red";
+};
+
+
+export type AbaTopicMastery = {
+  code:
+    string;
+
+  name:
+    string;
+
+  attempts:
+    number;
+
+  correctCount:
+    number;
+
+  wrongCount:
+    number;
+
+  accuracyPercent:
+    number;
+
+  greenQuestions:
+    number;
+
+  yellowQuestions:
+    number;
+
+  redQuestions:
+    number;
+
+  state:
+    "green" |
+    "yellow" |
+    "red";
+};
+
+
+export type AbaProgressReport = {
+  student: {
+    code:
+      string;
+
+    name:
+      string;
+  };
+
+  summary: {
+    attempts:
+      number;
+
+    correctCount:
+      number;
+
+    wrongCount:
+      number;
+
+    accuracyPercent:
+      number;
+
+    questionsTried:
+      number;
+  };
+
+  topics:
+    AbaTopicMastery[];
+
+  questions:
+    AbaQuestionMastery[];
+};
+
+
+export async function loadAbaProgress(
+  studentCode?:
+    string,
+): Promise<AbaProgressReport> {
+  const parameters =
+    new URLSearchParams();
+
+  if (
+    studentCode
+  ) {
+    parameters.set(
+      "student",
+      studentCode
+        .trim()
+        .toUpperCase(),
+    );
+  }
+
+  const response =
+    await fetch(
+      `/api/education/little/progress?${parameters.toString()}`,
+      {
+        credentials:
+          "include",
+      },
+    );
+
+  const result =
+    await response.json() as
+      AbaProgressReport & {
+        error?:
+          string;
+      };
+
+  if (
+    !response.ok ||
+    !result.student
+  ) {
+    throw new Error(
+      result.error ??
+        "ABA progress could not be loaded.",
+    );
+  }
+
+  return result;
+}
+
+
+export async function loadAbaDifficultQuestions(
+  input: {
+    studentCode?:
+      string;
+
+    limit?:
+      number;
+  },
+): Promise<LittleQuestion[]> {
+  const parameters =
+    new URLSearchParams();
+
+  if (
+    input.studentCode
+  ) {
+    parameters.set(
+      "student",
+      input.studentCode
+        .trim()
+        .toUpperCase(),
+    );
+  }
+
+  parameters.set(
+    "limit",
+    String(
+      input.limit ??
+      5,
+    ),
+  );
+
+  const response =
+    await fetch(
+      `/api/education/little/review?${parameters.toString()}`,
+      {
+        credentials:
+          "include",
+      },
+    );
+
+  const result =
+    await response.json() as {
+      questions?:
+        LittleQuestion[];
+
+      error?:
+        string;
+    };
+
+  if (
+    !response.ok ||
+    !result.questions
+  ) {
+    throw new Error(
+      result.error ??
+        "Difficult questions could not be loaded.",
+    );
+  }
+
+  return result.questions;
 }

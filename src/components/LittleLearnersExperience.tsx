@@ -11,6 +11,13 @@ import WordsGrowingPage
 import LittleLearnerCardSetup
   from "./LittleLearnerCardSetup";
 
+import AbaProgressPage
+  from "./AbaProgressPage";
+
+import type {
+  LittleQuestion,
+} from "../config/littleLearners";
+
 import {
   getRememberedLittleStudentCode,
 } from "../config/littleLearners";
@@ -24,7 +31,9 @@ interface LittleLearnersExperienceProps {
 
 type View =
   | "practice"
-  | "words";
+  | "words"
+  | "progress"
+  | "review";
 
 
 export default function LittleLearnersExperience({
@@ -45,6 +54,17 @@ export default function LittleLearnersExperience({
     useState(
       () =>
         getRememberedLittleStudentCode(),
+    );
+
+
+  const [
+    reviewQuestions,
+    setReviewQuestions,
+  ] =
+    useState<
+      LittleQuestion[]
+    >(
+      [],
     );
 
 
@@ -94,6 +114,85 @@ export default function LittleLearnersExperience({
   }
 
 
+  if (
+    view ===
+      "progress"
+  ) {
+    return (
+      <AbaProgressPage
+        studentCode={
+          studentCode ||
+          undefined
+        }
+
+        onBack={() => {
+          setView(
+            "practice",
+          );
+        }}
+
+        onStartReview={(
+          questions,
+          resolvedStudentCode,
+        ) => {
+          setStudentCode(
+            resolvedStudentCode,
+          );
+
+          setReviewQuestions(
+            questions,
+          );
+
+          setView(
+            "review",
+          );
+        }}
+      />
+    );
+  }
+
+
+  if (
+    view ===
+      "review"
+  ) {
+    return (
+      <LittleLearnersPage
+        title="ABA Review"
+
+        level={
+          2
+        }
+
+        studentCode={
+          studentCode ||
+          undefined
+        }
+
+        reviewQuestions={
+          reviewQuestions
+        }
+
+        onBack={() => {
+          setView(
+            "progress",
+          );
+        }}
+
+        onReviewComplete={() => {
+          setReviewQuestions(
+            [],
+          );
+
+          setView(
+            "progress",
+          );
+        }}
+      />
+    );
+  }
+
+
   return (
     <LittleLearnersPage
       title="Education ABA"
@@ -110,6 +209,12 @@ export default function LittleLearnersExperience({
       onBack={
         onBack
       }
+
+      onOpenProgress={() => {
+        setView(
+          "progress",
+        );
+      }}
 
       onOpenWords={() => {
         setView(
