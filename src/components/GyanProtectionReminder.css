@@ -1,0 +1,63 @@
+.gyan-protection-reminder {
+  margin: 0.6rem 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #eadfb9;
+  border-radius: 10px;
+  background: #fff9e9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.gyan-protection-reminder > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.1rem;
+}
+
+.gyan-protection-reminder strong {
+  color: #574a20;
+  font-size: 0.8rem;
+}
+
+.gyan-protection-reminder span {
+  color: #726747;
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.gyan-protection-reminder button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 0.65rem;
+  border: 0;
+  border-radius: 8px;
+  background: #174a73;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.gyan-protection-reminder--report {
+  background: #f3f8ff;
+  border-color: #cbddeb;
+}
+
+.gyan-protection-reminder__quiet {
+  margin: 0.35rem 0;
+  color: #7a8791;
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+@media (max-width: 520px) {
+  .gyan-protection-reminder {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .gyan-protection-reminder button {
+    width: 100%;
+  }
+}

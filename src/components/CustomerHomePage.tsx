@@ -148,7 +148,7 @@ export default function CustomerHomePage({
             <strong>GYAN</strong>
             <small>Your Digital Seva Partner</small>
             <small className="customer-home__value">
-              Order Online • Pick Up When Ready • No Waiting
+              Learn • Discover • Grow
             </small>
             {shopName && (
               <small className="customer-home__shop-line">

@@ -784,7 +784,29 @@ async function loadReport(
           m.attempts,
           m.questions_answered AS questionsAnswered,
           m.correct_answers AS correctAnswers,
-          m.score_percent AS scorePercent
+
+          COALESCE(
+            (
+              SELECT
+                a.score_percent
+
+              FROM education_attempts a
+
+              WHERE
+                a.student_id = ?
+                AND a.subject_code =
+                    s.subject_code
+                AND a.topic_code =
+                    t.topic_code
+
+              ORDER BY
+                a.created_at DESC,
+                a.id DESC
+
+              LIMIT 1
+            ),
+            m.score_percent
+          ) AS scorePercent
 
         FROM education_topics t
 
@@ -812,6 +834,7 @@ async function loadReport(
         `,
       )
       .bind(
+        studentId,
         studentId,
         country,
         grade,
@@ -980,6 +1003,407 @@ async function getReport(
   });
 }
 
+
+async function getReviewQuestions(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
+  const user =
+    await currentUser(
+      request,
+      env,
+    );
+
+  if (!user) {
+    return jsonResponse(
+      {
+        error:
+          "Sign in with the verified email to revise saved work.",
+      },
+      401,
+    );
+  }
+
+  const studentCode =
+    normalizeCode(
+      url.searchParams.get(
+        "student",
+      ),
+    );
+
+  const subject =
+    normalizeCode(
+      url.searchParams.get(
+        "subject",
+      ) ??
+      "MATH",
+    );
+
+  const topic =
+    normalizeCode(
+      url.searchParams.get(
+        "topic",
+      ),
+    );
+
+  if (
+    !studentCode ||
+    !subject ||
+    !topic
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "student, subject and topic are required.",
+      },
+      400,
+    );
+  }
+
+  const student =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          id,
+          country_code,
+          grade_code
+
+        FROM education_students
+
+        WHERE
+          student_code = ?
+          AND email = ?
+
+        LIMIT 1
+        `,
+      )
+      .bind(
+        studentCode,
+        user.email,
+      )
+      .first<{
+        id: number;
+        country_code: string;
+        grade_code: string;
+      }>();
+
+  if (!student) {
+    return jsonResponse(
+      {
+        error:
+          "Student card not found for this account.",
+      },
+      404,
+    );
+  }
+
+  /*
+   * Latest response for each previously seen question.
+   * Only questions whose latest saved response is still wrong
+   * are considered unresolved.
+   */
+  const wrong =
+    await env.gyan_registry
+      .prepare(
+        `
+        WITH ranked AS (
+          SELECT
+            aa.question_id,
+            aa.correct,
+
+            ROW_NUMBER() OVER (
+              PARTITION BY aa.question_id
+              ORDER BY
+                a.created_at DESC,
+                aa.id DESC
+            ) AS rn
+
+          FROM education_attempt_answers aa
+
+          JOIN education_attempts a
+            ON a.id =
+               aa.attempt_id
+
+          JOIN education_questions q
+            ON q.id =
+               aa.question_id
+
+          JOIN education_subtopics st
+            ON st.id =
+               q.subtopic_id
+
+          JOIN education_topics t
+            ON t.id =
+               st.topic_id
+
+          JOIN education_subjects s
+            ON s.id =
+               t.subject_id
+
+          WHERE
+            a.student_id = ?
+            AND a.subject_code = ?
+            AND a.topic_code = ?
+            AND s.country_code = ?
+            AND s.grade_code = ?
+            AND q.active = 1
+        )
+
+        SELECT
+          question_id
+
+        FROM ranked
+
+        WHERE
+          rn = 1
+          AND correct = 0
+
+        LIMIT 5
+        `,
+      )
+      .bind(
+        student.id,
+        subject,
+        topic,
+        student.country_code,
+        student.grade_code,
+      )
+      .all<{
+        question_id: number;
+      }>();
+
+  const wrongIds =
+    wrong.results.map(
+      (
+        row,
+      ) =>
+        Number(
+          row.question_id,
+        ),
+    );
+
+  const remaining =
+    Math.max(
+      0,
+      5 -
+      wrongIds.length,
+    );
+
+  let fillIds:
+    number[] = [];
+
+  if (
+    remaining >
+      0
+  ) {
+    const exclusions =
+      wrongIds.length >
+        0
+        ? `AND q.id NOT IN (${
+            wrongIds
+              .map(
+                () =>
+                  "?",
+              )
+              .join(",")
+          })`
+        : "";
+
+    const fill =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT
+            q.id
+
+          FROM education_questions q
+
+          JOIN education_subtopics st
+            ON st.id =
+               q.subtopic_id
+
+          JOIN education_topics t
+            ON t.id =
+               st.topic_id
+
+          JOIN education_subjects s
+            ON s.id =
+               t.subject_id
+
+          WHERE
+            s.country_code = ?
+            AND s.grade_code = ?
+            AND s.subject_code = ?
+            AND t.topic_code = ?
+            AND q.active = 1
+
+            ${exclusions}
+
+          ORDER BY
+            RANDOM()
+
+          LIMIT ?
+          `,
+        )
+        .bind(
+          student.country_code,
+          student.grade_code,
+          subject,
+          topic,
+          ...wrongIds,
+          remaining,
+        )
+        .all<{
+          id: number;
+        }>();
+
+    fillIds =
+      fill.results.map(
+        (
+          row,
+        ) =>
+          Number(
+            row.id,
+          ),
+      );
+  }
+
+  const ids =
+    [
+      ...wrongIds,
+      ...fillIds,
+    ]
+      .slice(
+        0,
+        5,
+      );
+
+  if (
+    ids.length ===
+      0
+  ) {
+    return jsonResponse({
+      questions: [],
+      unresolvedWrongCount:
+        wrongIds.length,
+    });
+  }
+
+  const placeholders =
+    ids
+      .map(
+        () =>
+          "?",
+      )
+      .join(",");
+
+  const rows =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          q.id,
+          q.question_key,
+          q.difficulty,
+          q.question_text,
+          q.choice_a,
+          q.choice_b,
+          q.choice_c,
+          q.choice_d
+
+        FROM education_questions q
+
+        WHERE
+          q.id IN (
+            ${placeholders}
+          )
+          AND q.active = 1
+        `,
+      )
+      .bind(
+        ...ids,
+      )
+      .all<{
+        id: number;
+        question_key: string;
+        difficulty:
+          | "easy"
+          | "medium"
+          | "challenge";
+        question_text: string;
+        choice_a: string;
+        choice_b: string;
+        choice_c: string;
+        choice_d: string;
+      }>();
+
+  const byId =
+    new Map(
+      rows.results.map(
+        (
+          row,
+        ) => [
+          row.id,
+          row,
+        ],
+      ),
+    );
+
+  return jsonResponse({
+    unresolvedWrongCount:
+      wrongIds.length,
+
+    questions:
+      ids
+        .map(
+          (
+            id,
+          ) =>
+            byId.get(
+              id,
+            ),
+        )
+        .filter(
+          (
+            row,
+          ): row is
+            NonNullable<
+              typeof row
+            > =>
+              Boolean(
+                row,
+              ),
+        )
+        .map(
+          (
+            row,
+          ) => ({
+            id:
+              row.id,
+
+            key:
+              row.question_key,
+
+            difficulty:
+              row.difficulty,
+
+            text:
+              row.question_text,
+
+            choices: [
+              row.choice_a,
+              row.choice_b,
+              row.choice_c,
+              row.choice_d,
+            ],
+          }),
+        ),
+  });
+}
+
+
 export async function handleEducationProgressRoute(
   request: Request,
   env: Env,
@@ -1005,6 +1429,19 @@ export async function handleEducationProgressRoute(
       "/api/education/report"
   ) {
     return getReport(
+      request,
+      env,
+      url,
+    );
+  }
+
+  if (
+    request.method ===
+      "GET" &&
+    url.pathname ===
+      "/api/education/review-questions"
+  ) {
+    return getReviewQuestions(
       request,
       env,
       url,

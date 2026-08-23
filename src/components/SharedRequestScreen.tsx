@@ -734,7 +734,7 @@ export default function SharedRequestScreen({
             </span>
 
             <span className="public-home__value">
-              Order Online • Pick Up When Ready • No Waiting
+              Learn • Discover • Grow
             </span>
           </span>
         </button>

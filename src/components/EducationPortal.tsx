@@ -35,27 +35,14 @@ const GRADES:
   Array<
     [string, string]
   > = [
-  [
-    "PREK",
-    "Pre-K",
-  ],
-  [
-    "K",
-    "K",
-  ],
+  ["PREK", "Pre-K"],
 
   ...Array.from(
-    {
-      length: 12,
-    },
-    (
-      _,
-      index,
-    ) => [
+    { length: 12 },
+    (_, index) => [
       `GRADE_${index + 1}`,
-      `Grade ${index + 1}`,
-    ] as
-      [string, string],
+      String(index + 1),
+    ] as [string, string],
   ),
 ];
 
@@ -76,19 +63,24 @@ export default function EducationPortal({
     );
 
   const [
-    loading,
-    setLoading,
+    loadedCountry,
+    setLoadedCountry,
   ] =
-    useState(true);
+    useState<
+      EducationCountry |
+      null
+    >(
+      null,
+    );
+
+  const loading =
+    loadedCountry !==
+    country;
 
   useEffect(
     () => {
       let active =
         true;
-
-      setLoading(
-        true,
-      );
 
       void loadPublicEducationConfig(
         country,
@@ -101,16 +93,24 @@ export default function EducationPortal({
               setConfig(
                 next,
               );
+
+              setLoadedCountry(
+                country,
+              );
             }
           },
         )
-        .finally(
+        .catch(
           () => {
             if (
               active
             ) {
-              setLoading(
-                false,
+              setConfig(
+                null,
+              );
+
+              setLoadedCountry(
+                country,
               );
             }
           },
@@ -289,11 +289,11 @@ export default function EducationPortal({
                 </span>
 
                 <strong>
-                  Little Learners
+                  ABA
                 </strong>
 
                 <small>
-                  ABA Practice
+                  Little Learners
                 </small>
               </button>
 

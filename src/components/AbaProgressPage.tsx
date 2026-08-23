@@ -454,7 +454,7 @@ export default function AbaProgressPage({
                 className="aba-progress__section-title"
               >
                 <strong>
-                  Questions to Improve
+                  Wrong Attempts / Questions to Improve
                 </strong>
 
                 <small>
@@ -523,13 +523,17 @@ export default function AbaProgressPage({
                                 className="aba-progress__question-score"
                               >
                                 <strong>
-                                  {
+                                  ❌ {
                                     item.wrongCount
-                                  }×
+                                  }
                                 </strong>
 
                                 <small>
-                                  wrong
+                                  ✅ {
+                                    item.correctCount
+                                  } · {
+                                    item.accuracyPercent
+                                  }%
                                 </small>
                               </div>
                             </article>

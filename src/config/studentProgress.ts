@@ -90,3 +90,87 @@ export function studentCodeFromPath(
     ? match[1].toUpperCase()
     : null;
 }
+
+
+export type StudentReviewQuestion = {
+  id: number;
+  key: string;
+
+  difficulty:
+    | "easy"
+    | "medium"
+    | "challenge";
+
+  text: string;
+  choices: string[];
+};
+
+export async function loadStudentReviewQuestions(
+  input: {
+    studentCode: string;
+    subject?: string;
+    topic: string;
+  },
+): Promise<{
+  questions: StudentReviewQuestion[];
+  unresolvedWrongCount: number;
+}> {
+  const parameters =
+    new URLSearchParams({
+      student:
+        input.studentCode
+          .trim()
+          .toUpperCase(),
+
+      subject:
+        input.subject ??
+        "MATH",
+
+      topic:
+        input.topic
+          .trim()
+          .toUpperCase(),
+    });
+
+  const response =
+    await fetch(
+      `/api/education/review-questions?${parameters.toString()}`,
+      {
+        credentials:
+          "include",
+      },
+    );
+
+  const result =
+    await response.json() as {
+      questions?:
+        StudentReviewQuestion[];
+
+      unresolvedWrongCount?:
+        number;
+
+      error?:
+        string;
+    };
+
+  if (
+    !response.ok ||
+    !result.questions
+  ) {
+    throw new Error(
+      result.error ??
+        "Review questions could not be loaded.",
+    );
+  }
+
+  return {
+    questions:
+      result.questions,
+
+    unresolvedWrongCount:
+      Number(
+        result.unresolvedWrongCount ??
+        0,
+      ),
+  };
+}

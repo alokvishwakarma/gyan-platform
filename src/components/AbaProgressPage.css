@@ -468,3 +468,24 @@
       .56rem;
   }
 }
+
+
+.aba-progress__question {
+  grid-template-columns:
+    28px
+    minmax(
+      0,
+      1fr
+    )
+    64px;
+}
+
+.aba-progress__question-score strong {
+  white-space:
+    nowrap;
+}
+
+.aba-progress__question-score small {
+  white-space:
+    nowrap;
+}

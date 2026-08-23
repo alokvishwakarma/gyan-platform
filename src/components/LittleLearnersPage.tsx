@@ -631,23 +631,11 @@ export default function LittleLearnersPage({
           🔊
         </button>
 
-        <button
-          type="button"
-          aria-label="Settings"
-          title="Parent settings"
-          onClick={() =>
-            setSettingsOpen(
-              true,
-            )
-          }
-        >
-          ⚙️
-        </button>
-
         {
           onOpenProgress && (
             <button
               type="button"
+              className="little-learners__progress-button"
               aria-label="ABA Progress"
               title="ABA Progress"
               onClick={
@@ -673,6 +661,19 @@ export default function LittleLearnersPage({
             </button>
           )
         }
+
+        <button
+          type="button"
+          aria-label="Settings"
+          title="Parent settings"
+          onClick={() =>
+            setSettingsOpen(
+              true,
+            )
+          }
+        >
+          ⚙️
+        </button>
       </header>
 
       <div

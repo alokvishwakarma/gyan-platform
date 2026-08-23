@@ -138,3 +138,102 @@
       );
   }
 }
+
+
+.little-learners__save-warning {
+  position:
+    fixed;
+
+  left:
+    50%;
+
+  bottom:
+    42px;
+
+  transform:
+    translateX(-50%);
+
+  z-index:
+    20;
+
+  padding:
+    4px
+    8px;
+
+  border-radius:
+    999px;
+
+  background:
+    #fff5d8;
+
+  font-size:
+    .54rem;
+
+  font-weight:
+    700;
+}
+
+
+/* V2: keep all ABA header actions visible on narrow portrait screens */
+.little-learners__top {
+  gap:
+    5px;
+
+  justify-content:
+    space-between;
+}
+
+.little-learners__top button {
+  flex:
+    0 0 auto;
+}
+
+.little-learners__progress-button {
+  background:
+    #e8f2ff !important;
+
+  box-shadow:
+    0 0 0 2px
+    #bcd8ff inset;
+}
+
+@media (
+  max-width: 420px
+) {
+  .little-learners__top {
+    min-height:
+      50px;
+
+    padding:
+      4px 5px;
+
+    gap:
+      3px;
+  }
+
+  .little-learners__top button {
+    width:
+      42px;
+
+    height:
+      42px;
+
+    font-size:
+      1.12rem;
+  }
+}
+
+@media (
+  max-width: 340px
+) {
+  .little-learners__top button {
+    width:
+      38px;
+
+    height:
+      38px;
+
+    font-size:
+      1rem;
+  }
+}

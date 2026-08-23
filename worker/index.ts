@@ -123,6 +123,9 @@ import {
   handleStudentInviteCodeRoute,
 } from "./studentInviteCodes";
 
+import {
+  handleCalendarAccessRoute,
+} from "./calendarAccess";
 
 interface RegisterShopRequest {
   code?: unknown;
@@ -1298,6 +1301,21 @@ if (
       offlineShopCodeMatch[1],
     );
   }
+
+  const calendarAccessResponse =
+    await handleCalendarAccessRoute({
+      request,
+      env,
+      pathname:
+        url.pathname,
+    });
+
+if (
+  calendarAccessResponse
+) {
+  return calendarAccessResponse;
+}
+
 
 
   /*

@@ -181,3 +181,22 @@
   font-size: 0.54rem;
   opacity: 0.62;
 }
+
+/* V4 compact: Pre-K + 1–15 in five columns */
+.education-portal__section:first-of-type .education-portal__grid {
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:5px;
+}
+.education-portal__section:first-of-type .education-portal__grid button {
+  min-height:40px;padding:3px 2px;border-radius:8px;
+}
+.education-portal__section:first-of-type .education-portal__grid button span {display:none;}
+.education-portal__section:first-of-type .education-portal__grid button strong {
+  font-size:.63rem;line-height:1;
+}
+.education-portal__section {margin-top:6px;}
+.education-portal__section h2 {margin:0 0 4px;font-size:.67rem;}
+.education-portal__section:not(:first-of-type) .education-portal__grid {gap:5px;}
+.education-portal__section:not(:first-of-type) .education-portal__grid button {
+  min-height:48px;padding:5px;
+}

@@ -20,8 +20,15 @@ import PublicHomePage from "./components/PublicHomePage";
 import StudentProgressPage
   from "./components/StudentProgressPage";
 
+import CalendarAccessRegistrationPage
+  from "./components/CalendarAccessRegistrationPage";
+
+import GyanCalendarPage
+  from "./components/GyanCalendarPage";
+
 import LittleLearnersExperience
   from "./components/LittleLearnersExperience";
+
 
 import {
   studentCodeFromPath,
@@ -357,6 +364,49 @@ function isEducationAbaPath(
       "/education/aba"
   );
 }
+
+function getCalendarAccessSlug(
+  pathname =
+    window.location.pathname,
+):
+  string | null {
+  const match =
+    pathname.match(
+      /^\/([A-Za-z0-9]{4,5})$/,
+    );
+
+  if (
+    !match
+  ) {
+    return null;
+  }
+
+  const candidate =
+    match[1]
+      .toUpperCase();
+
+  /*
+   * Existing root-level GYAN application routes must win over
+   * the short calendar namespace.
+   */
+  const reserved =
+    new Set([
+      "ADMIN",
+      "ABOUT",
+      "CARD",
+    ]);
+
+  if (
+    reserved.has(
+      candidate,
+    )
+  ) {
+    return null;
+  }
+
+  return candidate;
+}
+
 
 export default function App() {
 
@@ -1809,6 +1859,61 @@ if (
       </>
     );
   }
+
+  /*
+   * Primary public routes:
+   *   /           -> Puzzle/Home
+   *   /puzzle     -> Puzzle/Home
+   *   /education  -> Education
+   *   /register   -> Generate unique GYAN + preview + print
+   *
+   * PublicHomePage already resolves /education explicitly and treats
+   * / and /puzzle as the normal puzzle/home shell.
+   */
+  if (
+    window.location.pathname ===
+      "/register"
+  ) {
+    return (
+      <GyanCalendarPage
+        registrationMode
+        onClose={() => {
+          window.location.href =
+            "/";
+        }}
+      />
+    );
+  }
+
+
+  const calendarAccessSlug =
+    getCalendarAccessSlug();
+
+  if (
+    calendarAccessSlug
+  ) {
+    return (
+      <CalendarAccessRegistrationPage
+        slug={
+          calendarAccessSlug
+        }
+        onContinue={() => {
+          /*
+           * A full navigation is intentional here.
+           * It guarantees App starts with the /education route
+           * after leaving the short-code registration screen.
+           */
+          window.location.href =
+            "/education";
+        }}
+        onBack={() => {
+          window.location.href =
+            "/";
+        }}
+      />
+    );
+  }
+
 
   const abaContent =
     abaRouteOpen

@@ -3,6 +3,11 @@ interface AuthUserRow {
   email: string;
 }
 
+interface SessionRow {
+  user_id: number;
+  email: string;
+}
+
 const MAGIC_LINK_MINUTES = 15;
 const SESSION_DAYS = 30;
 const SESSION_COOKIE = "gyan_session";
@@ -46,27 +51,31 @@ function validEmail(
 }
 
 
-function safeAuthReturnTo(
+function normalizeReturnPath(
   value: unknown,
 ): string {
+  const candidate =
+    String(
+      value ?? "",
+    )
+      .trim();
+
+  /*
+   * Local paths only. This prevents the magic-link endpoint from
+   * becoming an open redirect.
+   */
   if (
-    typeof value !== "string"
+    !candidate.startsWith(
+      "/",
+    ) ||
+    candidate.startsWith(
+      "//",
+    )
   ) {
     return "/";
   }
 
-  const normalized =
-    value.trim();
-
-  /*
-   * Allow only the GYAN student-card route.
-   * This prevents arbitrary/open redirects.
-   */
-  return /^\/student\/[A-Z2-9]{4}\/?$/i.test(
-    normalized,
-  )
-    ? normalized
-    : "/";
+  return candidate;
 }
 
 function bytesToHex(
@@ -412,8 +421,8 @@ export async function handlePublicAuthRoute(
       );
 
 
-    const returnTo =
-      safeAuthReturnTo(
+    const returnPath =
+      normalizeReturnPath(
         body.returnTo,
       );
 
@@ -442,10 +451,6 @@ export async function handlePublicAuthRoute(
           FROM auth_magic_links
           WHERE
             email = ?
-            AND COALESCE(
-              return_to,
-              '/'
-            ) = ?
             AND used_at IS NULL
             AND created_at >
               datetime(
@@ -455,10 +460,7 @@ export async function handlePublicAuthRoute(
           LIMIT 1
           `,
         )
-        .bind(
-          email,
-          returnTo,
-        )
+        .bind(email)
         .first<{
           id: number;
         }>();
@@ -483,24 +485,24 @@ export async function handlePublicAuthRoute(
         INSERT INTO auth_magic_links (
           email,
           token_hash,
-          expires_at,
-          return_to
+          return_path,
+          expires_at
         )
         VALUES (
+          ?,
           ?,
           ?,
           datetime(
             'now',
             '+${MAGIC_LINK_MINUTES} minutes'
-          ),
-          ?
+          )
         )
         `,
       )
       .bind(
         email,
         tokenHash,
-        returnTo,
+        returnPath,
       )
       .run();
 
@@ -513,12 +515,6 @@ export async function handlePublicAuthRoute(
     verifyUrl.searchParams.set(
       "token",
       token,
-    );
-
-
-    verifyUrl.searchParams.set(
-      "returnTo",
-      returnTo,
     );
 
     try {
@@ -566,13 +562,6 @@ export async function handlePublicAuthRoute(
     url.pathname ===
       "/api/auth/verify"
   ) {
-    const returnTo =
-      safeAuthReturnTo(
-        url.searchParams.get(
-          "returnTo",
-        ),
-      );
-
     const token =
       url.searchParams.get(
         "token",
@@ -600,7 +589,7 @@ export async function handlePublicAuthRoute(
           SELECT
             id,
             email,
-            return_to AS returnTo
+            return_path
 
           FROM auth_magic_links
 
@@ -619,9 +608,8 @@ export async function handlePublicAuthRoute(
         .first<{
           id: number;
           email: string;
-          returnTo:
-            string |
-            null;
+          return_path:
+            string | null;
         }>();
 
     if (!magic) {
@@ -736,49 +724,33 @@ export async function handlePublicAuthRoute(
         ),
     ]);
 
-    const verifiedReturnTo =
-      safeAuthReturnTo(
-        magic.returnTo ??
-        returnTo,
-      );
-
-    const redirectUrl =
+    const successUrl =
       new URL(
-        verifiedReturnTo,
+        normalizeReturnPath(
+          magic.return_path,
+        ),
         url.origin,
       );
 
-    redirectUrl.searchParams.set(
+    successUrl.searchParams.set(
       "auth",
       "success",
     );
 
-    /*
-     * Response.redirect() creates a response whose Headers
-     * object is immutable in Cloudflare Workers / Miniflare.
-     * Build the redirect response ourselves so Set-Cookie can
-     * be supplied at construction time.
-     */
-    return new Response(
-      null,
-      {
-        status:
-          302,
+    const response =
+      Response.redirect(
+        successUrl.toString(),
+        302,
+      );
 
-        headers: {
-          location:
-            redirectUrl.toString(),
-
-          "set-cookie":
-            sessionCookie(
-              sessionToken,
-            ),
-
-          "cache-control":
-            "no-store",
-        },
-      },
+    response.headers.append(
+      "set-cookie",
+      sessionCookie(
+        sessionToken,
+      ),
     );
+
+    return response;
   }
 
   /*

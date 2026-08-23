@@ -203,43 +203,6 @@
     );
 }
 
-.gyan-calendar-promo__image {
-  width:
-    min(
-      92%,
-      240px
-    );
-
-  max-height:
-    185px;
-
-  margin-bottom:
-    0.65rem;
-
-  object-fit:
-    contain;
-
-  border-radius:
-    14px;
-
-  background:
-    rgba(
-      255,
-      255,
-      255,
-      0.7
-    );
-
-  box-shadow:
-    0 10px 30px
-    rgba(
-      72,
-      71,
-      69,
-      0.12
-    );
-}
-
 .gyan-calendar-promo__lotus {
   width:
     clamp(
@@ -981,45 +944,3179 @@ span:nth-child(7n + 1) {
 }
 
 
-.gyan-calendar-print__top-generate {
-  justify-self: end;
+/* GYAN CALENDAR INVITATION V1 */
+.gyan-calendar-promo__art--photo{position:relative;padding:0;overflow:hidden;background:#f6e8ca}
+.gyan-calendar-promo__saraswati{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover;object-position:center center}
+.gyan-calendar-promo__photo-label{position:absolute;left:0;right:0;bottom:0;z-index:1;padding:.42rem .5rem;display:flex;align-items:baseline;justify-content:space-between;gap:.35rem;background:linear-gradient(to top,rgba(0,0,0,.64),rgba(0,0,0,0));color:#fff}
+.gyan-calendar-promo__photo-label strong{font-size:.72rem;letter-spacing:.08em}.gyan-calendar-promo__photo-label span{font-size:.64rem}
+.gyan-calendar-promo__services--three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.gyan-calendar-invite{margin-top:.35rem;padding:.45rem;border:1px solid rgba(23,74,115,.16);border-radius:9px;display:grid;gap:.16rem;background:rgba(255,255,255,.72)}
+.gyan-calendar-invite label{display:grid;grid-template-columns:auto 1fr;gap:.3rem;align-items:end;color:#536572;font-size:.56rem;font-weight:700}.gyan-calendar-invite label span{height:.8rem;border-bottom:1px solid #73838e}
+.gyan-calendar-invite p{margin:.08rem 0 0;color:#697985;font-size:.5rem}.gyan-calendar-invite>strong{color:#174a73;font-size:.78rem;letter-spacing:.015em}
+.gyan-calendar-invite__scratch{margin-top:.16rem;display:grid;grid-template-columns:auto minmax(74px,1fr);gap:.35rem;align-items:center}.gyan-calendar-invite__scratch small{color:#52636f;font-size:.48rem;font-weight:800}.gyan-calendar-invite__scratch span{min-height:20px;border-radius:3px;display:grid;place-items:center;background:repeating-linear-gradient(135deg,#a8adb1,#a8adb1 4px,#c6c9cc 4px,#c6c9cc 8px);color:#fff;font-size:.46rem;font-weight:900;letter-spacing:.06em}
+.gyan-calendar-invite>b{margin-top:.08rem;color:#174a73;font-size:.53rem}.gyan-calendar-invite>small{color:#687782;font-size:.48rem}.gyan-calendar-promo__qr-placeholder p small{display:block;margin-top:.08rem;color:#687782;font-size:.46rem}
+@media(max-width:330px){.gyan-calendar-promo__art--photo{min-height:170px}.gyan-calendar-promo__services--three{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
-  display: grid;
-  place-items: center;
+
+/* =========================================================
+   CALENDAR PRINT V2
+   ========================================================= */
+
+.gyan-calendar-invite__identity-row {
+  display:
+    grid;
+
+  grid-template-columns:
+    minmax(
+      0,
+      1fr
+    )
+    auto;
+
+  gap:
+    0.5rem;
+
+  align-items:
+    end;
+}
+
+.gyan-calendar-invite__identity-row label {
+  min-width:
+    0;
+}
+
+.gyan-calendar-invite__identity-row > div {
+  display:
+    grid;
+
+  gap:
+    0.03rem;
+
+  text-align:
+    right;
+}
+
+.gyan-calendar-invite__identity-row > div small {
+  color:
+    #697985;
+
+  font-size:
+    0.47rem;
+}
+
+.gyan-calendar-invite__identity-row > div strong {
+  color:
+    #174a73;
+
+  font-size:
+    0.72rem;
+
+  line-height:
+    1.05;
+}
+
+.gyan-calendar-print__top-print {
+  width:
+    38px;
+
+  height:
+    38px;
+
+  border:
+    0;
+
+  border-radius:
+    50%;
+
+  display:
+    grid;
+
+  place-items:
+    center;
 
   background:
-    rgba(233, 120, 37, 0.1) !important;
+    #e97825 !important;
 
-  color: #174a73;
+  color:
+    #fff;
 
-  font-size: 1rem !important;
+  cursor:
+    pointer;
 }
 
-.gyan-calendar-print__top-generate:disabled {
-  opacity: 0.48;
-  cursor: default;
+.gyan-calendar-print__top-print:disabled {
+  background:
+    #d9dee2 !important;
+
+  cursor:
+    default;
+
+  opacity:
+    0.7;
 }
 
-.gyan-calendar-print__error {
-  margin-top: 0.6rem;
-  padding: 0.6rem 0.7rem;
+.gyan-calendar-print__access {
+  margin-top:
+    0.75rem;
+
+  padding:
+    0.7rem;
 
   border:
     1px solid
-    rgba(176, 45, 45, 0.2);
+    rgba(
+      30,
+      66,
+      94,
+      0.12
+    );
 
-  border-radius: 8px;
+  border-radius:
+    10px;
+
+  display:
+    grid;
+
+  gap:
+    0.48rem;
 
   background:
-    rgba(176, 45, 45, 0.06);
-
-  color: #8b2f2f;
-
-  font-size: 0.7rem;
+    #fff;
 }
 
-.gyan-calendar-print__next button:not(:disabled) {
-  background: #e97825;
-  color: #fff;
-  cursor: pointer;
+.gyan-calendar-print__access-heading {
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    space-between;
+
+  gap:
+    0.5rem;
+}
+
+.gyan-calendar-print__access-heading > strong {
+  color:
+    #174a73;
+
+  font-size:
+    0.76rem;
+}
+
+.gyan-calendar-print__access-heading button {
+  min-height:
+    30px;
+
+  padding:
+    0 0.55rem;
+
+  border:
+    1px solid
+    rgba(
+      23,
+      74,
+      115,
+      0.14
+    );
+
+  border-radius:
+    999px;
+
+  background:
+    #f7fafc;
+
+  color:
+    #36556e;
+
+  font:
+    inherit;
+
+  font-size:
+    0.58rem;
+
+  cursor:
+    pointer;
+}
+
+.gyan-calendar-print__access-option {
+  display:
+    grid;
+
+  grid-template-columns:
+    20px
+    minmax(
+      0,
+      1fr
+    );
+
+  gap:
+    0.35rem;
+
+  align-items:
+    center;
+
+  padding:
+    0.42rem;
+
+  border-radius:
+    8px;
+
+  background:
+    #f8fafc;
+
+  cursor:
+    pointer;
+}
+
+.gyan-calendar-print__access-option > span {
+  display:
+    grid;
+
+  gap:
+    0.06rem;
+}
+
+.gyan-calendar-print__access-option strong {
+  color:
+    #36556e;
+
+  font-size:
+    0.64rem;
+}
+
+.gyan-calendar-print__access-option small {
+  color:
+    #71808a;
+
+  font-size:
+    0.54rem;
+}
+
+.gyan-calendar-print__code-preview {
+  padding:
+    0.55rem;
+
+  border:
+    1px dashed
+    rgba(
+      23,
+      74,
+      115,
+      0.25
+    );
+
+  border-radius:
+    8px;
+
+  display:
+    grid;
+
+  gap:
+    0.08rem;
+
+  text-align:
+    center;
+
+  background:
+    #fffdf7;
+}
+
+.gyan-calendar-print__code-preview small {
+  color:
+    #697985;
+
+  font-size:
+    0.48rem;
+
+  font-weight:
+    800;
+}
+
+.gyan-calendar-print__code-preview strong {
+  color:
+    #174a73;
+
+  font-size:
+    1rem;
+
+  letter-spacing:
+    0.08em;
+}
+
+.gyan-calendar-print__code-preview span {
+  color:
+    #687782;
+
+  font-size:
+    0.5rem;
+}
+
+.gyan-calendar-print__code-preview.is-scratch {
+  background:
+    linear-gradient(
+      135deg,
+      #f5f5f5,
+      #fff
+    );
+}
+
+.gyan-calendar-print__next > div {
+  min-width:
+    0;
+
+  display:
+    grid;
+
+  gap:
+    0.05rem;
+}
+
+.gyan-calendar-print__next > div strong {
+  color:
+    #174a73;
+
+  font-size:
+    0.8rem;
+}
+
+.gyan-calendar-print__next > div span {
+  color:
+    #687782;
+
+  font-size:
+    0.61rem;
+}
+
+.gyan-calendar-print__next button {
+  grid-column:
+    2;
+
+  grid-row:
+    1;
+
+  min-height:
+    40px;
+
+  background:
+    #e97825;
+
+  color:
+    #fff;
+
+  cursor:
+    pointer;
+}
+
+
+/*
+ * Browser printing: the print dialog can print physically or Save as PDF.
+ * UI controls disappear from the output.
+ */
+@media print {
+  .gyan-calendar-toolbar,
+  .gyan-calendar-print__heading,
+  .gyan-calendar-print__instruction,
+  .gyan-calendar-print__sizes,
+  .gyan-calendar-print__access,
+  .gyan-calendar-print__next {
+    display:
+      none !important;
+  }
+
+  .gyan-calendar-page,
+  .gyan-calendar-print {
+    width:
+      100% !important;
+
+    max-width:
+      none !important;
+
+    min-height:
+      0 !important;
+
+    padding:
+      0 !important;
+
+    margin:
+      0 !important;
+  }
+
+  body {
+    background:
+      #fff !important;
+  }
+}
+
+
+/* =========================================================
+   CALENDAR IMAGE + HEADER V3
+   ========================================================= */
+
+/*
+ * Preserve the full Saraswati artwork.
+ * contain = no cropping, no stretching.
+ */
+.gyan-calendar-promo__art--photo {
+  background:
+    #fff7e8;
+}
+
+.gyan-calendar-promo__saraswati {
+  object-fit:
+    contain !important;
+
+  object-position:
+    center center !important;
+
+  background:
+    #fff7e8;
+}
+
+/*
+ * GYAN + tagline now live together in the calendar header.
+ * The tagline is intentionally close to the size of YOUR GYAN.
+ */
+.gyan-calendar-card__brand {
+  display:
+    flex;
+
+  align-items:
+    baseline;
+
+  gap:
+    0.45rem;
+
+  min-width:
+    0;
+}
+
+.gyan-calendar-card__brand > span {
+  flex:
+    0 0 auto;
+}
+
+.gyan-calendar-card__brand > small {
+  margin:
+    0;
+
+  color:
+    rgba(
+      255,
+      255,
+      255,
+      0.86
+    );
+
+  font-size:
+    0.58rem;
+
+  font-weight:
+    700;
+
+  letter-spacing:
+    0.01em;
+
+  white-space:
+    nowrap;
+}
+
+/*
+ * Old overlay is intentionally disabled in case stale CSS remains.
+ */
+.gyan-calendar-promo__photo-label {
+  display:
+    none !important;
+}
+
+.gyan-calendar-promo__message h2 {
+  display:
+    none;
+}
+
+@media (
+  max-width: 420px
+) {
+  .gyan-calendar-card__brand {
+    gap:
+      0.25rem;
+  }
+
+  .gyan-calendar-card__brand > small {
+    font-size:
+      0.50rem;
+  }
+}
+
+@media (
+  max-width: 340px
+) {
+  .gyan-calendar-card__brand {
+    display:
+      grid;
+
+    gap:
+      0.02rem;
+  }
+
+  .gyan-calendar-card__brand > small {
+    font-size:
+      0.46rem;
+  }
+}
+
+
+/* =========================================================
+   FINAL CALENDAR DESIGN OVERRIDES
+   ========================================================= */
+
+.gyan-calendar-card__header {
+  display:
+    flex !important;
+
+  align-items:
+    center;
+
+  justify-content:
+    space-between;
+
+  gap:
+    1rem;
+
+  padding:
+    0.65rem
+    0.9rem;
+}
+
+.gyan-calendar-card__brand {
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  gap:
+    0.55rem;
+
+  min-width:
+    0;
+}
+
+.gyan-calendar-card__brand > span {
+  color:
+    #123f68;
+
+  font-size:
+    clamp(
+      1.2rem,
+      4vw,
+      2rem
+    );
+
+  font-weight:
+    900;
+
+  letter-spacing:
+    0.11em;
+}
+
+.gyan-calendar-card__brand > small {
+  color:
+    #123f68;
+
+  font-size:
+    clamp(
+      0.52rem,
+      1.4vw,
+      0.78rem
+    );
+
+  font-weight:
+    700;
+
+  white-space:
+    nowrap;
+}
+
+.gyan-calendar-card__range {
+  display:
+    grid;
+
+  gap:
+    0.08rem;
+
+  text-align:
+    right;
+}
+
+.gyan-calendar-card__range > strong {
+  color:
+    #e97825;
+
+  font-size:
+    clamp(
+      0.95rem,
+      2.8vw,
+      1.45rem
+    );
+}
+
+.gyan-calendar-card__range > small {
+  color:
+    #445b6d;
+
+  font-size:
+    0.56rem;
+}
+
+.gyan-calendar-promo {
+  grid-template-columns:
+    minmax(
+      0,
+      0.95fr
+    )
+    minmax(
+      0,
+      1.05fr
+    );
+
+  align-items:
+    stretch;
+}
+
+.gyan-calendar-promo__art--photo {
+  min-height:
+    320px;
+
+  background:
+    #f3ead8;
+}
+
+.gyan-calendar-promo__saraswati {
+  width:
+    100%;
+
+  height:
+    100%;
+
+  object-fit:
+    contain !important;
+
+  object-position:
+    center !important;
+
+  background:
+    #f3ead8;
+}
+
+.gyan-calendar-promo__message {
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  gap:
+    0.55rem;
+
+  padding:
+    0.85rem;
+
+  background:
+    linear-gradient(
+      180deg,
+      #fffaf2,
+      #fff
+    );
+}
+
+.gyan-calendar-promo__eyebrow {
+  color:
+    #e97825;
+
+  font-size:
+    0.72rem;
+
+  font-weight:
+    900;
+
+  letter-spacing:
+    0.16em;
+}
+
+.gyan-calendar-invite {
+  margin:
+    0;
+
+  padding:
+    0.7rem;
+
+  border:
+    1px solid
+    #d4dce4;
+
+  border-radius:
+    12px;
+
+  background:
+    #fff;
+}
+
+.gyan-calendar-invite__identity-row {
+  display:
+    grid;
+
+  grid-template-columns:
+    minmax(
+      0,
+      1fr
+    )
+    auto;
+
+  gap:
+    0.75rem;
+
+  align-items:
+    end;
+}
+
+.gyan-calendar-invite__identity-row label {
+  display:
+    grid;
+
+  grid-template-columns:
+    auto
+    1fr;
+
+  gap:
+    0.35rem;
+
+  align-items:
+    end;
+
+  font-size:
+    0.62rem;
+
+  font-weight:
+    800;
+}
+
+.gyan-calendar-invite__identity-row label span {
+  height:
+    0.8rem;
+
+  border-bottom:
+    1px solid
+    #657786;
+}
+
+.gyan-calendar-invite__identity-row > div {
+  display:
+    grid;
+
+  gap:
+    0.03rem;
+
+  text-align:
+    right;
+}
+
+.gyan-calendar-invite__identity-row > div small {
+  color:
+    #687782;
+
+  font-size:
+    0.48rem;
+}
+
+.gyan-calendar-invite__identity-row > div strong {
+  color:
+    #123f68;
+
+  font-size:
+    0.76rem;
+}
+
+.gyan-calendar-invite__access-row {
+  margin-top:
+    0.55rem;
+
+  display:
+    grid;
+
+  grid-template-columns:
+    auto
+    minmax(
+      0,
+      1fr
+    );
+
+  gap:
+    0.65rem;
+
+  align-items:
+    center;
+}
+
+.gyan-calendar-invite__access-row > span {
+  color:
+    #233c51;
+
+  font-size:
+    0.58rem;
+
+  font-weight:
+    900;
+}
+
+.gyan-calendar-invite__access-row > strong {
+  padding:
+    0.42rem
+    0.65rem;
+
+  border-radius:
+    8px;
+
+  background:
+    #f7ead4;
+
+  color:
+    #173f68;
+
+  font-size:
+    0.86rem;
+
+  letter-spacing:
+    0.05em;
+
+  text-align:
+    center;
+}
+
+.gyan-calendar-invite__access-note {
+  margin-top:
+    0.45rem;
+
+  display:
+    grid;
+
+  gap:
+    0.06rem;
+}
+
+.gyan-calendar-invite__access-note strong {
+  font-size:
+    0.6rem;
+}
+
+.gyan-calendar-invite__access-note span {
+  color:
+    #526572;
+
+  font-size:
+    0.53rem;
+}
+
+.gyan-calendar-register {
+  display:
+    grid;
+
+  grid-template-columns:
+    66px
+    minmax(
+      0,
+      1fr
+    );
+
+  gap:
+    0.65rem;
+
+  align-items:
+    center;
+
+  padding:
+    0.1rem
+    0;
+}
+
+.gyan-calendar-register__qr {
+  width:
+    62px;
+
+  aspect-ratio:
+    1;
+
+  display:
+    grid;
+
+  place-items:
+    center;
+
+  border:
+    3px solid
+    #173f68;
+
+  background:
+    repeating-linear-gradient(
+      45deg,
+      #173f68,
+      #173f68 4px,
+      #fff 4px,
+      #fff 8px
+    );
+
+  color:
+    transparent;
+}
+
+.gyan-calendar-register > div:last-child {
+  display:
+    grid;
+
+  gap:
+    0.08rem;
+}
+
+.gyan-calendar-register span {
+  color:
+    #435968;
+
+  font-size:
+    0.58rem;
+}
+
+.gyan-calendar-register strong {
+  color:
+    #123f68;
+
+  font-size:
+    0.8rem;
+}
+
+.gyan-calendar-register small {
+  color:
+    #687782;
+
+  font-size:
+    0.52rem;
+}
+
+.gyan-calendar-benefits {
+  margin-top:
+    auto;
+
+  padding-top:
+    0.5rem;
+
+  border-top:
+    1px solid
+    #e2e7eb;
+
+  display:
+    grid;
+
+  grid-template-columns:
+    repeat(
+      4,
+      minmax(
+        0,
+        1fr
+      )
+    );
+
+  gap:
+    0.3rem;
+}
+
+.gyan-calendar-benefits span {
+  min-width:
+    0;
+
+  color:
+    #173f68;
+
+  font-size:
+    0.52rem;
+
+  text-align:
+    center;
+}
+
+.gyan-calendar-benefits b {
+  font-size:
+    0.52rem;
+}
+
+@media (
+  max-width: 620px
+) {
+  .gyan-calendar-card__header {
+    align-items:
+      flex-start;
+  }
+
+  .gyan-calendar-card__brand {
+    display:
+      grid;
+
+    gap:
+      0.02rem;
+  }
+
+  .gyan-calendar-promo {
+    grid-template-columns:
+      1fr;
+  }
+
+  .gyan-calendar-promo__art--photo {
+    min-height:
+      260px;
+  }
+
+  .gyan-calendar-benefits {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(
+          0,
+          1fr
+        )
+      );
+  }
+}
+
+@media print {
+  .gyan-calendar-card__header {
+    padding:
+      0.4rem
+      0.6rem;
+  }
+
+  .gyan-calendar-promo__message {
+    padding:
+      0.55rem;
+  }
+
+  .gyan-calendar-promo__art--photo {
+    min-height:
+      300px;
+  }
+}
+
+
+/* =========================================================
+   TRUE PDF GENERATION
+   ========================================================= */
+
+/*
+ * Keep the PDF document rendered by the browser, but far outside
+ * the visible viewport. html2canvas can still capture it.
+ */
+.gyan-calendar-pdf-stage {
+  position:
+    fixed;
+
+  left:
+    -20000px;
+
+  top:
+    0;
+
+  z-index:
+    -1000;
+
+  pointer-events:
+    none;
+}
+
+.gyan-calendar-pdf-sheet {
+  overflow:
+    hidden;
+
+  box-sizing:
+    border-box;
+
+  background:
+    #fff;
+}
+
+.gyan-calendar-card--pdf {
+  width:
+    100% !important;
+
+  height:
+    100% !important;
+
+  max-width:
+    none !important;
+
+  margin:
+    0 !important;
+
+  border-radius:
+    0 !important;
+
+  box-shadow:
+    none !important;
+
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  overflow:
+    hidden;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-promo {
+  flex:
+    0 0 auto;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-year {
+  flex:
+    1 1 auto;
+
+  min-height:
+    0;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-card__footer {
+  flex:
+    0 0 auto;
+}
+
+.gyan-calendar-invite__code--scratch {
+  background:
+    #efefef !important;
+
+  color:
+    #182c3d !important;
+
+  border:
+    1px dashed
+    #8a959c;
+
+  /*
+   * Admin prints the actual code, then physically covers this
+   * rectangle with the scratch-off sticker.
+   */
+}
+
+.gyan-calendar-print__pdf-error {
+  margin:
+    0.7rem 0;
+
+  padding:
+    0.65rem;
+
+  border-radius:
+    8px;
+
+  background:
+    #fff0f0;
+
+  color:
+    #943c3c;
+
+  font-size:
+    0.62rem;
+
+  line-height:
+    1.35;
+}
+
+.gyan-calendar-print__next button:disabled {
+  cursor:
+    wait;
+
+  opacity:
+    0.7;
+}
+
+/*
+ * PDF capture should preserve backgrounds and exact print colors
+ * as closely as the browser allows.
+ */
+.gyan-calendar-pdf-sheet,
+.gyan-calendar-pdf-sheet * {
+  -webkit-print-color-adjust:
+    exact;
+
+  print-color-adjust:
+    exact;
+}
+
+
+/* =========================================================
+   PDF V2 FIXES
+   1) Saraswati photo only: crop away embedded right-side text/QR
+   2) Fit all 12 months in the generated PDF
+   ========================================================= */
+
+/*
+ * The current maa-saraswati.webp itself contains GYAN/text/QR on its
+ * right edge. Rather than stretching the artwork, enlarge it slightly
+ * inside the clipped photo frame and anchor it to the LEFT.
+ * The extra right side falls outside the frame.
+ */
+.gyan-calendar-promo__art--photo {
+  overflow:
+    hidden !important;
+
+  position:
+    relative;
+}
+
+.gyan-calendar-promo__saraswati {
+  width:
+    128% !important;
+
+  max-width:
+    none !important;
+
+  height:
+    100% !important;
+
+  object-fit:
+    cover !important;
+
+  object-position:
+    left center !important;
+
+  transform:
+    translateX(-1.5%);
+
+  transform-origin:
+    left center;
+}
+
+/*
+ * PDF-specific layout:
+ * The screen calendar can remain 3 columns. For a landscape PDF,
+ * 4 columns x 3 rows is much more space-efficient and prevents the
+ * lower six months from being clipped.
+ */
+.gyan-calendar-card--pdf
+.gyan-calendar-promo__art--photo {
+  min-height:
+    215px !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-promo__message {
+  padding:
+    0.45rem !important;
+
+  gap:
+    0.28rem !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-invite {
+  padding:
+    0.38rem !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-register {
+  grid-template-columns:
+    48px
+    minmax(
+      0,
+      1fr
+    ) !important;
+
+  gap:
+    0.4rem !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-register__qr {
+  width:
+    44px !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-benefits {
+  padding-top:
+    0.25rem !important;
+
+  gap:
+    0.15rem !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-year {
+  padding:
+    0.3rem
+    0.35rem
+    0.35rem !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-year__heading {
+  margin-bottom:
+    0.2rem !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-year__grid {
+  grid-template-columns:
+    repeat(
+      4,
+      minmax(
+        0,
+        1fr
+      )
+    ) !important;
+
+  gap:
+    0.18rem !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-month {
+  padding:
+    0.14rem !important;
+
+  border-radius:
+    5px !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-month h3 {
+  margin:
+    0 0 0.08rem !important;
+
+  font-size:
+    0.52rem !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-month__week span {
+  padding-bottom:
+    0.02rem !important;
+
+  font-size:
+    0.33rem !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-month__days span {
+  min-height:
+    10px !important;
+
+  font-size:
+    0.35rem !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-card__footer {
+  min-height:
+    28px !important;
+
+  padding:
+    0.28rem
+    0.55rem !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-card__footer strong,
+.gyan-calendar-card--pdf
+.gyan-calendar-card__footer span {
+  font-size:
+    0.46rem !important;
+}
+
+
+/* =========================================================
+   PDF V3 — PORTRAIT + SIZE-SPECIFIC CONTENT
+   ========================================================= */
+
+.gyan-calendar-card--pdf {
+  display:
+    grid !important;
+
+  grid-template-rows:
+    auto
+    1fr
+    auto;
+
+  height:
+    100% !important;
+
+  background:
+    #fff;
+}
+
+/* Keep the print header compact in portrait. */
+.gyan-calendar-card--pdf
+.gyan-calendar-card__header {
+  min-height:
+    54px;
+
+  padding:
+    0.45rem
+    0.6rem !important;
+}
+
+/* A5: top half hero, bottom half calendar. */
+.gyan-calendar-card--a5 {
+  grid-template-rows:
+    auto
+    minmax(
+      0,
+      1fr
+    )
+    auto;
+}
+
+.gyan-calendar-card--a5
+.gyan-calendar-promo {
+  height:
+    50%;
+  min-height:
+    0 !important;
+}
+
+.gyan-calendar-card--a5
+.gyan-calendar-year {
+  height:
+    50%;
+  min-height:
+    0 !important;
+}
+
+/*
+ * A5 hero itself stays two columns:
+ * image on left, YOUR GYAN on right.
+ */
+.gyan-calendar-card--a5
+.gyan-calendar-promo {
+  grid-template-columns:
+    1fr
+    1fr !important;
+}
+
+.gyan-calendar-card--a5
+.gyan-calendar-promo__art--photo {
+  min-height:
+    0 !important;
+
+  height:
+    100%;
+}
+
+/* A5 calendar: uniform 3 columns x 4 rows. */
+.gyan-calendar-card--a5
+.gyan-calendar-year__grid {
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(
+        0,
+        1fr
+      )
+    ) !important;
+
+  grid-template-rows:
+    repeat(
+      4,
+      minmax(
+        0,
+        1fr
+      )
+    );
+
+  height:
+    calc(
+      100% - 25px
+    );
+
+  gap:
+    0.15rem !important;
+}
+
+.gyan-calendar-card--a5
+.gyan-calendar-month {
+  min-height:
+    0;
+
+  overflow:
+    hidden;
+}
+
+/* A6: hero only — same image + YOUR GYAN format, no calendar. */
+.gyan-calendar-card--a6
+.gyan-calendar-promo {
+  height:
+    100%;
+
+  grid-template-columns:
+    1fr
+    1fr !important;
+}
+
+.gyan-calendar-card--a6
+.gyan-calendar-promo__art--photo {
+  min-height:
+    0 !important;
+
+  height:
+    100%;
+}
+
+/* A7: remove image; YOUR GYAN above compact calendar. */
+.gyan-calendar-card--a7
+.gyan-calendar-promo--no-image {
+  display:
+    block;
+
+  min-height:
+    0 !important;
+}
+
+.gyan-calendar-card--a7
+.gyan-calendar-promo__message {
+  min-height:
+    0;
+
+  padding:
+    0.5rem !important;
+}
+
+.gyan-calendar-card--a7
+.gyan-calendar-year__grid {
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(
+        0,
+        1fr
+      )
+    ) !important;
+
+  grid-template-rows:
+    repeat(
+      4,
+      minmax(
+        0,
+        1fr
+      )
+    );
+}
+
+/* A8: access / QR only. */
+.gyan-calendar-card--a8
+.gyan-calendar-promo--access-only {
+  display:
+    block;
+
+  height:
+    100%;
+}
+
+.gyan-calendar-card--a8
+.gyan-calendar-promo__message {
+  height:
+    100%;
+
+  justify-content:
+    center;
+}
+
+/* Credit card: calendar only, 3 x 4. */
+.gyan-calendar-card--credit_card
+.gyan-calendar-promo {
+  display:
+    none !important;
+}
+
+.gyan-calendar-card--credit_card
+.gyan-calendar-year {
+  height:
+    100%;
+
+  padding:
+    0.2rem !important;
+}
+
+.gyan-calendar-card--credit_card
+.gyan-calendar-year__grid {
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(
+        0,
+        1fr
+      )
+    ) !important;
+
+  grid-template-rows:
+    repeat(
+      4,
+      minmax(
+        0,
+        1fr
+      )
+    );
+
+  height:
+    calc(
+      100% - 22px
+    );
+}
+
+/* Business card: access / QR only, no image/calendar. */
+.gyan-calendar-card--business_card
+.gyan-calendar-promo--access-only {
+  display:
+    block;
+
+  height:
+    100%;
+}
+
+.gyan-calendar-card--business_card
+.gyan-calendar-promo__message {
+  height:
+    100%;
+
+  justify-content:
+    center;
+}
+
+/* Compact months enough for portrait A5/A7/Credit while preserving 3 x 4. */
+.gyan-calendar-card--pdf
+.gyan-calendar-month {
+  padding:
+    0.12rem !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-month h3 {
+  margin:
+    0 0 0.04rem !important;
+
+  font-size:
+    0.48rem !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-month__week span {
+  font-size:
+    0.3rem !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-month__days span {
+  min-height:
+    8px !important;
+
+  font-size:
+    0.31rem !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-card__footer {
+  min-height:
+    22px !important;
+
+  padding:
+    0.2rem
+    0.45rem !important;
+}
+
+
+/* =========================================================
+   PDF V4 — REVISED PAPER LAYOUTS
+   ========================================================= */
+
+/*
+ * A5 PORTRAIT
+ * Top 50%: image + YOUR GYAN side-by-side
+ * Bottom 50%: calendar, 4 columns x 3 rows
+ */
+.gyan-calendar-card--a5 {
+  display:
+    grid !important;
+
+  grid-template-rows:
+    auto
+    minmax(
+      0,
+      1fr
+    )
+    auto;
+}
+
+.gyan-calendar-card--a5
+.gyan-calendar-promo {
+  height:
+    50%;
+
+  min-height:
+    0 !important;
+
+  grid-template-columns:
+    1fr
+    1fr !important;
+}
+
+.gyan-calendar-card--a5
+.gyan-calendar-promo__art--photo {
+  min-height:
+    0 !important;
+
+  height:
+    100%;
+}
+
+.gyan-calendar-card--a5
+.gyan-calendar-year {
+  height:
+    50%;
+
+  min-height:
+    0 !important;
+
+  padding:
+    0.28rem
+    0.32rem
+    0.32rem !important;
+}
+
+.gyan-calendar-card--a5
+.gyan-calendar-year__grid {
+  grid-template-columns:
+    repeat(
+      4,
+      minmax(
+        0,
+        1fr
+      )
+    ) !important;
+
+  grid-template-rows:
+    repeat(
+      3,
+      minmax(
+        0,
+        1fr
+      )
+    ) !important;
+
+  height:
+    calc(
+      100% - 24px
+    );
+
+  gap:
+    0.16rem !important;
+}
+
+
+/*
+ * A6 PORTRAIT
+ * Top 50%: Saraswati image
+ * Bottom 50%: YOUR GYAN
+ * No calendar.
+ */
+.gyan-calendar-card--a6
+.gyan-calendar-promo {
+  height:
+    100%;
+
+  min-height:
+    0 !important;
+
+  display:
+    grid !important;
+
+  grid-template-columns:
+    1fr !important;
+
+  grid-template-rows:
+    1fr
+    1fr !important;
+}
+
+.gyan-calendar-card--a6
+.gyan-calendar-promo__art--photo {
+  grid-row:
+    1;
+
+  min-height:
+    0 !important;
+
+  height:
+    100%;
+}
+
+.gyan-calendar-card--a6
+.gyan-calendar-promo__message {
+  grid-row:
+    2;
+
+  min-height:
+    0;
+
+  height:
+    100%;
+
+  justify-content:
+    center;
+
+  padding:
+    0.55rem !important;
+}
+
+
+/*
+ * A7 PORTRAIT
+ * YOUR GYAN only.
+ * No Saraswati image and no calendar.
+ */
+.gyan-calendar-card--a7
+.gyan-calendar-promo--no-image {
+  display:
+    block !important;
+
+  height:
+    100%;
+
+  min-height:
+    0 !important;
+}
+
+.gyan-calendar-card--a7
+.gyan-calendar-promo__message {
+  height:
+    100%;
+
+  min-height:
+    0;
+
+  justify-content:
+    center;
+
+  padding:
+    0.65rem !important;
+}
+
+.gyan-calendar-card--a7
+.gyan-calendar-benefits {
+  margin-top:
+    0.65rem;
+}
+
+
+/*
+ * Keep the previous compact A8 / Business Card behavior.
+ */
+.gyan-calendar-card--a8
+.gyan-calendar-promo--access-only,
+.gyan-calendar-card--business_card
+.gyan-calendar-promo--access-only {
+  display:
+    block !important;
+
+  height:
+    100%;
+}
+
+.gyan-calendar-card--a8
+.gyan-calendar-promo__message,
+.gyan-calendar-card--business_card
+.gyan-calendar-promo__message {
+  height:
+    100%;
+
+  justify-content:
+    center;
+}
+
+
+/*
+ * Credit card stays calendar-only.
+ */
+.gyan-calendar-card--credit_card
+.gyan-calendar-promo {
+  display:
+    none !important;
+}
+
+.gyan-calendar-card--credit_card
+.gyan-calendar-year {
+  height:
+    100%;
+
+  padding:
+    0.2rem !important;
+}
+
+.gyan-calendar-card--credit_card
+.gyan-calendar-year__grid {
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(
+        0,
+        1fr
+      )
+    ) !important;
+
+  grid-template-rows:
+    repeat(
+      4,
+      minmax(
+        0,
+        1fr
+      )
+    ) !important;
+
+  height:
+    calc(
+      100% - 22px
+    );
+}
+
+
+/* =========================================================
+   PDF V5 — RESPONSIVE FILL + COMPLETE MONTHS + ADMIN 8-UP
+   ========================================================= */
+
+/*
+ * Calendar months are always six weeks high (42 cells).
+ * Nothing is clipped; every day through 31 remains visible.
+ */
+.gyan-calendar-card--pdf
+.gyan-calendar-month {
+  min-width:
+    0;
+
+  min-height:
+    0;
+
+  overflow:
+    visible !important;
+
+  display:
+    grid;
+
+  grid-template-rows:
+    auto
+    auto
+    minmax(
+      0,
+      1fr
+    );
+
+  padding:
+    clamp(
+      1px,
+      0.25vw,
+      4px
+    ) !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-month__week,
+.gyan-calendar-card--pdf
+.gyan-calendar-month__days {
+  min-width:
+    0;
+
+  min-height:
+    0;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-month__days {
+  display:
+    grid !important;
+
+  grid-template-columns:
+    repeat(
+      7,
+      minmax(
+        0,
+        1fr
+      )
+    ) !important;
+
+  grid-template-rows:
+    repeat(
+      6,
+      minmax(
+        0,
+        1fr
+      )
+    ) !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-month__days span {
+  min-width:
+    0 !important;
+
+  min-height:
+    0 !important;
+
+  display:
+    grid;
+
+  place-items:
+    center;
+
+  line-height:
+    1 !important;
+
+  font-size:
+    clamp(
+      5px,
+      0.62vw,
+      10px
+    ) !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-month__week span {
+  font-size:
+    clamp(
+      5px,
+      0.55vw,
+      9px
+    ) !important;
+
+  line-height:
+    1 !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-month h3 {
+  margin:
+    0 0
+    clamp(
+      1px,
+      0.12vw,
+      3px
+    ) !important;
+
+  font-size:
+    clamp(
+      7px,
+      0.72vw,
+      12px
+    ) !important;
+
+  line-height:
+    1.05 !important;
+}
+
+
+/*
+ * Every printable card uses all available height.
+ * Header/footer remain compact; the main content absorbs the rest.
+ */
+.gyan-calendar-card--pdf {
+  width:
+    100% !important;
+
+  height:
+    100% !important;
+
+  max-width:
+    none !important;
+
+  margin:
+    0 !important;
+
+  border-radius:
+    0 !important;
+
+  box-shadow:
+    none !important;
+
+  overflow:
+    hidden;
+
+  box-sizing:
+    border-box;
+
+  display:
+    flex !important;
+
+  flex-direction:
+    column;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-card__header,
+.gyan-calendar-card--pdf
+.gyan-calendar-card__footer {
+  flex:
+    0 0 auto;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-card__header {
+  min-height:
+    0 !important;
+
+  padding:
+    clamp(
+      3px,
+      0.5vw,
+      8px
+    ) !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-card__footer {
+  min-height:
+    0 !important;
+
+  padding:
+    clamp(
+      2px,
+      0.35vw,
+      6px
+    )
+    clamp(
+      3px,
+      0.5vw,
+      8px
+    ) !important;
+}
+
+
+/* ---------------------------------------------------------
+   A5 PORTRAIT
+   Remaining body is divided 50/50:
+   top = Saraswati + YOUR GYAN
+   bottom = 4 columns x 3 rows calendar
+   --------------------------------------------------------- */
+.gyan-calendar-card--a5
+.gyan-calendar-promo,
+.gyan-calendar-card--a5
+.gyan-calendar-year {
+  flex:
+    1 1 0 !important;
+
+  height:
+    auto !important;
+
+  min-height:
+    0 !important;
+}
+
+.gyan-calendar-card--a5
+.gyan-calendar-promo {
+  display:
+    grid !important;
+
+  grid-template-columns:
+    minmax(
+      0,
+      1fr
+    )
+    minmax(
+      0,
+      1fr
+    ) !important;
+}
+
+.gyan-calendar-card--a5
+.gyan-calendar-promo__art--photo {
+  height:
+    100% !important;
+
+  min-height:
+    0 !important;
+}
+
+.gyan-calendar-card--a5
+.gyan-calendar-promo__message {
+  min-height:
+    0;
+
+  padding:
+    clamp(
+      4px,
+      0.7vw,
+      10px
+    ) !important;
+
+  gap:
+    clamp(
+      2px,
+      0.3vw,
+      5px
+    ) !important;
+}
+
+.gyan-calendar-card--a5
+.gyan-calendar-year {
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  padding:
+    clamp(
+      3px,
+      0.45vw,
+      7px
+    ) !important;
+}
+
+.gyan-calendar-card--a5
+.gyan-calendar-year__heading {
+  flex:
+    0 0 auto;
+
+  margin-bottom:
+    clamp(
+      2px,
+      0.25vw,
+      4px
+    ) !important;
+}
+
+.gyan-calendar-card--a5
+.gyan-calendar-year__grid {
+  flex:
+    1 1 auto;
+
+  min-height:
+    0;
+
+  display:
+    grid !important;
+
+  grid-template-columns:
+    repeat(
+      4,
+      minmax(
+        0,
+        1fr
+      )
+    ) !important;
+
+  grid-template-rows:
+    repeat(
+      3,
+      minmax(
+        0,
+        1fr
+      )
+    ) !important;
+
+  gap:
+    clamp(
+      2px,
+      0.25vw,
+      4px
+    ) !important;
+}
+
+
+/* ---------------------------------------------------------
+   A6 PORTRAIT
+   Body 50/50 vertically:
+   top image, bottom YOUR GYAN.
+   --------------------------------------------------------- */
+.gyan-calendar-card--a6
+.gyan-calendar-promo {
+  flex:
+    1 1 auto;
+
+  min-height:
+    0 !important;
+
+  display:
+    grid !important;
+
+  grid-template-columns:
+    1fr !important;
+
+  grid-template-rows:
+    minmax(
+      0,
+      1fr
+    )
+    minmax(
+      0,
+      1fr
+    ) !important;
+}
+
+.gyan-calendar-card--a6
+.gyan-calendar-promo__art--photo,
+.gyan-calendar-card--a6
+.gyan-calendar-promo__message {
+  height:
+    auto !important;
+
+  min-height:
+    0 !important;
+}
+
+.gyan-calendar-card--a6
+.gyan-calendar-promo__message {
+  padding:
+    clamp(
+      5px,
+      0.9vw,
+      12px
+    ) !important;
+
+  justify-content:
+    space-evenly;
+}
+
+
+/* ---------------------------------------------------------
+   A7 PORTRAIT
+   YOUR GYAN only — stretch the content to fill.
+   --------------------------------------------------------- */
+.gyan-calendar-card--a7
+.gyan-calendar-promo {
+  flex:
+    1 1 auto;
+
+  min-height:
+    0 !important;
+
+  display:
+    block !important;
+}
+
+.gyan-calendar-card--a7
+.gyan-calendar-promo__message {
+  height:
+    100% !important;
+
+  min-height:
+    0;
+
+  padding:
+    clamp(
+      6px,
+      1.2vw,
+      16px
+    ) !important;
+
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  justify-content:
+    space-evenly;
+}
+
+
+/*
+ * Crop the source artwork to the Saraswati-only portion without
+ * stretching. The source file has extra GYAN/QR material to the right.
+ */
+.gyan-calendar-card--pdf
+.gyan-calendar-promo__art--photo {
+  overflow:
+    hidden !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-promo__saraswati {
+  width:
+    130% !important;
+
+  max-width:
+    none !important;
+
+  height:
+    100% !important;
+
+  object-fit:
+    cover !important;
+
+  object-position:
+    left center !important;
+
+  transform:
+    translateX(
+      -1%
+    );
+}
+
+
+/* ---------------------------------------------------------
+   Admin A4 imposition.
+   Eight unique cards are created per batch:
+   A5 -> 2 per sheet -> 4 A4 pages
+   A6 -> 4 per sheet -> 2 A4 pages
+   A7 -> 8 per sheet -> 1 A4 page
+   --------------------------------------------------------- */
+.gyan-calendar-admin-batch {
+  display:
+    grid;
+
+  gap:
+    24px;
+}
+
+.gyan-calendar-admin-sheet {
+  display:
+    grid;
+
+  align-items:
+    stretch;
+
+  justify-items:
+    stretch;
+
+  gap:
+    0;
+
+  overflow:
+    hidden;
+
+  background:
+    #fff;
+}
+
+.gyan-calendar-admin-cell {
+  min-width:
+    0;
+
+  min-height:
+    0;
+
+  overflow:
+    hidden;
+
+  border:
+    1px dashed
+    rgba(
+      0,
+      0,
+      0,
+      0.2
+    );
+
+  box-sizing:
+    border-box;
+}
+
+.gyan-calendar-admin-cell
+.gyan-calendar-card--batch {
+  width:
+    100% !important;
+
+  height:
+    100% !important;
+}
+
+
+/*
+ * In 8-up A7, typography must shrink with the physical card rather than
+ * clipping. The same content still expands to the available card area.
+ */
+.gyan-calendar-admin-sheet--a7
+.gyan-calendar-card__brand > span {
+  font-size:
+    15px !important;
+}
+
+.gyan-calendar-admin-sheet--a7
+.gyan-calendar-card__brand > small,
+.gyan-calendar-admin-sheet--a7
+.gyan-calendar-card__range > small {
+  font-size:
+    5px !important;
+}
+
+.gyan-calendar-admin-sheet--a7
+.gyan-calendar-card__range > strong {
+  font-size:
+    8px !important;
+}
+
+.gyan-calendar-admin-sheet--a7
+.gyan-calendar-promo__eyebrow {
+  font-size:
+    7px !important;
+}
+
+.gyan-calendar-admin-sheet--a7
+.gyan-calendar-invite__identity-row > div strong {
+  font-size:
+    8px !important;
+}
+
+.gyan-calendar-admin-sheet--a7
+.gyan-calendar-invite__access-row > strong {
+  font-size:
+    8px !important;
+
+  padding:
+    4px !important;
+}
+
+.gyan-calendar-admin-sheet--a7
+.gyan-calendar-register__qr {
+  width:
+    38px !important;
+}
+
+.gyan-calendar-admin-sheet--a7
+.gyan-calendar-benefits {
+  gap:
+    2px !important;
+}
+
+.gyan-calendar-admin-sheet--a7
+.gyan-calendar-benefits span,
+.gyan-calendar-admin-sheet--a7
+.gyan-calendar-benefits b {
+  font-size:
+    5px !important;
+}
+
+
+/* =========================================================
+   PDF V6 — PRINT-SAFE ADMIN IMPOSITION
+   ========================================================= */
+
+/*
+ * Two exact A5 portrait cards consume 296 x 210 mm on A4 landscape.
+ * That leaves only 1 mm horizontally and 0 mm vertically, which most
+ * home/office printers cannot print borderlessly.
+ *
+ * The admin sheets therefore add a small print-safe margin and gutter,
+ * then scale each card down uniformly by only a few percent.
+ */
+.gyan-calendar-admin-sheet {
+  box-sizing:
+    border-box;
+
+  padding:
+    18px !important;
+
+  gap:
+    12px !important;
+
+  align-items:
+    center !important;
+
+  justify-items:
+    center !important;
+}
+
+.gyan-calendar-admin-cell {
+  width:
+    100%;
+
+  height:
+    100%;
+
+  min-width:
+    0;
+
+  min-height:
+    0;
+
+  display:
+    grid;
+
+  place-items:
+    center;
+
+  overflow:
+    hidden;
+
+  box-sizing:
+    border-box;
+}
+
+
+/*
+ * Preserve the real A-series proportions instead of stretching the
+ * card to whatever grid-cell ratio happens to remain after margins.
+ */
+.gyan-calendar-admin-cell
+.gyan-calendar-card--batch {
+  width:
+    100% !important;
+
+  height:
+    auto !important;
+
+  max-width:
+    100% !important;
+
+  max-height:
+    100% !important;
+
+  margin:
+    auto !important;
+
+  box-sizing:
+    border-box;
+}
+
+
+/* A5 / A6 / A7 have the same √2 portrait proportion. */
+.gyan-calendar-admin-sheet--a5
+.gyan-calendar-card--batch,
+.gyan-calendar-admin-sheet--a6
+.gyan-calendar-card--batch,
+.gyan-calendar-admin-sheet--a7
+.gyan-calendar-card--batch {
+  aspect-ratio:
+    148 / 210;
+}
+
+
+/*
+ * Smaller safe margin for A7 because eight cards already have plenty
+ * of separation from the A4 edge once the sheet is inset.
+ */
+.gyan-calendar-admin-sheet--a7 {
+  padding:
+    14px !important;
+
+  gap:
+    8px !important;
+}
+
+
+/*
+ * Keep cut lines visible but subtle. They sit inside the safe area
+ * rather than touching the physical A4 edge.
+ */
+.gyan-calendar-admin-cell {
+  border:
+    1px dashed
+    rgba(
+      0,
+      0,
+      0,
+      0.28
+    ) !important;
+}
+
+
+/* =========================================================
+   QR + SHORT URL LAYOUT FIX
+   Prevent QR and gyan.cc/<slug> from visually merging.
+   Applies to screen and generated PDF.
+   ========================================================= */
+
+.gyan-calendar-register {
+  display:
+    grid !important;
+
+  grid-template-columns:
+    64px
+    minmax(
+      0,
+      1fr
+    ) !important;
+
+  column-gap:
+    0.75rem !important;
+
+  row-gap:
+    0.25rem !important;
+
+  align-items:
+    center !important;
+
+  min-width:
+    0;
+}
+
+.gyan-calendar-register__qr {
+  width:
+    60px !important;
+
+  height:
+    60px !important;
+
+  min-width:
+    60px !important;
+
+  min-height:
+    60px !important;
+
+  padding:
+    3px !important;
+
+  border:
+    1px solid
+    #d5dde4 !important;
+
+  border-radius:
+    6px !important;
+
+  box-sizing:
+    border-box !important;
+
+  display:
+    grid !important;
+
+  place-items:
+    center !important;
+
+  overflow:
+    hidden !important;
+
+  background:
+    #fff !important;
+
+  color:
+    inherit !important;
+}
+
+.gyan-calendar-register__qr svg {
+  display:
+    block !important;
+
+  width:
+    100% !important;
+
+  height:
+    100% !important;
+
+  max-width:
+    100% !important;
+
+  max-height:
+    100% !important;
+}
+
+.gyan-calendar-register > div:last-child {
+  min-width:
+    0 !important;
+
+  display:
+    grid !important;
+
+  gap:
+    0.12rem !important;
+
+  align-content:
+    center;
+}
+
+.gyan-calendar-register > div:last-child > strong {
+  display:
+    block;
+
+  min-width:
+    0;
+
+  max-width:
+    100%;
+
+  overflow-wrap:
+    anywhere;
+
+  word-break:
+    break-word;
+
+  line-height:
+    1.15;
+
+  font-size:
+    clamp(
+      0.58rem,
+      1.2vw,
+      0.78rem
+    ) !important;
+}
+
+/*
+ * In PDF mode the QR and short URL need a little more breathing room.
+ */
+.gyan-calendar-card--pdf
+.gyan-calendar-register {
+  grid-template-columns:
+    56px
+    minmax(
+      0,
+      1fr
+    ) !important;
+
+  column-gap:
+    0.55rem !important;
+}
+
+.gyan-calendar-card--pdf
+.gyan-calendar-register__qr {
+  width:
+    52px !important;
+
+  height:
+    52px !important;
+
+  min-width:
+    52px !important;
+
+  min-height:
+    52px !important;
+
+  padding:
+    3px !important;
+}
+
+/*
+ * Smaller admin formats still keep a visible white quiet-zone around
+ * the QR rather than allowing the text block to touch it.
+ */
+.gyan-calendar-admin-sheet--a7
+.gyan-calendar-register {
+  grid-template-columns:
+    38px
+    minmax(
+      0,
+      1fr
+    ) !important;
+
+  column-gap:
+    5px !important;
+}
+
+.gyan-calendar-admin-sheet--a7
+.gyan-calendar-register__qr {
+  width:
+    34px !important;
+
+  height:
+    34px !important;
+
+  min-width:
+    34px !important;
+
+  min-height:
+    34px !important;
+
+  padding:
+    2px !important;
+}
+
+@media (
+  max-width: 420px
+) {
+  .gyan-calendar-register {
+    grid-template-columns:
+      56px
+      minmax(
+        0,
+        1fr
+      ) !important;
+
+    column-gap:
+      0.55rem !important;
+  }
+
+  .gyan-calendar-register__qr {
+    width:
+      52px !important;
+
+    height:
+      52px !important;
+
+    min-width:
+      52px !important;
+
+    min-height:
+      52px !important;
+  }
+}
+
+
+/* =========================================================
+   UNIQUE QR PREVIEW STATUS
+   ========================================================= */
+
+.gyan-calendar-print__qr-status {
+  margin:
+    0.55rem 0;
+
+  padding:
+    0.55rem
+    0.7rem;
+
+  border:
+    1px solid
+    #d7e4ec;
+
+  border-radius:
+    9px;
+
+  background:
+    #f7fbfe;
+
+  color:
+    #31566e;
+
+  font-size:
+    0.7rem;
+
+  font-weight:
+    700;
+}
+
+
+/* =========================================================
+   VISIBLE PRINT PREVIEW WITH REAL QR
+   ========================================================= */
+
+.gyan-calendar-print__live-preview {
+  margin:
+    0.8rem 0
+    5.5rem;
+
+  padding:
+    0.5rem;
+
+  border:
+    1px solid
+    #d8e2e9;
+
+  border-radius:
+    12px;
+
+  background:
+    #eef4f8;
+
+  overflow:
+    auto;
+}
+
+.gyan-calendar-card--preview {
+  width:
+    min(
+      100%,
+      760px
+    ) !important;
+
+  margin:
+    0 auto !important;
+
+  box-shadow:
+    0 8px 24px
+    rgba(
+      20,
+      45,
+      65,
+      0.12
+    ) !important;
+}
+
+/*
+ * The preview is screen-only. The hidden PDF stage remains separate.
+ */
+@media print {
+  .gyan-calendar-print__live-preview {
+    display:
+      none !important;
+  }
+}
+
+
+/* =========================================================
+   NON-INDIA REAL QR HERO
+   ========================================================= */
+
+.gyan-calendar-promo--us
+.gyan-calendar-promo__art--photo {
+  overflow:
+    hidden !important;
+
+  background:
+    #eef4f8;
+}
+
+.gyan-calendar-promo--us
+.gyan-calendar-promo__us-image {
+  width:
+    100% !important;
+
+  height:
+    100% !important;
+
+  max-width:
+    none !important;
+
+  object-fit:
+    cover !important;
+
+  object-position:
+    center !important;
+
+  display:
+    block;
+}
+
+.gyan-calendar-promo--us
+.gyan-calendar-register {
+  display:
+    grid !important;
+
+  grid-template-columns:
+    64px
+    minmax(
+      0,
+      1fr
+    ) !important;
+
+  column-gap:
+    0.75rem !important;
+
+  align-items:
+    center !important;
+}
+
+.gyan-calendar-promo--us
+.gyan-calendar-register__qr {
+  background:
+    #fff !important;
+}
+
+
+/* =========================================================
+   PRINT HEADER — UNIQUE GYAN SUMMARY
+   ========================================================= */
+
+.gyan-calendar-print__issued-summary {
+  margin-top:
+    0.3rem;
+
+  display:
+    flex;
+
+  flex-wrap:
+    wrap;
+
+  align-items:
+    baseline;
+
+  gap:
+    0.18rem
+    0.55rem;
+
+  color:
+    #334d60;
+}
+
+.gyan-calendar-print__issued-summary > strong {
+  color:
+    #174a73;
+
+  font-size:
+    0.82rem;
+
+  overflow-wrap:
+    anywhere;
+}
+
+.gyan-calendar-print__issued-summary > span {
+  font-size:
+    0.7rem;
+
+  font-weight:
+    700;
+}
+
+.gyan-calendar-print__issued-summary > span b {
+  color:
+    #174a73;
+
+  letter-spacing:
+    0.04em;
+}
+
+.gyan-calendar-print__issued-summary > small {
+  flex-basis:
+    100%;
+
+  color:
+    #6d7b84;
+
+  font-size:
+    0.66rem;
+}
+
+.gyan-calendar-print__top-print {
+  min-width:
+    72px;
+
+  padding:
+    0.45rem
+    0.65rem !important;
+
+  white-space:
+    nowrap;
+
+  font-weight:
+    800;
+}
+
+@media (
+  max-width: 520px
+) {
+  .gyan-calendar-print__issued-summary {
+    display:
+      grid;
+
+    gap:
+      0.12rem;
+  }
+
+  .gyan-calendar-print__issued-summary > small {
+    flex-basis:
+      auto;
+  }
+
+  .gyan-calendar-print__top-print {
+    min-width:
+      auto;
+  }
+}
+
+
+/* =========================================================
+   EDUCATION ACCOUNT + CALENDAR LABEL REFINEMENT
+   ========================================================= */
+
+.gyan-calendar-toolbar__title,
+.gyan-calendar-print__header h2 {
+  line-height: 1.15;
+}
+
+.gyan-calendar-print__bottom-action,
+.gyan-calendar-print__generate {
+  white-space: normal;
+  text-align: center;
+}
+
+@media (max-width: 520px) {
+  .gyan-calendar-toolbar__title,
+  .gyan-calendar-print__header h2 {
+    font-size: 1rem;
+  }
 }

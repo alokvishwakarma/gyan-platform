@@ -20,6 +20,9 @@ import GyanCalendarPage
 import EducationLearningHub
   from "./EducationLearningHub";
 
+import MyRatingsPage
+  from "./MyRatingsPage";
+
 import {
   ADMIN_LOCATION_CHANGED_EVENT,
   getAdminLocationOverride,
@@ -386,10 +389,112 @@ export default function PublicHomePage({
   ] =
     useState<
       "home" |
-      "education"
-    >(
-      "home",
+      "education" |
+      "services" |
+      "ratings"
+    >(() => {
+      const pathname =
+        window.location.pathname;
+
+      if (
+        pathname ===
+          "/services"
+      ) {
+        return "services";
+      }
+
+      if (
+        pathname ===
+          "/ratings"
+      ) {
+        return "ratings";
+      }
+
+      if (
+        pathname.startsWith(
+          "/education",
+        )
+      ) {
+        return "education";
+      }
+
+      return "home";
+    });
+
+
+  useEffect(() => {
+    const syncViewFromPath =
+      (): void => {
+        const pathname =
+          window.location.pathname;
+
+        if (
+          pathname ===
+            "/services"
+        ) {
+          setActiveView(
+            "services",
+          );
+
+          setShowPuzzle(
+            false,
+          );
+
+          return;
+        }
+
+        if (
+          pathname ===
+            "/ratings"
+        ) {
+          setActiveView(
+            "ratings",
+          );
+
+          setShowPuzzle(
+            false,
+          );
+
+          return;
+        }
+
+        if (
+          pathname.startsWith(
+            "/education",
+          )
+        ) {
+          setActiveView(
+            "education",
+          );
+
+          setShowPuzzle(
+            false,
+          );
+
+          return;
+        }
+
+        setActiveView(
+          "home",
+        );
+
+        setShowPuzzle(
+          true,
+        );
+      };
+
+    window.addEventListener(
+      "popstate",
+      syncViewFromPath,
     );
+
+    return () => {
+      window.removeEventListener(
+        "popstate",
+        syncViewFromPath,
+      );
+    };
+  }, []);
 
 
   const [
@@ -890,6 +995,36 @@ export default function PublicHomePage({
   }
 
 
+  function openServices():
+    void {
+    setSearchText(
+      "",
+    );
+
+    setSearchFocused(
+      false,
+    );
+
+    setCalendarOpen(
+      false,
+    );
+
+    setShowPuzzle(
+      false,
+    );
+
+    setActiveView(
+      "services",
+    );
+
+    window.history.pushState(
+      {},
+      "",
+      "/services",
+    );
+  }
+
+
   function isEducationService(
     serviceCode: string,
     serviceName: string,
@@ -997,7 +1132,8 @@ export default function PublicHomePage({
             <span
               className="public-home__value"
             >
-              Learn • Discover • Get Things Done
+              Order Online • Pick Up When
+              Ready • No Waiting
             </span>
 
             {shopName && (
@@ -1204,27 +1340,41 @@ export default function PublicHomePage({
             🔎
           </button>
 
-<button
-  type="button"
-  className={[
-    "public-home__search-button",
-    "public-home__education-button",
+          <button
+            type="button"
+            className="public-home__search-button"
+            aria-label="Open Education Portal"
+            title="Education Portal"
+            onClick={
+              openEducation
+            }
+          >
+            🎓
+          </button>
 
-    activeView ===
-      "education"
-      ? "public-home__education-button--active"
-      : "",
-  ]
-    .filter(Boolean)
-    .join(" ")}
-  aria-label="Open Education Portal"
-  title="Education"
-  onClick={
-    openEducation
-  }
->
-  🎓
-</button>
+          <button
+            type="button"
+            className={[
+              "public-home__search-button",
+              activeView ===
+                "services"
+                ? "public-home__search-button--active"
+                : "",
+            ]
+              .filter(
+                Boolean,
+              )
+              .join(
+                " ",
+              )}
+            aria-label="Open Services"
+            title="Services"
+            onClick={
+              openServices
+            }
+          >
+            🧰
+          </button>
 
           <UserAccountMenu
             onOpenAdmin={
@@ -1236,6 +1386,26 @@ export default function PublicHomePage({
             onOpenMyShop={
               onOpenMyShop
             }
+
+            onOpenMyRatings={() => {
+              setSearchFocused(
+                false,
+              );
+
+              setShowPuzzle(
+                false,
+              );
+
+              setActiveView(
+                "ratings",
+              );
+
+              window.history.pushState(
+                {},
+                "",
+                "/ratings",
+              );
+            }}
                       onRegisterMyShop={
               onRegisterMyShop
             }
@@ -1280,28 +1450,51 @@ export default function PublicHomePage({
                 "education"
               ? (
                 <EducationLearningHub
-  country={
-    educationCountry
-  }
+                  country={
+                    educationCountry
+                  }
 
-  onBack={() => {
-    setActiveView(
-      "home",
-    );
+                  onBack={() => {
+                    setActiveView(
+                      "home",
+                    );
 
-    setShowPuzzle(
-      true,
-    );
+                    setShowPuzzle(
+                      true,
+                    );
 
-    window.history.pushState(
-      {},
-      "",
-      "/",
-    );
-  }}
-/>
+                    window.history.pushState(
+                      {},
+                      "",
+                      "/",
+                    );
+                  }}
+                />
               )
-              : shellContent
+              : activeView ===
+                  "ratings"
+                ? (
+                  <MyRatingsPage
+                    onBack={() => {
+                      setActiveView(
+                        "home",
+                      );
+
+                      setShowPuzzle(
+                        true,
+                      );
+
+                      window.history.pushState(
+                        {},
+                        "",
+                        "/",
+                      );
+                    }}
+                  />
+                )
+              : shellContent &&
+                activeView !==
+                  "services"
                 ? (
                   shellContent
                 )
@@ -1326,6 +1519,24 @@ export default function PublicHomePage({
                 openEducation
               }
             />
+          )
+        }
+
+
+        {
+          activeView ===
+            "services" && (
+            <div
+              className="public-home__services-view-heading"
+            >
+              <strong>
+                🧰 Services
+              </strong>
+
+              <small>
+                Featured · Online · Nearby
+              </small>
+            </div>
           )
         }
 

@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useState,
 } from "react";
 
@@ -81,8 +82,11 @@ export default function EducationLearningHub({
     step,
     setStep,
   ] =
-    useState<Step>(
-      "portal",
+    useState<Step>(() =>
+      window.location.pathname ===
+      "/education/aba"
+        ? "little-learners"
+        : "portal",
     );
 
   const [
@@ -95,6 +99,17 @@ export default function EducationLearningHub({
     >(
       null,
     );
+
+  const [
+    subjects,
+    setSubjects,
+  ] =
+    useState<
+      LearningItem[]
+    >(
+      [],
+    );
+
 
   const [
     subject,
@@ -230,6 +245,31 @@ export default function EducationLearningHub({
     useState("");
 
 
+  useEffect(() => {
+    const syncEducationRoute =
+      (): void => {
+        setStep(
+          window.location.pathname ===
+            "/education/aba"
+            ? "little-learners"
+            : "portal",
+        );
+      };
+
+    window.addEventListener(
+      "popstate",
+      syncEducationRoute,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "popstate",
+        syncEducationRoute,
+      );
+    };
+  }, []);
+
+
   async function loadTopicList(
     selection:
       PortalSelection,
@@ -268,21 +308,76 @@ export default function EducationLearningHub({
       selection.code ===
         "LITTLE_LEARNERS"
     ) {
+      window.history.pushState(
+        {},
+        "",
+        "/education/aba",
+      );
+
       setStep(
         "little-learners",
       );
-
       return;
     }
 
-
     if (
-      selection.type !==
-        "grade"
+      selection.type ===
+        "program"
     ) {
-      setError(
-        `${selection.name} question bank is coming next.`,
-      );
+      const programGradeCode =
+        selection.code.startsWith("PROGRAM_")
+          ? selection.code
+          : `PROGRAM_${selection.code
+              .replace(/[^A-Z0-9]+/gi, "_")
+              .toUpperCase()}`;
+
+      const programSelection:
+        PortalSelection = {
+        type:
+          "program",
+
+        code:
+          programGradeCode,
+
+        name:
+          selection.name,
+      };
+
+      setGrade(programSelection);
+      setSubject(null);
+      setTopic(null);
+      setLoading(true);
+      setError("");
+
+      try {
+        const nextSubjects =
+          await loadSubjects(
+            country,
+            programGradeCode,
+          );
+
+        setSubjects(nextSubjects);
+
+        if (
+          nextSubjects.length === 1
+        ) {
+          await loadTopicList(
+            programSelection,
+            nextSubjects[0],
+          );
+          return;
+        }
+
+        setStep("subjects");
+      } catch (caught) {
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Program could not be loaded.",
+        );
+      } finally {
+        setLoading(false);
+      }
 
       return;
     }
@@ -337,7 +432,7 @@ export default function EducationLearningHub({
         subjects.length ===
           0
           ? "No subjects are configured for this grade yet."
-          : "More than one subject is configured. Subject chooser will be enabled next.",
+          : "",
       );
     } catch (
       caught
@@ -845,6 +940,12 @@ export default function EducationLearningHub({
     return (
       <LittleLearnersExperience
         onBack={() => {
+          window.history.pushState(
+            {},
+            "",
+            "/education",
+          );
+
           setStep(
             "portal",
           );
@@ -914,6 +1015,19 @@ export default function EducationLearningHub({
               return;
             }
 
+            if (
+              step ===
+                "topics" &&
+              subjects.length >
+                1
+            ) {
+              setStep(
+                "subjects",
+              );
+
+              return;
+            }
+
             setStep(
               "portal",
             );
@@ -966,6 +1080,56 @@ export default function EducationLearningHub({
           >
             Loading…
           </div>
+        )
+      }
+
+
+      {
+        !loading &&
+        step ===
+          "subjects" && (
+          <section>
+            <h1>
+              Choose a subject
+            </h1>
+
+            <div
+              className="education-learning__cards"
+            >
+              {
+                subjects.map(
+                  (
+                    item,
+                  ) => (
+                    <button
+                      key={
+                        item.code
+                      }
+                      type="button"
+                      onClick={() => {
+                        if (
+                          !grade
+                        ) {
+                          return;
+                        }
+
+                        void loadTopicList(
+                          grade,
+                          item,
+                        );
+                      }}
+                    >
+                      <strong>
+                        {
+                          item.name
+                        }
+                      </strong>
+                    </button>
+                  ),
+                )
+              }
+            </div>
+          </section>
         )
       }
 

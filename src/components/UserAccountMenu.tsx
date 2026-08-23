@@ -36,6 +36,9 @@ interface UserAccountMenuProps {
   onRegisterMyShop: (
     email: string,
   ) => void;
+
+  onOpenMyRatings?:
+    () => void;
 }
 
 interface MyShopsResponse {
@@ -52,6 +55,7 @@ export default function UserAccountMenu({
   onOpenChat,
   onOpenMyShop,
   onRegisterMyShop,
+  onOpenMyRatings,
 }: UserAccountMenuProps) {
   const [
     open,
@@ -569,6 +573,37 @@ export default function UserAccountMenu({
                     }
                   </div>
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(
+                      false,
+                    );
+
+                    if (
+                      onOpenMyRatings
+                    ) {
+                      onOpenMyRatings();
+
+                      return;
+                    }
+
+                    window.history.pushState(
+                      {},
+                      "",
+                      "/ratings",
+                    );
+
+                    window.dispatchEvent(
+                      new PopStateEvent(
+                        "popstate",
+                      ),
+                    );
+                  }}
+                >
+                  ⭐ My Ratings
+                </button>
 
                 <button
                   type="button"

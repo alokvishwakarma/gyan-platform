@@ -1,0 +1,32 @@
+.calendar-access-admin {
+  padding: 1rem;
+}
+
+.calendar-access-admin header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.calendar-access-admin__table-wrap {
+  overflow-x: auto;
+}
+
+.calendar-access-admin table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.calendar-access-admin th,
+.calendar-access-admin td {
+  padding: 0.55rem;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+
+.calendar-access-admin th {
+  color: #174a73;
+}

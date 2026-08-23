@@ -33,6 +33,7 @@ type View =
   | "practice"
   | "words"
   | "progress"
+  | "progress-setup"
   | "review";
 
 
@@ -107,6 +108,34 @@ export default function LittleLearnersExperience({
         onBack={() => {
           setView(
             "practice",
+          );
+        }}
+      />
+    );
+  }
+
+
+  if (
+    view ===
+      "progress-setup"
+  ) {
+    return (
+      <LittleLearnerCardSetup
+        onBack={() => {
+          setView(
+            "practice",
+          );
+        }}
+
+        onReady={(
+          code,
+        ) => {
+          setStudentCode(
+            code,
+          );
+
+          setView(
+            "progress",
           );
         }}
       />
@@ -212,7 +241,9 @@ export default function LittleLearnersExperience({
 
       onOpenProgress={() => {
         setView(
-          "progress",
+          studentCode
+            ? "progress"
+            : "progress-setup",
         );
       }}
 

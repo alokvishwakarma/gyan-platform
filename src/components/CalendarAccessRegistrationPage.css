@@ -1,0 +1,280 @@
+.calendar-register-page {
+  min-height: 100dvh;
+  padding: 1rem;
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(
+      180deg,
+      #f8fbff,
+      #fff8ef
+    );
+}
+
+.calendar-register-card {
+  width: min(100%, 430px);
+  padding: 1.2rem;
+  border: 1px solid #e1e7ec;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 14px 40px rgba(30, 50, 70, 0.12);
+}
+
+.calendar-register-logo {
+  color: #174a73;
+  font-size: 1.4rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.calendar-register-kicker {
+  display: block;
+  margin-top: 1rem;
+  color: #e97825;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.calendar-register-card h1 {
+  margin: 0.25rem 0 0;
+  color: #174a73;
+  font-size: 1.8rem;
+}
+
+.calendar-register-benefit {
+  margin: 1rem 0;
+  padding: 0.8rem;
+  border-radius: 12px;
+  display: grid;
+  gap: 0.08rem;
+  background: #fff8ed;
+}
+
+.calendar-register-benefit strong {
+  color: #174a73;
+  font-size: 1.05rem;
+}
+
+.calendar-register-benefit span,
+.calendar-register-benefit small,
+.calendar-register-help,
+.calendar-register-intro,
+.calendar-register-privacy {
+  color: #60717e;
+}
+
+.calendar-register-field {
+  margin-top: 0.85rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.calendar-register-field > span {
+  color: #334d60;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.calendar-register-field input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 0.75rem;
+  border: 1px solid #cad5dd;
+  border-radius: 10px;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+.calendar-register-primary,
+.calendar-register-secondary {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 0.85rem;
+  border: 0;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.calendar-register-primary {
+  background: #e97825;
+  color: #fff;
+}
+
+.calendar-register-primary:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.calendar-register-secondary {
+  background: #eef4f8;
+  color: #174a73;
+}
+
+.calendar-register-link {
+  width: 100%;
+  margin-top: 0.8rem;
+  padding: 0.45rem;
+  border: 0;
+  background: transparent;
+  color: #60717e;
+  cursor: pointer;
+}
+
+.calendar-register-verified,
+.calendar-register-email-sent,
+.calendar-register-success {
+  margin-top: 1rem;
+  padding: 0.85rem;
+  border-radius: 12px;
+  background: #f2f8f4;
+}
+
+.calendar-register-verified {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.calendar-register-verified span,
+.calendar-register-success > span {
+  color: #19753c;
+  font-weight: 900;
+}
+
+.calendar-register-email-sent,
+.calendar-register-success {
+  text-align: center;
+}
+
+.calendar-register-email-sent > span,
+.calendar-register-success > span {
+  font-size: 1.5rem;
+}
+
+.calendar-register-error {
+  margin-top: 0.8rem;
+  padding: 0.65rem;
+  border-radius: 9px;
+  background: #fff0f0;
+  color: #9b3535;
+  font-size: 0.82rem;
+}
+
+.calendar-register-help,
+.calendar-register-privacy {
+  margin: 0.6rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.calendar-register-state {
+  padding: 2rem;
+  text-align: center;
+  color: #60717e;
+}
+
+
+.calendar-register-warning {
+  margin:
+    0.75rem 0 0;
+
+  padding:
+    0.65rem 0.75rem;
+
+  border-radius:
+    10px;
+
+  background:
+    #fff8e7;
+
+  color:
+    #6d5a25;
+
+  font-size:
+    0.76rem;
+
+  line-height:
+    1.45;
+}
+
+.calendar-register-protect {
+  width:
+    100%;
+
+  min-height:
+    44px;
+
+  margin-top:
+    0.65rem;
+
+  border:
+    1px solid
+    #b9cedd;
+
+  border-radius:
+    10px;
+
+  background:
+    #f5faff;
+
+  color:
+    #174a73;
+
+  font:
+    inherit;
+
+  font-weight:
+    800;
+
+  cursor:
+    pointer;
+}
+
+.calendar-register-protect-panel {
+  margin-top:
+    1rem;
+
+  padding:
+    0.9rem;
+
+  border:
+    1px solid
+    #d8e4ec;
+
+  border-radius:
+    13px;
+
+  background:
+    #fbfdff;
+}
+
+.calendar-register-protect-panel h2 {
+  margin:
+    0;
+
+  color:
+    #174a73;
+
+  font-size:
+    1.05rem;
+}
+
+.calendar-register-protect-panel > p {
+  margin:
+    0.35rem 0 0;
+
+  color:
+    #60717e;
+
+  font-size:
+    0.78rem;
+
+  line-height:
+    1.45;
+}
+
+.calendar-register-success--guest {
+  background:
+    #f5faf6;
+}
