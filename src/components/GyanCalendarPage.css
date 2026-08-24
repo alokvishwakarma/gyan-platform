@@ -5890,7 +5890,7 @@ span:nth-child(7n + 1) {
     100%;
 
   color:
-    #174a73;
+    #e97825;
 
   font-size:
     clamp(
@@ -5963,7 +5963,7 @@ span:nth-child(7n + 1) {
 
 .gyan-account-screenlet__url strong {
   color:
-    #174a73;
+    #e97825;
 
   font-size:
     1.13em;
@@ -6043,7 +6043,7 @@ span:nth-child(7n + 1) {
 
 .gyan-account-screenlet__access-code strong {
   color:
-    #263f51;
+    #e97825;
 
   font-size:
     1.1em;
@@ -6226,28 +6226,44 @@ span:nth-child(7n + 1) {
   line-height: 1.14;
 }
 
-.gyan-collectible-account__name {
+.gyan-collectible-account__identity {
   max-width: 100%;
-  color: #65747d;
-  font-size: clamp(0.46rem, 1.08vw, 0.72rem);
-  font-weight: 800;
-  overflow-wrap: anywhere;
+  display: grid;
+  justify-items: center;
+  gap: 0.08em;
+  text-align: center;
 }
 
-.gyan-collectible-account__name > span {
-  margin-left: 0.22em;
-  color: #174a73;
-  font-size: 1.22em;
+.gyan-collectible-account__identity > span {
+  color: #65747d;
+  font-size: clamp(0.44rem, 1vw, 0.68rem);
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.gyan-collectible-account__identity > strong {
+  max-width: 100%;
+  color: #e97825;
+  font-size: clamp(0.62rem, 1.35vw, 0.92rem);
   font-weight: 900;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
 }
 
 .gyan-collectible-account__url {
   max-width: 100%;
-  color: #174a73;
+  color: #536670;
   font-size: clamp(0.58rem, 1.25vw, 0.86rem);
   font-weight: 900;
   letter-spacing: 0.02em;
   overflow-wrap: anywhere;
+}
+
+.gyan-collectible-account__url > b {
+  color: #e97825;
+  font: inherit;
+  font-weight: 900;
+  letter-spacing: 0.06em;
 }
 
 .gyan-collectible-account__copy > span {
@@ -6269,4 +6285,313 @@ span:nth-child(7n + 1) {
 .gyan-print-card-v2--a8
 .gyan-collectible-account__copy {
   gap: 0.18em;
+}
+
+
+/* =========================================================
+   ACCOUNT SCREENLET ACCENT + CREDIT CARD ROW STACK
+   ========================================================= */
+.gyan-print-card-v2__account--wallet-screenlet {
+  padding: 2.5% 5% !important;
+  gap: 0.14em !important;
+  align-content: center !important;
+}
+
+.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__qr {
+  width: min(42%, 92px);
+  margin: 0.08em auto;
+}
+
+.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__label {
+  font-size: clamp(0.32rem, 0.62vw, 0.5rem) !important;
+}
+
+.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__name {
+  font-size: clamp(0.48rem, 0.9vw, 0.72rem) !important;
+}
+
+.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__url,
+.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__benefit {
+  font-size: clamp(0.30rem, 0.56vw, 0.46rem) !important;
+  line-height: 1.05;
+}
+
+.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__access-code {
+  margin-top: 0.05em;
+  font-size: clamp(0.28rem, 0.5vw, 0.42rem) !important;
+}
+
+
+/* =========================================================
+   PDF TYPOGRAPHY BOOST
+   Printed/PDF account labels need to match preview readability.
+   Direct PDF overrides avoid clamp() max values hiding the change.
+   ========================================================= */
+
+/* A5 / A6 account screenlet */
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-account-screenlet__label,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a6
+.gyan-account-screenlet__label {
+  font-size: 0.98rem !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-account-screenlet__name,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a6
+.gyan-account-screenlet__name {
+  font-size: 1.78rem !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-account-screenlet__url,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a6
+.gyan-account-screenlet__url {
+  font-size: 1.02rem !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-account-screenlet__benefit,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a6
+.gyan-account-screenlet__benefit {
+  font-size: 0.94rem !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-account-screenlet__benefit--small,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a6
+.gyan-account-screenlet__benefit--small {
+  font-size: 0.76rem !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-account-screenlet__access-code,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a6
+.gyan-account-screenlet__access-code {
+  font-size: 0.74rem !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-account-screenlet__access-code strong,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a6
+.gyan-account-screenlet__access-code strong {
+  font-size: 1.18em !important;
+}
+
+/* A7 / A8 collectible account */
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a7
+.gyan-collectible-account__identity > span,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a8
+.gyan-collectible-account__identity > span {
+  font-size: 0.82rem !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a7
+.gyan-collectible-account__identity > strong,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a8
+.gyan-collectible-account__identity > strong {
+  font-size: 1.12rem !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a7
+.gyan-collectible-account__url,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a8
+.gyan-collectible-account__url {
+  font-size: 0.98rem !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a7
+.gyan-collectible-account__copy > span,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a8
+.gyan-collectible-account__copy > span {
+  font-size: 0.78rem !important;
+  line-height: 1.12 !important;
+}
+
+/* Credit Card account half */
+.gyan-print-card-v2--pdf.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__label {
+  font-size: 0.64rem !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__name {
+  font-size: 0.92rem !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__url,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__benefit {
+  font-size: 0.62rem !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__access-code {
+  font-size: 0.58rem !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__access-code strong {
+  font-size: 1.16em !important;
+}
+
+
+/* =========================================================
+   WALLET CARD PDF REFINEMENT — CC + BUSINESS CARD
+   Make both account halves use readable, centered row-by-row text.
+   ========================================================= */
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--business_card
+.gyan-print-card-v2__account--wallet-screenlet {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  align-content: center !important;
+  justify-items: center !important;
+  text-align: center !important;
+  gap: 0.20em !important;
+  padding: 4% 6% !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__label,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--business_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__label {
+  font-size: 0.82rem !important;
+  line-height: 1.05 !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__name,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--business_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__name {
+  font-size: 1.18rem !important;
+  line-height: 1.03 !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__qr,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--business_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__qr {
+  width: min(44%, 92px) !important;
+  margin: 0.10em auto !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__url,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--business_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__url {
+  font-size: 0.86rem !important;
+  line-height: 1.05 !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__benefit,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--business_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__benefit {
+  font-size: 0.78rem !important;
+  line-height: 1.08 !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__access-code,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--business_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__access-code {
+  font-size: 0.72rem !important;
+  line-height: 1.05 !important;
+  justify-content: center !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__access-code strong,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--business_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__access-code strong {
+  font-size: 1.22em !important;
+}
+
+
+/* =========================================================
+   CREDIT CARD LIVE PREVIEW TYPOGRAPHY
+   PDF is already correct; enlarge only the visible CC screenlet.
+   ========================================================= */
+
+.gyan-calendar-print__live-preview
+.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__label {
+  font-size: 0.82rem !important;
+  line-height: 1.05 !important;
+}
+
+.gyan-calendar-print__live-preview
+.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__name {
+  font-size: 1.18rem !important;
+  line-height: 1.03 !important;
+}
+
+.gyan-calendar-print__live-preview
+.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__url {
+  font-size: 0.86rem !important;
+  line-height: 1.05 !important;
+}
+
+.gyan-calendar-print__live-preview
+.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__benefit {
+  font-size: 0.78rem !important;
+  line-height: 1.08 !important;
+}
+
+.gyan-calendar-print__live-preview
+.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__access-code {
+  font-size: 0.72rem !important;
+  line-height: 1.05 !important;
+}
+
+.gyan-calendar-print__live-preview
+.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__account--wallet-screenlet
+.gyan-account-screenlet__access-code strong {
+  font-size: 1.22em !important;
 }

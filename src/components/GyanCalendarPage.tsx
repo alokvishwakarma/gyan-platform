@@ -966,18 +966,39 @@ function EducationAccountBlock({
         </div>
 
         <div className="gyan-collectible-account__copy">
-          <strong className="gyan-collectible-account__name">
-            YOUR Display name:
+          <div className="gyan-collectible-account__identity">
             <span>
+              YOUR Display name:
+            </span>
+
+            <strong>
               {
                 gyanName
               }
-            </span>
-          </strong>
+            </strong>
+          </div>
 
           <strong className="gyan-collectible-account__url">
             {
-              shortUrl
+              shortUrl.includes("/")
+                ? (
+                    <>
+                      {
+                        shortUrl.slice(
+                          0,
+                          shortUrl.lastIndexOf("/") + 1,
+                        )
+                      }
+                      <b>
+                        {
+                          shortUrl.slice(
+                            shortUrl.lastIndexOf("/") + 1,
+                          )
+                        }
+                      </b>
+                    </>
+                  )
+                : shortUrl
             }
           </strong>
 
@@ -1000,13 +1021,89 @@ function EducationAccountBlock({
   }
 
   if (
+    size ===
+      "CREDIT_CARD" ||
+    size ===
+      "BUSINESS_CARD"
+  ) {
+    const shortCode =
+      record
+        ?.slug
+        ?.toUpperCase() ??
+      "ABCD";
+
+    return (
+      <section className="gyan-print-card-v2__account gyan-print-card-v2__account--screenlet gyan-print-card-v2__account--wallet-screenlet">
+        <div className="gyan-account-screenlet__label">
+          YOUR Display name:
+        </div>
+
+        <strong className="gyan-account-screenlet__name">
+          {
+            gyanName
+          }
+        </strong>
+
+        <div className="gyan-account-screenlet__qr">
+          <QRCodeSVG
+            value={
+              qrUrl
+            }
+            size={
+              150
+            }
+            level="M"
+            includeMargin
+            aria-label="Scan to open this GYAN Education Account"
+          />
+        </div>
+
+        <div className="gyan-account-screenlet__url">
+          gyan.cc/
+          <strong>
+            {
+              shortCode
+            }
+          </strong>
+        </div>
+
+        <div className="gyan-account-screenlet__benefit">
+          {
+            durationLabel(
+              config.durationMonths,
+            )
+          } complimentary
+        </div>
+
+        <div className="gyan-account-screenlet__benefit">
+          💎 {
+            config.welcomeGems
+          } Welcome Gems
+        </div>
+
+        <div className="gyan-account-screenlet__access-code">
+          <span>
+            ACCESS CODE
+          </span>
+
+          <strong>
+            {
+              accessCode
+            }
+          </strong>
+        </div>
+      </section>
+    );
+  }
+
+  if (
     isLargeAccount
   ) {
     const shortCode =
       record
         ?.slug
         ?.toUpperCase() ??
-      "W4LY";
+      "ABCD";
 
     return (
       <section className="gyan-print-card-v2__account gyan-print-card-v2__account--screenlet">
@@ -1479,6 +1576,19 @@ function PrintChooser({
 
   const issuanceConfig =
     selected;
+
+  /*
+   * Render the hidden PDF card at the same effective width used by the
+   * live preview. This keeps typography/QR proportions visually consistent
+   * between preview and generated PDF instead of shrinking text inside a
+   * generic 900px capture stage. html2canvas still captures at 2.4x.
+   */
+  const pdfRenderWidth =
+    selected.id === "A7"
+      ? 430
+      : selected.id === "A8"
+        ? 360
+        : 720;
 
 
   async function createPreviewRecord():
@@ -2464,12 +2574,12 @@ function PrintChooser({
               className="gyan-calendar-pdf-sheet-v2"
               style={{
                 width:
-                  "900px",
+                  `${pdfRenderWidth}px`,
 
                 height:
                   `${
                     Math.round(
-                      900 *
+                      pdfRenderWidth *
                       selected.pdfHeightMm /
                       selected.pdfWidthMm,
                     )
@@ -2517,12 +2627,12 @@ function PrintChooser({
                       className="gyan-calendar-batch-page-v2"
                       style={{
                         width:
-                          "900px",
+                          `${pdfRenderWidth}px`,
 
                         height:
                           `${
                             Math.round(
-                              900 *
+                              pdfRenderWidth *
                               selected.pdfHeightMm /
                               selected.pdfWidthMm,
                             )
