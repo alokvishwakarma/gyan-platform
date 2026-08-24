@@ -6543,55 +6543,143 @@ span:nth-child(7n + 1) {
   font-size: 1.22em !important;
 }
 
-
 /* =========================================================
-   CREDIT CARD LIVE PREVIEW TYPOGRAPHY
-   PDF is already correct; enlarge only the visible CC screenlet.
+   PRINTED CONTACT DETAILS
+   This footer is part of the captured CalendarCard, so the
+   address appears in both live print preview and generated PDF.
    ========================================================= */
 
-.gyan-calendar-print__live-preview
-.gyan-print-card-v2--credit_card
-.gyan-print-card-v2__account--wallet-screenlet
-.gyan-account-screenlet__label {
-  font-size: 0.82rem !important;
-  line-height: 1.05 !important;
+.gyan-print-card-v2__footer {
+  flex-wrap: nowrap;
+  gap: 0.55em;
 }
 
-.gyan-calendar-print__live-preview
-.gyan-print-card-v2--credit_card
-.gyan-print-card-v2__account--wallet-screenlet
-.gyan-account-screenlet__name {
-  font-size: 1.18rem !important;
-  line-height: 1.03 !important;
+.gyan-print-card-v2__contact {
+  color: #536670;
+  font-weight: 800;
+  white-space: nowrap;
+  text-align: center;
 }
 
-.gyan-calendar-print__live-preview
-.gyan-print-card-v2--credit_card
-.gyan-print-card-v2__account--wallet-screenlet
-.gyan-account-screenlet__url {
-  font-size: 0.86rem !important;
-  line-height: 1.05 !important;
+/* Keep all three footer items readable on collectible cards. */
+.gyan-print-card-v2--a7
+.gyan-print-card-v2__footer,
+.gyan-print-card-v2--a8
+.gyan-print-card-v2__footer {
+  gap: 0.35em;
+  padding-inline: 1.8%;
 }
 
-.gyan-calendar-print__live-preview
-.gyan-print-card-v2--credit_card
-.gyan-print-card-v2__account--wallet-screenlet
-.gyan-account-screenlet__benefit {
-  font-size: 0.78rem !important;
-  line-height: 1.08 !important;
+.gyan-print-card-v2--a7
+.gyan-print-card-v2__footer strong,
+.gyan-print-card-v2--a7
+.gyan-print-card-v2__footer span {
+  font-size: clamp(0.31rem, 0.66vw, 0.48rem);
 }
 
-.gyan-calendar-print__live-preview
-.gyan-print-card-v2--credit_card
-.gyan-print-card-v2__account--wallet-screenlet
-.gyan-account-screenlet__access-code {
-  font-size: 0.72rem !important;
-  line-height: 1.05 !important;
+.gyan-print-card-v2--a8
+.gyan-print-card-v2__footer strong,
+.gyan-print-card-v2--a8
+.gyan-print-card-v2__footer span {
+  font-size: clamp(0.27rem, 0.57vw, 0.42rem);
 }
 
-.gyan-calendar-print__live-preview
+/* Wallet cards have the least footer space. */
 .gyan-print-card-v2--credit_card
-.gyan-print-card-v2__account--wallet-screenlet
-.gyan-account-screenlet__access-code strong {
-  font-size: 1.22em !important;
+.gyan-print-card-v2__footer,
+.gyan-print-card-v2--business_card
+.gyan-print-card-v2__footer {
+  gap: 0.28em !important;
+  padding-inline: 1.5% !important;
+}
+
+.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__footer strong,
+.gyan-print-card-v2--credit_card
+.gyan-print-card-v2__footer span,
+.gyan-print-card-v2--business_card
+.gyan-print-card-v2__footer strong,
+.gyan-print-card-v2--business_card
+.gyan-print-card-v2__footer span {
+  font-size: clamp(0.25rem, 0.48vw, 0.39rem) !important;
+  line-height: 1 !important;
+}
+
+
+
+/* PRINT CONTACT — contact gets priority over tagline */
+.gyan-print-card-v2__footer {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  justify-items: center !important;
+  align-content: center !important;
+  gap: 0.12em !important;
+  text-align: center !important;
+}
+
+.gyan-print-card-v2__contact-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.34em;
+  white-space: nowrap;
+  line-height: 1.05;
+}
+
+.gyan-print-card-v2__contact-row > strong,
+.gyan-print-card-v2__contact {
+  color: #174a73 !important;
+  font: inherit;
+  font-weight: 900 !important;
+}
+
+.gyan-print-card-v2__contact-row > span {
+  color: #7a8992;
+  font: inherit;
+  font-weight: 800;
+}
+
+.gyan-print-card-v2__footer-tagline {
+  color: #667781;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* A5/A6 */
+.gyan-print-card-v2--a5 .gyan-print-card-v2__contact-row,
+.gyan-print-card-v2--a6 .gyan-print-card-v2__contact-row {
+  font-size: clamp(0.62rem, 1.12vw, 0.9rem) !important;
+}
+
+.gyan-print-card-v2--a5 .gyan-print-card-v2__footer-tagline,
+.gyan-print-card-v2--a6 .gyan-print-card-v2__footer-tagline {
+  font-size: clamp(0.48rem, 0.82vw, 0.68rem) !important;
+}
+
+/* A7/A8 */
+.gyan-print-card-v2--a7 .gyan-print-card-v2__contact-row {
+  font-size: clamp(0.48rem, 1.02vw, 0.68rem) !important;
+}
+
+.gyan-print-card-v2--a8 .gyan-print-card-v2__contact-row {
+  font-size: clamp(0.40rem, 0.88vw, 0.59rem) !important;
+}
+
+.gyan-print-card-v2--a7 .gyan-print-card-v2__footer-tagline {
+  font-size: clamp(0.30rem, 0.61vw, 0.43rem) !important;
+}
+
+.gyan-print-card-v2--a8 .gyan-print-card-v2__footer-tagline {
+  font-size: clamp(0.26rem, 0.53vw, 0.38rem) !important;
+}
+
+/* Credit / Business cards */
+.gyan-print-card-v2--credit_card .gyan-print-card-v2__contact-row,
+.gyan-print-card-v2--business_card .gyan-print-card-v2__contact-row {
+  font-size: clamp(0.38rem, 0.72vw, 0.56rem) !important;
+}
+
+.gyan-print-card-v2--credit_card .gyan-print-card-v2__footer-tagline,
+.gyan-print-card-v2--business_card .gyan-print-card-v2__footer-tagline {
+  font-size: clamp(0.23rem, 0.43vw, 0.34rem) !important;
 }

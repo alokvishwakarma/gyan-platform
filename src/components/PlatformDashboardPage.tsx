@@ -6,6 +6,7 @@ interface PlatformDashboardPageProps {
   onOpenShops: () => void;
   onOpenServices: () => void;
   onOpenStorage: () => void;
+  onOpenStudents?: () => void;
   onOpenRequests?: () => void;
   onOpenAnalytics?: () => void;
   onChangeLocation: () => void;
@@ -24,11 +25,20 @@ export default function PlatformDashboardPage({
   onOpenShops,
   onOpenServices,
   onOpenStorage,
+  onOpenStudents,
   onOpenRequests,
   onOpenAnalytics,
   onChangeLocation,
 }: PlatformDashboardPageProps) {
   const tiles: AdminTile[] = [
+    {
+      icon: "🎓",
+      title: "Students",
+      description:
+        "Search, review and manage GYAN learners",
+      onClick:
+        onOpenStudents,
+    },
     {
       icon: "📨",
       title: "Requests",

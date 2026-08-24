@@ -15,6 +15,7 @@ import AdminShopInfoScreen from "./components/AdminShopInfoScreen";
 import AdminShopsScreen from "./components/AdminShopsScreen";
 import AdminShopServicesScreen from "./components/AdminShopServicesScreen";
 import AdminStoragePanel from "./components/AdminStoragePanel";
+import AdminStudentsPage from "./components/AdminStudentsPage";
 import PlatformDashboardPage from "./components/PlatformDashboardPage";
 import PublicHomePage from "./components/PublicHomePage";
 import StudentProgressPage
@@ -730,6 +731,15 @@ export default function App() {
   );
 
   const [
+    adminStudentsOpen,
+    setAdminStudentsOpen,
+  ] = useState(
+    () =>
+      window.location.pathname ===
+      "/admin/students",
+  );
+
+  const [
     adminStorageOpen,
     setAdminStorageOpen,
   ] = useState(false);
@@ -819,6 +829,89 @@ export default function App() {
       );
     };
   }, []);
+
+  useEffect(() => {
+    const openStudents =
+      (
+        event: Event,
+      ): void => {
+        const customEvent =
+          event as CustomEvent<{
+            filter?:
+              "all" |
+              "registered" |
+              "trial" |
+              "inactive";
+          }>;
+
+        const filter =
+          customEvent.detail
+            ?.filter ??
+          "all";
+
+        setAboutPanelOpen(
+          false,
+        );
+
+        setAdminServicesOpen(
+          false,
+        );
+
+        setAdminShopsOpen(
+          false,
+        );
+
+        setAdminStorageOpen(
+          false,
+        );
+
+        setAdminAnalyticsOpen(
+          false,
+        );
+
+        setDashboardView(
+          null,
+        );
+
+        setAdminStudentsOpen(
+          true,
+        );
+
+        const parameters =
+          new URLSearchParams();
+
+        if (
+          filter !==
+            "all"
+        ) {
+          parameters.set(
+            "filter",
+            filter,
+          );
+        }
+
+        window.history.pushState(
+          {},
+          "",
+          parameters.size
+            ? `/admin/students?${parameters.toString()}`
+            : "/admin/students",
+        );
+      };
+
+    window.addEventListener(
+      "gyan-open-admin-students",
+      openStudents,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "gyan-open-admin-students",
+        openStudents,
+      );
+    };
+  }, []);
+
 
   useEffect(() => {
     if (!activeShopCode) {
@@ -1200,6 +1293,10 @@ export default function App() {
       false,
     );
 
+    setAdminStudentsOpen(
+      false,
+    );
+
     setAdminStorageOpen(
       false,
     );
@@ -1307,6 +1404,10 @@ export default function App() {
       );
 
       setAdminShopsOpen(
+        false,
+      );
+
+      setAdminStudentsOpen(
         false,
       );
 
@@ -1555,6 +1656,28 @@ if (
     );
   }
 
+  if (adminStudentsOpen) {
+    return (
+      <AdminStudentsPage
+        onBack={() => {
+          setAdminStudentsOpen(
+            false,
+          );
+
+          setDashboardView(
+            "platform",
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            "/admin",
+          );
+        }}
+      />
+    );
+  }
+
   if (adminShopsOpen) {
     return (
       <AdminShopsScreen
@@ -1724,6 +1847,22 @@ if (
           )
         }
 
+        onOpenStudents={() => {
+          setDashboardView(
+            null,
+          );
+
+          setAdminStudentsOpen(
+            true,
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            "/admin/students",
+          );
+        }}
+
         onOpenShops={() => {
           setDashboardView(
             null,
@@ -1745,12 +1884,20 @@ if (
             null,
           );
 
+          setAdminStudentsOpen(
+            false,
+          );
+
           openAdminServices();
         }}
 
         onOpenStorage={() => {
           setDashboardView(
             null,
+          );
+
+          setAdminStudentsOpen(
+            false,
           );
 
           setAdminStorageOpen(
@@ -1761,6 +1908,10 @@ if (
         onOpenAnalytics={() => {
           setDashboardView(
             null,
+          );
+
+          setAdminStudentsOpen(
+            false,
           );
 
           setAdminAnalyticsOpen(
@@ -2075,6 +2226,10 @@ if (
         <PublicHomePage
           services={services}
           loading={servicesLoading}
+          educationCode={
+  studentRouteCode ??
+  undefined
+}
 
           shopName={
             reservedShopCode
@@ -2517,7 +2672,10 @@ if (
         )}
 
       {aboutPanelOpen && (
-        <AboutAdminPanel
+        <div
+          className="app-admin-auth-anchor"
+        >
+          <AboutAdminPanel
           onClose={() => {
             setAboutPanelOpen(
               false,
@@ -2552,6 +2710,10 @@ if (
               pendingAdminDestination ===
               "platformDashboard"
             ) {
+              setAdminStudentsOpen(
+                false,
+              );
+
               setDashboardView("platform");
               window.history.pushState(
                 {},
@@ -2593,7 +2755,8 @@ if (
 
             openAdminServices();
           }}
-        />
+          />
+        </div>
       )}
 
       {adminStorageOpen && (

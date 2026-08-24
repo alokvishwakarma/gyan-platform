@@ -62,6 +62,138 @@ function normalizeCode(
     : "";
 }
 
+
+const GUEST_COOKIE =
+  "gyan_guest";
+
+
+function cookieValue(
+  request: Request,
+  name: string,
+): string {
+  const cookie =
+    request.headers.get(
+      "cookie",
+    ) ??
+    "";
+
+  for (
+    const part
+    of cookie.split(";")
+  ) {
+    const [
+      key,
+      ...rest
+    ] =
+      part.trim().split("=");
+
+    if (
+      key ===
+      name
+    ) {
+      return decodeURIComponent(
+        rest.join("="),
+      );
+    }
+  }
+
+  return "";
+}
+
+
+async function sha256Hex(
+  value: string,
+): Promise<string> {
+  const bytes =
+    new TextEncoder()
+      .encode(
+        value,
+      );
+
+  const digest =
+    await crypto.subtle.digest(
+      "SHA-256",
+      bytes,
+    );
+
+  return Array.from(
+    new Uint8Array(
+      digest,
+    ),
+  )
+    .map(
+      (byte) =>
+        byte
+          .toString(16)
+          .padStart(
+            2,
+            "0",
+          ),
+    )
+    .join("");
+}
+
+
+type EducationGuest = {
+  id: number;
+  slug: string;
+  gyan_name: string;
+  email: string | null;
+  status: string;
+};
+
+
+async function currentEducationGuest(
+  request: Request,
+  env: Env,
+): Promise<EducationGuest | null> {
+  const token =
+    cookieValue(
+      request,
+      GUEST_COOKIE,
+    );
+
+  if (!token) {
+    return null;
+  }
+
+  const tokenHash =
+    await sha256Hex(
+      token,
+    );
+
+  return await env.gyan_registry
+    .prepare(
+      `
+        SELECT
+          calendar_access_codes.id,
+          calendar_access_codes.slug,
+          calendar_access_codes.gyan_name,
+          calendar_access_codes.email,
+          calendar_access_codes.status
+
+        FROM calendar_guest_sessions
+
+        INNER JOIN calendar_access_codes
+          ON calendar_access_codes.id =
+             calendar_guest_sessions.calendar_access_id
+
+        WHERE
+          calendar_guest_sessions.token_hash = ?
+          AND calendar_guest_sessions.expires_at >
+              CURRENT_TIMESTAMP
+          AND calendar_access_codes.status =
+              'GUEST_ACTIVE'
+
+        LIMIT 1
+      `,
+    )
+    .bind(
+      tokenHash,
+    )
+    .first<EducationGuest>();
+}
+
 function randomCode():
   string {
   const bytes =
@@ -194,9 +326,56 @@ async function saveProgress(
       body.studentCode,
     );
 
+
+  const activeGuest =
+    await currentEducationGuest(
+      request,
+      env,
+    );
+
+  const guestCode =
+    normalizeCode(
+      activeGuest
+        ?.slug,
+    );
+
+  const useActiveGuest =
+    Boolean(
+      activeGuest &&
+      guestCode &&
+      (
+        !requestedStudentCode ||
+        requestedStudentCode ===
+          guestCode
+      ),
+    );
+
+  const effectiveStudentName =
+    useActiveGuest
+      ? normalizeName(
+          activeGuest
+            ?.gyan_name,
+        ) ||
+        "GYAN Learner"
+      : studentName;
+
+  const protectedGuestEmail =
+    normalizeEmail(
+      activeGuest
+        ?.email,
+    );
+
+  const effectiveEmail =
+    useActiveGuest
+      ? (
+          protectedGuestEmail ||
+          `guest-${activeGuest!.id}@guest.gyan.invalid`
+        )
+      : email;
+
   if (
-    studentName.length < 1 ||
-    studentName.length > 80
+    effectiveStudentName.length < 1 ||
+    effectiveStudentName.length > 80
   ) {
     return jsonResponse(
       {
@@ -209,7 +388,7 @@ async function saveProgress(
 
   if (
     !validEmail(
-      email,
+      effectiveEmail,
     )
   ) {
     return jsonResponse(
@@ -473,6 +652,54 @@ async function saveProgress(
       null;
 
   if (
+    useActiveGuest &&
+    activeGuest
+  ) {
+    student =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT
+            id,
+            student_code,
+            student_name,
+            email
+
+          FROM education_students
+
+          WHERE
+            student_code = ?
+
+          LIMIT 1
+          `,
+        )
+        .bind(
+          guestCode,
+        )
+        .first<{
+          id: number;
+          student_code: string;
+          student_name: string;
+          email: string;
+        }>();
+
+    if (
+      student &&
+      student.email !==
+        effectiveEmail &&
+      !student.email.startsWith(
+        `guest-${activeGuest.id}@`,
+      )
+    ) {
+      return jsonResponse(
+        {
+          error:
+            "This GYAN code is already linked to another education record.",
+        },
+        409,
+      );
+    }
+  } else if (
     requestedStudentCode
   ) {
     student =
@@ -496,7 +723,7 @@ async function saveProgress(
         )
         .bind(
           requestedStudentCode,
-          email,
+          effectiveEmail,
         )
         .first<{
           id: number;
@@ -518,9 +745,11 @@ async function saveProgress(
 
   if (!student) {
     const studentCode =
-      await createUniqueStudentCode(
-        env,
-      );
+      useActiveGuest
+        ? guestCode
+        : await createUniqueStudentCode(
+            env,
+          );
 
     const insert =
       await env.gyan_registry
@@ -545,8 +774,8 @@ async function saveProgress(
         )
         .bind(
           studentCode,
-          studentName,
-          email,
+          effectiveStudentName,
+          effectiveEmail,
           user?.id ??
             null,
           country,
@@ -565,9 +794,10 @@ async function saveProgress(
         studentCode,
 
       student_name:
-        studentName,
+        effectiveStudentName,
 
-      email,
+      email:
+        effectiveEmail,
     };
   } else {
     await env.gyan_registry
@@ -576,6 +806,7 @@ async function saveProgress(
         UPDATE education_students
         SET
           student_name = ?,
+          email = ?,
           user_id =
             COALESCE(
               user_id,
@@ -588,7 +819,8 @@ async function saveProgress(
         `,
       )
       .bind(
-        studentName,
+        effectiveStudentName,
+        effectiveEmail,
         user?.id ??
           null,
         student.id,
@@ -735,7 +967,11 @@ async function saveProgress(
 
   const cardUrl =
     new URL(
-      `/student/${student.student_code}`,
+      `/student/${
+        useActiveGuest
+          ? guestCode
+          : student.student_code
+      }`,
       url.origin,
     ).toString();
 
@@ -745,12 +981,17 @@ async function saveProgress(
 
     student: {
       code:
-        student.student_code,
+        useActiveGuest
+          ? guestCode
+          : student.student_code,
 
       name:
-        studentName,
+        effectiveStudentName,
 
-      email,
+      email:
+        useActiveGuest
+          ? protectedGuestEmail
+          : effectiveEmail,
 
       cardUrl,
     },
@@ -893,21 +1134,23 @@ async function getReport(
   env: Env,
   url: URL,
 ): Promise<Response> {
+  const activeGuest =
+    await currentEducationGuest(
+      request,
+      env,
+    );
+
+  const guestCode =
+    normalizeCode(
+      activeGuest
+        ?.slug,
+    );
+
   const user =
     await currentUser(
       request,
       env,
     );
-
-  if (!user) {
-    return jsonResponse(
-      {
-        error:
-          "Sign in with the verified email to view saved progress.",
-      },
-      401,
-    );
-  }
 
   const studentCode =
     normalizeCode(
@@ -926,30 +1169,83 @@ async function getReport(
     );
   }
 
+  if (
+    activeGuest &&
+    guestCode &&
+    studentCode !==
+      guestCode
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "This GYAN is not active in this browser.",
+      },
+      403,
+    );
+  }
+
+  if (
+    !activeGuest &&
+    !user
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "Sign in with the verified email to view saved progress.",
+      },
+      401,
+    );
+  }
+
   const student =
     await env.gyan_registry
       .prepare(
-        `
-        SELECT
-          id,
-          student_code,
-          student_name,
-          email,
-          country_code,
-          grade_code
+        activeGuest
+          ? `
+            SELECT
+              id,
+              student_code,
+              student_name,
+              email,
+              country_code,
+              grade_code
 
-        FROM education_students
+            FROM education_students
 
-        WHERE
-          student_code = ?
-          AND email = ?
+            WHERE
+              student_code = ?
 
-        LIMIT 1
-        `,
+            LIMIT 1
+          `
+          : `
+            SELECT
+              id,
+              student_code,
+              student_name,
+              email,
+              country_code,
+              grade_code
+
+            FROM education_students
+
+            WHERE
+              student_code = ?
+              AND email = ?
+
+            LIMIT 1
+          `,
       )
       .bind(
-        studentCode,
-        user.email,
+        ...(
+          activeGuest
+            ? [
+                guestCode,
+              ]
+            : [
+                studentCode,
+                user!.email,
+              ]
+        ),
       )
       .first<{
         id: number;
@@ -978,14 +1274,83 @@ async function getReport(
       "MATH",
     );
 
+  const attemptStats =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          COUNT(*) AS totalAttempts
+
+        FROM education_attempts
+
+        WHERE student_id = ?
+        `,
+      )
+      .bind(
+        student.id,
+      )
+      .first<{
+        totalAttempts: number;
+      }>();
+
+  const recentAttempts =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          id,
+          subject_code AS subjectCode,
+          topic_code AS topicCode,
+          question_count AS questionCount,
+          correct_count AS correctCount,
+          score_percent AS scorePercent,
+          created_at AS createdAt
+
+        FROM education_attempts
+
+        WHERE student_id = ?
+
+        ORDER BY
+          created_at ASC,
+          id ASC
+
+        LIMIT 60
+        `,
+      )
+      .bind(
+        student.id,
+      )
+      .all<{
+        id: number;
+        subjectCode: string;
+        topicCode: string;
+        questionCount: number;
+        correctCount: number;
+        scorePercent: number;
+        createdAt: string;
+      }>();
+
   return jsonResponse({
     student: {
       code:
-        student.student_code,
+        activeGuest
+          ? guestCode
+          : student.student_code,
       name:
-        student.student_name,
+        activeGuest
+          ? (
+              normalizeName(
+                activeGuest.gyan_name,
+              ) ||
+              student.student_name
+            )
+          : student.student_name,
       email:
-        student.email,
+        activeGuest
+          ? normalizeEmail(
+              activeGuest.email,
+            )
+          : student.email,
       country:
         student.country_code,
       grade:
@@ -1000,6 +1365,49 @@ async function getReport(
         student.grade_code,
         subject,
       ),
+
+    attemptSummary: {
+      totalAttempts:
+        Number(
+          attemptStats
+            ?.totalAttempts ??
+          0,
+        ),
+
+      recentAttempts:
+        recentAttempts.results.map(
+          (attempt) => ({
+            id:
+              Number(
+                attempt.id,
+              ),
+
+            subjectCode:
+              attempt.subjectCode,
+
+            topicCode:
+              attempt.topicCode,
+
+            questionCount:
+              Number(
+                attempt.questionCount,
+              ),
+
+            correctCount:
+              Number(
+                attempt.correctCount,
+              ),
+
+            scorePercent:
+              Number(
+                attempt.scorePercent,
+              ),
+
+            createdAt:
+              attempt.createdAt,
+          }),
+        ),
+    },
   });
 }
 
@@ -1009,21 +1417,23 @@ async function getReviewQuestions(
   env: Env,
   url: URL,
 ): Promise<Response> {
+  const activeGuest =
+    await currentEducationGuest(
+      request,
+      env,
+    );
+
+  const guestCode =
+    normalizeCode(
+      activeGuest
+        ?.slug,
+    );
+
   const user =
     await currentUser(
       request,
       env,
     );
-
-  if (!user) {
-    return jsonResponse(
-      {
-        error:
-          "Sign in with the verified email to revise saved work.",
-      },
-      401,
-    );
-  }
 
   const studentCode =
     normalizeCode(
@@ -1061,27 +1471,77 @@ async function getReviewQuestions(
     );
   }
 
+  if (
+    activeGuest &&
+    guestCode &&
+    studentCode !==
+      guestCode
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "This GYAN is not active in this browser.",
+      },
+      403,
+    );
+  }
+
+  if (
+    !activeGuest &&
+    !user
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "Sign in with the verified email to revise saved work.",
+      },
+      401,
+    );
+  }
+
   const student =
     await env.gyan_registry
       .prepare(
-        `
-        SELECT
-          id,
-          country_code,
-          grade_code
+        activeGuest
+          ? `
+            SELECT
+              id,
+              country_code,
+              grade_code
 
-        FROM education_students
+            FROM education_students
 
-        WHERE
-          student_code = ?
-          AND email = ?
+            WHERE
+              student_code = ?
 
-        LIMIT 1
-        `,
+            LIMIT 1
+          `
+          : `
+            SELECT
+              id,
+              country_code,
+              grade_code
+
+            FROM education_students
+
+            WHERE
+              student_code = ?
+              AND email = ?
+
+            LIMIT 1
+          `,
       )
       .bind(
-        studentCode,
-        user.email,
+        ...(
+          activeGuest
+            ? [
+                guestCode,
+              ]
+            : [
+                studentCode,
+                user!.email,
+              ]
+        ),
       )
       .first<{
         id: number;

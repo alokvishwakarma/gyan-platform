@@ -198,3 +198,95 @@
 .about-admin-panel__full {
   width: 100%;
 }
+
+/* =========================================================
+   ADMIN AUTH / ABOUT PANEL
+   Keep the "Administrator authenticated" card directly below
+   the fixed GYAN header instead of vertically centered.
+   ========================================================= */
+
+.app-admin-auth-anchor {
+  position: fixed;
+  top: var(--gyan-header-height, 64px);
+  right: 0;
+  bottom: 0;
+  left: 0;
+
+  z-index: 10000;
+
+  min-height: 0;
+
+  pointer-events: none;
+}
+
+/*
+ * AboutAdminPanel supplies its own overlay as the direct child.
+ * Re-anchor that overlay inside the area below the GYAN header.
+ */
+.app-admin-auth-anchor > * {
+  position: absolute !important;
+
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+
+  inset: 0 !important;
+
+  width: 100% !important;
+  height: 100% !important;
+
+  box-sizing: border-box !important;
+
+  display: flex !important;
+
+  align-items: flex-start !important;
+  justify-content: center !important;
+
+  padding:
+    6px
+    10px
+    max(
+      10px,
+      env(safe-area-inset-bottom)
+    ) !important;
+
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+
+  pointer-events: auto;
+
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/*
+ * The first visible card/panel inside the overlay should also
+ * remain top-aligned even if its original CSS used auto margins.
+ */
+.app-admin-auth-anchor > * > * {
+  margin-top: 0 !important;
+  margin-bottom: auto !important;
+}
+
+@media (min-width: 768px) {
+  .app-admin-auth-anchor {
+    top:
+      var(
+        --gyan-header-height-desktop,
+        68px
+      );
+  }
+}
+
+@media (max-width: 560px) {
+  .app-admin-auth-anchor > * {
+    padding:
+      4px
+      4px
+      max(
+        4px,
+        env(safe-area-inset-bottom)
+      ) !important;
+  }
+}

@@ -18,7 +18,7 @@ interface CalendarRecord {
     string;
 
   duration_months:
-    1 | 3 | 12;
+    1 | 3 | 6 | 12;
 
   status:
     "GENERATED" |
@@ -178,6 +178,14 @@ export default function CalendarAccessRegistrationPage({
   const [
     activating,
     setActivating,
+  ] =
+    useState(
+      false,
+    );
+
+  const [
+    qrActivating,
+    setQrActivating,
   ] =
     useState(
       false,
@@ -364,6 +372,151 @@ export default function CalendarAccessRegistrationPage({
     },
     [
       normalizedSlug,
+    ],
+  );
+
+
+  useEffect(
+    () => {
+      const token =
+        window.location.hash
+          .replace(
+            /^#/,
+            "",
+          )
+          .trim();
+
+      if (
+        !token ||
+        guestActive ||
+        qrActivating
+      ) {
+        return;
+      }
+
+      let cancelled =
+        false;
+
+      setQrActivating(
+        true,
+      );
+
+      setError("");
+
+      void fetch(
+        `/api/calendar-access/${encodeURIComponent(
+          normalizedSlug,
+        )}/guest-token`,
+        {
+          method:
+            "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body:
+            JSON.stringify({
+              token,
+            }),
+        },
+      )
+        .then(
+          async (
+            response,
+          ) => {
+            const body =
+              await response.json() as {
+                guest?:
+                  boolean;
+
+                error?:
+                  string;
+              };
+
+            if (
+              !response.ok ||
+              !body.guest
+            ) {
+              throw new Error(
+                body.error ??
+                "This QR could not open the GYAN.",
+              );
+            }
+
+            if (
+              cancelled
+            ) {
+              return;
+            }
+
+            setGuestActive(
+              true,
+            );
+
+            setRecord(
+              (
+                previous,
+              ) =>
+                previous
+                  ? {
+                      ...previous,
+                      status:
+                        "GUEST_ACTIVE",
+                    }
+                  : previous,
+            );
+
+            /*
+             * Remove the secret fragment from the address bar after
+             * successful activation. Fragments are never sent to the server
+             * in the original HTTP request.
+             */
+            window.history.replaceState(
+              {},
+              "",
+              `${window.location.pathname}${window.location.search}`,
+            );
+          },
+        )
+        .catch(
+          (
+            caught,
+          ) => {
+            if (
+              !cancelled
+            ) {
+              setError(
+                caught instanceof
+                  Error
+                  ? caught.message
+                  : "This QR could not open the GYAN.",
+              );
+            }
+          },
+        )
+        .finally(
+          () => {
+            if (
+              !cancelled
+            ) {
+              setQrActivating(
+                false,
+              );
+            }
+          },
+        );
+
+      return () => {
+        cancelled =
+          true;
+      };
+    },
+    [
+      normalizedSlug,
+      guestActive,
+      qrActivating,
     ],
   );
 
@@ -590,16 +743,6 @@ export default function CalendarAccessRegistrationPage({
         .trim()
         .toUpperCase();
 
-    if (
-      !normalizedCode
-    ) {
-      setError(
-        "Enter the printed access code again to protect this GYAN.",
-      );
-
-      return;
-    }
-
     setClaiming(
       true,
     );
@@ -688,7 +831,11 @@ export default function CalendarAccessRegistrationPage({
       <main className="calendar-register-page">
         <section className="calendar-register-card">
           <div className="calendar-register-state">
-            Opening your GYAN…
+            {
+              qrActivating
+                ? "Opening your GYAN from QR…"
+                : "Opening your GYAN…"
+            }
           </div>
         </section>
       </main>
@@ -829,7 +976,7 @@ export default function CalendarAccessRegistrationPage({
               </button>
 
               <p className="calendar-register-warning">
-                🔑 Keep this access code safe. Without a verified email, GYAN cannot recover this account if the code is lost.
+                🔑 Keep your GYAN card or access code safe. Without a verified email, GYAN cannot recover it if the card/code is lost.
               </p>
             </>
           )
@@ -878,7 +1025,7 @@ export default function CalendarAccessRegistrationPage({
               </button>
 
               <p className="calendar-register-warning">
-                🔑 Keep your access code safe. Until you protect this GYAN with email, a lost code cannot be recovered.
+                🔑 Keep your GYAN card safe. Until you protect it with email, losing the card/access credential may make this GYAN unrecoverable.
               </p>
             </>
           )
@@ -920,7 +1067,7 @@ export default function CalendarAccessRegistrationPage({
                         </div>
 
                         <p className="calendar-register-help">
-                          Enter the printed access code once more to confirm possession of this GYAN.
+                          Your verified guest session confirms possession. Protect this GYAN with your email.
                         </p>
 
                         <button

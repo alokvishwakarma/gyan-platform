@@ -1422,11 +1422,15 @@ function CalendarCard({
       }
 
       <footer className="gyan-print-card-v2__footer">
-        <strong>
-          gyan.cc
-        </strong>
+        <div className="gyan-print-card-v2__contact-row">
+          <strong>gyan.cc</strong>
+          <span aria-hidden="true">•</span>
+          <strong className="gyan-print-card-v2__contact">
+            admin@gyan.cc
+          </strong>
+        </div>
 
-        <span>
+        <span className="gyan-print-card-v2__footer-tagline">
           Learn • Discover • Grow
         </span>
       </footer>

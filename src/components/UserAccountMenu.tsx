@@ -39,6 +39,12 @@ interface UserAccountMenuProps {
 
   onOpenMyRatings?:
     () => void;
+
+  educationCode?:
+    string;
+
+  educationEmailKnown?:
+    boolean;
 }
 
 interface MyShopsResponse {
@@ -56,6 +62,8 @@ export default function UserAccountMenu({
   onOpenMyShop,
   onRegisterMyShop,
   onOpenMyRatings,
+  educationCode,
+  educationEmailKnown,
 }: UserAccountMenuProps) {
   const [
     open,
@@ -68,6 +76,8 @@ export default function UserAccountMenu({
     setAuthOpen,
   ] =
     useState(false);
+
+
 
   const [
     loading,
@@ -410,6 +420,23 @@ export default function UserAccountMenu({
     );
   }
 
+  const normalizedEducationCode =
+    educationCode
+      ?.trim()
+      .toUpperCase() ??
+    "";
+
+  const educationCodeLabel =
+    normalizedEducationCode
+      ? `${normalizedEducationCode}${
+          educationEmailKnown ===
+            false
+            ? "*"
+            : ""
+        }`
+      : "";
+
+
   return (
     <>
       <div
@@ -456,10 +483,11 @@ export default function UserAccountMenu({
           )}
         </button>
 
-        {open && (
-          <div
-            className="user-account-menu__popover"
-          >
+        {open &&
+          createPortal(
+            <div
+              className="user-account-menu__popover user-account-menu__popover--portal"
+            >
             {loading ? (
               <div
                 className="user-account-menu__status"
@@ -603,6 +631,9 @@ export default function UserAccountMenu({
                   }}
                 >
                   ⭐ My Ratings
+                  {educationCodeLabel
+                    ? ` [${educationCodeLabel}]`
+                    : ""}
                 </button>
 
                 <button
@@ -658,6 +689,44 @@ export default function UserAccountMenu({
                   ✉️ Sign in
                 </button>
 
+                {educationCodeLabel && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(
+                        false,
+                      );
+
+                      if (
+                        onOpenMyRatings
+                      ) {
+                        onOpenMyRatings();
+                        return;
+                      }
+
+                      window.history.pushState(
+                        {},
+                        "",
+                        "/ratings",
+                      );
+
+                      window.dispatchEvent(
+                        new PopStateEvent(
+                          "popstate",
+                        ),
+                      );
+                    }}
+                    title={
+                      educationEmailKnown ===
+                        false
+                        ? "Add an email so this GYAN can be recovered if access is lost."
+                        : "Open saved learning progress."
+                    }
+                  >
+                    ⭐ My Ratings [{educationCodeLabel}]
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => {
@@ -683,8 +752,9 @@ export default function UserAccountMenu({
                 </button>
               </>
             )}
-          </div>
-        )}
+            </div>,
+            document.body,
+          )}
       </div>
 
       {authOpen &&

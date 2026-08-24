@@ -148,6 +148,15 @@ export default function StudentProgressPage({
       false,
     );
 
+
+  const [
+    activeGuestNoProgress,
+    setActiveGuestNoProgress,
+  ] =
+    useState(
+      false,
+    );
+
   const [
     email,
     setEmail,
@@ -235,6 +244,55 @@ export default function StudentProgressPage({
     );
 
 
+  async function hasMatchingActiveGuest():
+    Promise<boolean> {
+    try {
+      const response =
+        await fetch(
+          "/api/calendar-access/me",
+          {
+            cache:
+              "no-store",
+
+            credentials:
+              "include",
+          },
+        );
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const body =
+        await response.json() as {
+          guest?: {
+            slug?: string;
+            status?: string;
+          } | null;
+        };
+
+      const guestCode =
+        body.guest
+          ?.slug
+          ?.trim()
+          .toUpperCase() ??
+        "";
+
+      return (
+        body.guest
+          ?.status ===
+          "GUEST_ACTIVE" &&
+        guestCode ===
+          studentCode
+            .trim()
+            .toUpperCase()
+      );
+    } catch {
+      return false;
+    }
+  }
+
+
   async function refreshReport():
     Promise<void> {
     const value =
@@ -270,7 +328,7 @@ export default function StudentProgressPage({
           },
         )
         .catch(
-          (
+          async (
             caught,
           ) => {
             if (
@@ -294,6 +352,31 @@ export default function StudentProgressPage({
               status ===
                 404
             ) {
+              const activeGuest =
+                await hasMatchingActiveGuest();
+
+              if (
+                !active
+              ) {
+                return;
+              }
+
+              if (
+                activeGuest
+              ) {
+                setRequiresSignIn(
+                  false,
+                );
+
+                setActiveGuestNoProgress(
+                  true,
+                );
+
+                setError("");
+
+                return;
+              }
+
               setRequiresSignIn(
                 true,
               );
@@ -988,6 +1071,30 @@ export default function StudentProgressPage({
             }
           </small>
         </div>
+
+        <button
+          type="button"
+          className="student-progress__continue-learning"
+          aria-label="Continue Learning"
+          title="Continue Learning"
+          onClick={() =>
+            onContinueLearning({
+              country:
+                report
+                  ?.student
+                  .country ??
+                "",
+
+              grade:
+                report
+                  ?.student
+                  .grade ??
+                "",
+            })
+          }
+        >
+          📚
+        </button>
       </header>
 
 
@@ -1017,6 +1124,49 @@ export default function StudentProgressPage({
 
       {
         !loading &&
+        activeGuestNoProgress &&
+        !report && (
+          <section
+            className="student-progress__verify"
+          >
+            <span>
+              ⭐
+            </span>
+
+            <h1>
+              My Ratings
+            </h1>
+
+            <p>
+              No learning ratings have been saved to this GYAN yet.
+            </p>
+
+            <button
+              type="button"
+              onClick={() =>
+                onContinueLearning({
+                  country:
+                    "",
+                  grade:
+                    "",
+                })
+              }
+            >
+              Start Learning
+            </button>
+
+            <small
+              className="student-progress__privacy"
+            >
+              Your active 30-day Guest GYAN can open this page without email verification.
+            </small>
+          </section>
+        )
+      }
+
+
+      {
+        !loading &&
         requiresSignIn &&
         !report && (
           <section
@@ -1027,11 +1177,11 @@ export default function StudentProgressPage({
             </span>
 
             <h1>
-              Open GYAN Card
+              Restore GYAN Access
             </h1>
 
             <p>
-              Verify the email used when this student card was saved.
+              Guest access is no longer active in this browser. Verify the recovery email linked to this GYAN to restore access.
             </p>
 
             {
@@ -1102,7 +1252,7 @@ export default function StudentProgressPage({
             <small
               className="student-progress__privacy"
             >
-              The 4-character code identifies a card; it does not unlock saved progress by itself.
+              During the active 30-day Guest period, this browser can open saved progress directly. After access expires, a recovery email is needed to restore it.
             </small>
           </section>
         )

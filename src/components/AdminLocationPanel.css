@@ -385,3 +385,46 @@ button:disabled {
 
   cursor: wait;
 }
+
+
+/* =========================================================
+   ADMIN LOCATION HEADER ACTIONS
+   Keep "Use this Location" available without scrolling.
+   ========================================================= */
+
+.admin-location-panel__header-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-location-panel
+> header
+.admin-location-panel__header-actions
+> button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.admin-location-panel
+> header
+.admin-location-panel__header-actions
+> .admin-location-panel__header-save {
+  border: 1px solid #1565c0;
+  background: #1565c0;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.admin-location-panel
+> header
+.admin-location-panel__header-actions
+> .admin-location-panel__header-save:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}

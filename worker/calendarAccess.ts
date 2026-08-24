@@ -10,7 +10,12 @@ export interface CalendarAccessEnv {
 
 
 type DurationMonths =
-  1 | 3 | 12;
+  1 | 3 | 6 | 12;
+
+type ArtworkKey =
+  | "GODDESS"
+  | "EDUCATION"
+  | "SCENIC";
 
 
 const ALPHABET =
@@ -99,6 +104,59 @@ function createAccessCode():
   )}-${raw.slice(
     5,
   )}`;
+}
+
+
+function createQrToken():
+  string {
+  /*
+   * 16 symbols from the human-safe alphabet gives a compact
+   * high-entropy QR credential. Only its SHA-256 hash is stored.
+   */
+  return randomText(
+    16,
+  );
+}
+
+
+function welcomeGemsForDuration(
+  durationMonths:
+    DurationMonths,
+):
+  number {
+  if (
+    durationMonths ===
+      12
+  ) {
+    return 12;
+  }
+
+  if (
+    durationMonths ===
+      6
+  ) {
+    return 6;
+  }
+
+  return 3;
+}
+
+
+function normalizeArtworkKey(
+  value:
+    unknown,
+):
+  ArtworkKey {
+  return (
+    value ===
+      "EDUCATION" ||
+    value ===
+      "SCENIC" ||
+    value ===
+      "GODDESS"
+  )
+    ? value
+    : "GODDESS";
 }
 
 
@@ -392,6 +450,8 @@ async function createOne(
     CalendarAccessEnv,
   durationMonths:
     DurationMonths,
+  artworkKey:
+    ArtworkKey,
 ) {
   for (
     let attempt = 0;
@@ -407,6 +467,19 @@ async function createOne(
     const accessCode =
       createAccessCode();
 
+    const qrToken =
+      createQrToken();
+
+    const qrTokenHash =
+      await sha256(
+        qrToken,
+      );
+
+    const welcomeGems =
+      welcomeGemsForDuration(
+        durationMonths,
+      );
+
     try {
       const row =
         await env.gyan_registry
@@ -416,16 +489,21 @@ async function createOne(
                 slug,
                 gyan_name,
                 access_code,
+                qr_token_hash,
                 duration_months,
+                welcome_gems,
+                artwork_key,
                 status
               )
-              VALUES (?, ?, ?, ?, 'GENERATED')
+              VALUES (?, ?, ?, ?, ?, ?, ?, 'GENERATED')
               RETURNING
                 id,
                 slug,
                 gyan_name,
                 access_code,
                 duration_months,
+                welcome_gems,
+                artwork_key,
                 status,
                 email
             `,
@@ -434,7 +512,10 @@ async function createOne(
             slug,
             gyanName,
             accessCode,
+            qrTokenHash,
             durationMonths,
+            welcomeGems,
+            artworkKey,
           )
           .first<{
             id: number;
@@ -442,6 +523,8 @@ async function createOne(
             gyan_name: string;
             access_code: string;
             duration_months: DurationMonths;
+            welcome_gems: number;
+            artwork_key: ArtworkKey;
             status: "GENERATED";
             email: string | null;
           }>();
@@ -459,6 +542,9 @@ async function createOne(
           publicUrl:
             `https://gyan.cc/${row.slug.toLowerCase()}`,
 
+          qrUrl:
+            `https://gyan.cc/${row.slug.toLowerCase()}#${qrToken}`,
+
           gyanName:
             row.gyan_name,
 
@@ -467,6 +553,12 @@ async function createOne(
 
           durationMonths:
             row.duration_months,
+
+          welcomeGems:
+            row.welcome_gems,
+
+          artworkKey:
+            row.artwork_key,
 
           status:
             row.status,
@@ -529,13 +621,14 @@ export async function handleCalendarAccessRoute({
       await request.json() as {
         count?: number;
         durationMonths?: number;
+        artworkKey?: unknown;
       };
 
     const count =
       Math.max(
         1,
         Math.min(
-          8,
+          320,
           Math.floor(
             body.count ??
             1,
@@ -549,16 +642,22 @@ export async function handleCalendarAccessRoute({
     if (
       durationMonths !== 1 &&
       durationMonths !== 3 &&
+      durationMonths !== 6 &&
       durationMonths !== 12
     ) {
       return json(
         {
           error:
-            "durationMonths must be 1, 3, or 12.",
+            "durationMonths must be 1, 3, 6, or 12.",
         },
         400,
       );
     }
+
+    const artworkKey =
+      normalizeArtworkKey(
+        body.artworkKey,
+      );
 
     const records =
       [];
@@ -572,6 +671,7 @@ export async function handleCalendarAccessRoute({
         await createOne(
           env,
           durationMonths,
+          artworkKey,
         ),
       );
     }
@@ -737,6 +837,419 @@ export async function handleCalendarAccessRoute({
   }
 
 
+  const previewMatch =
+    pathname.match(
+      /^\/api\/calendar-access\/(\d+)\/preview$/,
+    );
+
+  if (
+    previewMatch &&
+    request.method ===
+      "POST"
+  ) {
+    const id =
+      Number(
+        previewMatch[1],
+      );
+
+    const body =
+      await request.json() as {
+        durationMonths?:
+          number;
+
+        artworkKey?:
+          unknown;
+      };
+
+    const durationMonths =
+      body.durationMonths;
+
+    if (
+      durationMonths !== 1 &&
+      durationMonths !== 3 &&
+      durationMonths !== 6 &&
+      durationMonths !== 12
+    ) {
+      return json(
+        {
+          error:
+            "durationMonths must be 1, 3, 6, or 12.",
+        },
+        400,
+      );
+    }
+
+    const artworkKey =
+      normalizeArtworkKey(
+        body.artworkKey,
+      );
+
+    const welcomeGems =
+      welcomeGemsForDuration(
+        durationMonths,
+      );
+
+    const existing =
+      await env.gyan_registry
+        .prepare(
+          `
+            SELECT
+              id,
+              slug,
+              gyan_name,
+              access_code,
+              duration_months,
+              welcome_gems,
+              artwork_key,
+              status,
+              email
+            FROM calendar_access_codes
+            WHERE id = ?
+            LIMIT 1
+          `,
+        )
+        .bind(
+          id,
+        )
+        .first<{
+          id: number;
+          slug: string;
+          gyan_name: string;
+          access_code: string;
+          duration_months: DurationMonths;
+          welcome_gems: number;
+          artwork_key: ArtworkKey;
+          status: string;
+          email: string | null;
+        }>();
+
+    if (
+      !existing
+    ) {
+      return json(
+        {
+          error:
+            "GYAN preview not found.",
+        },
+        404,
+      );
+    }
+
+    if (
+      existing.status !==
+        "GENERATED"
+    ) {
+      return json(
+        {
+          error:
+            "Only an unprinted GYAN preview can change size or artwork.",
+        },
+        409,
+      );
+    }
+
+    await env.gyan_registry
+      .prepare(
+        `
+          UPDATE calendar_access_codes
+          SET
+            duration_months = ?,
+            welcome_gems = ?,
+            artwork_key = ?
+          WHERE id = ?
+        `,
+      )
+      .bind(
+        durationMonths,
+        welcomeGems,
+        artworkKey,
+        id,
+      )
+      .run();
+
+    /*
+     * The QR token itself is intentionally unchanged when a user
+     * changes A5/A6/A7 size in preview.
+     */
+    return json({
+      record: {
+        id:
+          existing.id,
+
+        slug:
+          existing.slug,
+
+        publicUrl:
+          `https://gyan.cc/${existing.slug.toLowerCase()}`,
+
+        /*
+         * qrUrl is not recoverable from its stored hash.
+         * The browser already has the original qrUrl; frontend keeps it.
+         * null tells the frontend to preserve the existing QR payload.
+         */
+        qrUrl:
+          null,
+
+        gyanName:
+          existing.gyan_name,
+
+        accessCode:
+          existing.access_code,
+
+        durationMonths,
+
+        welcomeGems,
+
+        artworkKey,
+
+        status:
+          existing.status,
+
+        email:
+          existing.email,
+      },
+    });
+  }
+
+
+  const qrGuestMatch =
+    pathname.match(
+      /^\/api\/calendar-access\/([A-Za-z0-9]{4,5})\/guest-token$/,
+    );
+
+  if (
+    qrGuestMatch &&
+    request.method ===
+      "POST"
+  ) {
+    const body =
+      await request.json() as {
+        token?:
+          unknown;
+      };
+
+    const token =
+      String(
+        body.token ??
+        "",
+      )
+        .trim()
+        .toUpperCase();
+
+    if (
+      !token
+    ) {
+      return json(
+        {
+          error:
+            "QR token is missing.",
+        },
+        400,
+      );
+    }
+
+    const tokenHash =
+      await sha256(
+        token,
+      );
+
+    const slug =
+      qrGuestMatch[1]
+        .toUpperCase();
+
+    const row =
+      await env.gyan_registry
+        .prepare(
+          `
+            SELECT
+              id,
+              slug,
+              gyan_name,
+              duration_months,
+              welcome_gems,
+              status,
+              guest_started_at,
+              guest_expires_at
+            FROM calendar_access_codes
+            WHERE
+              slug = ?
+              AND qr_token_hash = ?
+            LIMIT 1
+          `,
+        )
+        .bind(
+          slug,
+          tokenHash,
+        )
+        .first<{
+          id: number;
+          slug: string;
+          gyan_name: string;
+          duration_months: DurationMonths;
+          welcome_gems: number;
+          status: string;
+          guest_started_at: string | null;
+          guest_expires_at: string | null;
+        }>();
+
+    if (
+      !row
+    ) {
+      return json(
+        {
+          error:
+            "This QR is not valid for the GYAN shown.",
+        },
+        404,
+      );
+    }
+
+    if (
+      row.status ===
+        "CLAIMED"
+    ) {
+      return json(
+        {
+          error:
+            "This GYAN is already protected with an email.",
+        },
+        409,
+      );
+    }
+
+    if (
+      row.status ===
+        "EXPIRED"
+    ) {
+      return json(
+        {
+          error:
+            "This GYAN access has expired.",
+        },
+        410,
+      );
+    }
+
+    if (
+      row.status ===
+        "GENERATED" ||
+      row.status ===
+        "PRINTED"
+    ) {
+      await env.gyan_registry
+        .prepare(
+          `
+            UPDATE calendar_access_codes
+            SET
+              status = 'GUEST_ACTIVE',
+              guest_started_at =
+                COALESCE(
+                  guest_started_at,
+                  CURRENT_TIMESTAMP
+                ),
+              guest_expires_at =
+                COALESCE(
+                  guest_expires_at,
+                  datetime(
+                    'now',
+                    '+30 days'
+                  )
+                )
+            WHERE id = ?
+          `,
+        )
+        .bind(
+          row.id,
+        )
+        .run();
+
+      await env.gyan_registry
+        .prepare(
+          `
+            INSERT OR IGNORE INTO gem_transactions (
+              calendar_access_id,
+              amount,
+              reason
+            )
+            VALUES (?, ?, 'WELCOME_PRINT')
+          `,
+        )
+        .bind(
+          row.id,
+          row.welcome_gems,
+        )
+        .run();
+    }
+
+    const sessionToken =
+      createGuestToken();
+
+    const sessionHash =
+      await sha256(
+        sessionToken,
+      );
+
+    await env.gyan_registry
+      .prepare(
+        `
+          INSERT INTO calendar_guest_sessions (
+            calendar_access_id,
+            token_hash,
+            expires_at
+          )
+          VALUES (
+            ?,
+            ?,
+            datetime(
+              'now',
+              '+30 days'
+            )
+          )
+        `,
+      )
+      .bind(
+        row.id,
+        sessionHash,
+      )
+      .run();
+
+    const response =
+      json({
+        guest:
+          true,
+
+        record: {
+          id:
+            row.id,
+
+          slug:
+            row.slug,
+
+          gyanName:
+            row.gyan_name,
+
+          durationMonths:
+            row.duration_months,
+
+          welcomeGems:
+            row.welcome_gems,
+
+          status:
+            "GUEST_ACTIVE",
+        },
+      });
+
+    response.headers.append(
+      "set-cookie",
+      guestCookie(
+        sessionToken,
+      ),
+    );
+
+    return response;
+  }
+
+
   const guestMatch =
     pathname.match(
       /^\/api\/calendar-access\/([A-Za-z0-9]{4,5})\/guest$/,
@@ -831,7 +1344,7 @@ export async function handleCalendarAccessRoute({
             string;
 
           duration_months:
-            1 | 3 | 12;
+            1 | 3 | 6 | 12;
 
           status:
             string;
@@ -940,6 +1453,27 @@ export async function handleCalendarAccessRoute({
           row.id,
         )
         .run();
+
+      await env.gyan_registry
+        .prepare(
+          `
+            INSERT OR IGNORE INTO gem_transactions (
+              calendar_access_id,
+              amount,
+              reason
+            )
+            VALUES (?, ?, 'WELCOME_PRINT')
+          `,
+        )
+        .bind(
+          row.id,
+          row.duration_months === 12
+            ? 12
+            : row.duration_months === 6
+              ? 6
+              : 3
+        )
+        .run();
     }
 
     const current =
@@ -973,7 +1507,7 @@ export async function handleCalendarAccessRoute({
             string;
 
           duration_months:
-            1 | 3 | 12;
+            1 | 3 | 6 | 12;
 
           status:
             string;
@@ -1157,21 +1691,33 @@ export async function handleCalendarAccessRoute({
         .trim()
         .toUpperCase();
 
+    const slug =
+      claimMatch[1]
+        .toUpperCase();
+
+    const guestPossession =
+      await currentGuestAccess(
+        request,
+        env,
+      );
+
+    const hasGuestPossession =
+      guestPossession
+        ?.slug ===
+      slug;
+
     if (
-      !accessCode
+      !accessCode &&
+      !hasGuestPossession
     ) {
       return json(
         {
           error:
-            "Enter the access code printed on your GYAN calendar.",
+            "Enter the printed access code, or scan the QR on your GYAN card.",
         },
         400,
       );
     }
-
-    const slug =
-      claimMatch[1]
-        .toUpperCase();
 
     const row =
       await env.gyan_registry
@@ -1208,7 +1754,7 @@ export async function handleCalendarAccessRoute({
             string;
 
           duration_months:
-            1 | 3 | 12;
+            1 | 3 | 6 | 12;
 
           status:
             string;
@@ -1233,6 +1779,7 @@ export async function handleCalendarAccessRoute({
     }
 
     if (
+      !hasGuestPossession &&
       row.access_code !==
         accessCode
     ) {
@@ -1333,6 +1880,27 @@ export async function handleCalendarAccessRoute({
       .bind(
         user.email,
         row.id,
+      )
+      .run();
+
+    await env.gyan_registry
+      .prepare(
+        `
+          INSERT OR IGNORE INTO gem_transactions (
+            calendar_access_id,
+            amount,
+            reason
+          )
+          VALUES (?, ?, 'WELCOME_PRINT')
+        `,
+      )
+      .bind(
+        row.id,
+        row.duration_months === 12
+          ? 12
+          : row.duration_months === 6
+            ? 6
+            : 3,
       )
       .run();
 

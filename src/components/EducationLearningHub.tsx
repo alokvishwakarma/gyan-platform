@@ -69,6 +69,18 @@ interface EducationLearningHubProps {
   country:
     EducationCountry;
 
+  activeGyanCode?:
+    string;
+
+  activeGyanName?:
+    string;
+
+  activeGyanEmail?:
+    string;
+
+  activeGyanEmailKnown?:
+    boolean;
+
   onBack:
     () => void;
 }
@@ -76,6 +88,10 @@ interface EducationLearningHubProps {
 
 export default function EducationLearningHub({
   country,
+  activeGyanCode,
+  activeGyanName,
+  activeGyanEmail,
+  activeGyanEmailKnown,
   onBack,
 }: EducationLearningHubProps) {
   const [
@@ -243,6 +259,48 @@ export default function EducationLearningHub({
     setError,
   ] =
     useState("");
+
+
+  const [
+    autoSaveMessage,
+    setAutoSaveMessage,
+  ] =
+    useState("");
+
+
+  const normalizedActiveGyanCode =
+    activeGyanCode
+      ?.trim()
+      .toUpperCase() ??
+    "";
+
+  const activeGyanCodeLabel =
+    normalizedActiveGyanCode
+      ? `${normalizedActiveGyanCode}${
+          activeGyanEmailKnown ===
+            false
+            ? "*"
+            : ""
+        }`
+      : "";
+
+
+  const educationAccessNotice =
+    normalizedActiveGyanCode &&
+    activeGyanEmailKnown ===
+      false
+      ? (
+          <div
+            className="education-learning__access-warning"
+            role="note"
+          >
+            <strong>
+              ⚠ [{activeGyanCodeLabel}]
+            </strong>{" "}
+            Add a recovery email when convenient. It helps restore this GYAN if browser/device access code is lost.
+          </div>
+        )
+      : null;
 
 
   useEffect(() => {
@@ -471,6 +529,7 @@ export default function EducationLearningHub({
     );
 
     setError("");
+    setAutoSaveMessage("");
 
     try {
       const next =
@@ -665,6 +724,91 @@ export default function EducationLearningHub({
       setSubmitted(
         true,
       );
+
+      if (
+        normalizedActiveGyanCode &&
+        grade &&
+        subject &&
+        topic
+      ) {
+        setAutoSaveMessage(
+          `Saving to [${activeGyanCodeLabel}]…`,
+        );
+
+        try {
+          const checkedAnswers =
+            Object.fromEntries(
+              entries,
+            );
+
+          const saved =
+            await saveEducationProgress({
+              studentName:
+                activeGyanName
+                  ?.trim() ||
+                "GYAN Learner",
+
+              email:
+                activeGyanEmail
+                  ?.trim()
+                  .toLowerCase() ||
+                "",
+
+              country,
+
+              grade:
+                grade.code,
+
+              subject:
+                subject.code,
+
+              topic:
+                topic.code,
+
+              studentCode:
+                normalizedActiveGyanCode,
+
+              answers:
+                questions.map(
+                  (question) => ({
+                    questionId:
+                      question.id,
+
+                    selectedChoice:
+                      checkedAnswers[
+                        question.id
+                      ]?.selectedChoice ??
+                      "",
+                  }),
+                ),
+            });
+
+          setSavedStudent(
+            saved.student,
+          );
+
+          setReportTopics(
+            saved.report,
+          );
+
+          setAutoSaveMessage(
+            `✓ Saved to [${activeGyanCodeLabel}]`,
+          );
+        } catch (
+          saveCaught
+        ) {
+          setAutoSaveMessage(
+            "⚠ Progress could not be saved automatically.",
+          );
+
+          setError(
+            saveCaught instanceof
+              Error
+              ? saveCaught.message
+              : "Progress could not be saved automatically.",
+          );
+        }
+      }
     } catch (
       caught
     ) {
@@ -938,19 +1082,23 @@ export default function EducationLearningHub({
       "little-learners"
   ) {
     return (
-      <LittleLearnersExperience
-        onBack={() => {
-          window.history.pushState(
-            {},
-            "",
-            "/education",
-          );
+      <>
+        {educationAccessNotice}
 
-          setStep(
-            "portal",
-          );
-        }}
-      />
+        <LittleLearnersExperience
+          onBack={() => {
+            window.history.pushState(
+              {},
+              "",
+              "/education",
+            );
+
+            setStep(
+              "portal",
+            );
+          }}
+        />
+      </>
     );
   }
 
@@ -960,23 +1108,27 @@ export default function EducationLearningHub({
       "portal"
   ) {
     return (
-      <EducationPortal
-        country={
-          country
-        }
+      <>
+        {educationAccessNotice}
 
-        onBack={
-          onBack
-        }
+        <EducationPortal
+          country={
+            country
+          }
 
-        onSelect={(
-          selection,
-        ) => {
-          void selectPortal(
+          onBack={
+            onBack
+          }
+
+          onSelect={(
             selection,
-          );
-        }}
-      />
+          ) => {
+            void selectPortal(
+              selection,
+            );
+          }}
+        />
+      </>
     );
   }
 
@@ -985,6 +1137,8 @@ export default function EducationLearningHub({
     <main
       className="education-learning"
     >
+      {educationAccessNotice}
+
       <header
         className="education-learning__header"
       >
@@ -1445,6 +1599,14 @@ export default function EducationLearningHub({
                     }
                   </span>
 
+                  {autoSaveMessage && (
+                    <small
+                      className="education-learning__autosave"
+                    >
+                      {autoSaveMessage}
+                    </small>
+                  )}
+
                   <button
                     type="button"
                     className="education-learning__primary"
@@ -1580,19 +1742,30 @@ export default function EducationLearningHub({
               }
             </div>
 
-            <button
-              type="button"
-              className="education-learning__primary"
-              onClick={() =>
-                setSaveFormOpen(
-                  true,
-                )
-              }
-            >
-              Save My Progress
-            </button>
+            {normalizedActiveGyanCode ? (
+              <div
+                className="education-learning__autosave-note"
+              >
+                <strong>
+                  ✓ Progress saves automatically to [{activeGyanCodeLabel}]
+                </strong>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="education-learning__primary"
+                onClick={() =>
+                  setSaveFormOpen(
+                    true,
+                  )
+                }
+              >
+                Save My Progress
+              </button>
+            )}
 
             {
+              !normalizedActiveGyanCode &&
               saveFormOpen && (
                 <div
                   className="education-learning__save-form"

@@ -776,13 +776,32 @@ export default function AdminLocationPanel({
             </h2>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            ×
-          </button>
+          <div className="admin-location-panel__header-actions">
+            <button
+              type="button"
+              className="admin-location-panel__header-save"
+              disabled={
+                resolving ||
+                locating
+              }
+              onClick={() =>
+                void save()
+              }
+              aria-label="Use this location"
+              title="Use this Location"
+            >
+              ✓
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              title="Close"
+            >
+              ×
+            </button>
+          </div>
         </header>
 
         <div

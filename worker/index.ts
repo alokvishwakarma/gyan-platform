@@ -127,6 +127,10 @@ import {
   handleCalendarAccessRoute,
 } from "./calendarAccess";
 
+import {
+  handleAdminStudentsRoute,
+} from "./adminStudents";
+
 interface RegisterShopRequest {
   code?: unknown;
   name?: unknown;
@@ -859,6 +863,16 @@ async function handleApiRequest(
     return publicAuthResponse;
   }
 
+const adminStudentsResponse =
+  await handleAdminStudentsRoute(
+    request,
+    env,
+    url,
+  );
+
+if (adminStudentsResponse) {
+  return adminStudentsResponse;
+}
 
   /*
    * ------------------------------------------------

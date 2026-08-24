@@ -23,6 +23,9 @@ import EducationLearningHub
 import MyRatingsPage
   from "./MyRatingsPage";
 
+import StudentProgressPage
+  from "./StudentProgressPage";
+
 import {
   ADMIN_LOCATION_CHANGED_EVENT,
   getAdminLocationOverride,
@@ -98,6 +101,8 @@ interface PublicHomePageProps {
 
   shopName?: string;
   shopAddress?: string;
+
+  educationCode?: string;
 
   onStartOnlineService?: (
     serviceCode: string,
@@ -277,6 +282,29 @@ type EducationCountry =
   | "IN";
 
 
+type ActiveEducationGyan = {
+  code: string;
+  name: string;
+  email: string;
+  emailKnown: boolean;
+};
+
+
+type EducationAttemptSummary = {
+  totalAttempts: number;
+
+  recentAttempts: {
+    id: number;
+    subjectCode: string;
+    topicCode: string;
+    questionCount: number;
+    correctCount: number;
+    scorePercent: number;
+    createdAt: string;
+  }[];
+};
+
+
 function getEffectiveEducationCountry():
   EducationCountry {
   const override =
@@ -360,6 +388,8 @@ export default function PublicHomePage({
   shopName,
 
   shopAddress,
+
+  educationCode,
 
   onStartOnlineService,
 
@@ -532,10 +562,143 @@ export default function PublicHomePage({
 
 
   const [
+    activeEducationGyan,
+    setActiveEducationGyan,
+  ] =
+    useState<ActiveEducationGyan | null>(
+      null,
+    );
+
+
+  const [
+    educationRatingsCardOpen,
+    setEducationRatingsCardOpen,
+  ] =
+    useState(false);
+
+
+  const [
+    educationAttemptSummary,
+    setEducationAttemptSummary,
+  ] =
+    useState<EducationAttemptSummary | null>(
+      null,
+    );
+
+
+
+  useEffect(() => {
+    const controller =
+      new AbortController();
+
+    void fetch(
+      "/api/calendar-access/me",
+      {
+        cache:
+          "no-store",
+
+        credentials:
+          "include",
+
+        signal:
+          controller.signal,
+      },
+    )
+      .then(async (response) => {
+        if (!response.ok) {
+          return null;
+        }
+
+        return await response.json() as {
+          guest?: {
+            slug?: string;
+            gyan_name?: string;
+            email?: string | null;
+            status?: string;
+          } | null;
+        };
+      })
+      .then((body) => {
+        if (
+          controller.signal.aborted
+        ) {
+          return;
+        }
+
+        const guest =
+          body?.guest;
+
+        const code =
+          guest?.slug
+            ?.trim()
+            .toUpperCase() ??
+          "";
+
+        if (
+          !guest ||
+          guest.status !==
+            "GUEST_ACTIVE" ||
+          !code
+        ) {
+          setActiveEducationGyan(
+            null,
+          );
+          return;
+        }
+
+        const email =
+          guest.email
+            ?.trim()
+            .toLowerCase() ??
+          "";
+
+        setActiveEducationGyan({
+          code,
+
+          name:
+            guest.gyan_name
+              ?.trim() ||
+            "GYAN Learner",
+
+          email,
+
+          emailKnown:
+            Boolean(email),
+        });
+      })
+      .catch((caught) => {
+        if (
+          caught instanceof
+            DOMException &&
+          caught.name ===
+            "AbortError"
+        ) {
+          return;
+        }
+
+        setActiveEducationGyan(
+          null,
+        );
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+
+  const [
     showPuzzle,
     setShowPuzzle,
   ] =
     useState(true);
+
+
+  const [
+    puzzleExitOpen,
+    setPuzzleExitOpen,
+  ] =
+    useState(false);
 
 
   const [
@@ -961,6 +1124,20 @@ export default function PublicHomePage({
   }
 
 
+  function chooseEducationAfterPuzzle():
+    void {
+    setPuzzleExitOpen(false);
+    openEducation();
+  }
+
+
+  function chooseServicesAfterPuzzle():
+    void {
+    setPuzzleExitOpen(false);
+    openServices();
+  }
+
+
   function openEducation():
     void {
     setSearchText(
@@ -1079,6 +1256,140 @@ export default function PublicHomePage({
       0;
 
 
+  const educationHeaderCode =
+    activeEducationGyan
+      ?.code ||
+    educationCode
+      ?.trim()
+      .toUpperCase() ||
+    "";
+
+  const educationEmailKnown =
+    activeEducationGyan
+      ?.emailKnown ??
+    true;
+
+  const educationCodeLabel =
+    educationHeaderCode ||
+    "";
+
+  const educationCodeNeedsRecovery =
+    Boolean(
+      educationHeaderCode &&
+      !educationEmailKnown,
+    );
+
+  const educationBranding =
+    activeView ===
+      "education" ||
+    educationHeaderCode.length >
+      0;
+
+
+  useEffect(
+    () => {
+      if (
+        !educationRatingsCardOpen ||
+        !educationHeaderCode
+      ) {
+        return;
+      }
+
+      const controller =
+        new AbortController();
+
+      void fetch(
+        `/api/education/report?student=${encodeURIComponent(
+          educationHeaderCode,
+        )}`,
+        {
+          cache:
+            "no-store",
+
+          credentials:
+            "include",
+
+          signal:
+            controller.signal,
+        },
+      )
+        .then(async (response) => {
+          if (!response.ok) {
+            return null;
+          }
+
+          return await response.json() as {
+            attemptSummary?: EducationAttemptSummary;
+          };
+        })
+        .then((body) => {
+          if (
+            controller.signal
+              .aborted
+          ) {
+            return;
+          }
+
+          setEducationAttemptSummary(
+            body
+              ?.attemptSummary ??
+            {
+              totalAttempts:
+                0,
+
+              recentAttempts:
+                [],
+            },
+          );
+        })
+        .catch((caught) => {
+          if (
+            caught instanceof
+              DOMException &&
+            caught.name ===
+              "AbortError"
+          ) {
+            return;
+          }
+
+          setEducationAttemptSummary(
+            null,
+          );
+        })
+        .finally(() => {
+          // No synchronous loading state is needed here.
+          // Loading is derived from the open card + missing summary.
+        });
+
+      return () => {
+        controller.abort();
+      };
+    },
+    [
+      educationRatingsCardOpen,
+      educationHeaderCode,
+    ],
+  );
+
+
+  const educationAttemptSummaryLoading =
+    educationRatingsCardOpen &&
+    Boolean(
+      educationHeaderCode,
+    ) &&
+    educationAttemptSummary ===
+      null;
+
+  const educationAttemptCount =
+    educationAttemptSummary
+      ?.totalAttempts ??
+    0;
+
+  const educationGemCount =
+    3 +
+    educationAttemptCount;
+
+
   const headerLeft =
     searchFocused
       ? (
@@ -1098,63 +1409,300 @@ export default function PublicHomePage({
         </button>
       )
       : (
-        <button
-          type="button"
-          className="public-home__brand public-home__brand-button"
-          onClick={() =>
-            setCalendarOpen(
-              true,
-            )
-          }
-          aria-label="Open GYAN Calendar"
-          title="GYAN Calendar"
+        <div
+          className="public-home__brand public-home__brand-split"
         >
-          <span
-            className="public-home__brand-icon"
-            aria-hidden="true"
+          <button
+            type="button"
+            className="public-home__brand-icon-button"
+            onClick={() => {
+              setEducationRatingsCardOpen(
+                false,
+              );
+
+              setCalendarOpen(
+                true,
+              );
+            }}
+            aria-label="Open Education Account and Calendar"
+            title="Education Account & Calendar"
           >
-            📖
-          </span>
+            <span
+              className="public-home__brand-icon"
+              aria-hidden="true"
+            >
+              📖
+            </span>
+          </button>
 
           <div
-            className="public-home__brand-text"
+            className="public-home__brand-copy-wrap"
           >
-            <strong>
-              GYAN
-            </strong>
-
-            <span
-              className="public-home__tagline"
+            <button
+              type="button"
+              className="public-home__brand-text public-home__brand-text-button"
+              onClick={() =>
+                setEducationRatingsCardOpen(
+                  (current) =>
+                    !current,
+                )
+              }
+              aria-expanded={
+                educationRatingsCardOpen
+              }
+              aria-haspopup="dialog"
+              title={
+                educationHeaderCode
+                  ? `My Ratings [${educationHeaderCode}]${
+                      educationCodeNeedsRecovery
+                        ? "*"
+                        : ""
+                    }`
+                  : "Education ratings"
+              }
             >
-              Your Digital Seva Partner
-            </span>
+              <strong>
+                GYAN
+              </strong>
 
-            <span
-              className="public-home__value"
-            >
-              Order Online • Pick Up When
-              Ready • No Waiting
-            </span>
-
-            {shopName && (
               <span
-                className="public-home__shop-context"
-                title={
-                  shopAddress
-                    ? `${shopName} · ${shopAddress}`
-                    : shopName
-                }
+                className="public-home__tagline"
               >
-                {shopName}
-                {shopAddress
-                  ? ` · ${shopAddress}`
-                  : ""}
+                Your Digital Seva Partner
               </span>
+
+              <span
+                className="public-home__value"
+              >
+                {educationBranding
+                  ? (
+                      <>
+                        Learn • Discover • Grow
+                        {educationHeaderCode && (
+                          <>
+                            {" "}
+                            <span
+                              className="public-home__education-code"
+                            >
+                              [{educationCodeLabel}]
+                            </span>
+                            {educationCodeNeedsRecovery && (
+                              <span
+                                className="public-home__education-code-star"
+                                aria-label="Recovery email not added"
+                                title="Recovery email not added"
+                              >
+                                *
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </>
+                    )
+                  : (
+                      <>
+                        Order Online • Pick Up When
+                        Ready • No Waiting
+                      </>
+                    )}
+              </span>
+
+              {shopName && (
+                <span
+                  className="public-home__shop-context"
+                  title={
+                    shopAddress
+                      ? `${shopName} · ${shopAddress}`
+                      : shopName
+                  }
+                >
+                  {shopName}
+                  {shopAddress
+                    ? ` · ${shopAddress}`
+                    : ""}
+                </span>
+              )}
+            </button>
+
+            {educationRatingsCardOpen && (
+              <section
+                className="public-home__education-ratings-card"
+                role="dialog"
+                aria-label="Education ratings"
+              >
+                {educationHeaderCode
+                  ? (
+                      <>
+                        <div
+                          className="public-home__education-ratings-card-title"
+                        >
+                          <span
+                            aria-hidden="true"
+                          >
+                            ⭐
+                          </span>
+
+                          <strong>
+                            My Ratings [{educationHeaderCode}]
+                            {educationCodeNeedsRecovery
+                              ? "*"
+                              : ""}
+                          </strong>
+                        </div>
+
+                        <small>
+                          Learning progress, scores and topic ratings are saved to this GYAN.
+                        </small>
+
+                        <div
+                          className="public-home__education-attempt-strip"
+                          aria-label="Education attempt results"
+                        >
+                          {educationAttemptSummaryLoading
+                            ? (
+                                <span
+                                  className="public-home__education-attempt-loading"
+                                >
+                                  Loading attempts…
+                                </span>
+                              )
+                            : educationAttemptSummary
+                                ?.recentAttempts
+                                .length
+                              ? (
+                                  educationAttemptSummary
+                                    .recentAttempts
+                                    .map(
+                                      (
+                                        attempt,
+                                      ) => {
+                                        const state =
+                                          attempt.scorePercent >=
+                                            80
+                                            ? "green"
+                                            : attempt.scorePercent >=
+                                                50
+                                              ? "yellow"
+                                              : "red";
+
+                                        return (
+                                          <span
+                                            key={
+                                              attempt.id
+                                            }
+                                            className={`public-home__education-attempt-box public-home__education-attempt-box--${state}`}
+                                            title={`${attempt.correctCount}/${attempt.questionCount} · ${attempt.scorePercent}% · ${attempt.topicCode}`}
+                                            aria-label={`Attempt ${attempt.scorePercent} percent`}
+                                          />
+                                        );
+                                      },
+                                    )
+                                )
+                              : (
+                                  <span
+                                    className="public-home__education-attempt-empty"
+                                  >
+                                    No attempts yet
+                                  </span>
+                                )}
+                        </div>
+
+                        <div
+                          className="public-home__education-rewards"
+                          aria-label="GYAN rewards"
+                        >
+                          <span
+                            title="3 Welcome Gems + 1 Gem per saved Education attempt"
+                          >
+                            💎 {educationGemCount}
+                          </span>
+
+                          <span
+                            title="Lost & Found stickers available"
+                          >
+                            🏷️ 3
+                          </span>
+                        </div>
+
+                        {educationCodeNeedsRecovery && (
+                          <small
+                            className="public-home__education-ratings-warning"
+                          >
+                            * Add a recovery email so this GYAN can be restored if browser or device access code is lost.
+                          </small>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEducationRatingsCardOpen(
+                              false,
+                            );
+
+                            setSearchFocused(
+                              false,
+                            );
+
+                            setShowPuzzle(
+                              false,
+                            );
+
+                            setActiveView(
+                              "ratings",
+                            );
+
+                            window.history.pushState(
+                              {},
+                              "",
+                              "/ratings",
+                            );
+                          }}
+                        >
+                          Open My Ratings
+                        </button>
+                      </>
+                    )
+                  : (
+                      <>
+                        <div
+                          className="public-home__education-ratings-card-title"
+                        >
+                          <span
+                            aria-hidden="true"
+                          >
+                            ⭐
+                          </span>
+
+                          <strong>
+                            My Ratings
+                          </strong>
+                        </div>
+
+                        <small>
+                          Activate a GYAN card to save learning progress and ratings automatically.
+                        </small>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEducationRatingsCardOpen(
+                              false,
+                            );
+
+                            setCalendarOpen(
+                              true,
+                            );
+                          }}
+                        >
+                          Open Education Account
+                        </button>
+                      </>
+                    )}
+              </section>
             )}
           </div>
-        </button>
+        </div>
       );
-
 
   const headerCenter =
     searchFocused
@@ -1367,8 +1915,8 @@ export default function PublicHomePage({
               .join(
                 " ",
               )}
-            aria-label="Open Services"
-            title="Services"
+            aria-label="Open Services Portal"
+            title="Services Portal"
             onClick={
               openServices
             }
@@ -1385,6 +1933,17 @@ export default function PublicHomePage({
             }
             onOpenMyShop={
               onOpenMyShop
+            }
+
+            educationCode={
+              educationHeaderCode ||
+              undefined
+            }
+
+            educationEmailKnown={
+              educationHeaderCode
+                ? educationEmailKnown
+                : undefined
             }
 
             onOpenMyRatings={() => {
@@ -1454,6 +2013,27 @@ export default function PublicHomePage({
                     educationCountry
                   }
 
+                  activeGyanCode={
+                    educationHeaderCode ||
+                    undefined
+                  }
+
+                  activeGyanName={
+                    activeEducationGyan
+                      ?.name
+                  }
+
+                  activeGyanEmail={
+                    activeEducationGyan
+                      ?.email
+                  }
+
+                  activeGyanEmailKnown={
+                    educationHeaderCode
+                      ? educationEmailKnown
+                      : undefined
+                  }
+
                   onBack={() => {
                     setActiveView(
                       "home",
@@ -1474,23 +2054,53 @@ export default function PublicHomePage({
               : activeView ===
                   "ratings"
                 ? (
-                  <MyRatingsPage
-                    onBack={() => {
-                      setActiveView(
-                        "home",
-                      );
+                  educationHeaderCode
+                    ? (
+                        <StudentProgressPage
+                          studentCode={
+                            educationHeaderCode
+                          }
 
-                      setShowPuzzle(
-                        true,
-                      );
+                          onBack={() => {
+                            setActiveView(
+                              "home",
+                            );
 
-                      window.history.pushState(
-                        {},
-                        "",
-                        "/",
-                      );
-                    }}
-                  />
+                            setShowPuzzle(
+                              true,
+                            );
+
+                            window.history.pushState(
+                              {},
+                              "",
+                              "/",
+                            );
+                          }}
+
+                          onContinueLearning={() => {
+                            openEducation();
+                          }}
+                        />
+                      )
+                    : (
+                        <MyRatingsPage
+                          onBack={() => {
+                            setActiveView(
+                              "home",
+                            );
+
+                            setShowPuzzle(
+                              true,
+                            );
+
+                            window.history.pushState(
+                              {},
+                              "",
+                              "/",
+                            );
+                          }}
+                        />
+                      )
                 )
               : shellContent &&
                 activeView !==
@@ -1509,11 +2119,15 @@ export default function PublicHomePage({
           showPuzzle &&
           (
             <Puzzle
-              onClose={() =>
+              onClose={() => {
                 setShowPuzzle(
                   false,
-                )
-              }
+                );
+
+                setPuzzleExitOpen(
+                  true,
+                );
+              }}
 
               onOpenEducation={
                 openEducation
@@ -1862,6 +2476,102 @@ export default function PublicHomePage({
           />
         )
       }
+
+
+      {puzzleExitOpen && (
+        <div
+          className="public-home__portal-choice-overlay"
+          role="presentation"
+          onClick={() =>
+            setPuzzleExitOpen(false)
+          }
+        >
+          <section
+            className="public-home__portal-choice"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="gyan-portal-choice-title"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <button
+              type="button"
+              className="public-home__portal-choice-close"
+              aria-label="Close"
+              onClick={() =>
+                setPuzzleExitOpen(false)
+              }
+            >
+              ×
+            </button>
+
+            <h2 id="gyan-portal-choice-title">
+              Where would you like to go?
+            </h2>
+
+            <p>
+              Continue learning, or explore what else GYAN can help you do.
+            </p>
+
+            <div className="public-home__portal-choice-actions">
+              <button
+                type="button"
+                className="public-home__portal-choice-card public-home__portal-choice-card--education"
+                onClick={
+                  chooseEducationAfterPuzzle
+                }
+              >
+                <span
+                  className="public-home__portal-choice-icon"
+                  aria-hidden="true"
+                >
+                  🎓
+                </span>
+
+                <strong>
+                  Education Portal
+                </strong>
+
+                <small>
+                  Continue learning • Practice • Track progress
+                </small>
+
+                <b>
+                  Continue Learning
+                </b>
+              </button>
+
+              <button
+                type="button"
+                className="public-home__portal-choice-card public-home__portal-choice-card--services"
+                onClick={
+                  chooseServicesAfterPuzzle
+                }
+              >
+                <span
+                  className="public-home__portal-choice-icon"
+                  aria-hidden="true"
+                >
+                  🧰
+                </span>
+
+                <strong>
+                  Services Portal
+                </strong>
+
+                <small>
+                  Printing • Local services • Get things done
+                </small>
+
+                <b>
+                  Explore Services
+                </b>
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
