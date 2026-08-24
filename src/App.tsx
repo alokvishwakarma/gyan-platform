@@ -408,7 +408,60 @@ function getCalendarAccessSlug(
 }
 
 
+const ADMIN_AUTH_SESSION_KEY =
+  "gyan_admin_authenticated";
+
+/*
+ * Keep the admin UI marker across normal navigation, reloads, and tabs.
+ * The server cookie/session remains the security boundary; this marker only
+ * controls client-side presentation such as admin-only print controls.
+ */
+function readAdminAuthenticated(): boolean {
+  return (
+    window.sessionStorage.getItem(
+      ADMIN_AUTH_SESSION_KEY,
+    ) === "1" ||
+    window.localStorage.getItem(
+      ADMIN_AUTH_SESSION_KEY,
+    ) === "1"
+  );
+}
+
+function persistAdminAuthenticated(
+  authenticated: boolean,
+): void {
+  if (authenticated) {
+    window.sessionStorage.setItem(
+      ADMIN_AUTH_SESSION_KEY,
+      "1",
+    );
+    window.localStorage.setItem(
+      ADMIN_AUTH_SESSION_KEY,
+      "1",
+    );
+    return;
+  }
+
+  window.sessionStorage.removeItem(
+    ADMIN_AUTH_SESSION_KEY,
+  );
+  window.localStorage.removeItem(
+    ADMIN_AUTH_SESSION_KEY,
+  );
+}
+
+
 export default function App() {
+
+
+  const [
+    adminAuthenticated,
+    setAdminAuthenticated,
+  ] =
+    useState(
+      () =>
+        readAdminAuthenticated(),
+    );
 
 
   const [
@@ -736,6 +789,35 @@ export default function App() {
     
   useEffect(() => {
     void trackDailyVisit();
+  }, []);
+
+  useEffect(() => {
+    const syncAdminAuthentication =
+      (): void => {
+        setAdminAuthenticated(
+          readAdminAuthenticated(),
+        );
+      };
+
+    window.addEventListener(
+      "storage",
+      syncAdminAuthentication,
+    );
+    window.addEventListener(
+      "focus",
+      syncAdminAuthentication,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "storage",
+        syncAdminAuthentication,
+      );
+      window.removeEventListener(
+        "focus",
+        syncAdminAuthentication,
+      );
+    };
   }, []);
 
   useEffect(() => {
@@ -1204,6 +1286,14 @@ export default function App() {
         },
       );
     } finally {
+      persistAdminAuthenticated(
+        false,
+      );
+
+      setAdminAuthenticated(
+        false,
+      );
+
       clearAdminLocationOverride();
 
       setAdminLocationOpen(
@@ -1877,6 +1967,9 @@ if (
     return (
       <GyanCalendarPage
         registrationMode
+        isAdmin={
+          adminAuthenticated
+        }
         onClose={() => {
           window.location.href =
             "/";
@@ -2435,6 +2528,14 @@ if (
             );
           }}
           onAdminAuthenticated={() => {
+            persistAdminAuthenticated(
+              true,
+            );
+
+            setAdminAuthenticated(
+              true,
+            );
+
             setAboutPanelOpen(
               false,
             );

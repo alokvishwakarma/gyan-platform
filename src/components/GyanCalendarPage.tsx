@@ -80,64 +80,6 @@ const WEEK_DAYS = [
   "S",
 ];
 
-const PRINT_SIZES: Array<{
-  id: PrintSize;
-  title: string;
-  dimensions: string;
-  note: string;
-  pdfWidthMm: number;
-  pdfHeightMm: number;
-}> = [
-  {
-    id: "A5",
-    title: "A5",
-    dimensions: "148 × 210 mm",
-    note: "Calendar + features",
-    pdfWidthMm: 210,
-    pdfHeightMm: 148,
-  },
-  {
-    id: "A6",
-    title: "A6",
-    dimensions: "105 × 148 mm",
-    note: "Saraswati + calendar",
-    pdfWidthMm: 148,
-    pdfHeightMm: 105,
-  },
-  {
-    id: "A7",
-    title: "A7",
-    dimensions: "74 × 105 mm",
-    note: "Services + calendar",
-    pdfWidthMm: 105,
-    pdfHeightMm: 74,
-  },
-  {
-    id: "A8",
-    title: "A8",
-    dimensions: "52 × 74 mm",
-    note: "QR + contact",
-    pdfWidthMm: 74,
-    pdfHeightMm: 52,
-  },
-  {
-    id: "CREDIT_CARD",
-    title: "Credit Card",
-    dimensions: "85.6 × 54 mm",
-    note: "Wallet calendar",
-    pdfWidthMm: 85.6,
-    pdfHeightMm: 54,
-  },
-  {
-    id: "BUSINESS_CARD",
-    title: "Business Card",
-    dimensions: "3.5 × 2 in",
-    note: "QR + GYAN info",
-    pdfWidthMm: 88.9,
-    pdfHeightMm: 50.8,
-  },
-];
-
 function getCalendarMarket():
   CalendarMarket {
   const adminLocation =
@@ -317,248 +259,14 @@ function CalendarMonth({
   );
 }
 
-function UsHero({
-  gyanName =
-    "MangoSwan99",
-  accessCode =
-    "8F3K-7Q9M-P2HJ",
-  publicUrl =
-    "https://gyan.cc/preview",
-  scratch =
-    false,
-}: {
-  gyanName?:
-    string;
 
-  accessCode?:
-    string;
+type DurationMonths =
+  1 | 3 | 6 | 12;
 
-  publicUrl?:
-    string;
-
-  scratch?:
-    boolean;
-}) {
-  return (
-    <section className="gyan-calendar-promo gyan-calendar-promo--us">
-      <div className="gyan-calendar-promo__art gyan-calendar-promo__art--photo">
-        <img
-          className="gyan-calendar-promo__us-image"
-          src="/calendar/us-education.webp"
-          alt="GYAN Education"
-        />
-      </div>
-
-      <div className="gyan-calendar-promo__message">
-        <span className="gyan-calendar-promo__eyebrow">
-          YOUR GYAN
-        </span>
-
-        <div className="gyan-calendar-invite">
-          <div className="gyan-calendar-invite__identity-row">
-            <label>
-              Name:
-              <span aria-hidden="true" />
-            </label>
-
-            <div>
-              <small>
-                Your unique GYAN Name
-              </small>
-
-              <strong>
-                {
-                  gyanName
-                }
-              </strong>
-            </div>
-          </div>
-
-          <div className="gyan-calendar-invite__access-row">
-            <span>
-              GYAN ACCESS CODE
-            </span>
-
-            <strong
-              className={
-                scratch
-                  ? "gyan-calendar-invite__code--scratch"
-                  : ""
-              }
-            >
-              {
-                accessCode
-              }
-            </strong>
-          </div>
-
-          <div className="gyan-calendar-invite__access-note">
-            <strong>
-              Complimentary access
-            </strong>
-
-            <span>
-              {
-                scratch
-                  ? "1 year with calendar access code"
-                  : "3 months from online registration"
-              }
-            </span>
-
-            <span>
-              No credit card required
-            </span>
-          </div>
-        </div>
-
-        <div className="gyan-calendar-register">
-          <div className="gyan-calendar-register__qr">
-            <QRCodeSVG
-              value={
-                publicUrl
-              }
-              size={
-                96
-              }
-              level="M"
-              includeMargin
-              aria-label="Scan GYAN calendar QR"
-            />
-          </div>
-
-          <div>
-            <span>
-              Your GYAN link
-            </span>
-
-            <strong>
-              {
-                publicUrl
-                  .replace(
-                    /^https?:\/\//,
-                    "",
-                  )
-              }
-            </strong>
-
-            <small>
-              Open with QR or short link
-            </small>
-          </div>
-        </div>
-
-        <div className="gyan-calendar-benefits">
-          <span>
-            🎓 <b>Learn</b>
-          </span>
-
-          <span>
-            👥 <b>Connect</b>
-          </span>
-
-          <span>
-            🧭 <b>Discover</b>
-          </span>
-
-          <span>
-            🤝 <b>Share</b>
-          </span>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-type CalendarAccessMode =
-  | "ONLINE_90"
-  | "ADMIN_365";
-
-
-const GYAN_NAME_FIRST = [
-  "Mango",
-  "Lotus",
-  "Sunny",
-  "Blue",
-  "Golden",
-  "River",
-  "Bright",
-  "Happy",
-  "Maple",
-  "Silver",
-] as const;
-
-const GYAN_NAME_SECOND = [
-  "Swan",
-  "Tiger",
-  "Panda",
-  "Falcon",
-  "Dolphin",
-  "Peacock",
-  "Parrot",
-  "Star",
-  "River",
-  "Lotus",
-] as const;
-
-
-function createFriendlyGyanName():
-  string {
-  const first =
-    GYAN_NAME_FIRST[
-      Math.floor(
-        Math.random() *
-        GYAN_NAME_FIRST.length,
-      )
-    ];
-
-  const second =
-    GYAN_NAME_SECOND[
-      Math.floor(
-        Math.random() *
-        GYAN_NAME_SECOND.length,
-      )
-    ];
-
-  const number =
-    Math.floor(
-      10 +
-      Math.random() *
-      990,
-    );
-
-  return `${first}${second}${number}`;
-}
-
-
-type AdminBatchEntry = {
-  id?:
-    number;
-
-  slug?:
-    string;
-
-  publicUrl?:
-    string;
-
-  gyanName:
-    string;
-
-  accessCode:
-    string;
-
-  durationMonths?:
-    1 | 3 | 12;
-
-  status?:
-    "GENERATED" |
-    "PRINTED" |
-    "CLAIMED" |
-    "EXPIRED";
-
-  email?:
-    string | null;
-};
-
+type ArtworkKey =
+  | "GODDESS"
+  | "EDUCATION"
+  | "SCENIC";
 
 type CalendarAccessRecord = {
   id:
@@ -570,6 +278,9 @@ type CalendarAccessRecord = {
   publicUrl:
     string;
 
+  qrUrl:
+    string;
+
   gyanName:
     string;
 
@@ -577,11 +288,18 @@ type CalendarAccessRecord = {
     string;
 
   durationMonths:
-    1 | 3 | 12;
+    DurationMonths;
+
+  welcomeGems:
+    number;
+
+  artworkKey:
+    ArtworkKey;
 
   status:
     "GENERATED" |
     "PRINTED" |
+    "GUEST_ACTIVE" |
     "CLAIMED" |
     "EXPIRED";
 
@@ -589,16 +307,360 @@ type CalendarAccessRecord = {
     string | null;
 };
 
+type PrintSizeConfig = {
+  id:
+    PrintSize;
+
+  title:
+    string;
+
+  product:
+    string;
+
+  dimensions:
+    string;
+
+  note:
+    string;
+
+  pdfWidthMm:
+    number;
+
+  pdfHeightMm:
+    number;
+
+  durationMonths:
+    DurationMonths;
+
+  welcomeGems:
+    number;
+
+  calendarMonths:
+    number;
+};
+
+const PRINT_SIZES_V2:
+  PrintSizeConfig[] = [
+    {
+      id:
+        "A5",
+      title:
+        "A5",
+      product:
+        "Education Calendar",
+      dimensions:
+        "148 × 210 mm · portrait",
+      note:
+        "12-month calendar · full Education Account",
+      pdfWidthMm:
+        148,
+      pdfHeightMm:
+        210,
+      durationMonths:
+        12,
+      welcomeGems:
+        12,
+      calendarMonths:
+        12,
+    },
+    {
+      id:
+        "A6",
+      title:
+        "A6",
+      product:
+        "Mini Education Calendar",
+      dimensions:
+        "105 × 148 mm · portrait",
+      note:
+        "6-month calendar · compact Education Account",
+      pdfWidthMm:
+        105,
+      pdfHeightMm:
+        148,
+      durationMonths:
+        6,
+      welcomeGems:
+        6,
+      calendarMonths:
+        6,
+    },
+    {
+      id:
+        "A7",
+      title:
+        "A7",
+      product:
+        "Education Card",
+      dimensions:
+        "74 × 105 mm · portrait",
+      note:
+        "Artwork + GYAN Name + QR",
+      pdfWidthMm:
+        74,
+      pdfHeightMm:
+        105,
+      durationMonths:
+        3,
+      welcomeGems:
+        3,
+      calendarMonths:
+        0,
+    },
+    {
+      id:
+        "A8",
+      title:
+        "A8",
+      product:
+        "Pocket Education Card",
+      dimensions:
+        "52 × 74 mm · portrait",
+      note:
+        "Compact artwork + QR",
+      pdfWidthMm:
+        52,
+      pdfHeightMm:
+        74,
+      durationMonths:
+        3,
+      welcomeGems:
+        3,
+      calendarMonths:
+        0,
+    },
+    {
+      id:
+        "CREDIT_CARD",
+      title:
+        "Credit Card",
+      product:
+        "Wallet Education Card",
+      dimensions:
+        "85.6 × 54 mm · landscape",
+      note:
+        "GYAN Name + QR",
+      pdfWidthMm:
+        85.6,
+      pdfHeightMm:
+        54,
+      durationMonths:
+        3,
+      welcomeGems:
+        3,
+      calendarMonths:
+        0,
+    },
+    {
+      id:
+        "BUSINESS_CARD",
+      title:
+        "Business Card",
+      product:
+        "Wallet Education Card",
+      dimensions:
+        "88.9 × 50.8 mm · landscape",
+      note:
+        "GYAN Name + QR",
+      pdfWidthMm:
+        88.9,
+      pdfHeightMm:
+        50.8,
+      durationMonths:
+        3,
+      welcomeGems:
+        3,
+      calendarMonths:
+        0,
+    },
+  ];
+
+const ARTWORK_OPTIONS:
+  Array<{
+    id:
+      ArtworkKey;
+
+    title:
+      string;
+
+    icon:
+      string;
+  }> = [
+    {
+      id:
+        "GODDESS",
+      title:
+        "Saraswati",
+      icon:
+        "🪷",
+    },
+    {
+      id:
+        "EDUCATION",
+      title:
+        "Education",
+      icon:
+        "🎓",
+    },
+    {
+      id:
+        "SCENIC",
+      title:
+        "Scenic",
+      icon:
+        "🌄",
+    },
+  ];
+
+function getPrintConfig(
+  size:
+    PrintSize,
+):
+  PrintSizeConfig {
+  return (
+    PRINT_SIZES_V2.find(
+      (
+        item,
+      ) =>
+        item.id ===
+        size,
+    ) ??
+    PRINT_SIZES_V2[0]
+  );
+}
+
+function getAdminCountOptions(
+  size:
+    PrintSize,
+):
+  number[] {
+  switch (
+    size
+  ) {
+    case "A5":
+      return [
+        2,
+        4,
+        6,
+      ];
+
+    case "A6":
+      return [
+        4,
+        8,
+      ];
+
+    case "A7":
+      return [
+        8,
+        16,
+      ];
+
+    case "A8":
+      return [
+        16,
+        32,
+      ];
+
+    case "CREDIT_CARD":
+      return [
+        10,
+        20,
+        30,
+        40,
+      ];
+
+    case "BUSINESS_CARD":
+      return [
+        10,
+        20,
+        30,
+        40,
+      ];
+  }
+}
+
+
+function getArtworkSource(
+  artwork:
+    ArtworkKey,
+  size:
+    PrintSize,
+):
+  string {
+  /*
+   * A5/A6 use dedicated print-sized JPG artwork.
+   * Smaller/card formats currently fall back to the closest
+   * available A6 artwork until dedicated assets are added.
+   */
+  const artworkName =
+    artwork ===
+      "GODDESS"
+      ? "goddess"
+      : artwork ===
+          "EDUCATION"
+        ? "education"
+        : "scenery";
+
+  const sizeName =
+    size ===
+        "A5"
+      ? "a5"
+      : "a6";
+
+  return `/calendar/${artworkName}-${sizeName}.jpg`;
+}
+
+function getArtworkFallback(
+  artwork:
+    ArtworkKey,
+):
+  string {
+  if (
+    artwork ===
+      "GODDESS"
+  ) {
+    return "/calendar/goddess-a6.jpg";
+  }
+
+  if (
+    artwork ===
+      "EDUCATION"
+  ) {
+    return "/calendar/education-a6.jpg";
+  }
+
+  return "/calendar/scenery-a6.jpg";
+}
+
+function durationLabel(
+  months:
+    DurationMonths,
+):
+  string {
+  return `${
+    months
+  } ${
+    months ===
+      1
+      ? "month"
+      : "months"
+  }`;
+}
 
 async function issueCalendarAccessRecords({
   count,
   durationMonths,
+  artworkKey,
 }: {
   count:
     number;
 
   durationMonths:
-    1 | 3 | 12;
+    DurationMonths;
+
+  artworkKey:
+    ArtworkKey;
 }):
   Promise<
     CalendarAccessRecord[]
@@ -619,27 +681,91 @@ async function issueCalendarAccessRecords({
           JSON.stringify({
             count,
             durationMonths,
+            artworkKey,
           }),
       },
     );
 
+  const body =
+    await response.json() as {
+      records?:
+        CalendarAccessRecord[];
+
+      error?:
+        string;
+    };
+
   if (
-    !response.ok
+    !response.ok ||
+    !body.records
   ) {
     throw new Error(
+      body.error ??
       `Could not issue calendar access (${response.status}).`,
     );
   }
 
-  const body =
-    await response.json() as {
-      records:
-        CalendarAccessRecord[];
-    };
-
   return body.records;
 }
 
+async function updateCalendarAccessPreview({
+  id,
+  durationMonths,
+  artworkKey,
+}: {
+  id:
+    number;
+
+  durationMonths:
+    DurationMonths;
+
+  artworkKey:
+    ArtworkKey;
+}):
+  Promise<
+    CalendarAccessRecord
+  > {
+  const response =
+    await fetch(
+      `/api/calendar-access/${id}/preview`,
+      {
+        method:
+          "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body:
+          JSON.stringify({
+            durationMonths,
+            artworkKey,
+          }),
+      },
+    );
+
+  const body =
+    await response.json() as {
+      record?:
+        CalendarAccessRecord;
+
+      error?:
+        string;
+    };
+
+  if (
+    !response.ok ||
+    !body.record
+  ) {
+    throw new Error(
+      body.error ??
+      "Could not update the GYAN preview.",
+    );
+  }
+
+  return body.record;
+}
 
 async function markCalendarAccessPrinted(
   ids:
@@ -676,221 +802,365 @@ async function markCalendarAccessPrinted(
     !response.ok
   ) {
     throw new Error(
-      `Could not mark calendar access as printed (${response.status}).`,
+      "PDF was created, but print status could not be saved.",
     );
   }
 }
 
+function CalendarArtwork({
+  artwork,
+  size,
+  market,
+}: {
+  artwork:
+    ArtworkKey;
 
-function createAdminBatch():
-  AdminBatchEntry[] {
-  const used =
-    new Set<string>();
-
-  const result:
-    AdminBatchEntry[] =
-      [];
-
-  while (
-    result.length < 8
-  ) {
-    const gyanName =
-      createFriendlyGyanName();
-
-    if (
-      used.has(
-        gyanName,
-      )
-    ) {
-      continue;
-    }
-
-    used.add(
-      gyanName,
-    );
-
-    result.push({
-      gyanName,
-      accessCode:
-        createCalendarAccessCode(),
-    });
-  }
-
-  return result;
-}
-
-
-type AdminSheetLayout = {
-  orientation:
-    "portrait" |
-    "landscape";
-
-  pageWidthMm:
-    number;
-
-  pageHeightMm:
-    number;
-
-  columns:
-    number;
-
-  rows:
-    number;
-
-  perSheet:
-    number;
-};
-
-
-function getAdminSheetLayout(
   size:
-    PrintSize,
-): AdminSheetLayout {
-  switch (
-    size
-  ) {
-    /*
-     * Exact A-series imposition on A4:
-     * A5: 2 on A4 landscape
-     * A6: 4 on A4 portrait
-     * A7: 8 on A4 landscape
-     */
-    case "A5":
-      return {
-        orientation:
-          "landscape",
-        pageWidthMm:
-          297,
-        pageHeightMm:
-          210,
-        columns:
-          2,
-        rows:
-          1,
-        perSheet:
-          2,
-      };
+    PrintSize;
 
-    case "A6":
-      return {
-        orientation:
-          "portrait",
-        pageWidthMm:
-          210,
-        pageHeightMm:
-          297,
-        columns:
-          2,
-        rows:
-          2,
-        perSheet:
-          4,
-      };
-
-    case "A7":
-      return {
-        orientation:
-          "landscape",
-        pageWidthMm:
-          297,
-        pageHeightMm:
-          210,
-        columns:
-          4,
-        rows:
-          2,
-        perSheet:
-          8,
-      };
-
-    /*
-     * For the smaller formats we still generate eight unique cards
-     * per batch, centered on A4.
-     */
-    case "A8":
-      return {
-        orientation:
-          "portrait",
-        pageWidthMm:
-          210,
-        pageHeightMm:
-          297,
-        columns:
-          2,
-        rows:
-          4,
-        perSheet:
-          8,
-      };
-
-    case "CREDIT_CARD":
-    case "BUSINESS_CARD":
-      return {
-        orientation:
-          "portrait",
-        pageWidthMm:
-          210,
-        pageHeightMm:
-          297,
-        columns:
-          2,
-        rows:
-          4,
-        perSheet:
-          8,
-      };
-  }
-}
-
-
-function createCalendarAccessCode():
-  string {
-  const alphabet =
-    "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-  const bytes =
-    new Uint8Array(
-      8,
+  market:
+    CalendarMarket;
+}) {
+  const primarySource =
+    getArtworkSource(
+      artwork,
+      size,
     );
 
-  crypto.getRandomValues(
-    bytes,
+  const fallbackSource =
+    getArtworkFallback(
+      artwork,
+    );
+
+  return (
+    <div
+      className={[
+        "gyan-print-card-v2__art",
+        `gyan-print-card-v2__art--${artwork.toLowerCase()}`,
+      ].join(
+        " ",
+      )}
+    >
+      <img
+        key={
+          `${artwork}-${size}-${market}`
+        }
+        src={
+          primarySource
+        }
+        alt={
+          artwork ===
+            "GODDESS"
+            ? "Saraswati artwork"
+            : artwork ===
+                "EDUCATION"
+              ? "Education artwork"
+              : "Scenic artwork"
+        }
+        onError={(
+          event,
+        ) => {
+          const image =
+            event.currentTarget;
+
+          if (
+            image.dataset.fallbackApplied ===
+              "true"
+          ) {
+            return;
+          }
+
+          image.dataset.fallbackApplied =
+            "true";
+
+          image.src =
+            fallbackSource;
+        }}
+      />
+    </div>
   );
-
-  const value =
-    Array.from(
-      bytes,
-      (
-        byte,
-      ) =>
-        alphabet[
-          byte %
-          alphabet.length
-        ],
-    )
-      .join("");
-
-  return `${value.slice(
-    0,
-    4,
-  )}-${value.slice(
-    4,
-    8,
-  )}`;
 }
 
+function EducationAccountBlock({
+  size,
+  record,
+  fallbackName,
+  fallbackAccessCode,
+}: {
+  size:
+    PrintSize;
+
+  record:
+    CalendarAccessRecord |
+    null;
+
+  fallbackName:
+    string;
+
+  fallbackAccessCode:
+    string;
+}) {
+  const config =
+    getPrintConfig(
+      size,
+    );
+
+  const gyanName =
+    record
+      ?.gyanName ??
+    fallbackName;
+
+  const publicUrl =
+    record
+      ?.publicUrl ??
+    "https://gyan.cc/preview";
+
+  const qrUrl =
+    record
+      ?.qrUrl ??
+    publicUrl;
+
+  const accessCode =
+    record
+      ?.accessCode ??
+    fallbackAccessCode;
+
+  const isLargeAccount =
+    size ===
+      "A5" ||
+    size ===
+      "A6";
+
+  const isCollectibleCard =
+    size ===
+      "A7" ||
+    size ===
+      "A8";
+
+  if (
+    isCollectibleCard
+  ) {
+    const shortUrl =
+      record
+        ?.slug
+        ? `gyan.cc/${record.slug.toLowerCase()}`
+        : publicUrl.replace(
+            /^https?:\/\//,
+            "",
+          );
+
+    return (
+      <section className="gyan-print-card-v2__account gyan-print-card-v2__account--collectible">
+        <div className="gyan-collectible-account__qr">
+          <QRCodeSVG
+            value={
+              qrUrl
+            }
+            size={
+              180
+            }
+            level="M"
+            includeMargin
+            aria-label="Scan to open this GYAN Education Account"
+          />
+        </div>
+
+        <div className="gyan-collectible-account__copy">
+          <strong className="gyan-collectible-account__name">
+            YOUR Display name:
+            <span>
+              {
+                gyanName
+              }
+            </span>
+          </strong>
+
+          <strong className="gyan-collectible-account__url">
+            {
+              shortUrl
+            }
+          </strong>
+
+          <span>
+            {
+              durationLabel(
+                config.durationMonths,
+              )
+            } complimentary
+          </span>
+
+          <span>
+            💎 {
+              config.welcomeGems
+            } Welcome Gems
+          </span>
+        </div>
+      </section>
+    );
+  }
+
+  if (
+    isLargeAccount
+  ) {
+    const shortCode =
+      record
+        ?.slug
+        ?.toUpperCase() ??
+      "W4LY";
+
+    return (
+      <section className="gyan-print-card-v2__account gyan-print-card-v2__account--screenlet">
+        <div className="gyan-account-screenlet__label">
+          Display name:
+        </div>
+
+        <strong className="gyan-account-screenlet__name">
+          {
+            gyanName
+          }
+        </strong>
+
+        <div className="gyan-account-screenlet__qr">
+          <QRCodeSVG
+            value={
+              qrUrl
+            }
+            size={
+              168
+            }
+            level="M"
+            includeMargin
+            aria-label="Scan to open this GYAN Education Account"
+          />
+        </div>
+
+        <div className="gyan-account-screenlet__url">
+          gyan.cc/
+          <strong>
+            {
+              shortCode
+            }
+          </strong>
+        </div>
+
+        <div className="gyan-account-screenlet__benefit">
+          {
+            durationLabel(
+              config.durationMonths,
+            )
+          } complimentary
+        </div>
+
+        <div className="gyan-account-screenlet__benefit">
+          💎 {
+            config.welcomeGems
+          } Welcome Gems
+        </div>
+
+        <div className="gyan-account-screenlet__benefit gyan-account-screenlet__benefit--small">
+          No credit card required
+        </div>
+
+        <div className="gyan-account-screenlet__benefit gyan-account-screenlet__benefit--small">
+          🧩 Puzzle of the Day · gyan.cc/puzzle
+        </div>
+
+        <div className="gyan-account-screenlet__benefit gyan-account-screenlet__benefit--small">
+          💎 108 Gems → Complimentary Vedic Mathematics Class
+        </div>
+
+        <div className="gyan-account-screenlet__access-code">
+          <span>
+            ACCESS CODE
+          </span>
+
+          <strong>
+            {
+              accessCode
+            }
+          </strong>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="gyan-print-card-v2__account">
+      <div className="gyan-print-card-v2__identity">
+        <small>
+          YOUR Display name:
+        </small>
+
+        <strong>
+          {
+            gyanName
+          }
+        </strong>
+      </div>
+
+      <div className="gyan-print-card-v2__account-main">
+        <div className="gyan-print-card-v2__qr">
+          <QRCodeSVG
+            value={
+              qrUrl
+            }
+            size={
+              160
+            }
+            level="H"
+            includeMargin
+            aria-label="Scan to open this GYAN Education Account"
+          />
+        </div>
+
+        <div className="gyan-print-card-v2__account-copy">
+          <strong>
+            {
+              publicUrl.replace(
+                /^https?:\/\//,
+                "",
+              )
+            }
+          </strong>
+
+          <span>
+            {
+              durationLabel(
+                config.durationMonths,
+              )
+            } complimentary
+          </span>
+
+          <span>
+            💎 {
+              config.welcomeGems
+            } Welcome Gems
+          </span>
+        </div>
+      </div>
+
+      <div className="gyan-print-card-v2__gem-goal">
+        💎 108 Gems → Complimentary Vedic Mathematics Class
+      </div>
+
+    </section>
+  );
+}
 
 function CalendarCard({
   market,
   rangeLabel,
   months,
-  accessCode,
-  accessMode,
-  gyanName =
+  printSize =
+    "A5",
+  artwork =
+    "GODDESS",
+  record =
+    null,
+  fallbackName =
     "MangoSwan99",
-  publicUrl =
-    "https://gyan.cc/register",
-  printSize,
+  fallbackAccessCode =
+    "VJBM-VFNL",
   className =
     "",
 }: {
@@ -903,67 +1173,44 @@ function CalendarCard({
   months:
     CalendarMonthData[];
 
-  accessCode?:
-    string;
-
-  accessMode?:
-    CalendarAccessMode;
-
-  gyanName?:
-    string;
-
-  publicUrl?:
-    string;
-
   printSize?:
     PrintSize;
+
+  artwork?:
+    ArtworkKey;
+
+  record?:
+    CalendarAccessRecord |
+    null;
+
+  fallbackName?:
+    string;
+
+  fallbackAccessCode?:
+    string;
 
   className?:
     string;
 }) {
-  const scratch =
-    accessMode ===
-      "ADMIN_365";
-
-  const isPdf =
-    Boolean(
+  const config =
+    getPrintConfig(
       printSize,
     );
 
-  const showImage =
-    !isPdf ||
-    printSize ===
-      "A5" ||
-    printSize ===
-      "A6";
-
-  const showCalendar =
-    !isPdf ||
-    printSize ===
-      "A5" ||
-    printSize ===
-      "CREDIT_CARD";
-
-  const compactAccessOnly =
-    isPdf &&
-    (
-      printSize ===
-        "A7" ||
-      printSize ===
-        "A8" ||
-      printSize ===
-        "BUSINESS_CARD"
-    );
+  const calendarMonths =
+    config.calendarMonths >
+      0
+      ? months.slice(
+          0,
+          config.calendarMonths,
+        )
+      : [];
 
   return (
     <article
       className={[
-        "gyan-calendar-card",
-
-        printSize
-          ? `gyan-calendar-card--${printSize.toLowerCase()}`
-          : "",
-
+        "gyan-print-card-v2",
+        `gyan-print-card-v2--${printSize.toLowerCase()}`,
         className,
       ]
         .filter(
@@ -973,246 +1220,111 @@ function CalendarCard({
           " ",
         )}
     >
-      <header className="gyan-calendar-card__header">
-        <div className="gyan-calendar-card__brand">
-          <span>
-            GYAN
-          </span>
-
-          <small>
-            Learn • Discover • Grow
-          </small>
-        </div>
-
-        <div className="gyan-calendar-card__range">
+      <header className="gyan-print-card-v2__header">
+        <div>
           <strong>
-            {
-              rangeLabel
-            }
+            GYAN
           </strong>
 
-          <small>
-            Current quarter +
-            next 3 quarters
-          </small>
+          <span>
+            Education Account
+          </span>
         </div>
+
+        {
+          config.calendarMonths >
+            0 && (
+            <small>
+              {
+                rangeLabel
+              }
+            </small>
+          )
+        }
       </header>
 
+      <div
+        className={
+          printSize ===
+              "A7" ||
+            printSize ===
+              "A8"
+            ? "gyan-print-card-v2__hero-row gyan-print-card-v2__hero-row--stacked"
+            : "gyan-print-card-v2__hero-row"
+        }
+      >
+        <CalendarArtwork
+          artwork={
+            artwork
+          }
+          size={
+            printSize
+          }
+          market={
+            market
+          }
+        />
+
+        <EducationAccountBlock
+          size={
+            printSize
+          }
+          record={
+            record
+          }
+          fallbackName={
+            fallbackName
+          }
+          fallbackAccessCode={
+            fallbackAccessCode
+          }
+        />
+      </div>
+
       {
-        market ===
-          "IN"
-          ? (
-            <section
-              className={[
-                "gyan-calendar-promo",
-                "gyan-calendar-promo--india",
+        calendarMonths.length >
+          0 && (
+          <section className="gyan-print-card-v2__calendar">
+            <div className="gyan-print-card-v2__calendar-heading">
+              <strong>
+                {
+                  config.calendarMonths ===
+                    12
+                    ? "12-Month Calendar"
+                    : "6-Month Calendar"
+                }
+              </strong>
 
-                !showImage
-                  ? "gyan-calendar-promo--no-image"
-                  : "",
+              <span>
+                {
+                  rangeLabel
+                }
+              </span>
+            </div>
 
-                compactAccessOnly
-                  ? "gyan-calendar-promo--access-only"
-                  : "",
-              ]
-                .filter(
-                  Boolean,
-                )
-                .join(
-                  " ",
-                )}
-            >
+            <div className="gyan-print-card-v2__calendar-grid">
               {
-                showImage && (
-                  <div className="gyan-calendar-promo__art gyan-calendar-promo__art--photo">
-                    <img
-                      className="gyan-calendar-promo__saraswati"
-                      src="/calendar/maa-saraswati.webp"
-                      alt="Ma Saraswati"
+                calendarMonths.map(
+                  (
+                    month,
+                  ) => (
+                    <CalendarMonth
+                      key={
+                        month.key
+                      }
+                      month={
+                        month
+                      }
                     />
-                  </div>
+                  ),
                 )
               }
-
-              <div className="gyan-calendar-promo__message">
-                <span className="gyan-calendar-promo__eyebrow">
-                  YOUR GYAN
-                </span>
-
-                <div className="gyan-calendar-invite">
-                  <div className="gyan-calendar-invite__identity-row">
-                    <label>
-                      Name:
-                      <span aria-hidden="true" />
-                    </label>
-
-                    <div>
-                      <small>
-                        Your unique GYAN Name
-                      </small>
-
-                      <strong>
-                        {
-                        gyanName
-                      }
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div className="gyan-calendar-invite__access-row">
-                    <span>
-                      GYAN ACCESS CODE
-                    </span>
-
-                    <strong
-                      className={
-                        scratch
-                          ? "gyan-calendar-invite__code--scratch"
-                          : ""
-                      }
-                    >
-                      {
-                        accessCode ??
-                        "8F3K-7Q9M-P2HJ"
-                      }
-                    </strong>
-                  </div>
-
-                  <div className="gyan-calendar-invite__access-note">
-                    <strong>
-                      Complimentary access
-                    </strong>
-
-                    <span>
-                      {
-                        scratch
-                          ? "1 year with calendar access code"
-                          : "3 months from online registration"
-                      }
-                    </span>
-
-                    <span>
-                      No credit card required
-                    </span>
-                  </div>
-                </div>
-
-                <div className="gyan-calendar-register">
-                  <div className="gyan-calendar-register__qr">
-                    <QRCodeSVG
-                      value={
-                        publicUrl
-                      }
-                      size={
-                        96
-                      }
-                      level="M"
-                      includeMargin
-                      aria-label="Scan GYAN calendar QR"
-                    />
-                  </div>
-
-                  <div>
-                    <span>
-                      New to GYAN?
-                    </span>
-
-                    <strong>
-                      {
-                        publicUrl
-                          .replace(
-                            /^https?:\/\//,
-                            "",
-                          )
-                      }
-                    </strong>
-
-                    <small>
-                      3 months complimentary online
-                    </small>
-                  </div>
-                </div>
-
-                {
-                  !compactAccessOnly && (
-                    <div className="gyan-calendar-benefits">
-                      <span>
-                        🎓 <b>Learn</b>
-                      </span>
-
-                      <span>
-                        👥 <b>Connect</b>
-                      </span>
-
-                      <span>
-                        🧭 <b>Discover</b>
-                      </span>
-
-                      <span>
-                        🤝 <b>Share</b>
-                      </span>
-                    </div>
-                  )
-                }
-              </div>
-            </section>
-          )
-          : (
-              <UsHero
-                gyanName={
-                  gyanName
-                }
-                accessCode={
-                  accessCode
-                }
-                publicUrl={
-                  publicUrl
-                }
-                scratch={
-                  scratch
-                }
-              />
-            )
-      }
-
-      {
-        showCalendar && (
-          <section className="gyan-calendar-year">
-        <div className="gyan-calendar-year__heading">
-          <strong>
-            {
-              rangeLabel
-            }
-          </strong>
-
-          <span>
-            Keep • Learn • Share
-          </span>
-        </div>
-
-        <div className="gyan-calendar-year__grid">
-          {
-            months.map(
-              (
-                month,
-              ) => (
-                <CalendarMonth
-                  key={
-                    month.key
-                  }
-                  month={
-                    month
-                  }
-                />
-              ),
-            )
-          }
-        </div>
+            </div>
           </section>
         )
       }
 
-      <footer className="gyan-calendar-card__footer">
+      <footer className="gyan-print-card-v2__footer">
         <strong>
           gyan.cc
         </strong>
@@ -1225,12 +1337,10 @@ function CalendarCard({
   );
 }
 
-
 function PrintChooser({
   market,
   rangeLabel,
   months,
-  isAdmin,
   defaultSize =
     null,
   onBack,
@@ -1244,9 +1354,6 @@ function PrintChooser({
   months:
     CalendarMonthData[];
 
-  isAdmin:
-    boolean;
-
   defaultSize?:
     PrintSize |
     null;
@@ -1259,27 +1366,32 @@ function PrintChooser({
     setSelectedSize,
   ] =
     useState<
-      PrintSize |
-      null
+      PrintSize
     >(
-      defaultSize,
+      () => {
+        if (
+          defaultSize
+        ) {
+          return defaultSize;
+        }
+
+        return window.matchMedia(
+          "(max-width: 620px)",
+        ).matches
+          ? "A7"
+          : "A5";
+      },
     );
 
   const [
-    accessMode,
-    setAccessMode,
+    artwork,
+    setArtwork,
   ] =
-    useState<CalendarAccessMode>(
-      "ONLINE_90",
-    );
-
-  const [
-    accessCode,
-    setAccessCode,
-  ] =
-    useState(
-      () =>
-        createCalendarAccessCode(),
+    useState<ArtworkKey>(
+      market ===
+        "IN"
+        ? "GODDESS"
+        : "EDUCATION",
     );
 
   const [
@@ -1293,12 +1405,9 @@ function PrintChooser({
       null,
     );
 
-  const [
-    issuingRecord,
-    setIssuingRecord,
-  ] =
-    useState(
-      false,
+  const initialArtworkRef =
+    useRef<ArtworkKey>(
+      artwork,
     );
 
   const [
@@ -1306,23 +1415,44 @@ function PrintChooser({
     setAdminBatch,
   ] =
     useState<
-      AdminBatchEntry[]
+      CalendarAccessRecord[]
     >(
-      () =>
-        createAdminBatch(),
+      [],
     );
 
   const [
-    pdfGenerating,
-    setPdfGenerating,
+    adminCount,
+    setAdminCount,
+  ] =
+    useState(
+      () => {
+        const initialSize =
+          defaultSize ??
+          (
+            window.matchMedia(
+              "(max-width: 620px)",
+            ).matches
+              ? "A7"
+              : "A5"
+          );
+
+        return getAdminCountOptions(
+          initialSize,
+        )[0];
+      },
+    );
+
+  const [
+    busy,
+    setBusy,
   ] =
     useState(
       false,
     );
 
   const [
-    pdfError,
-    setPdfError,
+    error,
+    setError,
   ] =
     useState("");
 
@@ -1334,7 +1464,7 @@ function PrintChooser({
       null,
     );
 
-  const adminBatchRef =
+  const batchRef =
     useRef<
       HTMLDivElement |
       null
@@ -1343,56 +1473,24 @@ function PrintChooser({
     );
 
   const selected =
-    PRINT_SIZES.find(
-      (
-        size,
-      ) =>
-        size.id ===
-        selectedSize,
-    ) ??
-    null;
+    getPrintConfig(
+      selectedSize,
+    );
 
-  const validityLabel =
-    accessMode ===
-      "ADMIN_365"
-      ? "1 year"
-      : "3 months";
+  const issuanceConfig =
+    selected;
 
-  async function ensurePreviewRecord():
+
+  async function createPreviewRecord():
     Promise<
       CalendarAccessRecord |
       null
     > {
-    if (
-      issuedRecord
-    ) {
-      return issuedRecord;
-    }
-
-    if (
-      issuingRecord
-    ) {
-      return null;
-    }
-
-    /*
-     * Admin batch mode intentionally waits until "Generate 8".
-     * Ordinary print preview gets one permanent database-backed QR
-     * as soon as a print size is selected.
-     */
-    if (
-      isAdmin &&
-      accessMode ===
-        "ADMIN_365"
-    ) {
-      return null;
-    }
-
-    setIssuingRecord(
+    setBusy(
       true,
     );
 
-    setPdfError("");
+    setError("");
 
     try {
       const [
@@ -1403,63 +1501,101 @@ function PrintChooser({
             1,
 
           durationMonths:
-            3,
+            issuanceConfig.durationMonths,
+
+          artworkKey:
+            artwork,
         });
 
       setIssuedRecord(
         record,
       );
 
-      setAccessCode(
-        record.accessCode,
-      );
-
       return record;
     } catch (
       caught
     ) {
-      console.error(
-        "GYAN QR preview allocation failed",
-        caught,
-      );
-
-      setPdfError(
+      setError(
         caught instanceof
           Error
           ? caught.message
-          : "Could not create the GYAN QR.",
+          : "Could not create the GYAN account.",
       );
 
       return null;
     } finally {
-      setIssuingRecord(
+      setBusy(
         false,
       );
     }
   }
 
+  useEffect(
+    () => {
+      let cancelled =
+        false;
 
-  function refreshCode():
-    void {
-    setIssuedRecord(
-      null,
-    );
+      void issueCalendarAccessRecords({
+        count:
+          1,
 
-    if (
-      accessMode ===
-        "ADMIN_365"
-    ) {
-      setAdminBatch(
-        createAdminBatch(),
-      );
+        durationMonths:
+          12,
 
-      return;
-    }
+        artworkKey:
+          initialArtworkRef.current,
+      })
+        .then(
+          (
+            records,
+          ) => {
+            if (
+              cancelled
+            ) {
+              return;
+            }
 
-    setAccessCode(
-      createCalendarAccessCode(),
-    );
-  }
+            const [
+              record,
+            ] =
+              records;
+
+            if (
+              record
+            ) {
+              setIssuedRecord(
+                record,
+              );
+            }
+          },
+        )
+        .catch(
+          (
+            caught,
+          ) => {
+            if (
+              cancelled
+            ) {
+              return;
+            }
+
+            setError(
+              caught instanceof
+                Error
+                ? caught.message
+                : "Could not create the GYAN account.",
+            );
+          },
+        );
+
+      return () => {
+        cancelled =
+          true;
+      };
+    },
+    [],
+  );
+
 
   useEffect(
     () => {
@@ -1470,120 +1606,235 @@ function PrintChooser({
       }
 
       if (
-        isAdmin &&
-        accessMode ===
-          "ADMIN_365"
+        !issuedRecord
       ) {
         return;
       }
 
       if (
-        issuedRecord ||
-        issuingRecord
+        issuedRecord.durationMonths ===
+          selected.durationMonths &&
+        issuedRecord.artworkKey ===
+          artwork
       ) {
         return;
       }
 
-      void ensurePreviewRecord();
+      let cancelled =
+        false;
+
+      void updateCalendarAccessPreview({
+        id:
+          issuedRecord.id,
+
+        durationMonths:
+          selected.durationMonths,
+
+        artworkKey:
+          artwork,
+      })
+        .then(
+          (
+            record,
+          ) => {
+            if (
+              !cancelled
+            ) {
+              setIssuedRecord(
+                (
+                  previous,
+                ) => ({
+                  ...record,
+
+                  qrUrl:
+                    record.qrUrl ??
+                    previous?.qrUrl ??
+                    record.publicUrl,
+                }),
+              );
+            }
+          },
+        )
+        .catch(
+          (
+            caught,
+          ) => {
+            if (
+              !cancelled
+            ) {
+              setError(
+                caught instanceof
+                  Error
+                  ? caught.message
+                  : "Could not update the preview.",
+              );
+            }
+          },
+        )
+.then(
+          () => undefined,
+        );
+
+      return () => {
+        cancelled =
+          true;
+      };
     },
     [
       selected,
-      accessMode,
-      isAdmin,
       issuedRecord,
-      issuingRecord,
+      artwork,
     ],
   );
 
+  async function waitForImages(
+    root:
+      HTMLElement,
+  ):
+    Promise<void> {
+    const images =
+      Array.from(
+        root.querySelectorAll(
+          "img",
+        ),
+      );
+
+    await Promise.all(
+      images.map(
+        async (
+          image,
+        ) => {
+          if (
+            image.complete &&
+            image.naturalWidth >
+              0
+          ) {
+            return;
+          }
+
+          try {
+            await image.decode();
+          } catch {
+            // html2canvas still gets a final chance.
+          }
+        },
+      ),
+    );
+  }
+
+  async function captureCard(
+    element:
+      HTMLElement,
+    html2canvas:
+      (
+        element:
+          HTMLElement,
+        options:
+          Record<string, unknown>,
+      ) =>
+        Promise<HTMLCanvasElement>,
+  ):
+    Promise<HTMLCanvasElement> {
+    await waitForImages(
+      element,
+    );
+
+    return html2canvas(
+      element,
+      {
+        scale:
+          2.4,
+
+        useCORS:
+          true,
+
+        backgroundColor:
+          "#ffffff",
+
+        logging:
+          false,
+
+        imageTimeout:
+          15000,
+
+        windowWidth:
+          element.scrollWidth,
+
+        windowHeight:
+          element.scrollHeight,
+      },
+    );
+  }
 
   async function generatePdf():
     Promise<void> {
     if (
       !selected ||
-      pdfGenerating
+      busy
     ) {
       return;
     }
 
-    const isAdminBatch =
-      isAdmin &&
-      accessMode ===
-        "ADMIN_365";
-
-    if (
-      isAdminBatch
-        ? !adminBatchRef.current
-        : !pdfSheetRef.current
-    ) {
-      return;
-    }
-
-    setPdfGenerating(
+    setBusy(
       true,
     );
 
-    setPdfError("");
-
-    let activeSingleRecord =
-      issuedRecord;
-
-    let activeAdminBatch =
-      adminBatch;
+    setError("");
 
     try {
+      let singleRecord =
+        issuedRecord;
+
       if (
-        isAdminBatch
+        !singleRecord
       ) {
-        const records =
-          await issueCalendarAccessRecords({
-            count:
-              8,
+        singleRecord =
+          await createPreviewRecord();
+      }
 
-            durationMonths:
-              12,
-          });
-
-        activeAdminBatch =
-          records.map(
-            (
-              record,
-            ) => ({
-              ...record,
-            }),
-          );
-
-        setAdminBatch(
-          activeAdminBatch,
-        );
-      } else {
-        const record =
-          issuedRecord ??
-          await ensurePreviewRecord();
-
-        if (
-          !record
-        ) {
-          throw new Error(
-            "The GYAN QR could not be created. Please try again.",
-          );
-        }
-
-        activeSingleRecord =
-          record;
-
-        setIssuedRecord(
-          record,
-        );
-
-        setAccessCode(
-          record.accessCode,
+      if (
+        !singleRecord
+      ) {
+        throw new Error(
+          "The GYAN account could not be created.",
         );
       }
 
-      /*
-       * Let React render the issued URLs/codes into the hidden PDF sheet
-       * before html2canvas captures it.
-       */
+      let batchRecords:
+        CalendarAccessRecord[] =
+          [];
+
+      const additionalCount =
+        Math.max(
+          0,
+          adminCount -
+            1,
+        );
+
+      const additionalRecords =
+        additionalCount >
+          0
+          ? await issueCalendarAccessRecords({
+              count:
+                additionalCount,
+
+              durationMonths:
+                selected.durationMonths,
+
+              artworkKey:
+                artwork,
+            })
+          : [];
+
+      batchRecords = [
+        singleRecord,
+        ...additionalRecords,
+      ];
+
+      setAdminBatch(
+        batchRecords,
+      );
+
       await new Promise<void>(
         (
           resolve,
@@ -1597,7 +1848,6 @@ function PrintChooser({
           );
         },
       );
-
 
       const [
         jsPdfModule,
@@ -1621,242 +1871,22 @@ function PrintChooser({
         html2canvasModule
           .default;
 
-      async function waitForImages(
-        root:
-          HTMLElement,
-      ):
-        Promise<void> {
-        const images =
-          Array.from(
-            root.querySelectorAll(
-              "img",
-            ),
-          );
-
-        await Promise.all(
-          images.map(
-            async (
-              image,
-            ) => {
-              if (
-                image.complete &&
-                image.naturalWidth >
-                  0
-              ) {
-                return;
-              }
-
-              try {
-                await image.decode();
-              } catch {
-                // html2canvas gets one final chance to render it.
-              }
-            },
-          ),
-        );
-      }
-
-
-      if (
-        isAdminBatch
-      ) {
-        const root =
-          adminBatchRef.current;
-
-        if (
-          !root
-        ) {
-          return;
-        }
-
-        await waitForImages(
-          root,
-        );
-
-        const sheets =
-          Array.from(
-            root.querySelectorAll<HTMLElement>(
-              ".gyan-calendar-admin-sheet",
-            ),
-          );
-
-        const layout =
-          getAdminSheetLayout(
-            selected.id,
-          );
-
-        const pdf =
-          new jsPDF({
-            orientation:
-              layout.orientation,
-
-            unit:
-              "mm",
-
-            format:
-              "a4",
-
-            compress:
-              true,
-
-            putOnlyUsedFonts:
-              true,
-          });
-
-        for (
-          let index = 0;
-          index <
-            sheets.length;
-          index += 1
-        ) {
-          const sheet =
-            sheets[
-              index
-            ];
-
-          const canvas =
-            await html2canvas(
-              sheet,
-              {
-                scale:
-                  2,
-
-                useCORS:
-                  true,
-
-                backgroundColor:
-                  "#ffffff",
-
-                logging:
-                  false,
-
-                imageTimeout:
-                  15000,
-
-                windowWidth:
-                  sheet.scrollWidth,
-
-                windowHeight:
-                  sheet.scrollHeight,
-              },
-            );
-
-          if (
-            index >
-              0
-          ) {
-            pdf.addPage(
-              "a4",
-              layout.orientation,
-            );
-          }
-
-          const imageData =
-            canvas.toDataURL(
-              "image/jpeg",
-              0.95,
-            );
-
-          pdf.addImage(
-            imageData,
-            "JPEG",
-            0,
-            0,
-            layout.pageWidthMm,
-            layout.pageHeightMm,
-            undefined,
-            "FAST",
-          );
-        }
-
-        pdf.save(
-          `gyan-admin-${selected.id.toLowerCase()}-8-cards.pdf`,
-        );
-
-        await markCalendarAccessPrinted(
-          activeAdminBatch
-            .map(
-              (
-                entry,
-              ) =>
-                entry.id,
-            )
-            .filter(
-              (
-                id,
-              ): id is number =>
-                typeof id ===
-                  "number",
-            ),
-        );
-
-        return;
-      }
-
-
-      const sheet =
-        pdfSheetRef.current;
-
-      if (
-        !sheet
-      ) {
-        return;
-      }
-
-      await waitForImages(
-        sheet,
-      );
-
-      const canvas =
-        await html2canvas(
-          sheet,
-          {
-            scale:
-              2,
-
-            useCORS:
-              true,
-
-            backgroundColor:
-              "#ffffff",
-
-            logging:
-              false,
-
-            imageTimeout:
-              15000,
-
-            windowWidth:
-              sheet.scrollWidth,
-
-            windowHeight:
-              sheet.scrollHeight,
-          },
-        );
-
-      const pageWidth =
-        Math.min(
-          selected.pdfWidthMm,
-          selected.pdfHeightMm,
-        );
-
-      const pageHeight =
-        Math.max(
-          selected.pdfWidthMm,
-          selected.pdfHeightMm,
-        );
-
       const pdf =
         new jsPDF({
           orientation:
-            "portrait",
+            selected.id ===
+                "CREDIT_CARD" ||
+              selected.id ===
+                "BUSINESS_CARD"
+              ? "landscape"
+              : "portrait",
 
           unit:
             "mm",
 
           format: [
-            pageWidth,
-            pageHeight,
+            selected.pdfWidthMm,
+            selected.pdfHeightMm,
           ],
 
           compress:
@@ -1866,123 +1896,166 @@ function PrintChooser({
             true,
         });
 
-      const canvasRatio =
-        canvas.width /
-        canvas.height;
+      const addCanvasPage =
+        (
+          canvas:
+            HTMLCanvasElement,
+          first:
+            boolean,
+        ):
+          void => {
+          if (
+            !first
+          ) {
+            pdf.addPage(
+              [
+                selected.pdfWidthMm,
+                selected.pdfHeightMm,
+              ],
+              selected.id ===
+                  "CREDIT_CARD" ||
+                selected.id ===
+                  "BUSINESS_CARD"
+                ? "landscape"
+                : "portrait",
+            );
+          }
 
-      const pageRatio =
-        pageWidth /
-        pageHeight;
+          const imageData =
+            canvas.toDataURL(
+              "image/jpeg",
+              0.96,
+            );
 
-      let drawWidth =
-        pageWidth;
+          pdf.addImage(
+            imageData,
+            "JPEG",
+            0,
+            0,
+            selected.pdfWidthMm,
+            selected.pdfHeightMm,
+            undefined,
+            "FAST",
+          );
+        };
 
-      let drawHeight =
-        pageHeight;
-
-      let x =
-        0;
-
-      let y =
-        0;
+      const printedIds:
+        number[] =
+          [];
 
       if (
-        canvasRatio >
-          pageRatio
+        batchRecords.length > 0
       ) {
-        drawHeight =
-          pageWidth /
-          canvasRatio;
+        const root =
+          batchRef.current;
 
-        y =
-          (
-            pageHeight -
-            drawHeight
-          ) /
-          2;
+        if (
+          !root
+        ) {
+          throw new Error(
+            "Batch pages are not ready.",
+          );
+        }
+
+        const pages =
+          Array.from(
+            root.querySelectorAll<HTMLElement>(
+              ".gyan-calendar-batch-page-v2",
+            ),
+          );
+
+        for (
+          let index = 0;
+          index <
+            pages.length;
+          index += 1
+        ) {
+          const canvas =
+            await captureCard(
+              pages[index],
+              html2canvas,
+            );
+
+          addCanvasPage(
+            canvas,
+            index ===
+              0,
+          );
+        }
+
+        printedIds.push(
+          ...batchRecords.map(
+            (
+              record,
+            ) =>
+              record.id,
+          ),
+        );
       } else {
-        drawWidth =
-          pageHeight *
-          canvasRatio;
+        const root =
+          pdfSheetRef.current;
 
-        x =
-          (
-            pageWidth -
-            drawWidth
-          ) /
-          2;
-      }
+        if (
+          !root
+        ) {
+          throw new Error(
+            "Print page is not ready.",
+          );
+        }
 
-      const imageData =
-        canvas.toDataURL(
-          "image/jpeg",
-          0.95,
+        const canvas =
+          await captureCard(
+            root,
+            html2canvas,
+          );
+
+        addCanvasPage(
+          canvas,
+          true,
         );
 
-      pdf.addImage(
-        imageData,
-        "JPEG",
-        x,
-        y,
-        drawWidth,
-        drawHeight,
-        undefined,
-        "FAST",
-      );
-
-      const safeRange =
-        rangeLabel
-          .replace(
-            /[^a-z0-9]+/gi,
-            "-",
-          )
-          .replace(
-            /^-|-$/g,
-            "",
-          )
-          .toLowerCase();
+        printedIds.push(
+          singleRecord.id,
+        );
+      }
 
       pdf.save(
-        `gyan-calendar-${safeRange}-${selected.id.toLowerCase()}-90days.pdf`,
+        `gyan-${selected.id.toLowerCase()}-${selected.durationMonths}months.pdf`,
       );
 
-      if (
-        activeSingleRecord
-      ) {
-        await markCalendarAccessPrinted([
-          activeSingleRecord.id,
-        ]);
-      }
+      await markCalendarAccessPrinted(
+        printedIds,
+      );
     } catch (
       caught
     ) {
       console.error(
-        "GYAN calendar PDF generation failed",
+        "GYAN PDF generation failed",
         caught,
       );
 
-      setPdfError(
+      setError(
         caught instanceof
           Error
           ? caught.message
           : "PDF could not be generated.",
       );
     } finally {
-      setPdfGenerating(
+      setBusy(
         false,
       );
     }
   }
 
   return (
-    <section className="gyan-calendar-print">
+    <section className="gyan-calendar-print gyan-calendar-print--v2">
       <div className="gyan-calendar-print__heading">
         <button
           type="button"
           onClick={
             onBack
           }
-          aria-label="Back to calendar"
+          aria-label="Back"
         >
           ←
         </button>
@@ -1992,77 +2065,318 @@ function PrintChooser({
             Education Account and Calendar
           </strong>
 
-          <small>
-            {
-              market ===
-                "IN"
-                ? "India 🇮🇳"
-                : "United States 🇺🇸"
-            }
-            {" · "}
-            {
-              rangeLabel
-            }
-          </small>
+          <div className="gyan-calendar-print__access-line gyan-calendar-print__access-line--header">
+            <span>
+              URL:
+            </span>
 
-          {
-            issuedRecord && (
-              <div className="gyan-calendar-print__issued-summary">
-                <strong>
-                  gyan.cc/
-                  {
-                    issuedRecord.slug
-                      .toLowerCase()
-                  }
-                </strong>
+            <strong>
+              {
+                issuedRecord
+                  ? `GYAN.CC/${issuedRecord.slug.toUpperCase()}`
+                  : "GYAN.CC/ABCD"
+              }
+            </strong>
 
-                <span>
-                  GYAN ACCESS CODE
-                  {" "}
-                  <b>
-                    {
-                      issuedRecord.accessCode
-                    }
-                  </b>
-                </span>
+            <i aria-hidden="true">
+              |
+            </i>
 
-                <small>
-                  3 months complimentary · no credit card required
-                </small>
-              </div>
-            )
-          }
+            <span>
+              ACCESS CODE:
+            </span>
+
+            <b>
+              {
+                issuedRecord
+                  ?.accessCode ??
+                "•••••-•••••"
+              }
+            </b>
+          </div>
         </div>
 
         <button
           type="button"
           className="gyan-calendar-print__top-print"
-          aria-label={
-            "Print GYAN"
-          }
-          title={
-            "Print GYAN"
-          }
           disabled={
             !selected ||
-            pdfGenerating
+            busy
           }
           onClick={() =>
             void generatePdf()
           }
         >
-          🖨️ Print
+          🖨️
         </button>
       </div>
 
-      <p className="gyan-calendar-print__instruction">
-        Select the physical
-        size you want to print.
+
+
+
+
+
+      <div className="gyan-calendar-print__quick-controls">
+        <div className="gyan-calendar-print__quick-group">
+          <span>
+            Size:
+          </span>
+
+          {
+            [
+              ["A5", "A5"],
+              ["A6", "A6"],
+              ["A7", "A7"],
+              ["A8", "A8"],
+              ["CREDIT_CARD", "CC"],
+              ["BUSINESS_CARD", "BC"],
+            ].map(
+              (
+                [
+                  value,
+                  label,
+                ],
+              ) => (
+                <button
+                  key={
+                    value
+                  }
+                  type="button"
+                  className={
+                    selectedSize ===
+                      value
+                      ? "is-selected"
+                      : ""
+                  }
+                  onClick={() => {
+                    const nextSize =
+                      value as PrintSize;
+
+                    setSelectedSize(
+                      nextSize,
+                    );
+
+                    setAdminCount(
+                      getAdminCountOptions(
+                        nextSize,
+                      )[0],
+                    );
+                  }}
+                >
+                  {
+                    label
+                  }
+                </button>
+              ),
+            )
+          }
+        </div>
+
+        <i aria-hidden="true">
+          |
+        </i>
+
+        <div className="gyan-calendar-print__quick-group">
+          <span>
+            Artwork:
+          </span>
+
+          <button
+            type="button"
+            className={
+              artwork ===
+                "EDUCATION"
+                ? "is-selected"
+                : ""
+            }
+            title="Education"
+            onClick={() =>
+              setArtwork(
+                "EDUCATION",
+              )
+            }
+          >
+            ED
+          </button>
+
+          <button
+            type="button"
+            className={
+              artwork ===
+                "GODDESS"
+                ? "is-selected"
+                : ""
+            }
+            title="Saraswati"
+            onClick={() =>
+              setArtwork(
+                "GODDESS",
+              )
+            }
+          >
+            Maa
+          </button>
+
+          <button
+            type="button"
+            className={
+              artwork ===
+                "SCENIC"
+                ? "is-selected"
+                : ""
+            }
+            title="Scenic"
+            onClick={() =>
+              setArtwork(
+                "SCENIC",
+              )
+            }
+          >
+            SC
+          </button>
+        </div>
+
+        <>
+          <i aria-hidden="true">
+            |
+          </i>
+
+          <div className="gyan-calendar-print__quick-group">
+            <span>
+              Count:
+            </span>
+
+            <select
+              className="gyan-calendar-print__count-select"
+              value={
+                adminCount
+              }
+              onChange={(
+                event,
+              ) =>
+                setAdminCount(
+                  Number(
+                    event.target.value,
+                  ),
+                )
+              }
+              aria-label="Number of unique GYAN cards to generate"
+            >
+              {
+                getAdminCountOptions(
+                  selectedSize,
+                ).map(
+                  (
+                    count,
+                  ) => (
+                    <option
+                      key={
+                        count
+                      }
+                      value={
+                        count
+                      }
+                    >
+                      {
+                        count
+                      }
+                    </option>
+                  ),
+                )
+              }
+            </select>
+          </div>
+        </>
+      </div>
+
+      {
+        selected &&
+        issuedRecord && (
+          <div className="gyan-calendar-print__live-preview">
+            <CalendarCard
+              market={
+                market
+              }
+              rangeLabel={
+                rangeLabel
+              }
+              months={
+                months
+              }
+              printSize={
+                selected.id
+              }
+              artwork={
+                artwork
+              }
+              record={
+                issuedRecord
+              }
+              className="gyan-print-card-v2--preview"
+            />
+          </div>
+        )
+      }
+
+            {
+        selected && (
+          <section className="gyan-calendar-print__artwork">
+            <strong>
+              Choose artwork
+            </strong>
+
+            <span>
+              Artwork contains no text or QR. The print uses a size-specific image to avoid stretching.
+            </span>
+
+            <div>
+              {
+                ARTWORK_OPTIONS.map(
+                  (
+                    option,
+                  ) => (
+                    <button
+                      key={
+                        option.id
+                      }
+                      type="button"
+                      className={
+                        artwork ===
+                          option.id
+                          ? "is-selected"
+                          : ""
+                      }
+                      onClick={() =>
+                        setArtwork(
+                          option.id,
+                        )
+                      }
+                    >
+                      <span>
+                        {
+                          option.icon
+                        }
+                      </span>
+
+                      {
+                        option.title
+                      }
+                    </button>
+                  ),
+                )
+              }
+            </div>
+          </section>
+        )
+      }
+
+      <p className="gyan-calendar-print__instruction gyan-calendar-print__instruction--below-preview">
+        Choose a portrait format. Each size has its own useful layout and complimentary period.
       </p>
 
       <div className="gyan-calendar-print__sizes">
         {
-          PRINT_SIZES.map(
+          PRINT_SIZES_V2.map(
             (
               size,
             ) => (
@@ -2073,7 +2387,6 @@ function PrintChooser({
                 type="button"
                 className={[
                   "gyan-calendar-print__size",
-
                   selectedSize ===
                     size.id
                     ? "is-selected"
@@ -2081,15 +2394,23 @@ function PrintChooser({
                 ].join(
                   " ",
                 )}
-                onClick={() =>
+                onClick={() => {
                   setSelectedSize(
                     size.id,
-                  )
-                }
+                  );
+
+                  setAdminCount(
+                    getAdminCountOptions(
+                      size.id,
+                    )[0],
+                  );
+                }}
               >
                 <strong>
                   {
                     size.title
+                  } · {
+                    size.product
                   }
                 </strong>
 
@@ -2104,200 +2425,27 @@ function PrintChooser({
                     size.note
                   }
                 </small>
+
+                <small>
+                  {
+                    durationLabel(
+                      size.durationMonths,
+                    )
+                  } complimentary · 💎 {
+                    size.welcomeGems
+                  }
+                </small>
               </button>
             ),
           )
         }
       </div>
 
-      <section className="gyan-calendar-print__access">
-        <div className="gyan-calendar-print__access-heading">
-          <strong>
-            GYAN access
-          </strong>
-
-          <button
-            type="button"
-            onClick={
-              refreshCode
-            }
-            title="Generate another code"
-          >
-            {
-              accessMode ===
-                "ADMIN_365"
-                ? "↻ New batch"
-                : "↻ New code"
-            }
-          </button>
-        </div>
-
-        <label className="gyan-calendar-print__access-option">
-          <input
-            type="radio"
-            name="calendar-access"
-            checked={
-              accessMode ===
-                "ONLINE_90"
-            }
-            onChange={() => {
-              setAccessMode(
-                "ONLINE_90",
-              );
-
-              refreshCode();
-            }}
-          />
-
-          <span>
-            <strong>
-              Visible online code
-            </strong>
-
-            <small>
-              Complimentary for 3 months
-            </small>
-          </span>
-        </label>
-
-        {
-          isAdmin && (
-            <label className="gyan-calendar-print__access-option">
-              <input
-                type="radio"
-                name="calendar-access"
-                checked={
-                  accessMode ===
-                    "ADMIN_365"
-                }
-                onChange={() => {
-                  setAccessMode(
-                    "ADMIN_365",
-                  );
-
-                  setAdminBatch(
-                    createAdminBatch(),
-                  );
-                }}
-              />
-
-              <span>
-                <strong>
-                  Scratch code
-                </strong>
-
-                <small>
-                  Admin print · complimentary for 1 year
-                </small>
-              </span>
-            </label>
-          )
-        }
-
-        <div
-          className={[
-            "gyan-calendar-print__code-preview",
-
-            accessMode ===
-              "ADMIN_365"
-              ? "is-scratch"
-              : "",
-          ]
-            .filter(
-              Boolean,
-            )
-            .join(
-              " ",
-            )}
-        >
-          <small>
-            GYAN ACCESS CODE
-          </small>
-
-          <strong>
-            {
-              accessMode ===
-                "ADMIN_365"
-                ? "8 UNIQUE CODES"
-                : accessCode
-            }
-          </strong>
-
-          <span>
-            {
-              accessMode ===
-                "ADMIN_365"
-                ? "Admin batch · 8 unique GYAN names / scratch codes"
-                : `${validityLabel} complimentary · no credit card required`
-            }
-          </span>
-        </div>
-      </section>
-
       {
-        selected &&
-        !(
-          isAdmin &&
-          accessMode ===
-            "ADMIN_365"
-        ) && (
-          <div className="gyan-calendar-print__qr-status">
-            {
-              issuingRecord
-                ? "Creating your unique GYAN QR…"
-                : issuedRecord
-                  ? `✓ QR ready · gyan.cc/${issuedRecord.slug.toLowerCase()}`
-                  : "Preparing unique GYAN QR…"
-            }
-          </div>
-        )
-      }
-
-      {
-        selected &&
-        !(
-          isAdmin &&
-          accessMode ===
-            "ADMIN_365"
-        ) &&
-        issuedRecord && (
-          <div className="gyan-calendar-print__live-preview">
-            <CalendarCard
-              market={
-                market
-              }
-              rangeLabel={
-                rangeLabel
-              }
-              months={
-                months
-              }
-              gyanName={
-                issuedRecord.gyanName
-              }
-              accessCode={
-                issuedRecord.accessCode
-              }
-              accessMode={
-                accessMode
-              }
-              publicUrl={
-                issuedRecord.publicUrl
-              }
-              printSize={
-                selected.id
-              }
-              className="gyan-calendar-card--preview"
-            />
-          </div>
-        )
-      }
-
-      {
-        pdfError && (
+        error && (
           <div className="gyan-calendar-print__pdf-error">
             {
-              pdfError
+              error
             }
           </div>
         )
@@ -2305,267 +2453,158 @@ function PrintChooser({
 
       {
         selected && (
-          <>
-            {
-              !(
-                isAdmin &&
-                accessMode ===
-                  "ADMIN_365"
-              ) && (
-                <div
-                  className="gyan-calendar-pdf-stage"
-                  aria-hidden="true"
-                >
-                  <div
-                    ref={
-                      pdfSheetRef
-                    }
-                    className="gyan-calendar-pdf-sheet"
-                    style={{
-                      width:
-                        "900px",
+          <div
+            className="gyan-calendar-pdf-stage"
+            aria-hidden="true"
+          >
+            <div
+              ref={
+                pdfSheetRef
+              }
+              className="gyan-calendar-pdf-sheet-v2"
+              style={{
+                width:
+                  "900px",
 
-                      height:
-                        `${
-                          Math.round(
-                            900 *
-                            Math.max(
-                              selected.pdfWidthMm,
-                              selected.pdfHeightMm,
-                            ) /
-                            Math.min(
-                              selected.pdfWidthMm,
-                              selected.pdfHeightMm,
-                            ),
-                          )
-                        }px`,
-                    }}
-                  >
-                    <CalendarCard
-                      market={
-                        market
-                      }
-                      rangeLabel={
-                        rangeLabel
-                      }
-                      months={
-                        months
-                      }
-                      accessCode={
-                        issuedRecord
-                          ?.accessCode ??
-                        accessCode
-                      }
-                      accessMode={
-                        accessMode
-                      }
-                      gyanName={
-                        issuedRecord
-                          ?.gyanName ??
-                        "MangoSwan99"
-                      }
-                      publicUrl={
-                        issuedRecord
-                          ?.publicUrl ??
-                        "https://gyan.cc/preview"
-                      }
-                      printSize={
-                        selected.id
-                      }
-                      className="gyan-calendar-card--pdf"
-                    />
-                  </div>
-                </div>
-              )
-            }
-
-            {
-              isAdmin &&
-              accessMode ===
-                "ADMIN_365" && (
-                <div
-                  ref={
-                    adminBatchRef
-                  }
-                  className="gyan-calendar-pdf-stage gyan-calendar-admin-batch"
-                  aria-hidden="true"
-                >
-                  {
-                    Array.from({
-                      length:
-                        Math.ceil(
-                          8 /
-                          getAdminSheetLayout(
-                            selected.id,
-                          )
-                            .perSheet,
-                        ),
-                    }).map(
-                      (
-                        _,
-                        sheetIndex,
-                      ) => {
-                        const layout =
-                          getAdminSheetLayout(
-                            selected.id,
-                          );
-
-                        const startIndex =
-                          sheetIndex *
-                          layout.perSheet;
-
-                        const entries =
-                          adminBatch.slice(
-                            startIndex,
-                            startIndex +
-                              layout.perSheet,
-                          );
-
-                        return (
-                          <div
-                            key={
-                              sheetIndex
-                            }
-                            className={[
-                              "gyan-calendar-admin-sheet",
-                              `gyan-calendar-admin-sheet--${selected.id.toLowerCase()}`,
-                            ].join(
-                              " ",
-                            )}
-                            style={{
-                              width:
-                                `${
-                                  layout.orientation ===
-                                    "landscape"
-                                    ? 1400
-                                    : 990
-                                }px`,
-
-                              height:
-                                `${
-                                  layout.orientation ===
-                                    "landscape"
-                                    ? 990
-                                    : 1400
-                                }px`,
-
-                              gridTemplateColumns:
-                                `repeat(${layout.columns}, minmax(0, 1fr))`,
-
-                              gridTemplateRows:
-                                `repeat(${layout.rows}, minmax(0, 1fr))`,
-                            }}
-                          >
-                            {
-                              entries.map(
-                                (
-                                  entry,
-                                  entryIndex,
-                                ) => (
-                                  <div
-                                    key={
-                                      `${entry.gyanName}-${entryIndex}`
-                                    }
-                                    className="gyan-calendar-admin-cell"
-                                  >
-                                    <CalendarCard
-                                      market={
-                                        market
-                                      }
-                                      rangeLabel={
-                                        rangeLabel
-                                      }
-                                      months={
-                                        months
-                                      }
-                                      gyanName={
-                                        entry.gyanName
-                                      }
-                                      publicUrl={
-                                        entry.publicUrl ??
-                                        "https://gyan.cc/preview"
-                                      }
-                                      accessCode={
-                                        entry.accessCode
-                                      }
-                                      accessMode="ADMIN_365"
-                                      printSize={
-                                        selected.id
-                                      }
-                                      className="gyan-calendar-card--pdf gyan-calendar-card--batch"
-                                    />
-                                  </div>
-                                ),
-                              )
-                            }
-                          </div>
-                        );
-                      },
+                height:
+                  `${
+                    Math.round(
+                      900 *
+                      selected.pdfHeightMm /
+                      selected.pdfWidthMm,
                     )
-                  }
-                </div>
-              )
-            }
-          </>
-        )
-      }
-
-      {
-        selected && (
-          <div className="gyan-calendar-print__next">
-            <div>
-              <strong>
-                {
-                  selected.title
+                  }px`,
+              }}
+            >
+              <CalendarCard
+                market={
+                  market
                 }
-                {" · "}
-                {
-                  validityLabel
+                rangeLabel={
+                  rangeLabel
                 }
-              </strong>
-
-              <span>
-                {
-                  accessMode ===
-                    "ADMIN_365"
-                    ? "Scratch-code calendar"
-                    : "Visible-code calendar"
+                months={
+                  months
                 }
-              </span>
+                printSize={
+                  selected.id
+                }
+                artwork={
+                  artwork
+                }
+                record={
+                  issuedRecord
+                }
+                className="gyan-print-card-v2--pdf"
+              />
             </div>
 
-            <button
-              type="button"
-              onClick={() =>
-                void generatePdf()
+            <div
+              ref={
+                batchRef
               }
-              disabled={
-                pdfGenerating
-              }
+              className="gyan-calendar-batch-v2"
             >
               {
-                pdfGenerating
-                  ? "Preparing PDF…"
-                  : (
-                      isAdmin &&
-                      accessMode ===
-                        "ADMIN_365"
-                        ? "🖨️ Generate 8"
-                        : "🖨️ Print PDF using selected size"
-                    )
+                adminBatch.map(
+                  (
+                    record,
+                  ) => (
+                    <div
+                      key={
+                        record.id
+                      }
+                      className="gyan-calendar-batch-page-v2"
+                      style={{
+                        width:
+                          "900px",
+
+                        height:
+                          `${
+                            Math.round(
+                              900 *
+                              selected.pdfHeightMm /
+                              selected.pdfWidthMm,
+                            )
+                          }px`,
+                      }}
+                    >
+                      <CalendarCard
+                        market={
+                          market
+                        }
+                        rangeLabel={
+                          rangeLabel
+                        }
+                        months={
+                          months
+                        }
+                        printSize={
+                          selected.id
+                        }
+                        artwork={
+                          artwork
+                        }
+                        record={
+                          record
+                        }
+                        className="gyan-print-card-v2--pdf"
+                      />
+                    </div>
+                  ),
+                )
               }
-            </button>
+            </div>
           </div>
         )
       }
+
+      <div className="gyan-calendar-print__next gyan-calendar-print__next--compact">
+        <span className="gyan-calendar-print__next-context">
+          {
+            selected.title
+          }
+          {" · "}
+          {
+            durationLabel(
+              selected.durationMonths,
+            )
+          }
+        </span>
+
+        <button
+          type="button"
+          disabled={
+            busy
+          }
+          onClick={() =>
+            void generatePdf()
+          }
+        >
+          <span className="gyan-calendar-print__button-label--desktop">
+            {
+              busy
+                ? "Preparing PDF…"
+                : "🖨️ Print PDF using selected size"
+            }
+          </span>
+
+          <span className="gyan-calendar-print__button-label--mobile">
+            {
+              busy
+                ? "Preparing…"
+                : "🖨️ Print PDF"
+            }
+          </span>
+        </button>
+      </div>
     </section>
   );
 }
 
+
 export default function GyanCalendarPage({
   onClose,
-  isAdmin =
-    false,
   registrationMode =
     false,
 }: GyanCalendarPageProps) {
@@ -2630,9 +2669,6 @@ export default function GyanCalendarPage({
         rangeLabel={rangeLabel}
         months={
           months
-        }
-        isAdmin={
-          isAdmin
         }
         defaultSize={
           registrationMode
@@ -2699,6 +2735,13 @@ export default function GyanCalendarPage({
         }
         months={
           months
+        }
+        printSize="A5"
+        artwork={
+          market ===
+            "IN"
+            ? "GODDESS"
+            : "EDUCATION"
         }
       />
     </section>
