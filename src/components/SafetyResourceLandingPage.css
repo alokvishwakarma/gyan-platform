@@ -1,0 +1,73 @@
+.safety-resource {
+  min-height: 100dvh;
+  box-sizing: border-box;
+  padding: 74px 12px 24px;
+  display: grid;
+  place-items: start center;
+  background: #f7f9fb;
+  color: #304957;
+}
+
+.safety-resource__card {
+  width: min(100%, 520px);
+  box-sizing: border-box;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid #dce5ea;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 12px 34px rgb(25 48 65 / 12%);
+}
+
+.safety-resource__card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.safety-resource__card header > strong {
+  color: #174a73;
+  font-size: 1.05rem;
+}
+
+.safety-resource__card header button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: #eef3f6;
+  cursor: pointer;
+}
+
+.safety-resource__card h1 {
+  margin: 3px 0 0;
+  color: #174a73;
+  font-size: 1.2rem;
+}
+
+.safety-resource__alias {
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: #fff7ea;
+  color: #61717a;
+  font-size: 0.82rem;
+}
+
+.safety-resource__alias strong {
+  color: #e97825;
+}
+
+.safety-resource__card p,
+.safety-resource__card small {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.safety-resource__card small {
+  color: #6d7d86;
+}
+
+.safety-resource__error {
+  color: #9b332d;
+}

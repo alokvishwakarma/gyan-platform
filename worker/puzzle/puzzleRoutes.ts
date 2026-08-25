@@ -1,5 +1,6 @@
 import {
   generateDailyPuzzlePair,
+  puzzleModeFor,
 
   type GeneratedPuzzle,
   type PuzzleStage,
@@ -15,6 +16,7 @@ interface PuzzleRow {
   max_moves: number;
   mystery_count: number;
   start_board_json: string;
+  solved_board_json: string;
   verified: number;
   status: string;
 }
@@ -154,6 +156,12 @@ function mapPublicPuzzle(
     mysteryCount:
       row.mystery_count,
 
+    mode:
+      puzzleModeFor(
+        row.puzzle_date,
+        row.puzzle_number,
+      ),
+
     board:
       publicBoard,
   };
@@ -176,6 +184,7 @@ async function loadByNumber(
         max_moves,
         mystery_count,
         start_board_json,
+        solved_board_json,
         verified,
         status
 
@@ -215,6 +224,7 @@ async function loadPublishedByDate(
         max_moves,
         mystery_count,
         start_board_json,
+        solved_board_json,
         verified,
         status
 
@@ -835,6 +845,124 @@ export async function handlePuzzleRoute(
 ): Promise<Response | null> {
   /*
    * ----------------------------------------
+   * GET recent published puzzles
+   *
+   * /api/puzzle/recent?stage=5x5&limit=14
+   * ----------------------------------------
+   */
+  if (
+    request.method ===
+      "GET" &&
+    url.pathname ===
+      "/api/puzzle/recent"
+  ) {
+    const rawStage =
+      url.searchParams.get(
+        "stage",
+      );
+
+    const stage:
+      PuzzleStage =
+      rawStage ===
+        "7x7"
+        ? "7x7"
+        : "5x5";
+
+    const requestedLimit =
+      Number(
+        url.searchParams.get(
+          "limit",
+        ) ??
+        14,
+      );
+
+    const limit =
+      Math.max(
+        1,
+        Math.min(
+          30,
+          Number.isFinite(
+            requestedLimit,
+          )
+            ? Math.trunc(
+                requestedLimit,
+              )
+            : 14,
+        ),
+      );
+
+    const rows =
+      await env.gyan_registry
+        .prepare(
+          `
+            SELECT
+              puzzle_date,
+              puzzle_number,
+              stage,
+              board_size,
+              max_moves,
+              mystery_count
+            FROM daily_puzzles
+            WHERE
+              stage = ?
+              AND verified = 1
+              AND status = 'published'
+            ORDER BY
+              puzzle_date DESC,
+              puzzle_number DESC
+            LIMIT ?
+          `,
+        )
+        .bind(
+          stage,
+          limit,
+        )
+        .all<{
+          puzzle_date: string;
+          puzzle_number: number;
+          stage: PuzzleStage;
+          board_size: number;
+          max_moves: number;
+          mystery_count: number;
+        }>();
+
+    return jsonResponse({
+      puzzles:
+        rows.results.map(
+          (
+            row,
+          ) => ({
+            puzzleDate:
+              row.puzzle_date,
+
+            puzzleNumber:
+              row.puzzle_number,
+
+            stage:
+              row.stage,
+
+            size:
+              row.board_size,
+
+            maxMoves:
+              row.max_moves,
+
+            mysteryCount:
+              row.mystery_count,
+
+            mode:
+              puzzleModeFor(
+                row.puzzle_date,
+                row.puzzle_number,
+              ),
+          }),
+        ),
+    });
+  }
+
+
+  /*
+   * ----------------------------------------
    * GET specific puzzle
    *
    * /api/puzzle/219/5x5
@@ -958,6 +1086,99 @@ export async function handlePuzzleRoute(
         ),
     });
   }
+
+  /*
+   * ----------------------------------------
+   * Previous-puzzle solution.
+   * Today remains protected.
+   *
+   * /api/puzzle/solution/234
+   * ----------------------------------------
+   */
+  const solutionMatch =
+    url.pathname.match(
+      /^\/api\/puzzle\/solution\/(\d+)$/,
+    );
+
+  if (
+    request.method ===
+      "GET" &&
+    solutionMatch
+  ) {
+    const puzzleNumber =
+      Number(
+        solutionMatch[1],
+      );
+
+    const row =
+      await loadByNumber(
+        env,
+        puzzleNumber,
+        "5x5",
+      );
+
+    if (!row) {
+      return jsonResponse(
+        {
+          error:
+            "Puzzle not found.",
+        },
+        404,
+      );
+    }
+
+    if (
+      row.puzzle_date >=
+        localDateKey()
+    ) {
+      return jsonResponse(
+        {
+          error:
+            "Today's solution is not available yet.",
+        },
+        403,
+      );
+    }
+
+    const solvedBoard =
+      JSON.parse(
+        row.solved_board_json,
+      ) as PuzzleTile[];
+
+    return jsonResponse({
+      puzzleNumber:
+        row.puzzle_number,
+
+      puzzleDate:
+        row.puzzle_date,
+
+      size:
+        row.board_size,
+
+      mode:
+        puzzleModeFor(
+          row.puzzle_date,
+          row.puzzle_number,
+        ),
+
+      solvedBoard:
+        solvedBoard.map(
+          (
+            tile,
+          ) => ({
+            id:
+              tile.id,
+
+            color:
+              tile.color,
+
+            hidden:
+              false,
+          }),
+        ),
+    });
+  }
+
 
   /*
    * ----------------------------------------
@@ -1979,22 +2200,12 @@ return jsonResponse({
           2 +
         1;
 
-      const scaledBotCap =
-        Math.max(
-          10,
-          Math.ceil(
-            Math.sqrt(
-              uniqueHumanCount,
-            ),
-          ),
-        );
-
       const botCount =
         Math.max(
           1,
           Math.min(
+            10,
             humanBasedBotCap,
-            scaledBotCap,
             timeBasedBotCount,
           ),
         );

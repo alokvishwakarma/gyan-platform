@@ -9,6 +9,7 @@ import "./AdminStudentsPage.css";
 type StudentKind =
   | "registered"
   | "trial"
+  | "issued"
   | "inactive";
 
 
@@ -33,6 +34,7 @@ interface AdminStudentsResponse {
   summary?: {
     registered: number;
     trial: number;
+    issued: number;
     inactive: number;
   };
 
@@ -60,6 +62,13 @@ function kindLabel(
       "trial"
   ) {
     return "Trial";
+  }
+
+  if (
+    kind ===
+      "issued"
+  ) {
+    return "Issued";
   }
 
   return "Inactive";
@@ -100,6 +109,8 @@ export default function AdminStudentsPage({
           value ===
             "trial" ||
           value ===
+            "issued" ||
+          value ===
             "inactive"
         )
           ? value
@@ -122,6 +133,7 @@ export default function AdminStudentsPage({
     useState({
       registered: 0,
       trial: 0,
+      issued: 0,
       inactive: 0,
     });
 
@@ -247,6 +259,7 @@ export default function AdminStudentsPage({
                       body.summary ?? {
                         registered: 0,
                         trial: 0,
+                        issued: 0,
                         inactive: 0,
                       },
                   };
@@ -631,6 +644,10 @@ export default function AdminStudentsPage({
                   "Trial",
                 ],
                 [
+                  "issued",
+                  "Issued",
+                ],
+                [
                   "inactive",
                   "Inactive",
                 ],
@@ -695,6 +712,10 @@ export default function AdminStudentsPage({
 
         <span>
           Trial {summary.trial}
+        </span>
+
+        <span>
+          Issued {summary.issued}
         </span>
 
         <span>

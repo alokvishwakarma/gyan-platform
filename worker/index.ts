@@ -131,6 +131,10 @@ import {
   handleAdminStudentsRoute,
 } from "./adminStudents";
 
+import {
+  handleSafetyResourceRoute,
+} from "./safetyResources";
+
 interface RegisterShopRequest {
   code?: unknown;
   name?: unknown;
@@ -849,6 +853,7 @@ async function handleApiRequest(
    * - logout
    * ------------------------------------------------
    */
+
 
   const publicAuthResponse =
     await handlePublicAuthRoute(
@@ -1607,6 +1612,25 @@ if (
     );
   }
 
+    /*
+   * ------------------------------------------------
+   * Public GYAN Certificate / Safety cards
+   * ------------------------------------------------
+   */
+
+  const safetyResourceResponse =
+    await handleSafetyResourceRoute({
+      request,
+      env,
+      pathname:
+        url.pathname,
+    });
+
+  if (
+    safetyResourceResponse
+  ) {
+    return safetyResourceResponse;
+  }
 
   /*
    * MUST remain last.

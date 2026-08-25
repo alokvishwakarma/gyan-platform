@@ -2,6 +2,29 @@ export type PuzzleStage =
   | "5x5"
   | "7x7";
 
+export type PuzzleModeKey =
+  | "EASY"
+  | "MEDIUM"
+  | "HARD"
+  | "VERY_HARD_1"
+  | "VERY_HARD_2"
+  | "VERY_HARD_3"
+  | "RARE";
+
+export interface PuzzleModeInfo {
+  key: PuzzleModeKey;
+  label: string;
+  shortLabel: string;
+  probabilityBasisPoints: number;
+  probabilityPercent: number;
+  gemReward: number;
+  wrappedOffset: number;
+  pattern:
+    | "line"
+    | "diagonal"
+    | "wrapped";
+}
+
 export type TileColor =
   | "red"
   | "blue"
@@ -43,12 +66,17 @@ export interface GeneratedPuzzle {
 
   mysteryRevealOrder: number[];
 
+  mode: PuzzleModeInfo;
+
   verified: boolean;
 }
 
 type Orientation =
   | "horizontal"
-  | "vertical";
+  | "vertical"
+  | "diagonal-down"
+  | "diagonal-up"
+  | "wrapped";
 
 interface SolvedBoardResult {
   board: PuzzleTile[];
@@ -108,6 +136,520 @@ function hashString(
 
   return hash >>> 0;
 }
+
+
+export const PUZZLE_MODES:
+  PuzzleModeInfo[] = [
+    {
+      key: "EASY",
+      label: "Easy",
+      shortLabel: "Easy",
+      probabilityBasisPoints: 5000,
+      probabilityPercent: 50,
+      gemReward: 1,
+      wrappedOffset: 0,
+      pattern: "line",
+    },
+    {
+      key: "MEDIUM",
+      label: "Medium",
+      shortLabel: "Medium",
+      probabilityBasisPoints: 2500,
+      probabilityPercent: 25,
+      gemReward: 2,
+      wrappedOffset: 0,
+      pattern: "line",
+    },
+    {
+      key: "HARD",
+      label: "Hard",
+      shortLabel: "Hard",
+      probabilityBasisPoints: 1300,
+      probabilityPercent: 13,
+      gemReward: 3,
+      wrappedOffset: 0,
+      pattern: "diagonal",
+    },
+    {
+      key: "VERY_HARD_1",
+      label: "Very Hard · Pattern 1",
+      shortLabel: "Very Hard P1",
+      probabilityBasisPoints: 600,
+      probabilityPercent: 6,
+      gemReward: 4,
+      wrappedOffset: 1,
+      pattern: "wrapped",
+    },
+    {
+      key: "VERY_HARD_2",
+      label: "Very Hard · Pattern 2",
+      shortLabel: "Very Hard P2",
+      probabilityBasisPoints: 300,
+      probabilityPercent: 3,
+      gemReward: 5,
+      wrappedOffset: 2,
+      pattern: "wrapped",
+    },
+    {
+      key: "VERY_HARD_3",
+      label: "Very Hard · Pattern 3",
+      shortLabel: "Very Hard P3",
+      probabilityBasisPoints: 200,
+      probabilityPercent: 2,
+      gemReward: 6,
+      wrappedOffset: 3,
+      pattern: "wrapped",
+    },
+    {
+      key: "RARE",
+      label: "Rare Spatial",
+      shortLabel: "Rare",
+      probabilityBasisPoints: 100,
+      probabilityPercent: 1,
+      gemReward: 8,
+      wrappedOffset: 4,
+      pattern: "wrapped",
+    },
+  ];
+
+
+export function puzzleModeFor(
+  puzzleDate: string,
+  puzzleNumber: number,
+): PuzzleModeInfo {
+  const bucket =
+    hashString(
+      [
+        "gyan-puzzle-mode-v1",
+        puzzleDate,
+        puzzleNumber,
+      ].join(":"),
+    ) %
+    10000;
+
+  let upper =
+    0;
+
+  for (
+    const mode of
+    PUZZLE_MODES
+  ) {
+    upper +=
+      mode.probabilityBasisPoints;
+
+    if (
+      bucket <
+      upper
+    ) {
+      return {
+        ...mode,
+      };
+    }
+  }
+
+  return {
+    ...PUZZLE_MODES[
+      PUZZLE_MODES.length - 1
+    ],
+  };
+}
+
+
+function winningPositionsForMode(
+  size: number,
+  mode: PuzzleModeInfo,
+  random: () => number,
+): {
+  orientation: Orientation;
+  positions: PuzzlePosition[];
+  lineIndex: number;
+} {
+  if (
+    mode.pattern ===
+      "diagonal"
+  ) {
+    const down =
+      random() <
+      0.5;
+
+    return {
+      orientation:
+        down
+          ? "diagonal-down"
+          : "diagonal-up",
+      lineIndex:
+        0,
+      positions:
+        Array.from(
+          {
+            length:
+              size,
+          },
+          (
+            _,
+            row,
+          ) => ({
+            row,
+            column:
+              down
+                ? row
+                : size - 1 - row,
+          }),
+        ),
+    };
+  }
+
+  if (
+    mode.pattern ===
+      "wrapped"
+  ) {
+    const offset =
+      mode.wrappedOffset %
+      size;
+
+    return {
+      orientation:
+        "wrapped",
+      lineIndex:
+        offset,
+      positions:
+        Array.from(
+          {
+            length:
+              size,
+          },
+          (
+            _,
+            row,
+          ) => ({
+            row,
+            column:
+              (
+                row +
+                offset
+              ) %
+              size,
+          }),
+        ),
+    };
+  }
+
+  const orientation:
+    Orientation =
+    random() <
+      0.5
+      ? "horizontal"
+      : "vertical";
+
+  const lineIndex =
+    1 +
+    randomInt(
+      random,
+      size - 2,
+    );
+
+  return {
+    orientation,
+    lineIndex,
+    positions:
+      Array.from(
+        {
+          length:
+            size,
+        },
+        (
+          _,
+          position,
+        ) => ({
+          row:
+            orientation ===
+              "horizontal"
+              ? lineIndex
+              : position,
+          column:
+            orientation ===
+              "horizontal"
+              ? position
+              : lineIndex,
+        }),
+      ),
+  };
+}
+
+
+function fullPatternSolved(
+  board: PuzzleTile[],
+  size: number,
+  mode: PuzzleModeInfo,
+): boolean {
+  const candidatePatterns:
+    PuzzlePosition[][] = [];
+
+  if (
+    mode.pattern ===
+      "line"
+  ) {
+    for (
+      let row = 0;
+      row < size;
+      row += 1
+    ) {
+      candidatePatterns.push(
+        Array.from(
+          { length: size },
+          (_, column) => ({
+            row,
+            column,
+          }),
+        ),
+      );
+    }
+
+    for (
+      let column = 0;
+      column < size;
+      column += 1
+    ) {
+      candidatePatterns.push(
+        Array.from(
+          { length: size },
+          (_, row) => ({
+            row,
+            column,
+          }),
+        ),
+      );
+    }
+  } else if (
+    mode.pattern ===
+      "diagonal"
+  ) {
+    candidatePatterns.push(
+      Array.from(
+        { length: size },
+        (_, row) => ({
+          row,
+          column: row,
+        }),
+      ),
+      Array.from(
+        { length: size },
+        (_, row) => ({
+          row,
+          column:
+            size - 1 - row,
+        }),
+      ),
+    );
+  } else {
+    const offset =
+      mode.wrappedOffset %
+      size;
+
+    candidatePatterns.push(
+      Array.from(
+        { length: size },
+        (_, row) => ({
+          row,
+          column:
+            (
+              row +
+              offset
+            ) %
+            size,
+        }),
+      ),
+    );
+  }
+
+  return candidatePatterns.some(
+    (
+      positions,
+    ) => {
+      const first =
+        board[
+          indexOf(
+            positions[0].row,
+            positions[0].column,
+            size,
+          )
+        ];
+
+      if (
+        first.hidden
+      ) {
+        return false;
+      }
+
+      return positions.every(
+        (
+          position,
+        ) => {
+          const tile =
+            board[
+              indexOf(
+                position.row,
+                position.column,
+                size,
+              )
+            ];
+
+          return (
+            !tile.hidden &&
+            tile.color ===
+              first.color
+          );
+        },
+      );
+    },
+  );
+}
+
+
+function createPatternScrambleMoves(
+  size: number,
+  winningPositions: PuzzlePosition[],
+  mode: PuzzleModeInfo,
+  random: () => number,
+): PuzzleMove[] {
+  const winningKeys =
+    new Set(
+      winningPositions.map(
+        (position) =>
+          `${position.row}:${position.column}`,
+      ),
+    );
+
+  const decoys =
+    shuffle(
+      Array.from(
+        {
+          length:
+            size * size,
+        },
+        (
+          _,
+          index,
+        ) => ({
+          row:
+            Math.floor(
+              index /
+              size,
+            ),
+          column:
+            index %
+            size,
+        }),
+      ).filter(
+        (position) =>
+          !winningKeys.has(
+            `${position.row}:${position.column}`,
+          ),
+      ),
+      random,
+    );
+
+  const moveCount =
+    mode.key === "EASY"
+      ? 1
+      : mode.key === "MEDIUM"
+        ? 2
+        : mode.key === "HARD"
+          ? Math.min(
+              3,
+              size,
+            )
+          : Math.min(
+              Math.max(
+                3,
+                mode.wrappedOffset + 2,
+              ),
+              size,
+            );
+
+  const chosenWinning =
+    shuffle(
+      winningPositions,
+      random,
+    ).slice(
+      0,
+      moveCount,
+    );
+
+  const moves:
+    PuzzleMove[] = [];
+
+  for (
+    let index = 0;
+    index <
+      chosenWinning.length;
+    index += 1
+  ) {
+    const from =
+      chosenWinning[
+        index
+      ];
+
+    let destinationIndex =
+      index;
+
+    if (
+      mode.key ===
+        "MEDIUM" &&
+      index === 1
+    ) {
+      const far =
+        decoys.findIndex(
+          (
+            candidate,
+          ) =>
+            (
+              Math.abs(
+                candidate.row -
+                from.row,
+              ) +
+              Math.abs(
+                candidate.column -
+                from.column,
+              )
+            ) >= 2,
+        );
+
+      if (
+        far >= 0
+      ) {
+        destinationIndex =
+          far;
+      }
+    }
+
+    const to =
+      decoys.splice(
+        destinationIndex,
+        1,
+      )[0];
+
+    if (
+      !to
+    ) {
+      throw new Error(
+        "Unable to allocate scramble destination.",
+      );
+    }
+
+    moves.push({
+      from: {
+        ...from,
+      },
+      to: {
+        ...to,
+      },
+    });
+  }
+
+  return moves;
+}
+
 
 function createRandom(
   seedText: string,
@@ -315,6 +857,7 @@ function createSolutionMoves(
 function createSolvedBoard(
   size: number,
   random: () => number,
+  mode: PuzzleModeInfo,
 ): SolvedBoardResult {
   const winningColor =
     COLORS[
@@ -324,30 +867,13 @@ function createSolvedBoard(
       )
     ];
 
-  const orientation:
-    Orientation =
-    random() <
-      0.5
-      ? "horizontal"
-      : "vertical";
-
-  /*
-   * Use an interior line so winning tiles
-   * can be displaced to either side.
-   */
-  const lineIndex =
-    1 +
-    randomInt(
+  const pattern =
+    winningPositionsForMode(
+      size,
+      mode,
       random,
-      size - 2,
     );
 
-  /*
-   * Use a shuffled palette repeatedly.
-   *
-   * This gives plenty of believable decoy
-   * colors without making one color unique.
-   */
   const palette =
     shuffle(
       COLORS,
@@ -382,12 +908,10 @@ function createSolvedBoard(
 
       board.push({
         id,
-
         color:
           palette[
             offset
           ],
-
         hidden:
           false,
       });
@@ -400,27 +924,14 @@ function createSolvedBoard(
     number[] = [];
 
   for (
-    let position = 0;
-    position < size;
-    position += 1
+    const position of
+    pattern.positions
   ) {
-    const row =
-      orientation ===
-      "horizontal"
-        ? lineIndex
-        : position;
-
-    const column =
-      orientation ===
-      "horizontal"
-        ? position
-        : lineIndex;
-
     const tile =
       board[
         indexOf(
-          row,
-          column,
+          position.row,
+          position.column,
           size,
         )
       ];
@@ -435,17 +946,14 @@ function createSolvedBoard(
 
   return {
     board,
-
     winningColor,
-
-    orientation,
-
-    lineIndex,
-
+    orientation:
+      pattern.orientation,
+    lineIndex:
+      pattern.lineIndex,
     winningTileIds,
   };
 }
-
 
 /*
  * ========================================================
@@ -721,6 +1229,7 @@ function addMysteries(
   winningTileIds:
     number[],
   random: () => number,
+  hideWinningTile = true,
 ): {
   board: PuzzleTile[];
   revealOrder: number[];
@@ -744,30 +1253,34 @@ function addMysteries(
       random,
     );
 
-  const winningMysteryId =
-    shuffledWinningIds[
-      0
-    ];
+  if (
+    hideWinningTile
+  ) {
+    const winningMysteryId =
+      shuffledWinningIds[
+        0
+      ];
 
-  const winningMystery =
-    next.find(
-      (tile) =>
-        tile.id ===
-        winningMysteryId,
-    );
+    const winningMystery =
+      next.find(
+        (tile) =>
+          tile.id ===
+          winningMysteryId,
+      );
 
-  if (!winningMystery) {
-    throw new Error(
-      "Winning mystery tile not found.",
+    if (!winningMystery) {
+      throw new Error(
+        "Winning mystery tile not found.",
+      );
+    }
+
+    winningMystery.hidden =
+      true;
+
+    revealOrder.push(
+      winningMystery.id,
     );
   }
-
-  winningMystery.hidden =
-    true;
-
-  revealOrder.push(
-    winningMystery.id,
-  );
 
   /*
    * Other mysteries are decoys.
@@ -784,10 +1297,14 @@ function addMysteries(
       random,
     );
 
+  const decoyCount =
+    size -
+    revealOrder.length;
+
   for (
     let index = 0;
     index <
-    size - 1;
+    decoyCount;
     index += 1
   ) {
     const tile =
@@ -1141,11 +1658,11 @@ export function verifyPuzzle(
    * Never publish something already solved.
    */
   if (
-    longestVisibleMatch(
+    fullPatternSolved(
       board,
       puzzle.size,
-    ) >=
-    puzzle.size
+      puzzle.mode,
+    )
   ) {
     return false;
   }
@@ -1175,22 +1692,20 @@ export function verifyPuzzle(
       );
 
     if (
-      longestVisibleMatch(
+      fullPatternSolved(
         board,
         puzzle.size,
-      ) >=
-      puzzle.size
+        puzzle.mode,
+      )
     ) {
       return true;
     }
   }
 
-  return (
-    longestVisibleMatch(
-      board,
-      puzzle.size,
-    ) >=
-    puzzle.size
+  return fullPatternSolved(
+    board,
+    puzzle.size,
+    puzzle.mode,
   );
 }
 
@@ -1310,6 +1825,12 @@ export function generatePuzzle(
       stage,
     );
 
+  const mode =
+    puzzleModeFor(
+      puzzleDate,
+      puzzleNumber,
+    );
+
   /*
    * Multiple deterministic candidates.
    *
@@ -1336,16 +1857,62 @@ const random =
       createSolvedBoard(
         size,
         random,
+        mode,
+      );
+
+    const winningPositions =
+      solved.winningTileIds.map(
+        (
+          tileId,
+        ) => {
+          const index =
+            solved.board.findIndex(
+              (
+                tile,
+              ) =>
+                tile.id ===
+                tileId,
+            );
+
+          return {
+            row:
+              Math.floor(
+                index /
+                size,
+              ),
+            column:
+              index %
+              size,
+          };
+        },
       );
 
     const scrambleMoves =
-      createScrambleMoves(
-        size,
-        solved.orientation,
-        solved.lineIndex,
-        random,
-        stage,
-      );
+      mode.key ===
+        "EASY" ||
+      mode.key ===
+        "MEDIUM"
+        ? createPatternScrambleMoves(
+            size,
+            winningPositions,
+            mode,
+            random,
+          )
+        : mode.pattern ===
+            "line"
+          ? createScrambleMoves(
+              size,
+              solved.orientation,
+              solved.lineIndex,
+              random,
+              stage,
+            )
+          : createPatternScrambleMoves(
+            size,
+            winningPositions,
+            mode,
+            random,
+          );
 
     const scrambledBoard =
       applyMoves(
@@ -1355,6 +1922,8 @@ const random =
       );
 
     if (
+      mode.key !==
+        "EASY" &&
       !hasTileDisplacedByAtLeastTwo(
         solved.board,
         scrambledBoard,
@@ -1370,6 +1939,8 @@ const random =
         size,
         solved.winningTileIds,
         random,
+        mode.pattern ===
+          "line",
       );
 
     const solutionMoves =
@@ -1405,6 +1976,10 @@ const random =
 
       mysteryRevealOrder:
         mysteryResult.revealOrder,
+
+      mode: {
+        ...mode,
+      },
 
       verified:
         false,

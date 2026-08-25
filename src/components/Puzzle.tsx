@@ -348,6 +348,29 @@ function calculateStageGq(
   };
 }
 
+type PuzzleModeKey =
+  | "EASY"
+  | "MEDIUM"
+  | "HARD"
+  | "VERY_HARD_1"
+  | "VERY_HARD_2"
+  | "VERY_HARD_3"
+  | "RARE";
+
+interface PuzzleModeInfo {
+  key: PuzzleModeKey;
+  label: string;
+  shortLabel: string;
+  probabilityBasisPoints: number;
+  probabilityPercent: number;
+  gemReward: number;
+  wrappedOffset: number;
+  pattern:
+    | "line"
+    | "diagonal"
+    | "wrapped";
+}
+
 interface PublicPuzzle {
   puzzleDate: string;
   puzzleNumber: number;
@@ -355,8 +378,66 @@ interface PublicPuzzle {
   size: number;
   maxMoves: number;
   mysteryCount: number;
+  mode: PuzzleModeInfo;
   board: Tile[];
 }
+
+interface RecentPuzzleSummary {
+  puzzleDate: string;
+  puzzleNumber: number;
+  stage: PuzzleStage;
+  size: number;
+  maxMoves: number;
+  mysteryCount: number;
+  mode: PuzzleModeInfo;
+}
+
+interface RecentPuzzlesResponse {
+  puzzles: RecentPuzzleSummary[];
+}
+
+interface HistoricalPuzzleSolution {
+  puzzleNumber: number;
+  puzzleDate: string;
+  size: number;
+  mode: PuzzleModeInfo;
+  solvedBoard: Tile[];
+}
+
+async function fetchRecentPuzzles(
+  limit = 10,
+): Promise<RecentPuzzleSummary[]> {
+  const response =
+    await fetch(
+      `/api/puzzle/recent?stage=5x5&limit=${limit}`,
+      {
+        cache:
+          "no-store",
+      },
+    );
+
+  const body =
+    (await response.json()) as
+      RecentPuzzlesResponse & {
+        error?: string;
+      };
+
+  if (
+    !response.ok
+  ) {
+    throw new Error(
+      body.error ??
+      "Unable to load recent puzzles.",
+    );
+  }
+
+  return Array.isArray(
+    body.puzzles,
+  )
+    ? body.puzzles
+    : [];
+}
+
 
 interface PuzzleResponse {
   puzzle: PublicPuzzle;
@@ -1340,112 +1421,304 @@ function findMatchSignatures(
 }
 
 
-function longestMatch(
+
+const PUZZLE_MODE_CATALOG:
+  PuzzleModeInfo[] = [
+    { key: "EASY", label: "Easy", shortLabel: "Easy", probabilityBasisPoints: 5000, probabilityPercent: 50, gemReward: 1, wrappedOffset: 0, pattern: "line" },
+    { key: "MEDIUM", label: "Medium", shortLabel: "Medium", probabilityBasisPoints: 2500, probabilityPercent: 25, gemReward: 2, wrappedOffset: 0, pattern: "line" },
+    { key: "HARD", label: "Hard", shortLabel: "Hard", probabilityBasisPoints: 1300, probabilityPercent: 13, gemReward: 3, wrappedOffset: 0, pattern: "diagonal" },
+    { key: "VERY_HARD_1", label: "Very Hard · Pattern 1", shortLabel: "Very Hard P1", probabilityBasisPoints: 600, probabilityPercent: 6, gemReward: 4, wrappedOffset: 1, pattern: "wrapped" },
+    { key: "VERY_HARD_2", label: "Very Hard · Pattern 2", shortLabel: "Very Hard P2", probabilityBasisPoints: 300, probabilityPercent: 3, gemReward: 5, wrappedOffset: 2, pattern: "wrapped" },
+    { key: "VERY_HARD_3", label: "Very Hard · Pattern 3", shortLabel: "Very Hard P3", probabilityBasisPoints: 200, probabilityPercent: 2, gemReward: 6, wrappedOffset: 3, pattern: "wrapped" },
+    { key: "RARE", label: "Rare Spatial", shortLabel: "Rare", probabilityBasisPoints: 100, probabilityPercent: 1, gemReward: 8, wrappedOffset: 4, pattern: "wrapped" },
+  ];
+
+
+function patternPositions(
+  size: number,
+  mode: PuzzleModeInfo,
+): Position[][] {
+  if (
+    mode.pattern ===
+      "line"
+  ) {
+    return [
+      ...Array.from(
+        { length: size },
+        (_, row) =>
+          Array.from(
+            { length: size },
+            (_, column) => ({
+              row,
+              column,
+            }),
+          ),
+      ),
+      ...Array.from(
+        { length: size },
+        (_, column) =>
+          Array.from(
+            { length: size },
+            (_, row) => ({
+              row,
+              column,
+            }),
+          ),
+      ),
+    ];
+  }
+
+  if (
+    mode.pattern ===
+      "diagonal"
+  ) {
+    return [
+      Array.from(
+        { length: size },
+        (_, row) => ({
+          row,
+          column: row,
+        }),
+      ),
+      Array.from(
+        { length: size },
+        (_, row) => ({
+          row,
+          column:
+            size - 1 - row,
+        }),
+      ),
+    ];
+  }
+
+  const offset =
+    mode.wrappedOffset %
+    size;
+
+  return [
+    Array.from(
+      { length: size },
+      (_, row) => ({
+        row,
+        column:
+          (
+            row +
+            offset
+          ) %
+          size,
+      }),
+    ),
+  ];
+}
+
+
+
+function solvedPatternTileIds(
   board: Tile[],
   size: number,
-): number {
-  let best = 1;
+  mode: PuzzleModeInfo,
+): Set<number> {
+  const patterns =
+    patternPositions(
+      size,
+      mode,
+    );
 
   for (
-    let row = 0;
-    row < size;
-    row += 1
+    const positions of
+    patterns
   ) {
-    let length = 1;
-
-    for (
-      let column = 1;
-      column < size;
-      column += 1
-    ) {
-      const previous =
-        board[
-          indexOf(
-            row,
-            column - 1,
-            size,
-          )
-        ];
-
-      const current =
-        board[
-          indexOf(
-            row,
-            column,
-            size,
-          )
-        ];
-
-      if (
-        sameMatchIdentity(
-          previous,
-          current,
+    const first =
+      board[
+        indexOf(
+          positions[0].row,
+          positions[0].column,
+          size,
         )
-      ) {
-        length += 1;
+      ];
 
-        best =
-          Math.max(
-            best,
-            length,
+    if (
+      first.hidden
+    ) {
+      continue;
+    }
+
+    const matches =
+      positions.every(
+        (
+          position,
+        ) => {
+          const tile =
+            board[
+              indexOf(
+                position.row,
+                position.column,
+                size,
+              )
+            ];
+
+          return (
+            !tile.hidden &&
+            sameMatchIdentity(
+              first,
+              tile,
+            )
           );
-      } else {
-        length = 1;
-      }
+        },
+      );
+
+    if (
+      matches
+    ) {
+      return new Set(
+        positions.map(
+          (
+            position,
+          ) =>
+            board[
+              indexOf(
+                position.row,
+                position.column,
+                size,
+              )
+            ].id,
+        ),
+      );
     }
   }
 
-  for (
-    let column = 0;
-    column < size;
-    column += 1
-  ) {
-    let length = 1;
-
-    for (
-      let row = 1;
-      row < size;
-      row += 1
-    ) {
-      const previous =
-        board[
-          indexOf(
-            row - 1,
-            column,
-            size,
-          )
-        ];
-
-      const current =
-        board[
-          indexOf(
-            row,
-            column,
-            size,
-          )
-        ];
-
-      if (
-        sameMatchIdentity(
-          previous,
-          current,
-        )
-      ) {
-        length += 1;
-
-        best =
-          Math.max(
-            best,
-            length,
-          );
-      } else {
-        length = 1;
-      }
-    }
-  }
-
-  return best;
+  return new Set();
 }
+
+
+function isPuzzleSolved(
+  board: Tile[],
+  size: number,
+  mode: PuzzleModeInfo,
+): boolean {
+  return patternPositions(
+    size,
+    mode,
+  ).some(
+    (
+      positions,
+    ) => {
+      const first =
+        board[
+          indexOf(
+            positions[0].row,
+            positions[0].column,
+            size,
+          )
+        ];
+
+      if (
+        first.hidden
+      ) {
+        return false;
+      }
+
+      return positions.every(
+        (
+          position,
+        ) => {
+          const tile =
+            board[
+              indexOf(
+                position.row,
+                position.column,
+                size,
+              )
+            ];
+
+          return (
+            !tile.hidden &&
+            sameMatchIdentity(
+              first,
+              tile,
+            )
+          );
+        },
+      );
+    },
+  );
+}
+
+
+function ModePatternPreview({
+  mode,
+}: {
+  mode: PuzzleModeInfo;
+}) {
+  const size =
+    5;
+
+  const marked =
+    new Set(
+      patternPositions(
+        size,
+        mode,
+      )[0].map(
+        (
+          position,
+        ) =>
+          `${position.row}:${position.column}`,
+      ),
+    );
+
+  return (
+    <div
+      aria-label={`${mode.label} sample solution`}
+      style={{
+        display: "grid",
+        gridTemplateColumns:
+          `repeat(${size}, 12px)`,
+        gap: "2px",
+        justifyContent: "center",
+        margin: "5px 0",
+      }}
+    >
+      {Array.from(
+        { length: size * size },
+        (_, index) => {
+          const row =
+            Math.floor(
+              index /
+              size,
+            );
+
+          const column =
+            index %
+            size;
+
+          const active =
+            marked.has(
+              `${row}:${column}`,
+            );
+
+          return (
+            <span
+              key={index}
+              style={{
+                width: "12px",
+                height: "12px",
+                borderRadius: "3px",
+                border:
+                  "1px solid #ccd6dc",
+                background:
+                  active
+                    ? "#e97825"
+                    : "#f4f7f8",
+              }}
+            />
+          );
+        },
+      )}
+    </div>
+  );
+}
+
+
 
 
 function findCompletedWinningLine(
@@ -2182,6 +2455,47 @@ export default function Puzzle({
     useState(false);
 
   const [
+    puzzleModesOpen,
+    setPuzzleModesOpen,
+  ] =
+    useState(false);
+
+  const [
+    recentPuzzles,
+    setRecentPuzzles,
+  ] =
+    useState<
+      RecentPuzzleSummary[]
+    >([]);
+
+  const [
+    recentPuzzleIndex,
+    setRecentPuzzleIndex,
+  ] =
+    useState(0);
+
+  const [
+    historyLoading,
+    setHistoryLoading,
+  ] =
+    useState(false);
+
+  const [
+    historicalSolution,
+    setHistoricalSolution,
+  ] =
+    useState<
+      HistoricalPuzzleSolution |
+      null
+    >(null);
+
+  const [
+    historicalSolutionLoading,
+    setHistoricalSolutionLoading,
+  ] =
+    useState(false);
+
+  const [
     winnersLoading,
     setWinnersLoading,
   ] =
@@ -2258,6 +2572,15 @@ export default function Puzzle({
       y: number;
     } | null>(null);
 
+  /*
+   * Keep today's competitive state isolated while
+   * previous puzzles run in Practice Mode.
+   */
+  const todayPracticeReturnRef =
+    useRef<SavedGameState | null>(
+      null,
+    );
+
 
   const certificateOverlayRef =
     useRef<
@@ -2269,6 +2592,55 @@ export default function Puzzle({
     useRef<
       number | null
     >(null);
+
+
+  /*
+   * ========================================================
+   * RECENT PUZZLE HISTORY
+   * ========================================================
+   */
+
+  async function loadRecentPuzzleHistory(
+    currentPuzzleNumber?: number,
+  ) {
+    setHistoryLoading(
+      true,
+    );
+
+    try {
+      const recent =
+        await fetchRecentPuzzles(
+          10,
+        );
+
+      setRecentPuzzles(
+        recent,
+      );
+
+      const index =
+        currentPuzzleNumber
+          ? recent.findIndex(
+              (
+                item,
+              ) =>
+                item.puzzleNumber ===
+                currentPuzzleNumber,
+            )
+          : 0;
+
+      setRecentPuzzleIndex(
+        index >= 0
+          ? index
+          : 0,
+      );
+    } catch {
+      // Keep daily puzzle usable if history fails.
+    } finally {
+      setHistoryLoading(
+        false,
+      );
+    }
+  }
 
 
   /*
@@ -2301,6 +2673,10 @@ export default function Puzzle({
 
         setStage(
           "5x5",
+        );
+
+        void loadRecentPuzzleHistory(
+          loaded.puzzleNumber,
         );
 
         const challenge =
@@ -2439,7 +2815,7 @@ export default function Puzzle({
         }
 
         setMessage(
-          "Swipe or tap two squares to swap. Diagonal and opposite-edge swaps are allowed.",
+          "Swipe or tap two squares to swap. Diagonal and opposite-edge swaps valid.",
         );
       } catch {
         setMessage(
@@ -2490,6 +2866,8 @@ export default function Puzzle({
 
   useEffect(() => {
     if (
+      recentPuzzleIndex >
+        0 ||
       !puzzle ||
       attemptFinished ||
       medalWon ||
@@ -2527,6 +2905,7 @@ export default function Puzzle({
     attemptFinished,
     medalWon,
     solveStartedAt,
+    recentPuzzleIndex,
   ]);
 
 
@@ -2537,7 +2916,11 @@ export default function Puzzle({
    */
 
   useEffect(() => {
-    if (!puzzle) {
+    if (
+      !puzzle ||
+      recentPuzzleIndex >
+        0
+    ) {
       return;
     }
 
@@ -2600,6 +2983,7 @@ export default function Puzzle({
     finalResultId,
     solveStartedAt,
     activeSolveMs,
+    recentPuzzleIndex,
   ]);
 
 
@@ -2693,6 +3077,336 @@ export default function Puzzle({
    * WINNERS
    * ========================================================
    */
+
+
+
+  async function loadHistoricalSolution(
+    puzzleNumber: number,
+  ) {
+    setHistoricalSolution(
+      null,
+    );
+
+    setHistoricalSolutionLoading(
+      true,
+    );
+
+    try {
+      const response =
+        await fetch(
+          `/api/puzzle/solution/${puzzleNumber}`,
+          {
+            cache:
+              "no-store",
+          },
+        );
+
+      const body =
+        (await response.json()) as
+          HistoricalPuzzleSolution & {
+            error?:
+              string;
+          };
+
+      if (
+        !response.ok
+      ) {
+        throw new Error(
+          body.error ??
+          "Solution is not available.",
+        );
+      }
+
+      setHistoricalSolution(
+        body,
+      );
+    } catch {
+      setHistoricalSolution(
+        null,
+      );
+    } finally {
+      setHistoricalSolutionLoading(
+        false,
+      );
+    }
+  }
+
+
+  async function openHistoricalPuzzleAt(
+    index: number,
+  ) {
+    if (
+      index < 0 ||
+      index >=
+        recentPuzzles.length
+    ) {
+      return;
+    }
+
+    if (
+      recentPuzzleIndex ===
+        0 &&
+      index >
+        0 &&
+      puzzle
+    ) {
+      todayPracticeReturnRef.current = {
+        date:
+          localDateKey(),
+
+        puzzleNumber:
+          puzzle.puzzleNumber,
+
+        stage,
+
+        board:
+          cloneBoard(
+            board,
+          ),
+
+        moves,
+
+        moveHistory:
+          moveHistory.map(
+            cloneMove,
+          ),
+
+        chancesRemaining,
+
+        attemptFinished,
+
+        qualified,
+
+        medalWon,
+
+        pendingRevealCount,
+
+        skillStats: {
+          ...skillStats,
+        },
+
+        rewardedMatchSignatures: [
+          ...rewardedMatchSignatures,
+        ],
+
+        finalResultId,
+
+        solveStartedAt,
+
+        activeSolveMs,
+      };
+    }
+
+    const summary =
+      recentPuzzles[
+        index
+      ];
+
+    setHistoryLoading(
+      true,
+    );
+
+    try {
+      const response =
+        await fetch(
+          `/api/puzzle/practice/${summary.puzzleNumber}`,
+          {
+            cache:
+              "no-store",
+          },
+        );
+
+      const body =
+        (await response.json()) as {
+          puzzle?: PublicPuzzle;
+          error?: string;
+        };
+
+      if (
+        !response.ok ||
+        !body.puzzle
+      ) {
+        throw new Error(
+          body.error ??
+          "Unable to open puzzle.",
+        );
+      }
+
+      const loaded =
+        body.puzzle;
+
+      setPuzzle(
+        loaded,
+      );
+
+      setStage(
+        "5x5",
+      );
+
+      setInitialBoard(
+        cloneBoard(
+          loaded.board,
+        ),
+      );
+
+      const returnState =
+        index === 0
+          ? todayPracticeReturnRef.current
+          : null;
+
+      if (
+        returnState &&
+        returnState.puzzleNumber ===
+          loaded.puzzleNumber
+      ) {
+        setBoard(
+          cloneBoard(
+            returnState.board,
+          ),
+        );
+
+        setMoves(
+          returnState.moves,
+        );
+
+        setMoveHistory(
+          returnState.moveHistory.map(
+            cloneMove,
+          ),
+        );
+
+        setChancesRemaining(
+          returnState.chancesRemaining,
+        );
+
+        setAttemptFinished(
+          returnState.attemptFinished,
+        );
+
+        setQualified(
+          returnState.qualified,
+        );
+
+        setMedalWon(
+          returnState.medalWon,
+        );
+
+        setPendingRevealCount(
+          returnState.pendingRevealCount,
+        );
+
+        setSkillStats({
+          ...emptySkillStats(),
+          ...returnState.skillStats,
+        });
+
+        setRewardedMatchSignatures([
+          ...returnState.rewardedMatchSignatures,
+        ]);
+
+        setFinalResultId(
+          returnState.finalResultId,
+        );
+
+        setSolveStartedAt(
+          returnState.solveStartedAt,
+        );
+
+        setActiveSolveMs(
+          returnState.activeSolveMs,
+        );
+
+        setDisplaySolveMs(
+          returnState.activeSolveMs,
+        );
+      } else {
+        setBoard(
+          cloneBoard(
+            loaded.board,
+          ),
+        );
+
+        setMoves(0);
+        setMoveHistory([]);
+        setChancesRemaining(
+          MAX_CHANCES,
+        );
+        setAttemptFinished(false);
+        setQualified(false);
+        setMedalWon(false);
+        setPendingRevealCount(0);
+        setSkillStats(
+          emptySkillStats(),
+        );
+        setRewardedMatchSignatures([]);
+        setFinalResultId(null);
+        setSolveStartedAt(null);
+        setActiveSolveMs(0);
+        setDisplaySolveMs(0);
+      }
+
+      setSelected(null);
+      setLastSwap(null);
+      setQualifierClaimed(false);
+      setCertificateOpen(false);
+      setCertificateSent(false);
+      setCertificateError(null);
+
+      setRecentPuzzleIndex(
+        index,
+      );
+
+      if (
+        index === 0
+      ) {
+        setHistoricalSolution(
+          null,
+        );
+      } else {
+        void loadHistoricalSolution(
+          loaded.puzzleNumber,
+        );
+      }
+
+      setMessage(
+        index === 0
+          ? "Today's puzzle"
+          : "",
+      );
+
+      if (
+        index === 0
+      ) {
+        const challenge =
+          await fetchLeaderboard(
+            loaded.puzzleNumber,
+            returnState?.finalResultId ??
+              null,
+          );
+
+        setChallengeLeaderboard(
+          challenge,
+        );
+
+        setLeaderboard(
+          challenge,
+        );
+      }
+    } catch (
+      error
+    ) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to open puzzle.",
+      );
+    } finally {
+      setHistoryLoading(
+        false,
+      );
+    }
+  }
+
 
   async function openWinners() {
     if (!puzzle) {
@@ -2976,6 +3690,8 @@ export default function Puzzle({
       );
 
     if (
+      recentPuzzleIndex ===
+        0 &&
       remainingPending ===
         0 &&
       puzzle &&
@@ -3365,12 +4081,20 @@ export default function Puzzle({
 
     if (
       !puzzle ||
-      attemptFinished ||
+      (
+        recentPuzzleIndex ===
+          0 &&
+        attemptFinished
+      ) ||
       medalWon ||
       pendingRevealCount >
         0 ||
-      moves >=
-        puzzle.maxMoves
+      (
+        recentPuzzleIndex ===
+          0 &&
+        moves >=
+          puzzle.maxMoves
+      )
     ) {
       return;
     }
@@ -3393,6 +4117,8 @@ export default function Puzzle({
       actionNow;
 
     if (
+      recentPuzzleIndex ===
+        0 &&
       solveStartedAt ===
         null
     ) {
@@ -3593,12 +4319,6 @@ export default function Puzzle({
     nextBoard =
       automaticRevealResult.board;
 
-    const longest =
-      longestMatch(
-        nextBoard,
-        puzzle.size,
-      );
-
     const remainingMysteries =
       nextBoard.filter(
         (
@@ -3731,8 +4451,27 @@ export default function Puzzle({
     if (
       stage ===
         "5x5" &&
-      longest >= 5
+      isPuzzleSolved(
+        nextBoard,
+        puzzle.size,
+        puzzle.mode,
+      )
     ) {
+      if (
+        recentPuzzleIndex >
+          0
+      ) {
+        setMessage(
+          `✓ Practice puzzle #${puzzle.puzzleNumber} solved`,
+        );
+
+        setSelected(
+          null,
+        );
+
+        return;
+      }
+
       if (
         !finalResultId
       ) {
@@ -3804,7 +4543,11 @@ export default function Puzzle({
     if (
       stage ===
         "7x7" &&
-      longest >= 7
+      isPuzzleSolved(
+        nextBoard,
+        puzzle.size,
+        puzzle.mode,
+      )
     ) {
       if (
         solveStartedAt !==
@@ -3883,8 +4626,10 @@ export default function Puzzle({
     }
 
     if (
+      recentPuzzleIndex ===
+        0 &&
       nextMove >=
-      puzzle.maxMoves
+        puzzle.maxMoves
     ) {
       finishAttempt();
 
@@ -3892,10 +4637,13 @@ export default function Puzzle({
     }
 
     setMessage(
-      `${
-        puzzle.maxMoves -
-        nextMove
-      } moves remaining.`,
+      recentPuzzleIndex >
+        0
+        ? ""
+        : `${
+            puzzle.maxMoves -
+            nextMove
+          } moves remaining.`,
     );
   }
 
@@ -4179,6 +4927,8 @@ export default function Puzzle({
           : medalWon;
 
       if (
+        recentPuzzleIndex >
+          0 ||
         !puzzle ||
         !resultSolved
       ) {
@@ -4317,6 +5067,7 @@ export default function Puzzle({
       skillStats,
       finalResultId,
       activeSolveMs,
+      recentPuzzleIndex,
     ],
   );
 
@@ -4854,6 +5605,16 @@ export default function Puzzle({
     );
 
 
+  const historicalWinningTileIds =
+    historicalSolution
+      ? solvedPatternTileIds(
+          historicalSolution.solvedBoard,
+          historicalSolution.size,
+          historicalSolution.mode,
+        )
+      : new Set<number>();
+
+
   /*
    * ========================================================
    * UI
@@ -4865,6 +5626,14 @@ export default function Puzzle({
       style={{
         position:
           "relative",
+        minHeight:
+          "calc(100dvh - var(--gyan-header-height, 64px) - 64px)",
+        boxSizing:
+          "border-box",
+        display:
+          "flex",
+        flexDirection:
+          "column",
       }}
       className={[
         "daily-puzzle",
@@ -4902,40 +5671,267 @@ export default function Puzzle({
         </button>
       )}
 
-      <header className="daily-puzzle__header">
-        <span>
-          {stage ===
-          "5x5"
-            ? "Puzzle of the Day"
-            : "GYAN Final"}
-        </span>
-
-        <strong>
-          #
-          {
-            puzzle.puzzleNumber
+      <header
+        className="daily-puzzle__header"
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "28px minmax(0, 1fr) 28px",
+          alignItems: "center",
+          gap: "4px",
+        }}
+      >
+        <button
+          type="button"
+          aria-label="Previous puzzle"
+          title="Previous puzzle"
+          disabled={
+            historyLoading ||
+            recentPuzzleIndex >=
+              recentPuzzles.length - 1
           }
-          {stage ===
-            "5x5"
-            ? " (5×5)"
-            : ""}
-        </strong>
+          onClick={() =>
+            void openHistoricalPuzzleAt(
+              recentPuzzleIndex + 1,
+            )
+          }
+          style={{
+            width: "25px",
+            height: "25px",
+            border:
+              "1px solid #d6e0e5",
+            borderRadius:
+              "6px",
+            background: "#fff",
+            cursor:
+              recentPuzzleIndex >=
+                recentPuzzles.length - 1
+                ? "default"
+                : "pointer",
+            opacity:
+              recentPuzzleIndex >=
+                recentPuzzles.length - 1
+                ? 0.35
+                : 1,
+            fontWeight: 900,
+          }}
+        >
+          ‹
+        </button>
+
+        <div
+          style={{
+            minWidth: 0,
+            textAlign: "center",
+          }}
+        >
+          <span
+            style={{
+              display: "block",
+              fontSize:
+                "0.72rem",
+            }}
+          >
+            {recentPuzzleIndex ===
+              0
+              ? "Puzzle of the Day"
+              : "Practice Puzzle"}
+          </span>
+
+          <strong
+            style={{
+              display:
+                "flex",
+              alignItems:
+                "center",
+              justifyContent:
+                "center",
+              gap:
+                "5px",
+              whiteSpace:
+                "nowrap",
+              flexWrap:
+                "wrap",
+            }}
+          >
+            <span>
+              #
+              {
+                puzzle.puzzleNumber
+              }
+              {stage ===
+                "5x5"
+                ? " (5×5)"
+                : ""}
+            </span>
+
+            {recentPuzzleIndex ===
+              0 && (
+              <button
+                type="button"
+                onClick={() =>
+                  setPuzzleModesOpen(
+                    true,
+                  )
+                }
+                style={{
+                  border:
+                    0,
+                  background:
+                    "transparent",
+                  padding:
+                    0,
+                  font:
+                    "inherit",
+                  fontSize:
+                    "0.72rem",
+                  fontWeight:
+                    800,
+                  cursor:
+                    "pointer",
+                  color:
+                    "#536670",
+                }}
+                title="See all puzzle modes"
+              >
+                {puzzle.mode.shortLabel}
+                {" · "}
+                💎{puzzle.mode.gemReward}
+              </button>
+            )}
+          </strong>
+        </div>
+
+        <button
+          type="button"
+          aria-label="Next puzzle"
+          title="Next puzzle"
+          disabled={
+            historyLoading ||
+            recentPuzzleIndex <=
+              0
+          }
+          onClick={() =>
+            void openHistoricalPuzzleAt(
+              recentPuzzleIndex - 1,
+            )
+          }
+          style={{
+            width: "25px",
+            height: "25px",
+            border:
+              "1px solid #d6e0e5",
+            borderRadius:
+              "6px",
+            background: "#fff",
+            cursor:
+              recentPuzzleIndex <=
+                0
+                ? "default"
+                : "pointer",
+            opacity:
+              recentPuzzleIndex <=
+                0
+                ? 0.35
+                : 1,
+            fontWeight: 900,
+          }}
+        >
+          ›
+        </button>
       </header>
 
+      {recentPuzzles.length >
+        0 && (
+        <div
+          aria-label="Last 10 puzzle history"
+          style={{
+            display: "flex",
+            justifyContent:
+              "center",
+            alignItems:
+              "center",
+            gap: "5px",
+            margin:
+              "4px auto 2px",
+            width:
+              "100%",
+            maxWidth:
+              "300px",
+            overflow:
+              "hidden",
+            padding:
+              "1px 2px 3px",
+          }}
+        >
+          {
+            [...recentPuzzles]
+              .reverse()
+              .map(
+                (
+                  item,
+                ) => {
+                  const index =
+                    recentPuzzles.findIndex(
+                      (
+                        candidate,
+                      ) =>
+                        candidate.puzzleNumber ===
+                        item.puzzleNumber,
+                    );
 
-      {stage ===
-      "5x5" ? (
-        <div className="daily-puzzle__winner">
-          🎯 Qualifier ·
-          5×5 Round
-        </div>
-      ) : (
-        <div className="daily-puzzle__winner">
-          🏆 Qualified ·
-          7×7 Championship
+                  const active =
+                    index ===
+                    recentPuzzleIndex;
+
+                  return (
+                    <button
+                      key={
+                        item.puzzleNumber
+                      }
+                      type="button"
+                      title={`Puzzle #${item.puzzleNumber} · ${item.mode.shortLabel}`}
+                      aria-label={`Puzzle ${item.puzzleNumber}`}
+                      onClick={() =>
+                        void openHistoricalPuzzleAt(
+                          index,
+                        )
+                      }
+                      style={{
+                        flex:
+                          "1 1 0",
+                        minWidth:
+                          0,
+                        maxWidth:
+                          "30px",
+                        height:
+                          "7px",
+                        padding:
+                          0,
+                        border:
+                          active
+                            ? "1px solid #d3a600"
+                            : "1px solid #cfd8dd",
+                        borderRadius:
+                          "999px",
+                        background:
+                          active
+                            ? "#f5d64b"
+                            : "#e7ecef",
+                        cursor:
+                          "pointer",
+                      }}
+                    />
+                  );
+                },
+              )
+          }
         </div>
       )}
 
+      {recentPuzzleIndex ===
+        0 && (
+        <>
       <div
         style={{
           display: "flex",
@@ -4978,11 +5974,117 @@ export default function Puzzle({
           See GQ Leaders
         </button>
       </div>
+        </>
+      )}
 
 
 
       {!medalWon && (
-        <div className="daily-puzzle__board-shell">
+        <div
+          className="daily-puzzle__board-shell"
+          style={
+            recentPuzzleIndex >
+              0
+              ? {
+                  width:
+                    "100%",
+                  maxWidth:
+                    "440px",
+                  margin:
+                    "0 auto",
+                  display:
+                    "grid",
+                  gridTemplateColumns:
+                    "minmax(0, 1fr) minmax(0, 1fr)",
+                  gap:
+                    "8px",
+                  alignItems:
+                    "start",
+                }
+              : undefined
+          }
+        >
+          {recentPuzzleIndex >
+            0 && (
+            <div
+              style={{
+                gridColumn:
+                  "1 / -1",
+                textAlign:
+                  "center",
+                margin:
+                  "0 0 1px",
+                color:
+                  "#536670",
+                fontSize:
+                  "0.72rem",
+                fontWeight:
+                  800,
+              }}
+            >
+              {puzzle.mode.shortLabel}
+              {" · "}
+              💎{puzzle.mode.gemReward}
+            </div>
+          )}
+          <section
+            aria-label="Previous puzzle question"
+            style={
+              recentPuzzleIndex >
+                0
+                ? {
+                    margin:
+                      "0 auto",
+                    padding:
+                      "6px",
+                    border:
+                      "1px solid #dce5ea",
+                    borderRadius:
+                      "10px",
+                    background:
+                      "#fbfcfd",
+                    width:
+                      "100%",
+                    maxWidth:
+                      "205px",
+                    minWidth:
+                      0,
+                    boxSizing:
+                      "border-box",
+                    height:
+                      "100%",
+                    display:
+                      "grid",
+                    gridTemplateRows:
+                      "auto 1fr",
+                  }
+                : {
+                    display:
+                      "contents",
+                  }
+            }
+          >
+            {recentPuzzleIndex >
+              0 && (
+              <div
+                style={{
+                  textAlign:
+                    "center",
+                  marginBottom:
+                    "3px",
+                }}
+              >
+                <strong
+                  style={{
+                    fontSize:
+                      "0.72rem",
+                  }}
+                >
+                  Question
+                </strong>
+              </div>
+            )}
+
           <div
             className={[
               "daily-puzzle__board",
@@ -5000,6 +6102,22 @@ export default function Puzzle({
             style={{
               gridTemplateColumns:
                 `repeat(${puzzle.size}, 1fr)`,
+
+              ...(
+                recentPuzzleIndex >
+                  0
+                  ? {
+                      width:
+                        "100%",
+                      maxWidth:
+                        "193px",
+                      margin:
+                        "0 auto",
+                      alignSelf:
+                        "center",
+                    }
+                  : {}
+              ),
             }}
           >
             {board.map(
@@ -5186,7 +6304,144 @@ export default function Puzzle({
               },
             )}
           </div>
+          </section>
 
+
+          {recentPuzzleIndex >
+            0 && (
+            <section
+              aria-label="Previous puzzle solution"
+              style={{
+                margin:
+                  "0 auto",
+                padding:
+                  "6px",
+                border:
+                  "1px solid #dce5ea",
+                borderRadius:
+                  "10px",
+                background:
+                  "#fbfcfd",
+                width:
+                  "100%",
+                maxWidth:
+                  "205px",
+                minWidth:
+                  0,
+                boxSizing:
+                  "border-box",
+                height:
+                  "100%",
+                display:
+                  "grid",
+                gridTemplateRows:
+                  "auto 1fr auto",
+              }}
+            >
+              <div
+                style={{
+                  textAlign:
+                    "center",
+                  marginBottom:
+                    "3px",
+                }}
+              >
+                <strong
+                  style={{
+                    fontSize:
+                      "0.72rem",
+                  }}
+                >
+                  Answer
+                </strong>
+              </div>
+
+              {historicalSolutionLoading
+                ? (
+                    <small>
+                      Loading solution…
+                    </small>
+                  )
+                : historicalSolution
+                  ? (
+                      <>
+                        <div
+                          style={{
+                            display:
+                              "grid",
+                            gridTemplateColumns:
+                              `repeat(${historicalSolution.size}, 1fr)`,
+                            gap:
+                              "3px",
+                            width:
+                              "100%",
+                            maxWidth:
+                              "193px",
+                            margin:
+                              "0 auto",
+                            alignSelf:
+                              "center",
+                          }}
+                        >
+                          {historicalSolution.solvedBoard.map(
+                            (
+                              tile,
+                            ) => (
+                              <span
+                                key={
+                                  tile.id
+                                }
+                                title={
+                                  tile.color
+                                }
+                                aria-label={
+                                  `${tile.color} solution square`
+                                }
+                                className={`daily-puzzle__tile daily-puzzle__tile--${tile.color}`}
+                                style={{
+                                  aspectRatio:
+                                    "1",
+                                  minWidth:
+                                    0,
+                                  borderRadius:
+                                    "5px",
+                                  pointerEvents:
+                                    "none",
+
+                                  ...(historicalWinningTileIds.has(
+                                    tile.id,
+                                  )
+                                    ? {
+                                        outline:
+                                          "3px solid rgba(232, 120, 37, 0.92)",
+                                        outlineOffset:
+                                          "-3px",
+                                        boxShadow:
+                                          "0 0 0 2px rgba(255, 255, 255, 0.92)",
+                                        transform:
+                                          "scale(1.04)",
+                                        zIndex:
+                                          1,
+                                      }
+                                    : {
+                                        opacity:
+                                          0.72,
+                                      }),
+                                }}
+                              />
+                            ),
+                          )}
+                        </div>
+
+                      </>
+                    )
+                  : (
+                      <small>
+                        Solution unavailable.
+                      </small>
+                    )}
+            </section>
+          )}
 
           {attemptFinished &&
             !qualified &&
@@ -5273,86 +6528,183 @@ export default function Puzzle({
       )}
 
 
-      {!medalWon && (
-        <div className="daily-puzzle__moves">
-          Move{" "}
-          {moves}
-          {" / "}
-          {
-            puzzle.maxMoves
-          }
-          {" · ⏱ "}
-          {
-            solveStartedAt ===
-              null
-              ? "--"
-              : `${Math.floor(
-                  displaySolveMs /
-                    60000,
-                )}:${String(
-                  Math.floor(
-                    (
-                      displaySolveMs %
-                      60000
-                    ) /
-                      1000,
-                  ),
-                ).padStart(
-                  2,
-                  "0",
-                )}`
-          }
-        </div>
-      )}
-
-            {stage ===
-        "5x5" && (
-        <div className="daily-puzzle__attempts-row">
-          <strong>
-            Attempts
-          </strong>
-
-          <div
-            className="daily-puzzle__lives"
-            aria-label={`${chancesRemaining} attempts remaining`}
-          >
-            {Array.from({
-              length:
-                MAX_CHANCES,
-            }).map(
-              (
-                _,
-                index,
-              ) => (
-                <span
-                  key={
-                    index
-                  }
-                  className={[
-                    "daily-puzzle__life",
-
-                    index <
-                    chancesRemaining
-                      ? "daily-puzzle__life--active"
-                      : "",
-                  ].join(" ")}
-                />
-              ),
-            )}
-          </div>
-
-          <span className="daily-puzzle__attempts-left">
+      {!medalWon &&
+        recentPuzzleIndex ===
+          0 && (
+        <div
+          className="daily-puzzle__moves"
+          style={{
+            display:
+              "flex",
+            alignItems:
+              "center",
+            justifyContent:
+              "center",
+            flexWrap:
+              "nowrap",
+            gap:
+              "4px",
+            margin:
+              "3px auto",
+            whiteSpace:
+              "nowrap",
+            fontSize:
+              "0.72rem",
+          }}
+        >
+          <span>
+            Move{" "}
+            {moves}
+            {"/"}
             {
-              chancesRemaining
-            }{" "}
-            left
+              puzzle.maxMoves
+            }
           </span>
+
+          <span
+            aria-hidden="true"
+            style={{
+              opacity:
+                0.55,
+            }}
+          >
+            |
+          </span>
+
+          <span>
+            ⏱{" "}
+            {
+              solveStartedAt ===
+                null
+                ? "--"
+                : `${Math.floor(
+                    displaySolveMs /
+                      60000,
+                  )}:${String(
+                    Math.floor(
+                      (
+                        displaySolveMs %
+                          60000
+                      ) /
+                        1000,
+                    ),
+                  ).padStart(
+                    2,
+                    "0",
+                  )}`
+            }
+          </span>
+
+          {stage ===
+            "5x5" && (
+            <>
+              <span
+                aria-hidden="true"
+                style={{
+                  opacity:
+                    0.55,
+                }}
+              >
+                |
+              </span>
+
+              <strong>
+                Attempts:
+              </strong>
+
+              <div
+                className="daily-puzzle__lives"
+                aria-label={`${chancesRemaining} attempts remaining`}
+                style={{
+                  display:
+                    "inline-flex",
+                  alignItems:
+                    "center",
+                  justifyContent:
+                    "center",
+                  gap:
+                    "3px",
+                  height:
+                    "12px",
+                  lineHeight:
+                    1,
+                  verticalAlign:
+                    "middle",
+                }}
+              >
+                {Array.from({
+                  length:
+                    MAX_CHANCES,
+                }).map(
+                  (
+                    _,
+                    index,
+                  ) => (
+                    <span
+                      key={
+                        index
+                      }
+                      className={[
+                        "daily-puzzle__life",
+
+                        index <
+                        chancesRemaining
+                          ? "daily-puzzle__life--active"
+                          : "",
+                      ].join(" ")}
+                      style={{
+                        display:
+                          "block",
+                        width:
+                          "8px",
+                        height:
+                          "8px",
+                        minWidth:
+                          "8px",
+                        margin:
+                          0,
+                        flex:
+                          "0 0 8px",
+                      }}
+                    />
+                  ),
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
 
-      <div className="daily-puzzle__message">
-        {message}
-      </div>
+      {(recentPuzzleIndex ===
+        0 ||
+        (
+          recentPuzzleIndex >
+            0 &&
+          message.startsWith(
+            "✓ Practice puzzle",
+          )
+        )) && (
+        <div
+          className="daily-puzzle__message"
+          style={
+            recentPuzzleIndex >
+              0
+              ? {
+                  margin:
+                    "4px auto 0",
+                  fontSize:
+                    "0.72rem",
+                  fontWeight:
+                    800,
+                  textAlign:
+                    "center",
+                }
+              : undefined
+          }
+        >
+          {message}
+        </div>
+      )}
 
 
       {solvedStage && (
@@ -5624,7 +6976,13 @@ export default function Puzzle({
         )}
 
 
-      <footer className="daily-puzzle__footer">
+      <footer
+        className="daily-puzzle__footer"
+        style={{
+          marginTop:
+            "auto",
+        }}
+      >
         <span>
           🗓 New puzzle tomorrow
         </span>
@@ -6543,6 +7901,211 @@ export default function Puzzle({
       {/* =================================================
           WINNERS / TOP GQ
           ================================================= */}
+
+      {puzzleModesOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Puzzle modes"
+          onClick={() =>
+            setPuzzleModesOpen(
+              false,
+            )
+          }
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 10020,
+            background:
+              "rgba(18, 35, 46, 0.44)",
+            display: "grid",
+            placeItems: "start center",
+            padding:
+              "calc(var(--gyan-header-height, 64px) + 10px) 10px 24px",
+            overflowY: "auto",
+          }}
+        >
+          <section
+            onClick={(
+              event,
+            ) =>
+              event.stopPropagation()
+            }
+            style={{
+              width:
+                "min(100%, 520px)",
+              borderRadius:
+                "14px",
+              background:
+                "#fff",
+              padding:
+                "12px",
+              boxShadow:
+                "0 16px 44px rgba(0,0,0,.18)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent:
+                  "space-between",
+                gap: "8px",
+              }}
+            >
+              <strong>
+                Puzzle Modes
+              </strong>
+
+              <button
+                type="button"
+                aria-label="Close puzzle modes"
+                onClick={() =>
+                  setPuzzleModesOpen(
+                    false,
+                  )
+                }
+                style={{
+                  border: 0,
+                  background:
+                    "#eef3f6",
+                  borderRadius:
+                    "999px",
+                  width: "30px",
+                  height: "30px",
+                  cursor:
+                    "pointer",
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <small
+              style={{
+                display: "block",
+                color: "#687983",
+                margin:
+                  "2px 0 8px",
+              }}
+            >
+              Today’s mode is shown first. Difficulty is selected deterministically from 10,000 hash buckets.
+            </small>
+
+            {[
+              puzzle.mode,
+              ...PUZZLE_MODE_CATALOG.filter(
+                (
+                  mode,
+                ) =>
+                  mode.key !==
+                  puzzle.mode.key,
+              ),
+            ].map(
+              (
+                mode,
+                index,
+              ) => (
+                <div
+                  key={
+                    mode.key
+                  }
+                  style={{
+                    border:
+                      index === 0
+                        ? "2px solid #e97825"
+                        : "1px solid #dfe7eb",
+                    borderRadius:
+                      "10px",
+                    padding:
+                      "8px",
+                    marginBottom:
+                      "7px",
+                    background:
+                      index === 0
+                        ? "#fff8ec"
+                        : "#fff",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems:
+                        "baseline",
+                      justifyContent:
+                        "space-between",
+                      gap: "8px",
+                    }}
+                  >
+                    <strong>
+                      {index === 0
+                        ? "TODAY · "
+                        : ""}
+                      {mode.label}
+                    </strong>
+
+                    <span
+                      style={{
+                        whiteSpace:
+                          "nowrap",
+                        fontSize:
+                          "0.74rem",
+                        fontWeight:
+                          800,
+                      }}
+                    >
+                      {mode.probabilityPercent}% · 💎{mode.gemReward}
+                    </span>
+                  </div>
+
+                  <ModePatternPreview
+                    mode={
+                      mode
+                    }
+                  />
+
+                  <small
+                    style={{
+                      display:
+                        "block",
+                      color:
+                        "#667780",
+                      textAlign:
+                        "center",
+                    }}
+                  >
+                    {mode.key ===
+                      "EASY"
+                      ? "One simple displacement."
+                      : mode.key ===
+                          "MEDIUM"
+                        ? "Simple displacement + a distance-2 spatial move."
+                        : mode.key ===
+                            "HARD"
+                          ? "Solve the full diagonal pattern."
+                          : mode.pattern ===
+                              "wrapped"
+                            ? `Wrapped diagonal: row-to-row pattern offset ${mode.wrappedOffset}.`
+                            : ""}
+                  </small>
+                </div>
+              ),
+            )}
+
+            <small
+              style={{
+                display: "block",
+                marginTop: "4px",
+                color: "#687983",
+                textAlign: "center",
+              }}
+            >
+              Complete the daily puzzle to earn its Gem reward once.
+            </small>
+          </section>
+        </div>
+      )}
+
 
       {winnersOpen && (
         <div

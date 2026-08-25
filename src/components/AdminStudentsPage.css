@@ -327,3 +327,8 @@
   outline: 2px solid rgba(23, 74, 115, 0.15);
   border-color: #86b5d1;
 }
+
+.admin-students__kind--issued {
+  background: #edf4fb;
+  color: #345f82;
+}

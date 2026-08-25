@@ -18,6 +18,7 @@ import AdminStoragePanel from "./components/AdminStoragePanel";
 import AdminStudentsPage from "./components/AdminStudentsPage";
 import PlatformDashboardPage from "./components/PlatformDashboardPage";
 import PublicHomePage from "./components/PublicHomePage";
+import SafetyResourceLandingPage from "./components/SafetyResourceLandingPage";
 import StudentProgressPage
   from "./components/StudentProgressPage";
 
@@ -365,6 +366,21 @@ function isEducationAbaPath(
       "/education/aba"
   );
 }
+
+function getSafetyResourceToken(
+  pathname =
+    window.location.pathname,
+): string | null {
+  const match =
+    pathname.match(
+      /^\/([A-Za-z0-9]{10,12})$/,
+    );
+
+  return match
+    ? match[1].toLowerCase()
+    : null;
+}
+
 
 function getCalendarAccessSlug(
   pathname =
@@ -2122,6 +2138,26 @@ if (
           adminAuthenticated
         }
         onClose={() => {
+          window.location.href =
+            "/";
+        }}
+      />
+    );
+  }
+
+
+  const safetyResourceToken =
+    getSafetyResourceToken();
+
+  if (
+    safetyResourceToken
+  ) {
+    return (
+      <SafetyResourceLandingPage
+        token={
+          safetyResourceToken
+        }
+        onBack={() => {
           window.location.href =
             "/";
         }}

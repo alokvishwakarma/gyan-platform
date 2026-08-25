@@ -65,6 +65,7 @@ function classifyStudent(
   status: string,
 ): "registered" |
    "trial" |
+   "issued" |
    "inactive" {
   if (
     status ===
@@ -78,6 +79,15 @@ function classifyStudent(
       "GUEST_ACTIVE"
   ) {
     return "trial";
+  }
+
+  if (
+    status ===
+      "GENERATED" ||
+    status ===
+      "PRINTED"
+  ) {
+    return "issued";
   }
 
   return "inactive";
@@ -255,6 +265,7 @@ export async function handleAdminStudentsRoute(
     const validFilter =
       filter === "registered" ||
       filter === "trial" ||
+      filter === "issued" ||
       filter === "inactive"
         ? filter
         : "all";
@@ -269,9 +280,11 @@ export async function handleAdminStudentsRoute(
         ? "CLAIMED"
         : validFilter === "trial"
           ? "GUEST_ACTIVE"
-          : validFilter === "inactive"
-            ? "EXPIRED"
-            : "";
+          : validFilter === "issued"
+            ? "ISSUED"
+            : validFilter === "inactive"
+              ? "EXPIRED"
+              : "";
 
     const summaryRows =
       await env.gyan_registry
@@ -296,6 +309,17 @@ export async function handleAdminStudentsRoute(
 
             SUM(
               CASE
+                WHEN status IN (
+                  'GENERATED',
+                  'PRINTED'
+                )
+                  THEN 1
+                ELSE 0
+              END
+            ) AS issued,
+
+            SUM(
+              CASE
                 WHEN status = 'EXPIRED'
                   THEN 1
                 ELSE 0
@@ -305,6 +329,8 @@ export async function handleAdminStudentsRoute(
           FROM calendar_access_codes
 
           WHERE status IN (
+            'GENERATED',
+            'PRINTED',
             'GUEST_ACTIVE',
             'CLAIMED',
             'EXPIRED'
@@ -314,6 +340,7 @@ export async function handleAdminStudentsRoute(
         .first<{
           registered: number | null;
           trial: number | null;
+          issued: number | null;
           inactive: number | null;
         }>();
 
@@ -357,6 +384,8 @@ export async function handleAdminStudentsRoute(
 
           WHERE
             c.status IN (
+              'GENERATED',
+              'PRINTED',
               'GUEST_ACTIVE',
               'CLAIMED',
               'EXPIRED'
@@ -364,6 +393,13 @@ export async function handleAdminStudentsRoute(
 
             AND (
               ? = '' OR
+              (
+                ? = 'ISSUED' AND
+                c.status IN (
+                  'GENERATED',
+                  'PRINTED'
+                )
+              ) OR
               c.status = ?
             )
 
@@ -385,6 +421,7 @@ export async function handleAdminStudentsRoute(
           `,
         )
         .bind(
+          filterStatus,
           filterStatus,
           filterStatus,
           likeQuery,
@@ -435,6 +472,12 @@ export async function handleAdminStudentsRoute(
         trial:
           Number(
             summaryRows?.trial ??
+            0,
+          ),
+
+        issued:
+          Number(
+            summaryRows?.issued ??
             0,
           ),
 

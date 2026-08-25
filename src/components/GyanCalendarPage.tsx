@@ -305,6 +305,20 @@ type CalendarAccessRecord = {
 
   email:
     string | null;
+
+  safetyCards?: {
+    type:
+      | "CERTIFICATE"
+      | "LOST_FOUND"
+      | "EMERGENCY"
+      | "HELP";
+
+    token:
+      string;
+
+    publicUrl:
+      string;
+  }[];
 };
 
 type PrintSizeConfig = {
@@ -539,6 +553,7 @@ function getAdminCountOptions(
   ) {
     case "A5":
       return [
+        1,
         2,
         4,
         6,
@@ -881,6 +896,175 @@ function CalendarArtwork({
   );
 }
 
+
+type A5SafetyCardKind =
+  | "CERTIFICATE"
+  | "LOST_FOUND"
+  | "EMERGENCY"
+  | "HELP";
+
+
+function A5SafetyCards({
+  record,
+  fallbackName,
+}: {
+  record:
+    CalendarAccessRecord |
+    null;
+
+  fallbackName:
+    string;
+}) {
+  const displayName =
+    record
+      ?.gyanName ??
+    fallbackName;
+
+  const fallbackCards:
+    Array<{
+      type:
+        A5SafetyCardKind;
+      token:
+        string;
+      publicUrl:
+        string;
+    }> = [
+      {
+        type:
+          "CERTIFICATE",
+        token:
+          "previewcert",
+        publicUrl:
+          "https://gyan.cc/previewcert",
+      },
+      {
+        type:
+          "LOST_FOUND",
+        token:
+          "previewlost",
+        publicUrl:
+          "https://gyan.cc/previewlost",
+      },
+      {
+        type:
+          "EMERGENCY",
+        token:
+          "previewemrg",
+        publicUrl:
+          "https://gyan.cc/previewemrg",
+      },
+      {
+        type:
+          "HELP",
+        token:
+          "previewhelp",
+        publicUrl:
+          "https://gyan.cc/previewhelp",
+      },
+    ];
+
+  const cards =
+    record
+      ?.safetyCards
+      ?.length === 4
+      ? record.safetyCards
+      : fallbackCards;
+
+  const labelFor =
+    (
+      type:
+        A5SafetyCardKind,
+    ): string => {
+      if (
+        type ===
+          "CERTIFICATE"
+      ) {
+        return "CERTIFICATE";
+      }
+
+      if (
+        type ===
+          "LOST_FOUND"
+      ) {
+        return "LOST & FOUND";
+      }
+
+      if (
+        type ===
+          "EMERGENCY"
+      ) {
+        return "EMERGENCY";
+      }
+
+      return "HELP";
+    };
+
+  return (
+    <section className="gyan-a5-safety">
+      <div className="gyan-a5-safety__heading">
+        ✂ FREE GYAN CARDS
+      </div>
+
+      <div className="gyan-a5-safety__cards">
+        {
+          cards.map(
+            (
+              card,
+            ) => (
+              <div
+                key={
+                  card.type
+                }
+                className="gyan-a5-safety__card"
+              >
+                <div className="gyan-a5-safety__qr-group">
+                  <div className="gyan-a5-safety__site">
+                    https://gyan.cc/{card.token}
+                  </div>
+
+                  <div className="gyan-a5-safety__qr">
+                    <QRCodeSVG
+                      value={
+                        card.publicUrl
+                      }
+                      size={
+                        92
+                      }
+                      level="M"
+                      includeMargin
+                      aria-label={`Open ${labelFor(
+                        card.type,
+                      )}`}
+                    />
+                  </div>
+
+                  <strong className="gyan-a5-safety__label">
+                    {
+                      labelFor(
+                        card.type,
+                      )
+                    }
+                  </strong>
+                </div>
+              </div>
+            ),
+          )
+        }
+      </div>
+
+      <div className="gyan-a5-safety__privacy">
+        No name, phone or email required. You’ll be known as{" "}
+        <strong>
+          {
+            displayName
+          }
+        </strong>{" "}
+        (unless you change it). Scan to see privacy-friendly forms.
+      </div>
+    </section>
+  );
+}
+
 function EducationAccountBlock({
   size,
   record,
@@ -936,6 +1120,84 @@ function EducationAccountBlock({
       "A7" ||
     size ===
       "A8";
+
+  if (
+    size ===
+      "A5"
+  ) {
+    const shortCode =
+      record
+        ?.slug
+        ?.toUpperCase() ??
+      "ABCD";
+
+    return (
+      <section className="gyan-print-card-v2__account gyan-print-card-v2__account--screenlet gyan-print-card-v2__account--a5-main">
+        <div className="gyan-account-screenlet__label">
+          Your Display Name
+        </div>
+
+        <strong className="gyan-account-screenlet__name">
+          {
+            gyanName
+          }
+        </strong>
+
+        <div className="gyan-account-screenlet__qr">
+          <QRCodeSVG
+            value={
+              qrUrl
+            }
+            size={
+              168
+            }
+            level="M"
+            includeMargin
+            aria-label="Scan to open this GYAN Education Account"
+          />
+        </div>
+
+        <div className="gyan-account-screenlet__url">
+          <span>
+            https://
+          </span>
+
+          <strong>
+            gyan.cc/{shortCode}
+          </strong>
+        </div>
+
+        <div className="gyan-a5-account__summary">
+          <span>
+            {
+              durationLabel(
+                config.durationMonths,
+              )
+            } complimentary
+          </span>
+
+          <span aria-hidden="true">
+            •
+          </span>
+
+          <span>
+            💎 {
+              config.welcomeGems
+            } Gems
+          </span>
+        </div>
+
+        <div className="gyan-a5-account__access">
+          Access code:{" "}
+          <strong>
+            {
+              accessCode
+            }
+          </strong>
+        </div>
+      </section>
+    );
+  }
 
   if (
     isCollectibleCard
@@ -1376,6 +1638,20 @@ function CalendarCard({
             fallbackAccessCode
           }
         />
+
+        {
+          printSize ===
+            "A5" && (
+            <A5SafetyCards
+              record={
+                record
+              }
+              fallbackName={
+                fallbackName
+              }
+            />
+          )
+        }
       </div>
 
       {
@@ -1423,7 +1699,7 @@ function CalendarCard({
 
       <footer className="gyan-print-card-v2__footer">
         <div className="gyan-print-card-v2__contact-row">
-          <strong>gyan.cc</strong>
+          <strong>https://gyan.cc/</strong>
           <span aria-hidden="true">•</span>
           <strong className="gyan-print-card-v2__contact">
             admin@gyan.cc

@@ -6683,3 +6683,1029 @@ span:nth-child(7n + 1) {
 .gyan-print-card-v2--business_card .gyan-print-card-v2__footer-tagline {
   font-size: clamp(0.23rem, 0.43vw, 0.34rem) !important;
 }
+
+/* =========================================================
+   A5 STARTER SHEET
+   Row 1: artwork + main GYAN QR
+   Row 2: four detachable privacy-friendly GYAN cards
+   The existing 12-month calendar remains unchanged below.
+   ========================================================= */
+
+.gyan-print-card-v2--a5
+.gyan-print-card-v2__hero-row {
+  display: grid !important;
+
+  grid-template-columns:
+    repeat(
+      4,
+      minmax(
+        0,
+        1fr
+      )
+    ) !important;
+
+  grid-template-rows:
+    minmax(
+      0,
+      56%
+    )
+    minmax(
+      0,
+      44%
+    ) !important;
+
+  align-items:
+    stretch !important;
+
+  overflow:
+    hidden !important;
+}
+
+
+/* Row 1, left half: Maa Saraswati / selected artwork. */
+.gyan-print-card-v2--a5
+.gyan-print-card-v2__hero-row
+.gyan-print-card-v2__art {
+  grid-column:
+    1 / 3 !important;
+
+  grid-row:
+    1 !important;
+
+  min-width:
+    0 !important;
+
+  min-height:
+    0 !important;
+
+  height:
+    100% !important;
+
+  border-right:
+    1px solid
+    #e9edef !important;
+
+  border-bottom:
+    1px solid
+    #e9edef !important;
+}
+
+.gyan-print-card-v2--a5
+.gyan-print-card-v2__hero-row
+.gyan-print-card-v2__art img {
+  width:
+    100% !important;
+
+  height:
+    100% !important;
+
+  object-fit:
+    contain !important;
+
+  object-position:
+    center center !important;
+
+  background:
+    #fffaf3;
+}
+
+
+/* Row 1, right half: main Education GYAN QR. */
+.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main {
+  grid-column:
+    3 / 5 !important;
+
+  grid-row:
+    1 !important;
+
+  min-width:
+    0 !important;
+
+  min-height:
+    0 !important;
+
+  height:
+    100% !important;
+
+  box-sizing:
+    border-box !important;
+
+  padding:
+    1.2%
+    4% !important;
+
+  display:
+    grid !important;
+
+  grid-template-columns:
+    1fr !important;
+
+  align-content:
+    center !important;
+
+  justify-items:
+    center !important;
+
+  gap:
+    0.09em !important;
+
+  overflow:
+    hidden !important;
+
+  border-bottom:
+    1px solid
+    #e9edef !important;
+
+  text-align:
+    center;
+}
+
+.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main
+.gyan-account-screenlet__label {
+  color:
+    #65747d;
+
+  font-size:
+    clamp(
+      0.40rem,
+      0.68vw,
+      0.58rem
+    ) !important;
+
+  font-weight:
+    900;
+}
+
+.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main
+.gyan-account-screenlet__name {
+  max-width:
+    100%;
+
+  color:
+    #174a73;
+
+  font-size:
+    clamp(
+      0.68rem,
+      1.32vw,
+      1rem
+    ) !important;
+
+  line-height:
+    1 !important;
+
+  overflow-wrap:
+    anywhere;
+}
+
+.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main
+.gyan-account-screenlet__qr {
+  width:
+    min(
+      38%,
+      106px
+    ) !important;
+
+  margin:
+    0 !important;
+
+  padding:
+    0 !important;
+}
+
+.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main
+.gyan-account-screenlet__url {
+  font-size:
+    clamp(
+      0.42rem,
+      0.76vw,
+      0.62rem
+    ) !important;
+
+  line-height:
+    1 !important;
+}
+
+.gyan-a5-account__summary {
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  flex-wrap:
+    wrap;
+
+  gap:
+    0.28em;
+
+  color:
+    #445965;
+
+  font-size:
+    clamp(
+      0.37rem,
+      0.66vw,
+      0.54rem
+    );
+
+  font-weight:
+    800;
+
+  line-height:
+    1.05;
+}
+
+.gyan-a5-account__access {
+  color:
+    #687981;
+
+  font-size:
+    clamp(
+      0.31rem,
+      0.56vw,
+      0.46rem
+    );
+
+  line-height:
+    1;
+}
+
+.gyan-a5-account__access strong {
+  color:
+    #e97825;
+
+  letter-spacing:
+    0.05em;
+}
+
+
+/* Row 2: all four safety cards across the full page width. */
+.gyan-a5-safety {
+  grid-column:
+    1 / 5 !important;
+
+  grid-row:
+    2 !important;
+
+  min-width:
+    0;
+
+  min-height:
+    0;
+
+  height:
+    100%;
+
+  box-sizing:
+    border-box;
+
+  display:
+    grid;
+
+  grid-template-rows:
+    auto
+    minmax(
+      0,
+      1fr
+    )
+    auto;
+
+  gap:
+    0.12em;
+
+  padding:
+    0.45%
+    1.1%
+    0.55%;
+
+  background:
+    #fff;
+}
+
+.gyan-a5-safety__heading {
+  color:
+    #174a73;
+
+  font-size:
+    clamp(
+      0.33rem,
+      0.59vw,
+      0.48rem
+    );
+
+  font-weight:
+    900;
+
+  letter-spacing:
+    0.04em;
+
+  line-height:
+    1;
+
+  text-align:
+    center;
+}
+
+.gyan-a5-safety__cards {
+  min-width:
+    0;
+
+  min-height:
+    0;
+
+  display:
+    grid;
+
+  grid-template-columns:
+    repeat(
+      4,
+      minmax(
+        0,
+        1fr
+      )
+    );
+
+  gap:
+    0.7%;
+}
+
+.gyan-a5-safety__card {
+  min-width:
+    0;
+
+  min-height:
+    0;
+
+  padding:
+    1.5%
+    2%;
+
+  display:
+    grid;
+
+  grid-template-rows:
+    auto
+    minmax(
+      0,
+      1fr
+    )
+    auto;
+
+  justify-items:
+    center;
+
+  align-items:
+    center;
+
+  gap:
+    0.08em;
+
+  box-sizing:
+    border-box;
+
+  border:
+    1px dashed
+    #8a9aa4;
+
+  border-radius:
+    3px;
+
+  background:
+    #fff;
+
+  overflow:
+    hidden;
+}
+
+.gyan-a5-safety__site {
+  max-width:
+    100%;
+
+  color:
+    #5f7079;
+
+  font-size:
+    clamp(
+      0.27rem,
+      0.48vw,
+      0.40rem
+    );
+
+  font-weight:
+    700;
+
+  line-height:
+    1;
+
+  white-space:
+    nowrap;
+}
+
+.gyan-a5-safety__site strong {
+  color:
+    #174a73;
+
+  font: inherit;
+
+  font-weight:
+    900;
+}
+
+.gyan-a5-safety__qr {
+  width:
+    min(
+      67%,
+      72px
+    );
+
+  aspect-ratio:
+    1;
+
+  display:
+    grid;
+
+  place-items:
+    center;
+
+  background:
+    #fff;
+}
+
+.gyan-a5-safety__qr svg {
+  width:
+    100% !important;
+
+  height:
+    100% !important;
+
+  display:
+    block;
+}
+
+.gyan-a5-safety__label {
+  max-width:
+    100%;
+
+  color:
+    #304957;
+
+  font-size:
+    clamp(
+      0.29rem,
+      0.52vw,
+      0.43rem
+    );
+
+  font-weight:
+    900;
+
+  line-height:
+    1;
+
+  text-align:
+    center;
+
+  white-space:
+    normal;
+}
+
+.gyan-a5-safety__privacy {
+  max-width:
+    100%;
+
+  color:
+    #576b76;
+
+  font-size:
+    clamp(
+      0.27rem,
+      0.49vw,
+      0.40rem
+    );
+
+  font-weight:
+    700;
+
+  line-height:
+    1.08;
+
+  text-align:
+    center;
+}
+
+.gyan-a5-safety__privacy strong {
+  color:
+    #e97825;
+
+  font-weight:
+    900;
+}
+
+
+/* Printed footer: explicit URL on every size. */
+.gyan-print-card-v2__contact-row > strong:first-child {
+  white-space:
+    nowrap;
+}
+
+/* =========================================================
+   A5 SAFETY CARD — CUT-OUT INTEGRITY + URL CLARITY
+   Keep brand, owner slug, QR and purpose together.
+   ========================================================= */
+
+.gyan-a5-safety__site {
+  width: 100%;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gyan-a5-safety__site span {
+  color: #6b7a83;
+  font-weight: 700;
+}
+
+.gyan-a5-safety__site strong {
+  color: #174a73;
+  font-weight: 900;
+}
+
+.gyan-a5-safety__qr-wrap {
+  min-width: 0;
+  min-height: 0;
+
+  display: grid;
+  grid-template-rows:
+    minmax(0, 1fr)
+    auto;
+
+  justify-items: center;
+  align-items: center;
+
+  gap: 0.08em;
+}
+
+.gyan-a5-safety__label {
+  margin-top: -0.02em;
+  font-size:
+    clamp(
+      0.31rem,
+      0.57vw,
+      0.46rem
+    ) !important;
+
+  line-height: 1.02 !important;
+}
+
+/* Make the shared privacy message easier to read while
+   preserving the four QR sizes. */
+.gyan-a5-safety__privacy {
+  font-size:
+    clamp(
+      0.31rem,
+      0.56vw,
+      0.45rem
+    ) !important;
+
+  line-height:
+    1.12 !important;
+
+  padding-top:
+    0.05em;
+}
+
+/* Main A5 URL: explicitly show protocol + slug. */
+.gyan-print-card-v2--a5
+.gyan-account-screenlet__url {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0;
+  white-space: nowrap;
+}
+
+.gyan-print-card-v2--a5
+.gyan-account-screenlet__url > span {
+  color: #6d7d86;
+  font: inherit;
+  font-weight: 700;
+}
+
+.gyan-print-card-v2--a5
+.gyan-account-screenlet__url > strong {
+  color: #174a73;
+  font: inherit;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+}
+
+/* =========================================================
+   A5 PUBLIC CHILD TOKENS
+   URL + QR + purpose form one tight cut-out unit.
+   Public child token is intentionally unrelated to parent GYAN slug.
+   ========================================================= */
+
+.gyan-a5-safety__card {
+  align-content: center;
+}
+
+.gyan-a5-safety__qr-group {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+
+  display: grid;
+  grid-template-rows:
+    auto
+    minmax(0, 1fr)
+    auto;
+
+  justify-items: center;
+  align-items: center;
+
+  gap: 0 !important;
+}
+
+.gyan-a5-safety__site {
+  width: 100%;
+  margin: 0 0 -0.04em !important;
+
+  color: #5f7079;
+
+  font-size:
+    clamp(
+      0.22rem,
+      0.39vw,
+      0.33rem
+    ) !important;
+
+  font-weight: 700;
+  line-height: 1 !important;
+  letter-spacing: -0.01em;
+
+  text-align: center;
+  white-space: nowrap;
+
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+.gyan-a5-safety__qr {
+  width:
+    min(
+      69%,
+      74px
+    ) !important;
+
+  margin: 0 !important;
+}
+
+.gyan-a5-safety__label {
+  margin: -0.04em 0 0 !important;
+
+  color: #304957;
+
+  font-size:
+    clamp(
+      0.32rem,
+      0.58vw,
+      0.47rem
+    ) !important;
+
+  font-weight: 900;
+  line-height: 1 !important;
+  text-align: center;
+}
+
+.gyan-a5-safety__privacy {
+  font-size:
+    clamp(
+      0.33rem,
+      0.60vw,
+      0.48rem
+    ) !important;
+
+  line-height: 1.12 !important;
+}
+
+/* =========================================================
+   A5 SMALL QR CARDS — VERTICAL CENTERING
+   Keep URL + QR + purpose visually centered inside each
+   detachable dotted card.
+   ========================================================= */
+
+.gyan-a5-safety__card {
+  display: grid !important;
+  place-items: center !important;
+}
+
+.gyan-a5-safety__qr-group {
+  align-self: center !important;
+  justify-self: stretch !important;
+
+  height: auto !important;
+
+  display: grid !important;
+
+  grid-template-rows:
+    auto
+    auto
+    auto !important;
+
+  align-content: center !important;
+  justify-items: center !important;
+
+  gap: 0.02em !important;
+}
+
+
+
+/* A5 cut-card purpose must remain human-readable.
+   Allow the label to visually use the card width instead of
+   shrinking to match the QR itself. */
+.gyan-a5-safety__label {
+  width: max-content !important;
+  max-width: 112% !important;
+
+  margin-top: 0.06em !important;
+
+  font-size:
+    clamp(
+      0.42rem,
+      0.78vw,
+      0.62rem
+    ) !important;
+
+  font-weight: 950 !important;
+  line-height: 1.02 !important;
+  letter-spacing: 0.015em;
+
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-align: center !important;
+}
+
+/* CERTIFICATE is the longest important single-word label.
+   Give all four labels the same readable treatment rather than
+   making Certificate look secondary. */
+.gyan-a5-safety__qr-group {
+  overflow: visible !important;
+}
+
+
+/* =========================================================
+   A5 QR LEGIBILITY PASS
+   Use available whitespace for larger scan targets.
+   ========================================================= */
+
+/* Main GYAN QR — row 1 right side. */
+.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main
+.gyan-account-screenlet__qr {
+  width:
+    min(
+      47%,
+      132px
+    ) !important;
+
+  max-height:
+    132px !important;
+}
+
+/* Four detachable cards — keep enough room for URL + purpose. */
+.gyan-print-card-v2--a5
+.gyan-a5-safety__qr {
+  width:
+    min(
+      80%,
+      88px
+    ) !important;
+
+  max-width:
+    88px !important;
+
+  max-height:
+    88px !important;
+}
+
+/* Keep the enlarged QR group centered after expansion. */
+.gyan-print-card-v2--a5
+.gyan-a5-safety__qr-group {
+  width: 100% !important;
+  align-content: center !important;
+  justify-items: center !important;
+}
+
+/* Slightly tighten non-QR spacing so enlargement does not
+   steal room from the privacy sentence. */
+.gyan-print-card-v2--a5
+.gyan-a5-safety__site {
+  margin-bottom:
+    -0.08em !important;
+}
+
+.gyan-print-card-v2--a5
+.gyan-a5-safety__label {
+  margin-top:
+    0.02em !important;
+}
+
+
+/* =========================================================
+   A5 CUT CARDS — TRUE VERTICAL CENTERING
+   Center the complete URL + QR + purpose block as one unit.
+   ========================================================= */
+
+.gyan-print-card-v2--a5
+.gyan-a5-safety__card {
+  position: relative !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+
+  align-items: center !important;
+  justify-content: center !important;
+
+  min-height: 0 !important;
+
+  padding:
+    1%
+    2% !important;
+}
+
+.gyan-print-card-v2--a5
+.gyan-a5-safety__qr-group {
+  flex: 0 0 auto !important;
+
+  width: 100% !important;
+  height: auto !important;
+
+  margin: auto 0 !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+
+  align-items: center !important;
+  justify-content: center !important;
+
+  gap: 0 !important;
+
+  transform: none !important;
+}
+
+.gyan-print-card-v2--a5
+.gyan-a5-safety__site,
+.gyan-print-card-v2--a5
+.gyan-a5-safety__qr,
+.gyan-print-card-v2--a5
+.gyan-a5-safety__label {
+  flex: 0 0 auto !important;
+}
+
+/* Remove earlier negative offsets; those made the visual
+   group appear high even when the container was centered. */
+.gyan-print-card-v2--a5
+.gyan-a5-safety__site {
+  margin:
+    0 0
+    0.08em !important;
+}
+
+.gyan-print-card-v2--a5
+.gyan-a5-safety__qr {
+  margin:
+    0 !important;
+}
+
+.gyan-print-card-v2--a5
+.gyan-a5-safety__label {
+  margin:
+    0.10em 0
+    0 !important;
+}
+
+
+/* =========================================================
+   A5 MAIN ACCOUNT — ACCESS CODE LEGIBILITY
+   The access code is a human fallback credential, so it must
+   remain comfortably readable on screen and on the A5 PDF.
+   ========================================================= */
+
+.gyan-print-card-v2--a5
+.gyan-a5-account__access {
+  margin-top:
+    0.10em !important;
+
+  color:
+    #5c6d76 !important;
+
+  font-size:
+    clamp(
+      0.43rem,
+      0.78vw,
+      0.64rem
+    ) !important;
+
+  font-weight:
+    800 !important;
+
+  line-height:
+    1.08 !important;
+
+  white-space:
+    nowrap !important;
+}
+
+.gyan-print-card-v2--a5
+.gyan-a5-account__access strong {
+  color:
+    #e97825 !important;
+
+  font-size:
+    1.12em !important;
+
+  font-weight:
+    950 !important;
+
+  letter-spacing:
+    0.075em !important;
+}
+
+
+/* A5 display name — readable from normal table distance. */
+.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main
+.gyan-account-screenlet__name {
+  font-size:
+    clamp(
+      0.82rem,
+      1.55vw,
+      1.18rem
+    ) !important;
+
+  font-weight:
+    950 !important;
+
+  line-height:
+    1.02 !important;
+}
+
+
+/* =========================================================
+   A5 PDF — FINAL HUMAN-READABLE IDENTITY OVERRIDES
+   Must remain LAST in this stylesheet.
+   The PDF card has the --pdf class, so use fixed print-stage
+   sizes instead of viewport-dependent clamp() values.
+   ========================================================= */
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main
+.gyan-account-screenlet__name {
+  font-size:
+    1.90rem !important;
+
+  font-weight:
+    950 !important;
+
+  line-height:
+    1 !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-a5-account__access {
+  margin-top:
+    0.12rem !important;
+
+  font-size:
+    0.92rem !important;
+
+  font-weight:
+    850 !important;
+
+  line-height:
+    1.05 !important;
+
+  white-space:
+    nowrap !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-a5-account__access strong {
+  font-size:
+    1.13rem !important;
+
+  font-weight:
+    950 !important;
+
+  letter-spacing:
+    0.085em !important;
+}

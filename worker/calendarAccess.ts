@@ -18,6 +18,20 @@ type ArtworkKey =
   | "SCENIC";
 
 
+type SafetyResourceType =
+  | "CERTIFICATE"
+  | "LOST_FOUND"
+  | "EMERGENCY"
+  | "HELP";
+
+
+type SafetyResourceRecord = {
+  type: SafetyResourceType;
+  token: string;
+  publicUrl: string;
+};
+
+
 const ALPHABET =
   "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
@@ -115,6 +129,167 @@ function createQrToken():
    */
   return randomText(
     16,
+  );
+}
+
+
+function createSafetyPublicToken():
+  string {
+  /*
+   * 10 symbols from a 32-character human-safe alphabet gives
+   * ~50 bits of namespace. The token is public/opaque, not a
+   * cryptographic public key and not the parent GYAN slug.
+   */
+  return randomText(
+    10,
+  ).toLowerCase();
+}
+
+
+const SAFETY_RESOURCE_TYPES:
+  SafetyResourceType[] = [
+    "CERTIFICATE",
+    "LOST_FOUND",
+    "EMERGENCY",
+    "HELP",
+  ];
+
+
+async function createSafetyResources(
+  env: CalendarAccessEnv,
+  calendarAccessId: number,
+): Promise<SafetyResourceRecord[]> {
+  const resources:
+    SafetyResourceRecord[] = [];
+
+  for (
+    const resourceType
+    of SAFETY_RESOURCE_TYPES
+  ) {
+    let created =
+      false;
+
+    for (
+      let attempt = 0;
+      attempt < 30;
+      attempt += 1
+    ) {
+      const token =
+        createSafetyPublicToken();
+
+      try {
+        await env.gyan_registry
+          .prepare(
+            `
+              INSERT INTO gyan_safety_resources (
+                calendar_access_id,
+                resource_type,
+                public_token,
+                status
+              )
+              VALUES (?, ?, ?, 'ACTIVE')
+            `,
+          )
+          .bind(
+            calendarAccessId,
+            resourceType,
+            token,
+          )
+          .run();
+
+        resources.push({
+          type:
+            resourceType,
+
+          token,
+
+          publicUrl:
+            `https://gyan.cc/${token}`,
+        });
+
+        created =
+          true;
+
+        break;
+      } catch (
+        error
+      ) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : String(error);
+
+        if (
+          message.includes(
+            "UNIQUE",
+          )
+        ) {
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    if (
+      !created
+    ) {
+      throw new Error(
+        `Unable to allocate ${resourceType} public token.`,
+      );
+    }
+  }
+
+  return resources;
+}
+
+
+async function loadSafetyResources(
+  env: CalendarAccessEnv,
+  calendarAccessId: number,
+): Promise<SafetyResourceRecord[]> {
+  const rows =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            resource_type,
+            public_token
+          FROM gyan_safety_resources
+          WHERE
+            calendar_access_id = ?
+            AND status = 'ACTIVE'
+          ORDER BY
+            CASE resource_type
+              WHEN 'CERTIFICATE' THEN 1
+              WHEN 'LOST_FOUND' THEN 2
+              WHEN 'EMERGENCY' THEN 3
+              WHEN 'HELP' THEN 4
+              ELSE 99
+            END
+        `,
+      )
+      .bind(
+        calendarAccessId,
+      )
+      .all<{
+        resource_type:
+          SafetyResourceType;
+        public_token:
+          string;
+      }>();
+
+  return rows.results.map(
+    (row) => ({
+      type:
+        row.resource_type,
+
+      token:
+        row.public_token,
+
+      publicUrl:
+        `https://gyan.cc/${row.public_token}`,
+    }),
   );
 }
 
@@ -532,6 +707,12 @@ async function createOne(
       if (
         row
       ) {
+        const safetyCards =
+          await createSafetyResources(
+            env,
+            row.id,
+          );
+
         return {
           id:
             row.id,
@@ -565,6 +746,8 @@ async function createOne(
 
           email:
             row.email,
+
+          safetyCards,
         };
       }
     } catch (
@@ -628,7 +811,7 @@ export async function handleCalendarAccessRoute({
       Math.max(
         1,
         Math.min(
-          320,
+          8,
           Math.floor(
             body.count ??
             1,
@@ -967,6 +1150,12 @@ export async function handleCalendarAccessRoute({
       )
       .run();
 
+    const safetyCards =
+      await loadSafetyResources(
+        env,
+        existing.id,
+      );
+
     /*
      * The QR token itself is intentionally unchanged when a user
      * changes A5/A6/A7 size in preview.
@@ -1007,6 +1196,8 @@ export async function handleCalendarAccessRoute({
 
         email:
           existing.email,
+
+        safetyCards,
       },
     });
   }
