@@ -71,3 +71,1418 @@
 .safety-resource__error {
   color: #9b332d;
 }
+
+
+/* =========================================================
+   Lost & Found
+   ========================================================= */
+
+.safety-resource__lost-found-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.safety-resource__role-card {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid #dce5ea;
+  border-radius: 12px;
+  background: #f9fbfc;
+}
+
+.safety-resource__role-card--owner {
+  background: #fffaf0;
+  border-color: #ead9b5;
+}
+
+.safety-resource__role-title {
+  font-weight: 800;
+  color: #174a73;
+}
+
+.safety-resource__role-card label {
+  display: grid;
+  gap: 4px;
+}
+
+.safety-resource__role-card label > span {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: #455f6e;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.safety-resource__role-card label small {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #8b7c69;
+}
+
+.safety-resource__role-card input,
+.safety-resource__role-card textarea,
+.safety-resource__chat textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #ccd9e0;
+  border-radius: 8px;
+  padding: 8px 9px;
+  background: #fff;
+  color: #253d49;
+  font: inherit;
+}
+
+.safety-resource__role-card textarea,
+.safety-resource__chat textarea {
+  resize: vertical;
+}
+
+.safety-resource__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.safety-resource__actions button,
+.safety-resource__chat-compose button {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #1976d2;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.safety-resource__actions button:disabled,
+.safety-resource__chat-compose button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.safety-resource__button--secondary {
+  background: #eef3f6 !important;
+  color: #36515e !important;
+}
+
+.safety-resource__owner-summary {
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.safety-resource__owner-summary > div {
+  display: grid;
+  gap: 2px;
+}
+
+.safety-resource__owner-summary strong {
+  color: #6f5127;
+  font-size: 0.76rem;
+}
+
+.safety-resource__owner-summary span {
+  color: #344d59;
+  overflow-wrap: anywhere;
+}
+
+.safety-resource__status {
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: #f2f7f1;
+  color: #35613a;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.safety-resource__chat {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #d4e0e6;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.safety-resource__chat-head {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 10px;
+  background: #eef5fb;
+}
+
+.safety-resource__chat-head strong {
+  color: #174a73;
+}
+
+.safety-resource__chat-head span {
+  color: #647781;
+  font-size: 0.75rem;
+}
+
+.safety-resource__chat-head button {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.safety-resource__chat-messages {
+  min-height: 90px;
+  max-height: 260px;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  padding: 10px;
+}
+
+.safety-resource__chat-message {
+  max-width: 82%;
+  display: grid;
+  gap: 2px;
+  padding: 7px 9px;
+  border-radius: 9px;
+  background: #f2f5f7;
+}
+
+.safety-resource__chat-message--owner {
+  justify-self: end;
+  background: #fff2d8;
+}
+
+.safety-resource__chat-message strong {
+  font-size: 0.68rem;
+  color: #60727c;
+}
+
+.safety-resource__chat-message span {
+  overflow-wrap: anywhere;
+}
+
+.safety-resource__chat-compose {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: end;
+  padding: 9px;
+  border-top: 1px solid #e1e8ec;
+}
+
+@media (min-width: 700px) {
+  .safety-resource__lost-found-grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+
+/* =========================================================
+   Compact Lost & Found v2
+   ========================================================= */
+
+.safety-resource {
+  padding-top: 58px;
+}
+
+.safety-resource__card {
+  width: min(100%, 560px);
+  padding: 10px;
+  gap: 7px;
+}
+
+.safety-resource__topbar {
+  min-height: 30px;
+}
+
+.safety-resource__brandline {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.safety-resource__brandline > strong {
+  color: #174a73;
+  font-size: 1.02rem;
+}
+
+.safety-resource__title-inline {
+  color: #304957;
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.safety-resource__alias--compact {
+  padding: 4px 7px;
+  border-radius: 7px;
+  font-size: 0.79rem;
+}
+
+.safety-resource__privacy-line {
+  margin-top: -1px;
+  color: #71818a;
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+.safety-resource__lost-found-grid {
+  gap: 9px;
+  margin-top: 2px;
+}
+
+.safety-resource__role-card {
+  gap: 7px;
+  padding: 9px;
+  border-radius: 10px;
+}
+
+.safety-resource__role-title {
+  font-size: 0.9rem;
+}
+
+.safety-resource__owner-hint {
+  margin-top: -2px;
+  color: #7a6a57;
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+.safety-resource__role-card input,
+.safety-resource__role-card textarea,
+.safety-resource__chat textarea {
+  padding: 7px 8px;
+}
+
+.safety-resource__role-card textarea {
+  min-height: 58px;
+}
+
+.safety-resource__owner-summary {
+  gap: 5px;
+  padding: 7px;
+}
+
+.safety-resource__actions button,
+.safety-resource__chat-compose button {
+  padding: 7px 11px;
+}
+
+@media (max-width: 699px) {
+  .safety-resource {
+    padding: 50px 8px 16px;
+  }
+
+  .safety-resource__card {
+    border-radius: 11px;
+    box-shadow: 0 8px 22px rgb(25 48 65 / 10%);
+  }
+}
+
+
+/* =========================================================
+   Compact two-card launcher v3
+   ========================================================= */
+
+.safety-resource {
+  min-height: 100dvh;
+  padding: 2px 4px 10px;
+  place-items: start center;
+}
+
+.safety-resource__card {
+  width: min(100%, 600px);
+  padding: 5px;
+  gap: 4px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.safety-resource__topbar {
+  min-height: 24px;
+}
+
+.safety-resource__card header button {
+  width: 24px;
+  height: 24px;
+}
+
+.safety-resource__alias--compact {
+  padding: 2px 5px;
+  font-size: 0.75rem;
+}
+
+.safety-resource__privacy-line {
+  font-size: 0.66rem;
+}
+
+.safety-resource__lost-found-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 5px;
+  margin-top: 1px;
+}
+
+.safety-resource__role-card {
+  min-width: 0;
+  padding: 6px;
+  gap: 5px;
+  border-radius: 8px;
+}
+
+.safety-resource__role-card--owner {
+  grid-column: 1;
+}
+
+.safety-resource__role-card:not(.safety-resource__role-card--owner) {
+  grid-column: 2;
+}
+
+.safety-resource__role-card--expanded {
+  grid-column: 1 / -1 !important;
+}
+
+.safety-resource__role-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.safety-resource__role-title {
+  min-width: 0;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.safety-resource__expand-button {
+  border: 0;
+  border-radius: 6px;
+  padding: 3px 6px;
+  background: #eef3f6;
+  color: #36515e;
+  font-size: 0.68rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.safety-resource__compact-line {
+  min-width: 0;
+  overflow: hidden;
+  color: #5a6c75;
+  font-size: 0.69rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.safety-resource__compact-line strong {
+  color: #3d5561;
+}
+
+.safety-resource__owner-hint {
+  font-size: 0.64rem;
+}
+
+.safety-resource__compact-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.safety-resource__compact-actions button {
+  border: 0;
+  border-radius: 6px;
+  padding: 4px 7px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.safety-resource__role-card--compact .safety-resource__owner-hint {
+  max-height: 2.6em;
+  overflow: hidden;
+}
+
+.safety-resource__role-card--expanded {
+  padding: 8px;
+}
+
+@media (max-width: 699px) {
+  .safety-resource {
+    padding: 1px 2px 8px;
+  }
+
+  .safety-resource__card {
+    border-radius: 6px;
+  }
+
+  .safety-resource__lost-found-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+
+/* =========================================================
+   Finder-editable + Support v4
+   ========================================================= */
+
+.safety-resource__role-card--finder {
+  grid-column: 2;
+}
+
+.safety-resource__role-card--finder label {
+  gap: 2px;
+}
+
+.safety-resource__role-card--finder label > span {
+  font-size: 0.69rem;
+}
+
+.safety-resource__role-card--finder input {
+  padding: 5px 6px;
+  font-size: 0.74rem;
+}
+
+.safety-resource__actions--compact {
+  gap: 5px;
+}
+
+.safety-resource__actions--compact button {
+  padding: 5px 8px;
+  font-size: 0.7rem;
+}
+
+.safety-resource__support-strip {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 6px;
+  align-items: center;
+  padding: 5px 7px;
+  border: 1px solid #dce5ea;
+  border-radius: 8px;
+  background: #f7f9fb;
+  color: #445d69;
+  font-size: 0.72rem;
+}
+
+.safety-resource__support-strip > span {
+  font-weight: 800;
+  color: #174a73;
+}
+
+.safety-resource__support-strip button {
+  border: 0;
+  border-radius: 6px;
+  padding: 4px 7px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.safety-resource__support-strip small {
+  color: #74848d;
+  font-size: 0.65rem;
+}
+
+.safety-resource__chat-message--support {
+  justify-self: center;
+  background: #eef4ff;
+  border: 1px solid #d7e3f8;
+}
+
+@media (max-width: 520px) {
+  .safety-resource__support-strip {
+    grid-template-columns: auto auto;
+  }
+
+  .safety-resource__support-strip small {
+    grid-column: 1 / -1;
+  }
+}
+
+
+/* =========================================================
+   Expanded forms v5 — small typography
+   ========================================================= */
+
+.safety-resource__lost-found-grid--expanded {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 6px;
+}
+
+.safety-resource__lost-found-grid--expanded
+.safety-resource__role-card {
+  grid-column: auto !important;
+  padding: 7px;
+  gap: 5px;
+}
+
+.safety-resource__lost-found-grid--expanded
+.safety-resource__role-title {
+  font-size: 0.78rem;
+}
+
+.safety-resource__lost-found-grid--expanded
+.safety-resource__role-card label > span {
+  font-size: 0.67rem;
+}
+
+.safety-resource__lost-found-grid--expanded
+.safety-resource__role-card input,
+.safety-resource__lost-found-grid--expanded
+.safety-resource__role-card textarea {
+  padding: 5px 6px;
+  font-size: 0.73rem;
+}
+
+.safety-resource__lost-found-grid--expanded
+.safety-resource__owner-summary {
+  gap: 4px;
+  padding: 6px;
+  font-size: 0.7rem;
+}
+
+.safety-resource__lost-found-grid--expanded
+.safety-resource__owner-summary strong {
+  font-size: 0.66rem;
+}
+
+.safety-resource__lost-found-grid--expanded
+.safety-resource__actions button {
+  padding: 5px 7px;
+  font-size: 0.68rem;
+}
+
+.safety-resource__lost-found-grid--expanded
+textarea {
+  min-height: 52px;
+}
+
+@media (max-width: 420px) {
+  .safety-resource__lost-found-grid--expanded {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =========================================================
+   Emergency module
+   ========================================================= */
+
+.safety-resource__emergency {
+  display: grid;
+  gap: 7px;
+}
+
+.safety-resource__emergency-banner {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border: 1px solid #ead9b5;
+  border-radius: 8px;
+  background: #fffaf0;
+}
+
+.safety-resource__emergency-banner strong {
+  color: #7a4b12;
+  font-size: 0.82rem;
+}
+
+.safety-resource__emergency-banner small {
+  color: #776956;
+  font-size: 0.68rem;
+}
+
+.safety-resource__emergency-public {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(
+        0,
+        1fr
+      )
+    );
+  gap: 5px;
+}
+
+.safety-resource__emergency-public > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid #dce5ea;
+  border-radius: 7px;
+  background: #f9fbfc;
+}
+
+.safety-resource__emergency-public span {
+  color: #657984;
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+.safety-resource__emergency-public strong {
+  color: #304957;
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.safety-resource__emergency-edit,
+.safety-resource__emergency-form {
+  display: grid;
+  gap: 6px;
+}
+
+.safety-resource__emergency-edit {
+  grid-template-columns: 1fr auto;
+  align-items: end;
+}
+
+.safety-resource__emergency-edit label,
+.safety-resource__emergency-form label {
+  display: grid;
+  gap: 3px;
+}
+
+.safety-resource__emergency-edit label > span,
+.safety-resource__emergency-form label > span {
+  color: #536b77;
+  font-size: 0.67rem;
+  font-weight: 750;
+}
+
+.safety-resource__emergency-edit input,
+.safety-resource__emergency-form input,
+.safety-resource__emergency-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #ccd9e0;
+  border-radius: 7px;
+  padding: 6px 7px;
+  background: #fff;
+  color: #253d49;
+  font: inherit;
+  font-size: 0.73rem;
+}
+
+.safety-resource__emergency-edit button {
+  border: 0;
+  border-radius: 7px;
+  padding: 6px 9px;
+  background: #1976d2;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.safety-resource__emergency-warning {
+  display: grid;
+  gap: 2px;
+  padding: 6px 7px;
+  border-radius: 7px;
+  background: #fff4da;
+  color: #6f5127;
+  font-size: 0.68rem;
+}
+
+.safety-resource__field-hint {
+  color: #788891;
+  font-size: 0.63rem;
+  line-height: 1.3;
+}
+
+@media (max-width: 420px) {
+  .safety-resource__emergency-public {
+    grid-template-columns:
+      minmax(
+        0,
+        1fr
+      );
+  }
+}
+
+
+/* =========================================================
+   Emergency scanner message
+   ========================================================= */
+
+.safety-resource__emergency-message-box,
+.safety-resource__emergency-owner-messages {
+  display: grid;
+  gap: 5px;
+  padding: 7px;
+  border: 1px solid #dce5ea;
+  border-radius: 8px;
+  background: #f9fbfc;
+}
+
+.safety-resource__emergency-message-head {
+  display: grid;
+  gap: 1px;
+}
+
+.safety-resource__emergency-message-head strong {
+  color: #174a73;
+  font-size: 0.75rem;
+}
+
+.safety-resource__emergency-message-head small {
+  color: #74848d;
+  font-size: 0.63rem;
+}
+
+.safety-resource__emergency-message-box textarea,
+.safety-resource__emergency-message-box input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #ccd9e0;
+  border-radius: 7px;
+  padding: 6px 7px;
+  background: #fff;
+  color: #253d49;
+  font: inherit;
+  font-size: 0.73rem;
+}
+
+.safety-resource__emergency-message-box button {
+  justify-self: start;
+  border: 0;
+  border-radius: 7px;
+  padding: 6px 9px;
+  background: #1976d2;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.safety-resource__emergency-message-box button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.safety-resource__emergency-owner-message {
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.safety-resource__emergency-owner-message span {
+  color: #304957;
+  font-size: 0.7rem;
+  overflow-wrap: anywhere;
+}
+
+.safety-resource__emergency-owner-message small {
+  color: #77858c;
+  font-size: 0.61rem;
+}
+
+
+/* =========================================================
+   Emergency two-card layout v3
+   ========================================================= */
+
+.safety-resource__emergency {
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+
+.safety-resource__emergency-card {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  padding: 7px;
+  border: 1px solid #dce5ea;
+  border-radius: 9px;
+}
+
+.safety-resource__emergency-card--owner {
+  background: #fffaf0;
+  border-color: #ead9b5;
+}
+
+.safety-resource__emergency-card--scanner {
+  background: #f7fafc;
+}
+
+.safety-resource__emergency-card-head {
+  display: grid;
+  gap: 1px;
+}
+
+.safety-resource__emergency-card-head > strong {
+  color: #174a73;
+  font-size: 0.78rem;
+}
+
+.safety-resource__emergency-card--owner
+.safety-resource__emergency-card-head > strong {
+  color: #7a4b12;
+}
+
+.safety-resource__emergency-card-head > small {
+  color: #74848d;
+  font-size: 0.63rem;
+}
+
+.safety-resource__emergency-card
+.safety-resource__emergency-public {
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+}
+
+.safety-resource__emergency-card
+.safety-resource__emergency-message-box {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+@media (max-width: 420px) {
+  .safety-resource__emergency-card
+  .safety-resource__emergency-public {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =========================================================
+   Emergency palette v4
+   Owner = light warm brown; Scanner = blue
+   ========================================================= */
+
+.safety-resource__emergency-card--owner {
+  background: #fffdf8;
+  border-color: #eadfc9;
+}
+
+.safety-resource__emergency-card--owner
+.safety-resource__emergency-public > div {
+  background: #fffaf1;
+  border-color: #eee2cc;
+}
+
+.safety-resource__emergency-card--owner
+.safety-resource__emergency-public span {
+  color: #7a6a57;
+}
+
+.safety-resource__emergency-card--owner
+.safety-resource__emergency-public strong {
+  color: #4f463b;
+}
+
+.safety-resource__emergency-card--scanner {
+  background: #f5f9fd;
+  border-color: #d7e5f0;
+}
+
+.safety-resource__emergency-card--scanner
+.safety-resource__emergency-card-head > strong {
+  color: #174a73;
+}
+
+
+/* =========================================================
+   Emergency layout refinements v5
+   ========================================================= */
+
+.safety-resource__intro--emergency {
+  margin: 1px 0 3px;
+  color: #6f7c83;
+  font-size: 0.66rem;
+  line-height: 1.25;
+}
+
+/* Keep the Emergency owner information compact. */
+.safety-resource__emergency-public {
+  gap: 4px;
+}
+
+/*
+ * Primary and secondary contacts should remain on the same row,
+ * including narrow mobile screens.
+ *
+ * The contact blocks are the 2nd and 3rd children.
+ */
+.safety-resource__emergency-public > div:nth-child(2),
+.safety-resource__emergency-public > div:nth-child(3) {
+  min-width: 0;
+}
+
+@media (max-width: 420px) {
+  .safety-resource__emergency-card
+  .safety-resource__emergency-public {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(0, 1fr);
+  }
+
+  .safety-resource__emergency-public > div:first-child,
+  .safety-resource__emergency-public > div:nth-child(4),
+  .safety-resource__emergency-public > div:nth-child(5) {
+    grid-column: 1 / -1;
+  }
+
+  .safety-resource__emergency-public > div:nth-child(2) {
+    grid-column: 1;
+  }
+
+  .safety-resource__emergency-public > div:nth-child(3) {
+    grid-column: 2;
+  }
+}
+
+/* Scanner stays visually blue, but its actual inputs stay white and obvious. */
+.safety-resource__emergency-card--scanner {
+  gap: 4px;
+  padding: 6px;
+}
+
+.safety-resource__emergency-card--scanner
+.safety-resource__emergency-message-box {
+  gap: 4px;
+  margin: 0;
+}
+
+.safety-resource__emergency-card--scanner
+.safety-resource__emergency-message-box textarea,
+.safety-resource__emergency-card--scanner
+.safety-resource__emergency-message-box input {
+  display: block;
+  width: 100%;
+  min-height: 30px;
+  margin: 0;
+  border: 1px solid #b8cfdf;
+  background: #ffffff;
+  color: #243b47;
+  opacity: 1;
+}
+
+.safety-resource__emergency-card--scanner
+.safety-resource__emergency-message-box textarea::placeholder,
+.safety-resource__emergency-card--scanner
+.safety-resource__emergency-message-box input::placeholder {
+  color: #70828d;
+  opacity: 1;
+}
+
+.safety-resource__emergency-card--scanner
+.safety-resource__emergency-message-head {
+  margin: 0;
+}
+
+.safety-resource__emergency-card--scanner
+.safety-resource__emergency-message-head small {
+  margin: 0;
+}
+
+
+/* Emergency v8: notes + handoff stay 50/50 on one row */
+.safety-resource__emergency-public > div:nth-child(4) {
+  grid-column: 1;
+}
+
+.safety-resource__emergency-public > div:nth-child(5) {
+  grid-column: 2;
+}
+
+@media (max-width: 420px) {
+  .safety-resource__emergency-public > div:nth-child(4) {
+    grid-column: 1 !important;
+  }
+
+  .safety-resource__emergency-public > div:nth-child(5) {
+    grid-column: 2 !important;
+  }
+}
+
+
+/* Emergency v9: show scanner's just-sent message */
+.safety-resource__scanner-sent {
+  display: grid;
+  gap: 2px;
+  padding: 5px 6px;
+  border-radius: 7px;
+  background: #eef7ee;
+  color: #355c3a;
+  font-size: 0.66rem;
+}
+
+.safety-resource__scanner-sent strong {
+  font-size: 0.66rem;
+}
+
+.safety-resource__scanner-sent span {
+  overflow-wrap: anywhere;
+}
+
+
+/* =========================================================
+   Emergency edit layout v10
+   ========================================================= */
+
+.safety-resource__emergency-form {
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr);
+  align-items: start;
+}
+
+.safety-resource__emergency-warning,
+.safety-resource__emergency-form
+> label:not(.safety-resource__emergency-field),
+.safety-resource__emergency-form
+> .safety-resource__actions,
+.safety-resource__emergency-owner-messages {
+  grid-column: 1 / -1;
+}
+
+.safety-resource__emergency-field--primary,
+.safety-resource__emergency-field--medical {
+  grid-column: 1;
+}
+
+.safety-resource__emergency-field--secondary,
+.safety-resource__emergency-field--meeting {
+  grid-column: 2;
+}
+
+.safety-resource__emergency-owner-messages {
+  margin-top: 2px;
+}
+
+.safety-resource__emergency-owner-message {
+  padding: 4px 5px;
+}
+
+.safety-resource__emergency-message-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.safety-resource__emergency-message-line > strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #304957;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+}
+
+.safety-resource__emergency-message-line > small {
+  flex: 0 0 auto;
+  color: #77858c;
+  font-size: 0.6rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 420px) {
+  .safety-resource__emergency-form {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(0, 1fr);
+  }
+
+  .safety-resource__emergency-field--primary,
+  .safety-resource__emergency-field--medical {
+    grid-column: 1 !important;
+  }
+
+  .safety-resource__emergency-field--secondary,
+  .safety-resource__emergency-field--meeting {
+    grid-column: 2 !important;
+  }
+}
+
+
+/* =========================================================
+   Emergency v11: scanner messages in owner read mode
+   ========================================================= */
+
+.safety-resource__emergency-owner-messages--read {
+  margin-top: 3px;
+}
+
+
+/* Certificate default / nothing shared */
+.safety-resource__certificate-empty {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid #dce5ea;
+  border-radius: 9px;
+  background: #f9fbfc;
+  text-align: center;
+}
+
+.safety-resource__certificate-empty strong {
+  color: #405966;
+  font-size: 0.8rem;
+}
+
+.safety-resource__certificate-empty small {
+  color: #74848d;
+  font-size: 0.68rem;
+}
+
+
+/* =========================================================
+   Account-specific Help cards
+   ========================================================= */
+
+.safety-resource__help-cards {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(0, 1fr)
+    );
+  gap: 6px;
+}
+
+.safety-resource__help-cards > button {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  padding: 8px 6px;
+  border: 1px solid #dce5ea;
+  border-radius: 9px;
+  background: #f9fbfc;
+  color: #304957;
+  text-align: left;
+  cursor: pointer;
+}
+
+.safety-resource__help-cards > button > span {
+  color: #657984;
+  font-size: 0.63rem;
+  font-weight: 750;
+}
+
+.safety-resource__help-cards > button > strong {
+  overflow: hidden;
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.safety-resource__help-cards > button > small {
+  color: #74848d;
+  font-size: 0.61rem;
+  line-height: 1.25;
+}
+
+.safety-resource__help-card--next {
+  background: #fffaf0 !important;
+  border-color: #ead9b5 !important;
+}
+
+.safety-resource__help-modal-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(20 35 45 / 35%);
+}
+
+.safety-resource__help-modal {
+  position: relative;
+  width: min(100%, 390px);
+  display: grid;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: 16px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 18px 50px rgb(20 35 45 / 20%);
+}
+
+.safety-resource__help-modal h2 {
+  margin: 0;
+  color: #174a73;
+  font-size: 1rem;
+}
+
+.safety-resource__help-modal > strong {
+  color: #405966;
+  font-size: 0.82rem;
+}
+
+.safety-resource__help-modal p {
+  margin: 0;
+  color: #5f717b;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.safety-resource__help-modal-close {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: #eef3f6;
+  color: #405966;
+  cursor: pointer;
+}
+
+@media (max-width: 420px) {
+  .safety-resource__help-cards {
+    grid-template-columns:
+      repeat(
+        3,
+        minmax(0, 1fr)
+      );
+    gap: 4px;
+  }
+
+  .safety-resource__help-cards > button {
+    padding: 6px 4px;
+  }
+}
+
+
+/* =========================================================
+   Account-specific Help + recovery email v2
+   ========================================================= */
+
+.safety-resource__help-section-title {
+  margin-top: 4px;
+  color: #667a85;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.safety-resource__help-qr-cards {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      4,
+      minmax(0, 1fr)
+    );
+  gap: 4px;
+}
+
+.safety-resource__help-qr-cards > button {
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 4px 2px;
+  border: 1px solid #dce5ea;
+  border-radius: 8px;
+  background: #fff;
+  color: #304957;
+  cursor: pointer;
+}
+
+.safety-resource__help-qr-cards svg {
+  width: 56px;
+  max-width: 100%;
+  height: auto;
+}
+
+.safety-resource__help-qr-cards strong {
+  font-size: 0.59rem;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.safety-resource__help-qr-cards small {
+  width: 100%;
+  overflow: hidden;
+  color: #74848d;
+  font-size: 0.5rem;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.safety-resource__help-email-field {
+  display: grid;
+  gap: 3px;
+}
+
+.safety-resource__help-email-field span {
+  color: #536b77;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.safety-resource__help-email-field input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #ccd9e0;
+  border-radius: 7px;
+  padding: 7px;
+  background: #fff;
+  color: #253d49;
+  font: inherit;
+  font-size: 0.75rem;
+}
+
+.safety-resource__help-email-button {
+  justify-self: start;
+  border: 0;
+  border-radius: 7px;
+  padding: 7px 10px;
+  background: #1976d2;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.safety-resource__help-email-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.safety-resource__help-email-status {
+  color: #536b77;
+  font-size: 0.67rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 420px) {
+  .safety-resource__help-qr-cards {
+    grid-template-columns:
+      repeat(
+        4,
+        minmax(0, 1fr)
+      );
+    gap: 3px;
+  }
+
+  .safety-resource__help-qr-cards svg {
+    width: 50px;
+  }
+}

@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
@@ -9,12 +10,12 @@ import "./AdminStudentsPage.css";
 type StudentKind =
   | "registered"
   | "trial"
-  | "issued"
   | "inactive";
 
 
 interface AdminStudent {
   code: string;
+  accessCode: string;
   displayName: string;
   email: string;
   status: string;
@@ -30,14 +31,6 @@ interface AdminStudent {
 
 interface AdminStudentsResponse {
   students?: AdminStudent[];
-
-  summary?: {
-    registered: number;
-    trial: number;
-    issued: number;
-    inactive: number;
-  };
-
   error?: string;
 }
 
@@ -64,13 +57,6 @@ function kindLabel(
     return "Trial";
   }
 
-  if (
-    kind ===
-      "issued"
-  ) {
-    return "Issued";
-  }
-
   return "Inactive";
 }
 
@@ -92,30 +78,7 @@ export default function AdminStudentsPage({
       "all" |
       StudentKind
     >(
-      () => {
-        const value =
-          new URLSearchParams(
-            window.location.search,
-          )
-            .get(
-              "filter",
-            )
-            ?.trim()
-            .toLowerCase();
-
-        return (
-          value ===
-            "registered" ||
-          value ===
-            "trial" ||
-          value ===
-            "issued" ||
-          value ===
-            "inactive"
-        )
-          ? value
-          : "all";
-      },
+      "all",
     );
 
   const [
@@ -125,17 +88,6 @@ export default function AdminStudentsPage({
     useState<AdminStudent[]>(
       [],
     );
-
-  const [
-    summary,
-    setSummary,
-  ] =
-    useState({
-      registered: 0,
-      trial: 0,
-      issued: 0,
-      inactive: 0,
-    });
 
   const [
     loading,
@@ -250,19 +202,10 @@ export default function AdminStudentsPage({
                     );
                   }
 
-                  return {
-                    students:
-                      body.students ??
-                      [],
-
-                    summary:
-                      body.summary ?? {
-                        registered: 0,
-                        trial: 0,
-                        issued: 0,
-                        inactive: 0,
-                      },
-                  };
+                  return (
+                    body.students ??
+                    []
+                  );
                 },
               )
               .then(
@@ -277,11 +220,7 @@ export default function AdminStudentsPage({
                   }
 
                   setStudents(
-                    loaded.students,
-                  );
-
-                  setSummary(
-                    loaded.summary,
+                    loaded,
                   );
                 },
               )
@@ -336,6 +275,41 @@ export default function AdminStudentsPage({
     ],
   );
 
+
+  const counts =
+    useMemo(
+      () => ({
+        registered:
+          students.filter(
+            (
+              student,
+            ) =>
+              student.kind ===
+              "registered",
+          ).length,
+
+        trial:
+          students.filter(
+            (
+              student,
+            ) =>
+              student.kind ===
+              "trial",
+          ).length,
+
+        inactive:
+          students.filter(
+            (
+              student,
+            ) =>
+              student.kind ===
+              "inactive",
+          ).length,
+      }),
+      [
+        students,
+      ],
+    );
 
 
   function openStudent(
@@ -613,7 +587,7 @@ export default function AdminStudentsPage({
           value={
             query
           }
-          placeholder="Search Q7MW / ABCD code, display name or recovery email"
+          placeholder="Search ABCD code, display name or email"
           onChange={(
             event,
           ) =>
@@ -622,10 +596,6 @@ export default function AdminStudentsPage({
             )
           }
         />
-
-        <small className="admin-students__search-help">
-          Search is server-side across all active student records, not only the visible page.
-        </small>
 
         <div className="admin-students__filters">
           {
@@ -642,10 +612,6 @@ export default function AdminStudentsPage({
                 [
                   "trial",
                   "Trial",
-                ],
-                [
-                  "issued",
-                  "Issued",
                 ],
                 [
                   "inactive",
@@ -670,32 +636,11 @@ export default function AdminStudentsPage({
                       ? "active"
                       : ""
                   }
-                  onClick={() => {
+                  onClick={() =>
                     setFilter(
                       value,
-                    );
-
-                    const parameters =
-                      new URLSearchParams();
-
-                    if (
-                      value !==
-                        "all"
-                    ) {
-                      parameters.set(
-                        "filter",
-                        value,
-                      );
-                    }
-
-                    window.history.replaceState(
-                      {},
-                      "",
-                      parameters.size
-                        ? `/admin/students?${parameters.toString()}`
-                        : "/admin/students",
-                    );
-                  }}
+                    )
+                  }
                 >
                   {label}
                 </button>
@@ -707,19 +652,15 @@ export default function AdminStudentsPage({
 
       <section className="admin-students__summary">
         <span>
-          Registered {summary.registered}
+          Registered {counts.registered}
         </span>
 
         <span>
-          Trial {summary.trial}
+          Trial {counts.trial}
         </span>
 
         <span>
-          Issued {summary.issued}
-        </span>
-
-        <span>
-          Inactive {summary.inactive}
+          Inactive {counts.inactive}
         </span>
       </section>
 
@@ -884,6 +825,13 @@ export default function AdminStudentsPage({
               </label>
 
               <div className="admin-students__facts">
+                <span>
+                  Access Code
+                  <strong>
+                    {selected.accessCode}
+                  </strong>
+                </span>
+
                 <span>
                   Status
                   <strong>

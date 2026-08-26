@@ -963,12 +963,31 @@ function A5SafetyCards({
       },
     ];
 
+  const cardOrder:
+    Record<
+      A5SafetyCardKind,
+      number
+    > = {
+      LOST_FOUND: 0,
+      CERTIFICATE: 1,
+      EMERGENCY: 2,
+      HELP: 3,
+    };
+
   const cards =
-    record
-      ?.safetyCards
-      ?.length === 4
-      ? record.safetyCards
-      : fallbackCards;
+    (
+      record
+        ?.safetyCards
+        ?.length === 4
+        ? record.safetyCards
+        : fallbackCards
+    )
+      .slice()
+      .sort(
+        (first, second) =>
+          cardOrder[first.type] -
+          cardOrder[second.type],
+      );
 
   const labelFor =
     (

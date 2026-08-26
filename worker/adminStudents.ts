@@ -3,7 +3,6 @@ import {
 } from "./adminAuth";
 
 
-
 function json(
   body: unknown,
   status = 200,
@@ -65,7 +64,6 @@ function classifyStudent(
   status: string,
 ): "registered" |
    "trial" |
-   "issued" |
    "inactive" {
   if (
     status ===
@@ -79,15 +77,6 @@ function classifyStudent(
       "GUEST_ACTIVE"
   ) {
     return "trial";
-  }
-
-  if (
-    status ===
-      "GENERATED" ||
-    status ===
-      "PRINTED"
-  ) {
-    return "issued";
   }
 
   return "inactive";
@@ -130,6 +119,7 @@ async function loadOne(
         `
         SELECT
           c.slug AS code,
+          c.access_code AS accessCode,
           c.gyan_name AS displayName,
           COALESCE(
             c.email,
@@ -183,6 +173,7 @@ async function loadOne(
       )
       .first<{
         code: string;
+        accessCode: string;
         displayName: string;
         email: string;
         status: string;
@@ -262,94 +253,13 @@ export async function handleAdminStudentsRoute(
       )
         .toLowerCase();
 
-    const validFilter =
-      filter === "registered" ||
-      filter === "trial" ||
-      filter === "issued" ||
-      filter === "inactive"
-        ? filter
-        : "all";
-
-    const likeQuery =
-      query
-        ? `%${query}%`
-        : "%";
-
-    const filterStatus =
-      validFilter === "registered"
-        ? "CLAIMED"
-        : validFilter === "trial"
-          ? "GUEST_ACTIVE"
-          : validFilter === "issued"
-            ? "ISSUED"
-            : validFilter === "inactive"
-              ? "EXPIRED"
-              : "";
-
-    const summaryRows =
-      await env.gyan_registry
-        .prepare(
-          `
-          SELECT
-            SUM(
-              CASE
-                WHEN status = 'CLAIMED'
-                  THEN 1
-                ELSE 0
-              END
-            ) AS registered,
-
-            SUM(
-              CASE
-                WHEN status = 'GUEST_ACTIVE'
-                  THEN 1
-                ELSE 0
-              END
-            ) AS trial,
-
-            SUM(
-              CASE
-                WHEN status IN (
-                  'GENERATED',
-                  'PRINTED'
-                )
-                  THEN 1
-                ELSE 0
-              END
-            ) AS issued,
-
-            SUM(
-              CASE
-                WHEN status = 'EXPIRED'
-                  THEN 1
-                ELSE 0
-              END
-            ) AS inactive
-
-          FROM calendar_access_codes
-
-          WHERE status IN (
-            'GENERATED',
-            'PRINTED',
-            'GUEST_ACTIVE',
-            'CLAIMED',
-            'EXPIRED'
-          )
-          `,
-        )
-        .first<{
-          registered: number | null;
-          trial: number | null;
-          issued: number | null;
-          inactive: number | null;
-        }>();
-
     const rows =
       await env.gyan_registry
         .prepare(
           `
           SELECT
             c.slug AS code,
+            c.access_code AS accessCode,
             c.gyan_name AS displayName,
             COALESCE(
               c.email,
@@ -363,21 +273,31 @@ export async function handleAdminStudentsRoute(
 
             COALESCE(
               (
-                SELECT COUNT(*)
+                SELECT
+                  COUNT(*)
                 FROM education_attempts a
                 INNER JOIN education_students s
-                  ON s.id = a.student_id
-                WHERE s.student_code = c.slug
+                  ON s.id =
+                     a.student_id
+                WHERE
+                  s.student_code =
+                    c.slug
               ),
               0
             ) AS attemptCount,
 
             (
-              SELECT MAX(a.created_at)
+              SELECT
+                MAX(
+                  a.created_at
+                )
               FROM education_attempts a
               INNER JOIN education_students s
-                ON s.id = a.student_id
-              WHERE s.student_code = c.slug
+                ON s.id =
+                   a.student_id
+              WHERE
+                s.student_code =
+                  c.slug
             ) AS lastAttemptAt
 
           FROM calendar_access_codes c
@@ -391,24 +311,6 @@ export async function handleAdminStudentsRoute(
               'EXPIRED'
             )
 
-            AND (
-              ? = '' OR
-              (
-                ? = 'ISSUED' AND
-                c.status IN (
-                  'GENERATED',
-                  'PRINTED'
-                )
-              ) OR
-              c.status = ?
-            )
-
-            AND (
-              LOWER(c.slug) LIKE ? OR
-              LOWER(c.gyan_name) LIKE ? OR
-              LOWER(COALESCE(c.email, '')) LIKE ?
-            )
-
           ORDER BY
             COALESCE(
               lastAttemptAt,
@@ -420,16 +322,9 @@ export async function handleAdminStudentsRoute(
           LIMIT 300
           `,
         )
-        .bind(
-          filterStatus,
-          filterStatus,
-          filterStatus,
-          likeQuery,
-          likeQuery,
-          likeQuery,
-        )
         .all<{
           code: string;
+          accessCode: string;
           displayName: string;
           email: string;
           status: string;
@@ -442,51 +337,61 @@ export async function handleAdminStudentsRoute(
         }>();
 
     const students =
-      rows.results.map(
-        (row) => ({
-          ...row,
+      rows.results
+        .map(
+          (
+            row,
+          ) => ({
+            ...row,
 
-          attemptCount:
-            Number(
-              row.attemptCount ??
-              0,
-            ),
+            attemptCount:
+              Number(
+                row.attemptCount ??
+                0,
+              ),
 
-          kind:
-            classifyStudent(
-              row.status,
-            ),
-        }),
-      );
+            kind:
+              classifyStudent(
+                row.status,
+              ),
+          }),
+        )
+        .filter(
+          (
+            student,
+          ) => {
+            if (
+              filter &&
+              filter !==
+                "all" &&
+              student.kind !==
+                filter
+            ) {
+              return false;
+            }
+
+            if (
+              !query
+            ) {
+              return true;
+            }
+
+            return [
+              student.code,
+              student.displayName,
+              student.email,
+              student.status,
+            ]
+              .join(" ")
+              .toLowerCase()
+              .includes(
+                query,
+              );
+          },
+        );
 
     return json({
       students,
-
-      summary: {
-        registered:
-          Number(
-            summaryRows?.registered ??
-            0,
-          ),
-
-        trial:
-          Number(
-            summaryRows?.trial ??
-            0,
-          ),
-
-        issued:
-          Number(
-            summaryRows?.issued ??
-            0,
-          ),
-
-        inactive:
-          Number(
-            summaryRows?.inactive ??
-            0,
-          ),
-      },
     });
   }
 
@@ -593,7 +498,9 @@ export async function handleAdminStudentsRoute(
 
           SET
             gyan_name = ?,
-            email = ?
+            email = ?,
+            updated_at =
+              CURRENT_TIMESTAMP
 
           WHERE slug = ?
           `,

@@ -25,7 +25,7 @@ type SafetyResourceType =
   | "HELP";
 
 
-type SafetyResourceRecord = {
+export type SafetyResourceRecord = {
   type: SafetyResourceType;
   token: string;
   publicUrl: string;
@@ -2198,4 +2198,165 @@ export async function handleCalendarAccessRoute({
 
 
   return null;
+}
+
+
+export interface PuzzleEmailGyan {
+  id: number;
+  slug: string;
+  gyanName: string;
+  accessCode: string;
+  publicUrl: string;
+  safetyCards: SafetyResourceRecord[];
+}
+
+export async function ensurePuzzleEmailGyan(
+  env: CalendarAccessEnv,
+  rawEmail: string,
+): Promise<PuzzleEmailGyan> {
+  const email = rawEmail.trim().toLowerCase();
+
+  let row = await env.gyan_registry
+    .prepare(`
+      SELECT id, slug, gyan_name, access_code
+      FROM calendar_access_codes
+      WHERE LOWER(email) = ?
+        AND source = 'PUZZLE_EMAIL'
+      ORDER BY id ASC
+      LIMIT 1
+    `)
+    .bind(email)
+    .first<{
+      id: number;
+      slug: string;
+      gyan_name: string;
+      access_code: string;
+    }>();
+
+  if (!row) {
+    const created = await createOne(
+      env,
+      12,
+      "EDUCATION",
+    );
+
+    await env.gyan_registry
+      .prepare(`
+        UPDATE calendar_access_codes
+        SET
+          email = ?,
+          source = 'PUZZLE_EMAIL',
+          status = 'CLAIMED',
+          claimed_at = COALESCE(
+            claimed_at,
+            CURRENT_TIMESTAMP
+          ),
+          expires_at = COALESCE(
+            expires_at,
+            datetime(
+              CURRENT_TIMESTAMP,
+              '+12 months'
+            )
+          )
+        WHERE id = ?
+      `)
+      .bind(
+        email,
+        created.id,
+      )
+      .run();
+
+    row = {
+      id: created.id,
+      slug: created.slug,
+      gyan_name: created.gyanName,
+      access_code: created.accessCode,
+    };
+  }
+
+  let safetyCards =
+    await loadSafetyResources(
+      env,
+      row.id,
+    );
+
+  const existing = new Set(
+    safetyCards.map(
+      (card) => card.type,
+    ),
+  );
+
+  for (
+    const resourceType
+    of SAFETY_RESOURCE_TYPES
+  ) {
+    if (
+      existing.has(
+        resourceType,
+      )
+    ) {
+      continue;
+    }
+
+    for (
+      let attempt = 0;
+      attempt < 30;
+      attempt += 1
+    ) {
+      const token =
+        createSafetyPublicToken();
+
+      try {
+        await env.gyan_registry
+          .prepare(`
+            INSERT INTO gyan_safety_resources (
+              calendar_access_id,
+              resource_type,
+              public_token,
+              status
+            )
+            VALUES (?, ?, ?, 'ACTIVE')
+          `)
+          .bind(
+            row.id,
+            resourceType,
+            token,
+          )
+          .run();
+
+        break;
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : String(error);
+
+        if (
+          message.includes(
+            "UNIQUE",
+          )
+        ) {
+          continue;
+        }
+
+        throw error;
+      }
+    }
+  }
+
+  safetyCards =
+    await loadSafetyResources(
+      env,
+      row.id,
+    );
+
+  return {
+    id: row.id,
+    slug: row.slug,
+    gyanName: row.gyan_name,
+    accessCode: row.access_code,
+    publicUrl:
+      `https://gyan.cc/${row.slug.toLowerCase()}`,
+    safetyCards,
+  };
 }

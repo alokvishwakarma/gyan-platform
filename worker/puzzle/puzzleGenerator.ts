@@ -1,3 +1,7 @@
+import {
+  checkPuzzleHardness,
+} from "./puzzleHardnessChecker";
+
 export type PuzzleStage =
   | "5x5"
   | "7x7";
@@ -31,7 +35,9 @@ export type TileColor =
   | "green"
   | "yellow"
   | "purple"
-  | "orange";
+  | "orange"
+  | "cyan"
+  | "gray";
 
 export interface PuzzleTile {
   id: number;
@@ -90,7 +96,7 @@ interface SolvedBoardResult {
   winningTileIds: number[];
 }
 
-const COLORS:
+const FIVE_BY_FIVE_COLORS:
   TileColor[] = [
   "red",
   "blue",
@@ -99,6 +105,27 @@ const COLORS:
   "purple",
   "orange",
 ];
+
+const SEVEN_BY_SEVEN_COLORS:
+  TileColor[] = [
+  "red",
+  "yellow",
+  "green",
+  "cyan",
+  "blue",
+  "purple",
+  "gray",
+];
+
+
+function colorsForStage(
+  stage: PuzzleStage,
+): TileColor[] {
+  return stage ===
+    "7x7"
+    ? SEVEN_BY_SEVEN_COLORS
+    : FIVE_BY_FIVE_COLORS;
+}
 
 
 /*
@@ -858,12 +885,18 @@ function createSolvedBoard(
   size: number,
   random: () => number,
   mode: PuzzleModeInfo,
+  stage: PuzzleStage,
 ): SolvedBoardResult {
+  const colors =
+    colorsForStage(
+      stage,
+    );
+
   const winningColor =
-    COLORS[
+    colors[
       randomInt(
         random,
-        COLORS.length,
+        colors.length,
       )
     ];
 
@@ -876,7 +909,7 @@ function createSolvedBoard(
 
   const palette =
     shuffle(
-      COLORS,
+      colors,
       random,
     );
 
@@ -901,7 +934,7 @@ function createSolvedBoard(
           column * 2 +
           randomInt(
             random,
-            COLORS.length,
+            colors.length,
           )
         ) %
         palette.length;
@@ -1794,7 +1827,7 @@ function hasTileDisplacedByAtLeastTwo(
 }
 
 
-function difficultyAcceptable(
+function visualStartAcceptable(
   puzzle:
     GeneratedPuzzle,
 ): boolean {
@@ -1858,6 +1891,7 @@ const random =
         size,
         random,
         mode,
+        stage,
       );
 
     const winningPositions =
@@ -1986,7 +2020,7 @@ const random =
     };
 
     if (
-      !difficultyAcceptable(
+      !visualStartAcceptable(
         draft,
       )
     ) {
@@ -1997,6 +2031,30 @@ const random =
       !verifyPuzzle(
         draft,
       )
+    ) {
+      continue;
+    }
+
+    /*
+     * v1 hardness certification:
+     *
+     * MEDIUM must not have a simple line in
+     * 0–1 legal swaps.
+     *
+     * HARD / VERY HARD / RARE must not have
+     * a simple line in 0–2 legal swaps.
+     *
+     * Mystery tiles are checked using their true
+     * generator-known colors, so they do not create
+     * an exponential hidden-color search.
+     */
+    const hardness =
+      checkPuzzleHardness(
+        draft,
+      );
+
+    if (
+      !hardness.accepted
     ) {
       continue;
     }

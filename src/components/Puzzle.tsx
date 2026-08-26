@@ -15,7 +15,9 @@ type TileColor =
   | "green"
   | "yellow"
   | "purple"
-  | "orange";
+  | "orange"
+  | "cyan"
+  | "gray";
 
 type PuzzleStage =
   | "5x5"
@@ -405,11 +407,12 @@ interface HistoricalPuzzleSolution {
 }
 
 async function fetchRecentPuzzles(
+  stage: PuzzleStage,
   limit = 10,
 ): Promise<RecentPuzzleSummary[]> {
   const response =
     await fetch(
-      `/api/puzzle/recent?stage=5x5&limit=${limit}`,
+      `/api/puzzle/recent?stage=${stage}&limit=${limit}`,
       {
         cache:
           "no-store",
@@ -2601,6 +2604,7 @@ export default function Puzzle({
    */
 
   async function loadRecentPuzzleHistory(
+    historyStage: PuzzleStage,
     currentPuzzleNumber?: number,
   ) {
     setHistoryLoading(
@@ -2610,6 +2614,7 @@ export default function Puzzle({
     try {
       const recent =
         await fetchRecentPuzzles(
+          historyStage,
           10,
         );
 
@@ -2676,6 +2681,7 @@ export default function Puzzle({
         );
 
         void loadRecentPuzzleHistory(
+          "5x5",
           loaded.puzzleNumber,
         );
 
@@ -3082,6 +3088,7 @@ export default function Puzzle({
 
   async function loadHistoricalSolution(
     puzzleNumber: number,
+    practiceStage: PuzzleStage,
   ) {
     setHistoricalSolution(
       null,
@@ -3094,7 +3101,7 @@ export default function Puzzle({
     try {
       const response =
         await fetch(
-          `/api/puzzle/solution/${puzzleNumber}`,
+          `/api/puzzle/solution/${puzzleNumber}?stage=${practiceStage}`,
           {
             cache:
               "no-store",
@@ -3202,6 +3209,9 @@ export default function Puzzle({
         index
       ];
 
+    const practiceStage =
+      summary.stage;
+
     setHistoryLoading(
       true,
     );
@@ -3209,7 +3219,7 @@ export default function Puzzle({
     try {
       const response =
         await fetch(
-          `/api/puzzle/practice/${summary.puzzleNumber}`,
+          `/api/puzzle/practice/${summary.puzzleNumber}?stage=${practiceStage}`,
           {
             cache:
               "no-store",
@@ -3240,7 +3250,7 @@ export default function Puzzle({
       );
 
       setStage(
-        "5x5",
+        loaded.stage,
       );
 
       setInitialBoard(
@@ -3257,8 +3267,14 @@ export default function Puzzle({
       if (
         returnState &&
         returnState.puzzleNumber ===
-          loaded.puzzleNumber
+          loaded.puzzleNumber &&
+        returnState.stage ===
+          loaded.stage
       ) {
+        setStage(
+          returnState.stage,
+        );
+
         setBoard(
           cloneBoard(
             returnState.board,
@@ -3365,6 +3381,7 @@ export default function Puzzle({
       } else {
         void loadHistoricalSolution(
           loaded.puzzleNumber,
+          loaded.stage,
         );
       }
 
@@ -3935,6 +3952,11 @@ export default function Puzzle({
 
       setStage(
         "7x7",
+      );
+
+      void loadRecentPuzzleHistory(
+        "7x7",
+        loaded.puzzleNumber,
       );
 
       setBoard(
@@ -4550,6 +4572,21 @@ export default function Puzzle({
       )
     ) {
       if (
+        recentPuzzleIndex >
+          0
+      ) {
+        setMessage(
+          `✓ Practice puzzle #${puzzle.puzzleNumber} solved`,
+        );
+
+        setSelected(
+          null,
+        );
+
+        return;
+      }
+
+      if (
         solveStartedAt !==
           null
       ) {
@@ -5128,9 +5165,27 @@ export default function Puzzle({
     );
 
     try {
-      const claimResponse =
+      /*
+       * IMPORTANT:
+       * Save the 5×5 result synchronously before trying
+       * to claim it. The background save effect is useful
+       * for leaderboard refresh, but the claim must not
+       * depend on that asynchronous effect having already
+       * completed.
+       */
+      const qualifierGq =
+        calculateStageGq(
+          puzzle.maxMoves,
+          moves,
+          skillStats,
+          true,
+          activeSolveMs,
+          "5x5",
+        );
+
+      const ensureSaveResponse =
         await fetch(
-          "/api/puzzle/result/claim",
+          "/api/puzzle/result",
           {
             method:
               "POST",
@@ -5142,29 +5197,152 @@ export default function Puzzle({
 
             body:
               JSON.stringify({
-                puzzleNumber:
-                  puzzle.puzzleNumber,
-
                 resultId:
                   finalResultId,
 
-                name,
+                anonymousName:
+                  guestNameForResultId(
+                    finalResultId,
+                  ),
 
-                email,
+                puzzleNumber:
+                  puzzle.puzzleNumber,
+
+                stage:
+                  "5x5",
+
+                gqScore:
+                  qualifierGq.score,
+
+                movesUsed:
+                  moves,
+
+                icons:
+                  qualifierGq.icons,
+
+                skillStats,
               }),
           },
         );
 
-      const claimData =
-        (await claimResponse.json()) as
-          ResultClaimResponse;
+      const ensureSaveData =
+        (await ensureSaveResponse.json()) as
+          SaveResultResponse;
 
       if (
-        !claimResponse.ok ||
-        !claimData.claimed
+        !ensureSaveResponse.ok ||
+        !ensureSaveData.saved
       ) {
         throw new Error(
-          claimData.error ??
+          ensureSaveData.error ??
+            "Unable to save puzzle result before joining leaderboard.",
+        );
+      }
+
+      /*
+       * The completed 5×5 result is also saved by an async
+       * effect. A fast click on "Join leaderboard" can
+       * reach this claim route a few milliseconds before
+       * the puzzle_results INSERT finishes.
+       *
+       * Retry only the specific 404/not-found race.
+       * Other validation/server errors still fail
+       * immediately.
+       */
+      let claimData:
+        ResultClaimResponse | null =
+        null;
+
+      let claimSucceeded =
+        false;
+
+      for (
+        let attempt = 0;
+        attempt < 5;
+        attempt += 1
+      ) {
+        const claimResponse =
+          await fetch(
+            "/api/puzzle/result/claim",
+            {
+              method:
+                "POST",
+
+              headers: {
+                "content-type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify({
+                  puzzleNumber:
+                    puzzle.puzzleNumber,
+
+                  resultId:
+                    finalResultId,
+
+                  name,
+
+                  email,
+                }),
+            },
+          );
+
+        claimData =
+          (await claimResponse.json()) as
+            ResultClaimResponse;
+
+        if (
+          claimResponse.ok &&
+          claimData.claimed
+        ) {
+          claimSucceeded =
+            true;
+
+          break;
+        }
+
+        const isResultSaveRace =
+          claimResponse.status ===
+            404 &&
+          (
+            claimData.error ??
+            ""
+          ).includes(
+            "Puzzle result was not found",
+          );
+
+        if (
+          !isResultSaveRace ||
+          attempt === 4
+        ) {
+          throw new Error(
+            claimData.error ??
+              "Unable to claim score.",
+          );
+        }
+
+        /*
+         * 150, 300, 450, 600 ms:
+         * enough time for the result-save request/D1 write
+         * to finish without making normal claims feel slow.
+         */
+        await new Promise<void>(
+          (resolve) => {
+            window.setTimeout(
+              resolve,
+              150 *
+                (attempt + 1),
+            );
+          },
+        );
+      }
+
+      if (
+        !claimSucceeded
+      ) {
+        throw new Error(
+          claimData?.error ??
             "Unable to claim score.",
         );
       }
@@ -5658,18 +5836,6 @@ export default function Puzzle({
       >
         ×
       </button>
-
-      {stage === "5x5" && (
-        <button
-          type="button"
-          className="daily-puzzle__live-button"
-          onClick={() =>
-            setLivePuzzleOpen(true)
-          }
-        >
-          ● Play Live
-        </button>
-      )}
 
       <header
         className="daily-puzzle__header"
@@ -6692,12 +6858,24 @@ export default function Puzzle({
               ? {
                   margin:
                     "4px auto 0",
+                  padding:
+                    "4px 9px",
+                  border:
+                    "1px solid #b7833f",
+                  borderRadius:
+                    "999px",
+                  background:
+                    "#f6ead6",
+                  color:
+                    "#7a4b18",
                   fontSize:
                     "0.72rem",
                   fontWeight:
-                    800,
+                    850,
                   textAlign:
                     "center",
+                  width:
+                    "fit-content",
                 }
               : undefined
           }
