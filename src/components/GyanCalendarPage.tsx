@@ -1319,8 +1319,26 @@ function EducationAccountBlock({
         </strong>
 
         <div className="gyan-account-screenlet__qr">
-          <QRCodeSVG
-            value={
+          <a
+
+            href={
+
+              qrUrl
+
+            }
+
+            className="gyan-print-card-v2__qr-link"
+
+            aria-label="Open this GYAN account"
+
+            title={
+
+              qrUrl
+
+            }
+
+          >
+<QRCodeSVG            value={
               qrUrl
             }
             size={
@@ -1328,8 +1346,9 @@ function EducationAccountBlock({
             }
             level="M"
             includeMargin
-            aria-label="Scan to open this GYAN Education Account"
-          />
+            aria-label="Scan to open this GYAN Education Account"          />
+
+          </a>
         </div>
 
         <div className="gyan-account-screenlet__url">
@@ -1389,8 +1408,26 @@ function EducationAccountBlock({
     return (
       <section className="gyan-print-card-v2__account gyan-print-card-v2__account--collectible">
         <div className="gyan-collectible-account__qr">
-          <QRCodeSVG
-            value={
+          <a
+
+            href={
+
+              qrUrl
+
+            }
+
+            className="gyan-print-card-v2__qr-link"
+
+            aria-label="Open this GYAN account"
+
+            title={
+
+              qrUrl
+
+            }
+
+          >
+<QRCodeSVG            value={
               qrUrl
             }
             size={
@@ -1398,8 +1435,9 @@ function EducationAccountBlock({
             }
             level="M"
             includeMargin
-            aria-label="Scan to open this GYAN Education Account"
-          />
+            aria-label="Scan to open this GYAN Education Account"          />
+
+          </a>
         </div>
 
         <div className="gyan-collectible-account__copy">
@@ -1482,8 +1520,26 @@ function EducationAccountBlock({
         </strong>
 
         <div className="gyan-account-screenlet__qr">
-          <QRCodeSVG
-            value={
+          <a
+
+            href={
+
+              qrUrl
+
+            }
+
+            className="gyan-print-card-v2__qr-link"
+
+            aria-label="Open this GYAN account"
+
+            title={
+
+              qrUrl
+
+            }
+
+          >
+<QRCodeSVG            value={
               qrUrl
             }
             size={
@@ -1491,8 +1547,9 @@ function EducationAccountBlock({
             }
             level="M"
             includeMargin
-            aria-label="Scan to open this GYAN Education Account"
-          />
+            aria-label="Scan to open this GYAN Education Account"          />
+
+          </a>
         </div>
 
         <div className="gyan-account-screenlet__url">
@@ -1555,8 +1612,26 @@ function EducationAccountBlock({
         </strong>
 
         <div className="gyan-account-screenlet__qr">
-          <QRCodeSVG
-            value={
+          <a
+
+            href={
+
+              qrUrl
+
+            }
+
+            className="gyan-print-card-v2__qr-link"
+
+            aria-label="Open this GYAN account"
+
+            title={
+
+              qrUrl
+
+            }
+
+          >
+<QRCodeSVG            value={
               qrUrl
             }
             size={
@@ -1564,8 +1639,9 @@ function EducationAccountBlock({
             }
             level="M"
             includeMargin
-            aria-label="Scan to open this GYAN Education Account"
-          />
+            aria-label="Scan to open this GYAN Education Account"          />
+
+          </a>
         </div>
 
         <div className="gyan-account-screenlet__url">
@@ -1634,8 +1710,26 @@ function EducationAccountBlock({
 
       <div className="gyan-print-card-v2__account-main">
         <div className="gyan-print-card-v2__qr">
-          <QRCodeSVG
-            value={
+          <a
+
+            href={
+
+              qrUrl
+
+            }
+
+            className="gyan-print-card-v2__qr-link"
+
+            aria-label="Open this GYAN account"
+
+            title={
+
+              qrUrl
+
+            }
+
+          >
+<QRCodeSVG            value={
               qrUrl
             }
             size={
@@ -1643,8 +1737,9 @@ function EducationAccountBlock({
             }
             level="H"
             includeMargin
-            aria-label="Scan to open this GYAN Education Account"
-          />
+            aria-label="Scan to open this GYAN Education Account"          />
+
+          </a>
         </div>
 
         <div className="gyan-print-card-v2__account-copy">

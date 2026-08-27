@@ -7743,3 +7743,28 @@ span:nth-child(7n + 1) {
     display: inline;
   }
 }
+
+
+/* Calendar preview QR — clickable/tappable without changing print appearance */
+.gyan-print-card-v2__qr-link,
+.gyan-account-screenlet__qr > a {
+  display: inline-grid;
+  place-items: center;
+  line-height: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  text-decoration: none;
+}
+
+.gyan-print-card-v2__qr-link svg,
+.gyan-account-screenlet__qr > a svg {
+  display: block;
+}
+
+@media print {
+  .gyan-print-card-v2__qr-link,
+  .gyan-account-screenlet__qr > a {
+    cursor: default;
+  }
+}
+

@@ -3,6 +3,10 @@ import {
 } from "./puzzleCompletionEmail";
 
 import {
+  currentGyanAccount,
+} from "../gyanAccountContext";
+
+import {
   generateDailyPuzzlePair,
   puzzleModeFor,
 
@@ -519,6 +523,148 @@ function buildAuthoritativeBoard(
   );
 }
 
+
+function randomVerificationToken():
+  string {
+  const bytes =
+    crypto.getRandomValues(
+      new Uint8Array(
+        24,
+      ),
+    );
+
+  return Array.from(
+    bytes,
+    (
+      value,
+    ) =>
+      value
+        .toString(16)
+        .padStart(
+          2,
+          "0",
+        ),
+  ).join("");
+}
+
+
+async function verificationSha256(
+  value: string,
+): Promise<string> {
+  const digest =
+    await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder()
+        .encode(
+          value,
+        ),
+    );
+
+  return Array.from(
+    new Uint8Array(
+      digest,
+    ),
+  )
+    .map(
+      (
+        byte,
+      ) =>
+        byte
+          .toString(16)
+          .padStart(
+            2,
+            "0",
+          ),
+    )
+    .join("");
+}
+
+
+async function sendGyanEmailVerification({
+  env,
+  email,
+  displayName,
+  verifyUrl,
+}: {
+  env: Env;
+  email: string;
+  displayName: string;
+  verifyUrl: string;
+}): Promise<void> {
+  const apiKey =
+    (
+      env as Env & {
+        RESEND_API_KEY?:
+          string;
+      }
+    ).RESEND_API_KEY;
+
+  if (!apiKey) {
+    throw new Error(
+      "Email verification is not configured.",
+    );
+  }
+
+  const response =
+    await fetch(
+      "https://api.resend.com/emails",
+      {
+        method:
+          "POST",
+
+        headers: {
+          Authorization:
+            `Bearer ${apiKey}`,
+
+          "Content-Type":
+            "application/json",
+        },
+
+        body:
+          JSON.stringify({
+            from:
+              "GYAN <admin@gyan.cc>",
+
+            to: [
+              email,
+            ],
+
+            subject:
+              "Verify your GYAN email",
+
+            text: [
+              `Hi ${displayName},`,
+              "",
+              "Please verify this email for your GYAN account:",
+              verifyUrl,
+              "",
+              "If you did not request this, you can ignore this email.",
+            ].join(
+              "\n",
+            ),
+
+            html:
+              `<p>Hi ${displayName},</p>` +
+              `<p>Please verify this email for your GYAN account.</p>` +
+              `<p><a href="${verifyUrl}">Verify email</a></p>` +
+              `<p>If you did not request this, you can ignore this email.</p>`,
+          }),
+      },
+    );
+
+  if (
+    !response.ok
+  ) {
+    const details =
+      await response.text();
+
+    throw new Error(
+      `Verification email failed (${response.status}): ${details}`,
+    );
+  }
+}
+
+
 async function sendMedalEmail(
   env: Env,
   email: string,
@@ -552,161 +698,145 @@ async function sendMedalEmail(
 }
 
 
-function guestStartNumber(
-  resultId: string,
-): number {
-  let hash = 0;
-
-  for (
-    let index = 0;
-    index <
-      resultId.length;
-    index += 1
-  ) {
-    hash =
-      (
-        hash * 31 +
-        resultId.charCodeAt(
-          index,
-        )
-      ) >>> 0;
-  }
-
-  return (
-    1000 +
-    (
-      hash %
-      9000
-    )
-  );
-}
-
-
-async function allocateGuestName(
-  env: Env,
-  puzzleNumber: number,
-  resultId: string,
-): Promise<string> {
-  const existing =
-    await env.gyan_registry
-      .prepare(
-        `
-        SELECT
-          guest_name
-
-        FROM puzzle_guest_names
-
-        WHERE
-          puzzle_number = ?
-          AND result_id = ?
-
-        LIMIT 1
-        `,
-      )
-      .bind(
-        puzzleNumber,
-        resultId,
-      )
-      .first<{
-        guest_name: string;
-      }>();
-
-  if (existing?.guest_name) {
-    return existing.guest_name;
-  }
-
-  const start =
-    guestStartNumber(
-      resultId,
-    );
-
-  for (
-    let offset = 0;
-    offset < 9000;
-    offset += 1
-  ) {
-    const number =
-      1000 +
-      (
-        (
-          start -
-          1000 +
-          offset
-        ) %
-        9000
-      );
-
-    const guestName =
-      `Guest ${String(
-        number,
-      ).padStart(
-        4,
-        "0",
-      )}`;
-
-    await env.gyan_registry
-      .prepare(
-        `
-        INSERT OR IGNORE INTO
-          puzzle_guest_names (
-            puzzle_number,
-            result_id,
-            guest_name
-          )
-        VALUES (
-          ?,
-          ?,
-          ?
-        )
-        `,
-      )
-      .bind(
-        puzzleNumber,
-        resultId,
-        guestName,
-      )
-      .run();
-
-    const allocated =
-      await env.gyan_registry
-        .prepare(
-          `
-          SELECT
-            guest_name
-
-          FROM puzzle_guest_names
-
-          WHERE
-            puzzle_number = ?
-            AND result_id = ?
-
-          LIMIT 1
-          `,
-        )
-        .bind(
-          puzzleNumber,
-          resultId,
-        )
-        .first<{
-          guest_name: string;
-        }>();
-
-    if (allocated?.guest_name) {
-      return allocated.guest_name;
-    }
-  }
-
-  throw new Error(
-    "No Guest numbers are available for this puzzle.",
-  );
-}
-
-
 export async function handlePuzzleRoute(
   request: Request,
   env: Env,
   url: URL,
 ): Promise<Response | null> {
+
+  /*
+   * ----------------------------------------
+   * Verify pending GYAN email.
+   *
+   * GET /api/gyan-account/email/verify?token=...
+   * ----------------------------------------
+   */
+  if (
+    request.method ===
+      "GET" &&
+    url.pathname ===
+      "/api/gyan-account/email/verify"
+  ) {
+    const token =
+      String(
+        url.searchParams.get(
+          "token",
+        ) ?? "",
+      ).trim();
+
+    if (!token) {
+      return Response.redirect(
+        new URL(
+          "/account?email=invalid",
+          url.origin,
+        ).toString(),
+        302,
+      );
+    }
+
+    const tokenHash =
+      await verificationSha256(
+        token,
+      );
+
+    const pending =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT
+            account_id,
+            email
+          FROM gyan_account_email_verifications
+          WHERE
+            token_hash = ?
+            AND verified_at IS NULL
+            AND expires_at >
+              CURRENT_TIMESTAMP
+          LIMIT 1
+          `,
+        )
+        .bind(
+          tokenHash,
+        )
+        .first<{
+          account_id: number;
+          email: string;
+        }>();
+
+    if (!pending) {
+      return Response.redirect(
+        new URL(
+          "/account?email=invalid",
+          url.origin,
+        ).toString(),
+        302,
+      );
+    }
+
+    await env.gyan_registry.batch([
+      env.gyan_registry
+        .prepare(
+          `
+          UPDATE gyan_accounts
+          SET
+            email = ?,
+            updated_at =
+              CURRENT_TIMESTAMP
+          WHERE id = ?
+          `,
+        )
+        .bind(
+          pending.email,
+          pending.account_id,
+        ),
+
+      env.gyan_registry
+        .prepare(
+          `
+          UPDATE gyan_account_email_verifications
+          SET
+            verified_at =
+              CURRENT_TIMESTAMP,
+            updated_at =
+              CURRENT_TIMESTAMP
+          WHERE
+            account_id = ?
+            AND token_hash = ?
+          `,
+        )
+        .bind(
+          pending.account_id,
+          tokenHash,
+        ),
+
+      env.gyan_registry
+        .prepare(
+          `
+          UPDATE puzzle_results
+          SET
+            email = ?,
+            updated_at =
+              CURRENT_TIMESTAMP
+          WHERE
+            gyan_account_id = ?
+          `,
+        )
+        .bind(
+          pending.email,
+          pending.account_id,
+        ),
+    ]);
+
+    return Response.redirect(
+      new URL(
+        "/account?email=verified",
+        url.origin,
+      ).toString(),
+      302,
+    );
+  }
+
+
   /*
    * ----------------------------------------
    * GET recent published puzzles
@@ -1605,8 +1735,15 @@ return jsonResponse({
           claimed: number;
         }>();
 
+    const gyanAccount =
+      await currentGyanAccount(
+        request,
+        env.gyan_registry,
+      );
+
     const allocatedGuestName =
-      knownIdentity
+      knownIdentity ||
+      gyanAccount
         ? null
         : await allocateGuestName(
             env,
@@ -1616,17 +1753,29 @@ return jsonResponse({
 
     const storedName =
       knownIdentity?.name ??
+      gyanAccount?.displayName ??
       allocatedGuestName ??
       anonymousName;
 
     const storedEmail =
       knownIdentity?.email ??
+      gyanAccount?.email ??
       null;
 
+    /*
+     * A browser-owned unified GYAN is already a stable
+     * identity, so solving automatically joins the
+     * leaderboard with the current display name.
+     */
     const storedClaimed =
-      knownIdentity
+      knownIdentity ||
+      gyanAccount
         ? 1
         : 0;
+
+    const gyanAccountId =
+      gyanAccount?.id ??
+      null;
 
     try {
       await env.gyan_registry
@@ -1643,9 +1792,11 @@ return jsonResponse({
             skill_stats_json,
             name,
             email,
-            claimed
+            claimed,
+            gyan_account_id
           )
           VALUES (
+            ?,
             ?,
             ?,
             ?,
@@ -1675,22 +1826,27 @@ return jsonResponse({
               excluded.skill_stats_json,
             name =
               CASE
-                WHEN claimed = 1
-                  THEN name
+                WHEN puzzle_results.claimed = 1
+                  THEN puzzle_results.name
                 ELSE excluded.name
               END,
             email =
               CASE
-                WHEN claimed = 1
-                  THEN email
+                WHEN puzzle_results.claimed = 1
+                  THEN puzzle_results.email
                 ELSE excluded.email
               END,
             claimed =
               CASE
-                WHEN claimed = 1
-                  THEN claimed
+                WHEN puzzle_results.claimed = 1
+                  THEN puzzle_results.claimed
                 ELSE excluded.claimed
               END,
+            gyan_account_id =
+              COALESCE(
+                puzzle_results.gyan_account_id,
+                excluded.gyan_account_id
+              ),
             updated_at =
               CURRENT_TIMESTAMP
           `,
@@ -1716,9 +1872,17 @@ return jsonResponse({
           storedName,
           storedEmail,
           storedClaimed,
+          gyanAccountId,
         )
         .run();
-    } catch {
+    } catch (
+      error
+    ) {
+      console.error(
+        "Unable to save puzzle result:",
+        error,
+      );
+
       return jsonResponse(
         {
           error:
@@ -1739,12 +1903,13 @@ return jsonResponse({
 
   /*
    * ----------------------------------------
-   * Claim a saved puzzle result identity.
+   * Update leaderboard / GYAN identity.
    *
    * POST /api/puzzle/result/claim
    *
-   * Used by the 5×5 qualifier and intentionally
-   * separate from medal/winner claiming.
+   * Name is required.
+   * Email is optional. When supplied it remains
+   * pending until the verification link is clicked.
    * ----------------------------------------
    */
   if (
@@ -1758,7 +1923,7 @@ return jsonResponse({
         puzzleNumber: number;
         resultId: string;
         name: string;
-        email: string;
+        email?: string;
       }>();
 
     const puzzleNumber =
@@ -1795,55 +1960,220 @@ return jsonResponse({
       resultId.length > 100 ||
       name.length < 2 ||
       name.length > 80 ||
-      !emailPattern.test(
-        email,
+      (
+        email.length >
+          0 &&
+        !emailPattern.test(
+          email,
+        )
       )
     ) {
       return jsonResponse(
         {
           error:
-            "Please provide a valid result, name and email.",
+            "Please provide a valid result and display name. Email is optional.",
         },
         400,
       );
     }
 
-    const result =
+    const gyanAccount =
+      await currentGyanAccount(
+        request,
+        env.gyan_registry,
+      );
+
+    if (!gyanAccount) {
+      return jsonResponse(
+        {
+          error:
+            "Your GYAN account could not be loaded.",
+        },
+        401,
+      );
+    }
+
+    const ownedResult =
       await env.gyan_registry
         .prepare(
           `
-          UPDATE puzzle_results
-
-          SET
-            name = ?,
-            email = ?,
-            claimed = 1,
-            updated_at =
-              CURRENT_TIMESTAMP
-
+          SELECT id
+          FROM puzzle_results
           WHERE
             puzzle_number = ?
             AND result_id = ?
+            AND gyan_account_id = ?
+          LIMIT 1
+          `,
+        )
+        .bind(
+          puzzleNumber,
+          resultId,
+          gyanAccount.id,
+        )
+        .first<{
+          id: number;
+        }>();
+
+    if (!ownedResult) {
+      return jsonResponse(
+        {
+          error:
+            "Puzzle result was not found for this GYAN account.",
+        },
+        404,
+      );
+    }
+
+    /*
+     * The new display name becomes the unified GYAN name
+     * and updates this account's existing puzzle rows too.
+     */
+    await env.gyan_registry.batch([
+      env.gyan_registry
+        .prepare(
+          `
+          UPDATE gyan_accounts
+          SET
+            display_name = ?,
+            updated_at =
+              CURRENT_TIMESTAMP
+          WHERE id = ?
           `,
         )
         .bind(
           name,
-          email,
-          puzzleNumber,
-          resultId,
+          gyanAccount.id,
+        ),
+
+      env.gyan_registry
+        .prepare(
+          `
+          UPDATE puzzle_results
+          SET
+            name = ?,
+            claimed = 1,
+            updated_at =
+              CURRENT_TIMESTAMP
+          WHERE
+            gyan_account_id = ?
+          `,
         )
-        .run();
+        .bind(
+          name,
+          gyanAccount.id,
+        ),
+    ]);
+
+    let emailStatus:
+      "none" |
+      "pending" |
+      "verified" =
+        gyanAccount.email
+          ? "verified"
+          : "none";
 
     if (
-      !result.meta.changes
+      email.length >
+        0
     ) {
-      return jsonResponse(
-        {
-          error:
-            "Puzzle result was not found. Please wait a moment and try again.",
-        },
-        404,
-      );
+      if (
+        gyanAccount.email &&
+        gyanAccount.email
+          .trim()
+          .toLowerCase() ===
+            email
+      ) {
+        emailStatus =
+          "verified";
+      } else {
+        const token =
+          randomVerificationToken();
+
+        const tokenHash =
+          await verificationSha256(
+            token,
+          );
+
+        await env.gyan_registry
+          .prepare(
+            `
+            INSERT INTO gyan_account_email_verifications (
+              account_id,
+              email,
+              token_hash,
+              expires_at
+            )
+            VALUES (
+              ?,
+              ?,
+              ?,
+              datetime(
+                'now',
+                '+30 minutes'
+              )
+            )
+            ON CONFLICT(account_id)
+            DO UPDATE SET
+              email =
+                excluded.email,
+              token_hash =
+                excluded.token_hash,
+              expires_at =
+                excluded.expires_at,
+              verified_at =
+                NULL,
+              updated_at =
+                CURRENT_TIMESTAMP
+            `,
+          )
+          .bind(
+            gyanAccount.id,
+            email,
+            tokenHash,
+          )
+          .run();
+
+        const verifyUrl =
+          new URL(
+            "/api/gyan-account/email/verify",
+            url.origin,
+          );
+
+        verifyUrl.searchParams.set(
+          "token",
+          token,
+        );
+
+        try {
+          await sendGyanEmailVerification({
+            env,
+            email,
+            displayName:
+              name,
+            verifyUrl:
+              verifyUrl.toString(),
+          });
+
+          emailStatus =
+            "pending";
+        } catch (
+          error
+        ) {
+          console.error(
+            "Unable to send GYAN email verification:",
+            error,
+          );
+
+          return jsonResponse(
+            {
+              error:
+                "Your name was updated, but the verification email could not be sent.",
+            },
+            500,
+          );
+        }
+      }
     }
 
     return jsonResponse({
@@ -1852,6 +2182,8 @@ return jsonResponse({
       result: {
         name,
       },
+
+      emailStatus,
     });
   }
 

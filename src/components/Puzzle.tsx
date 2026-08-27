@@ -461,22 +461,6 @@ interface RevealResult {
     number[];
 }
 
-interface WinnerClaimResponse {
-  claimed: boolean;
-  alreadyClaimed: boolean;
-
-  winner: {
-    name: string;
-  };
-
-  error?: string;
-}
-
-interface CertificateEmailResponse {
-  sent: boolean;
-  error?: string;
-}
-
 
 interface ResultClaimResponse {
   claimed: boolean;
@@ -484,6 +468,11 @@ interface ResultClaimResponse {
   result?: {
     name: string;
   };
+
+  emailStatus?:
+    | "none"
+    | "pending"
+    | "verified";
 
   error?: string;
 }
@@ -529,6 +518,13 @@ interface SaveResultResponse {
   resultId: string;
   name?: string;
   error?: string;
+}
+
+
+interface PuzzleGyanIdentityResponse {
+  identity?: {
+    displayName?: string;
+  };
 }
 
 interface SavedGameState {
@@ -1747,6 +1743,12 @@ function findCompletedWinningLine(
         )
       ];
 
+    if (
+      first.hidden
+    ) {
+      continue;
+    }
+
     let matches =
       true;
 
@@ -1770,6 +1772,7 @@ function findCompletedWinningLine(
         ];
 
       if (
+        current.hidden ||
         !sameMatchIdentity(
           first,
           current,
@@ -1807,6 +1810,12 @@ function findCompletedWinningLine(
         )
       ];
 
+    if (
+      first.hidden
+    ) {
+      continue;
+    }
+
     let matches =
       true;
 
@@ -1830,6 +1839,7 @@ function findCompletedWinningLine(
         ];
 
       if (
+        current.hidden ||
         !sameMatchIdentity(
           first,
           current,
@@ -1854,6 +1864,32 @@ function findCompletedWinningLine(
   }
 
   return null;
+}
+
+
+function isAcceptedPuzzleSolution(
+  board: Tile[],
+  size: number,
+  mode: PuzzleModeInfo,
+): boolean {
+  /*
+   * The assigned mode is the intended challenge,
+   * not the only way a player is allowed to win.
+   *
+   * A fully-visible horizontal/vertical line is
+   * always accepted as a valid simple solution.
+   */
+  return (
+    isPuzzleSolved(
+      board,
+      size,
+      mode,
+    ) ||
+    findCompletedWinningLine(
+      board,
+      size,
+    ) !== null
+  );
 }
 
 
@@ -2443,6 +2479,90 @@ export default function Puzzle({
     useState<
       string | null
     >(null);
+
+
+  useEffect(
+    () => {
+      const controller =
+        new AbortController();
+
+      void fetch(
+        "/api/gyan-identity",
+        {
+          method:
+            "POST",
+
+          credentials:
+            "include",
+
+          headers: {
+            "content-type":
+              "application/json",
+          },
+
+          body:
+            "{}",
+
+          signal:
+            controller.signal,
+        },
+      )
+        .then(
+          async (
+            response,
+          ) => {
+            if (
+              !response.ok
+            ) {
+              return null;
+            }
+
+            return await response.json() as
+              PuzzleGyanIdentityResponse;
+          },
+        )
+        .then(
+          (
+            body,
+          ) => {
+            if (
+              controller.signal.aborted
+            ) {
+              return;
+            }
+
+            const displayName =
+              body?.identity
+                ?.displayName
+                ?.trim() ??
+              "";
+
+            if (
+              displayName
+            ) {
+              setWinnerName(
+                (
+                  current,
+                ) =>
+                  current.trim()
+                    ? current
+                    : displayName,
+              );
+            }
+          },
+        )
+        .catch(
+          () => {
+            // Keep the form usable even if identity lookup fails.
+          },
+        );
+
+      return () => {
+        controller.abort();
+      };
+    },
+    [],
+  );
 
 
   /*
@@ -4473,7 +4593,7 @@ export default function Puzzle({
     if (
       stage ===
         "5x5" &&
-      isPuzzleSolved(
+      isAcceptedPuzzleSolution(
         nextBoard,
         puzzle.size,
         puzzle.mode,
@@ -4565,7 +4685,7 @@ export default function Puzzle({
     if (
       stage ===
         "7x7" &&
-      isPuzzleSolved(
+      isAcceptedPuzzleSolution(
         nextBoard,
         puzzle.size,
         puzzle.mode,
@@ -5145,12 +5265,13 @@ export default function Puzzle({
     }
 
     if (
+      email &&
       !validEmail(
         email,
       )
     ) {
       setCertificateError(
-        "Please provide a valid email address.",
+        "Please provide a valid email address, or leave it blank.",
       );
 
       return;
@@ -5165,27 +5286,9 @@ export default function Puzzle({
     );
 
     try {
-      /*
-       * IMPORTANT:
-       * Save the 5×5 result synchronously before trying
-       * to claim it. The background save effect is useful
-       * for leaderboard refresh, but the claim must not
-       * depend on that asynchronous effect having already
-       * completed.
-       */
-      const qualifierGq =
-        calculateStageGq(
-          puzzle.maxMoves,
-          moves,
-          skillStats,
-          true,
-          activeSolveMs,
-          "5x5",
-        );
-
-      const ensureSaveResponse =
+      const claimResponse =
         await fetch(
-          "/api/puzzle/result",
+          "/api/puzzle/result/claim",
           {
             method:
               "POST",
@@ -5197,152 +5300,29 @@ export default function Puzzle({
 
             body:
               JSON.stringify({
-                resultId:
-                  finalResultId,
-
-                anonymousName:
-                  guestNameForResultId(
-                    finalResultId,
-                  ),
-
                 puzzleNumber:
                   puzzle.puzzleNumber,
 
-                stage:
-                  "5x5",
+                resultId:
+                  finalResultId,
 
-                gqScore:
-                  qualifierGq.score,
+                name,
 
-                movesUsed:
-                  moves,
-
-                icons:
-                  qualifierGq.icons,
-
-                skillStats,
+                email,
               }),
           },
         );
 
-      const ensureSaveData =
-        (await ensureSaveResponse.json()) as
-          SaveResultResponse;
+      const claimData =
+        (await claimResponse.json()) as
+          ResultClaimResponse;
 
       if (
-        !ensureSaveResponse.ok ||
-        !ensureSaveData.saved
+        !claimResponse.ok ||
+        !claimData.claimed
       ) {
         throw new Error(
-          ensureSaveData.error ??
-            "Unable to save puzzle result before joining leaderboard.",
-        );
-      }
-
-      /*
-       * The completed 5×5 result is also saved by an async
-       * effect. A fast click on "Join leaderboard" can
-       * reach this claim route a few milliseconds before
-       * the puzzle_results INSERT finishes.
-       *
-       * Retry only the specific 404/not-found race.
-       * Other validation/server errors still fail
-       * immediately.
-       */
-      let claimData:
-        ResultClaimResponse | null =
-        null;
-
-      let claimSucceeded =
-        false;
-
-      for (
-        let attempt = 0;
-        attempt < 5;
-        attempt += 1
-      ) {
-        const claimResponse =
-          await fetch(
-            "/api/puzzle/result/claim",
-            {
-              method:
-                "POST",
-
-              headers: {
-                "content-type":
-                  "application/json",
-              },
-
-              body:
-                JSON.stringify({
-                  puzzleNumber:
-                    puzzle.puzzleNumber,
-
-                  resultId:
-                    finalResultId,
-
-                  name,
-
-                  email,
-                }),
-            },
-          );
-
-        claimData =
-          (await claimResponse.json()) as
-            ResultClaimResponse;
-
-        if (
-          claimResponse.ok &&
-          claimData.claimed
-        ) {
-          claimSucceeded =
-            true;
-
-          break;
-        }
-
-        const isResultSaveRace =
-          claimResponse.status ===
-            404 &&
-          (
-            claimData.error ??
-            ""
-          ).includes(
-            "Puzzle result was not found",
-          );
-
-        if (
-          !isResultSaveRace ||
-          attempt === 4
-        ) {
-          throw new Error(
-            claimData.error ??
-              "Unable to claim score.",
-          );
-        }
-
-        /*
-         * 150, 300, 450, 600 ms:
-         * enough time for the result-save request/D1 write
-         * to finish without making normal claims feel slow.
-         */
-        await new Promise<void>(
-          (resolve) => {
-            window.setTimeout(
-              resolve,
-              150 *
-                (attempt + 1),
-            );
-          },
-        );
-      }
-
-      if (
-        !claimSucceeded
-      ) {
-        throw new Error(
-          claimData?.error ??
+          claimData.error ??
             "Unable to claim score.",
         );
       }
@@ -5351,81 +5331,28 @@ export default function Puzzle({
         true,
       );
 
-      /*
-       * Keep the useful behavior from the old
-       * 5×5 Send button: after the score is
-       * claimed, email the completion certificate.
-       *
-       * Email failure does not undo the claim.
-       */
-      try {
-        const emailResponse =
-          await fetch(
-            "/api/puzzle/certificate",
-            {
-              method:
-                "POST",
-
-              headers: {
-                "content-type":
-                  "application/json",
-              },
-
-              body:
-                JSON.stringify({
-                  puzzleNumber:
-                    puzzle.puzzleNumber,
-
-                  name,
-
-                  email,
-
-                  moves:
-                    moveHistory,
-                }),
-            },
-          );
-
-        const emailData =
-          (await emailResponse.json()) as
-            CertificateEmailResponse;
-
-        if (
-          emailResponse.ok &&
-          emailData.sent
-        ) {
-          setCertificateSent(
-            true,
-          );
-
-          setMessage(
-            "✓ 5×5 score claimed and certificate emailed.",
-          );
-        } else {
-          setCertificateSent(
-            false,
-          );
-
-          setMessage(
-            "✓ 5×5 score claimed.",
-          );
-
-          setCertificateError(
-            emailData.error ??
-              "Score claimed, but the certificate email could not be sent.",
-          );
-        }
-      } catch {
+      if (
+        email &&
+        claimData.emailStatus ===
+          "pending"
+      ) {
         setCertificateSent(
           false,
         );
 
         setMessage(
-          "✓ 5×5 score claimed.",
+          "✓ Name updated. Verification email sent.",
         );
-
-        setCertificateError(
-          "Score claimed, but the certificate email could not be sent.",
+      } else if (
+        claimData.emailStatus ===
+          "verified"
+      ) {
+        setMessage(
+          "✓ Leaderboard profile updated.",
+        );
+      } else {
+        setMessage(
+          "✓ Leaderboard name updated.",
         );
       }
 
@@ -5469,7 +5396,10 @@ export default function Puzzle({
    */
 
   async function claimMedal() {
-    if (!puzzle) {
+    if (
+      !puzzle ||
+      !finalResultId
+    ) {
       return;
     }
 
@@ -5492,12 +5422,13 @@ export default function Puzzle({
     }
 
     if (
+      email &&
       !validEmail(
         email,
       )
     ) {
       setMedalError(
-        "Please enter a valid email.",
+        "Please enter a valid email, or leave it blank.",
       );
 
       return;
@@ -5514,7 +5445,7 @@ export default function Puzzle({
     try {
       const response =
         await fetch(
-          "/api/puzzle/winner",
+          "/api/puzzle/result/claim",
           {
             method:
               "POST",
@@ -5529,27 +5460,27 @@ export default function Puzzle({
                 puzzleNumber:
                   puzzle.puzzleNumber,
 
+                resultId:
+                  finalResultId,
+
                 name,
 
                 email,
-
-                resultId:
-                  finalResultId ??
-                  undefined,
               }),
           },
         );
 
       const data =
         (await response.json()) as
-          WinnerClaimResponse;
+          ResultClaimResponse;
 
       if (
-        !response.ok
+        !response.ok ||
+        !data.claimed
       ) {
         throw new Error(
           data.error ??
-            "Unable to join leaderboard.",
+            "Unable to update leaderboard profile.",
         );
       }
 
@@ -5558,37 +5489,44 @@ export default function Puzzle({
       );
 
       setMedalClaimName(
-        data.winner.name,
-      );
-
-      setMessage(
-        data.alreadyClaimed
-          ? "✓ Already joined leaderboard."
-          : "✓ Joined leaderboard!",
+        name,
       );
 
       if (
-        stage ===
-          "7x7"
+        email &&
+        data.emailStatus ===
+          "pending"
       ) {
-        const nextLeaderboard =
-          await fetchLeaderboard(
-            puzzle.puzzleNumber,
-            finalResultId,
-          );
-
-        setLeaderboard(
-          nextLeaderboard,
+        setMessage(
+          "✓ Name updated. Verification email sent.",
+        );
+      } else {
+        setMessage(
+          "✓ Leaderboard profile updated.",
         );
       }
+
+      const nextLeaderboard =
+        await fetchLeaderboard(
+          puzzle.puzzleNumber,
+          finalResultId,
+        );
+
+      setLeaderboard(
+        nextLeaderboard,
+      );
+
+      setChallengeLeaderboard(
+        nextLeaderboard,
+      );
     } catch (
       error
     ) {
       setMedalError(
         error instanceof
-        Error
+          Error
           ? error.message
-          : "Unable to join leaderboard.",
+          : "Unable to update leaderboard profile.",
       );
     } finally {
       setClaimingMedal(
@@ -7694,7 +7632,7 @@ export default function Puzzle({
                       160
                     }
                     autoComplete="email"
-                    placeholder="Email"
+                    placeholder="Email (optional)"
                     aria-label="Email"
                     style={{
                       height:
@@ -7770,10 +7708,10 @@ export default function Puzzle({
                     type="button"
                     className="daily-puzzle__certificate-email-icon"
                     aria-label={
-                      "Join GQ leaderboard"
+                      "Update leaderboard profile"
                     }
                     title={
-                      "Join leaderboard"
+                      "Update leaderboard profile"
                     }
                     disabled={
                       stage ===
@@ -7829,7 +7767,7 @@ export default function Puzzle({
                               }}
                             >
                               <strong>
-                                JOIN
+                                UPDATE
                               </strong>
 
                               <small
@@ -7844,7 +7782,7 @@ export default function Puzzle({
                                     "0.02em",
                                 }}
                               >
-                                LEADERBOARD
+                                PROFILE
                               </small>
                             </span>
                           )
@@ -7868,7 +7806,7 @@ export default function Puzzle({
                               }}
                             >
                               <strong>
-                                JOIN
+                                UPDATE
                               </strong>
 
                               <small
@@ -7883,7 +7821,7 @@ export default function Puzzle({
                                     "0.02em",
                                 }}
                               >
-                                LEADERBOARD
+                                PROFILE
                               </small>
                             </span>
                           )}

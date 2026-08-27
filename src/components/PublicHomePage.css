@@ -1620,3 +1620,82 @@ button:hover {
     touch-action: pan-y;
   }
 }
+
+/* GYAN activity dashboard */
+.public-home__activity-dashboard {
+  height: 60vh !important;
+  max-height: 60vh !important;
+  min-height: 320px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.public-home__activity-top {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  background: inherit;
+}
+.public-home__activity-close {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+.public-home__activity-row {
+  display: grid;
+  gap: 5px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(90, 105, 115, 0.16);
+}
+.public-home__activity-row > strong { font-size: 0.78rem; }
+.public-home__activity-strip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 20px;
+  overflow-x: auto;
+  padding: 2px 1px 4px;
+  scrollbar-width: thin;
+}
+.public-home__activity-box {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #b8c2c9;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+.public-home__activity-box--white { background: #fff; }
+.public-home__activity-box--yellow { background: #f4d35e; border-color: #d5b63f; }
+.public-home__activity-box--green { background: #72c98a; border-color: #4aa866; }
+.public-home__activity-box--red { background: #e98585; border-color: #cb6262; }
+.public-home__activity-loading,
+.public-home__activity-empty { font-size: 0.7rem; opacity: 0.7; }
+.public-home__activity-legend {
+  display: grid;
+  gap: 3px;
+  margin: 8px 0;
+  font-size: 0.66rem;
+  line-height: 1.3;
+  opacity: 0.78;
+}
+@media (max-width: 600px) {
+  .public-home__activity-dashboard {
+    height: 60dvh !important;
+    max-height: 60dvh !important;
+    min-height: 300px;
+  }
+  .public-home__activity-box {
+    flex-basis: 17px;
+    width: 17px;
+    height: 17px;
+  }
+}

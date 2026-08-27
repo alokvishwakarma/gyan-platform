@@ -4,6 +4,10 @@ import {
 } from "./storageGuard";
 
 import {
+  currentGyanAccountId,
+} from "./gyanAccountContext";
+
+import {
   sendServiceRequestNotifications,
 } from "./serviceRequestNotifications";
 
@@ -17,12 +21,6 @@ import type {
   ServiceEmailAction,
   ServiceEmailSection,
 } from "./emailTemplates/serviceRequestEmail";
-
-import {
-  checkAnonymousRequestLimit,
-  isSignedInRequest,
-  recordAnonymousRequest,
-} from "./requestGuard";
 
 interface ShopRow {
   code: string;
@@ -1076,113 +1074,6 @@ function formatAnswerValue(
     | undefined,
 ): string {
   if (
-    field.field_key ===
-      "items" &&
-    typeof value ===
-      "string"
-  ) {
-    try {
-      const parsed =
-        JSON.parse(
-          value,
-        ) as unknown;
-
-      if (
-        Array.isArray(
-          parsed,
-        )
-      ) {
-        const lines =
-          parsed
-            .filter(
-              (
-                item,
-              ) =>
-                typeof item ===
-                  "object" &&
-                item !== null,
-            )
-            .map(
-              (
-                item,
-                index,
-              ) => {
-                const row =
-                  item as
-                    Record<
-                      string,
-                      unknown
-                    >;
-
-                const name =
-                  typeof row.item ===
-                    "string"
-                    ? row.item.trim()
-                    : "";
-
-                if (!name) {
-                  return "";
-                }
-
-                const quantity =
-                  typeof row.quantity ===
-                    "string"
-                    ? row.quantity.trim()
-                    : "";
-
-                const unit =
-                  typeof row.unit ===
-                    "string"
-                    ? row.unit.trim()
-                    : "";
-
-                const price =
-                  typeof row.price ===
-                    "string"
-                    ? row.price.trim()
-                    : "";
-
-                const details =
-                  typeof row.details ===
-                    "string"
-                    ? row.details.trim()
-                    : "";
-
-                return [
-                  `${index + 1}. ${name}`,
-                  quantity || unit
-                    ? `Qty: ${[quantity, unit].filter(Boolean).join(" ")}`
-                    : "",
-                  price
-                    ? `Price: ${price}`
-                    : "",
-                  details,
-                ]
-                  .filter(
-                    Boolean,
-                  )
-                  .join(" · ");
-              },
-            )
-            .filter(
-              Boolean,
-            );
-
-        if (
-          lines.length >
-          0
-        ) {
-          return lines.join(
-            "\n",
-          );
-        }
-      }
-    } catch {
-      // Fall through to normal text formatting.
-    }
-  }
-
-  if (
     value === undefined ||
     value === null ||
     value === ""
@@ -1767,47 +1658,6 @@ async function handleCreateServiceRequest(
       },
       403,
     );
-  }
-
-  const signedIn =
-    await isSignedInRequest(
-      request,
-      env,
-    );
-
-  if (!signedIn) {
-    const limit =
-      await checkAnonymousRequestLimit(
-        env,
-        shopCode,
-      );
-
-    if (!limit.allowed) {
-      return createJsonResponse(
-        {
-          error:
-            limit.error,
-
-          requestLimit: {
-            dailyCount:
-              limit.dailyCount,
-
-            dailyLimit:
-              30,
-
-            monthlyCount:
-              limit.monthlyCount,
-
-            monthlyLimit:
-              500,
-
-            signInAvailable:
-              true,
-          },
-        },
-        limit.status,
-      );
-    }
   }
 
   let formData:
@@ -2595,6 +2445,12 @@ async function handleCreateServiceRequest(
     CreatedRequestRow | null =
       null;
 
+  const gyanAccountId =
+    await currentGyanAccountId(
+      request,
+      env.gyan_registry,
+    );
+
   const storedFiles:
     StoredFile[] = [];
 
@@ -2613,7 +2469,8 @@ async function handleCreateServiceRequest(
               whatsapp_number,
               whatsapp_consent,
               status,
-              details_json
+              details_json,
+              gyan_account_id
             )
             VALUES (
               ?,
@@ -2625,6 +2482,7 @@ async function handleCreateServiceRequest(
               ?,
               ?,
               'submitted',
+              ?,
               ?
             )
 
@@ -2651,28 +2509,14 @@ async function handleCreateServiceRequest(
           JSON.stringify(
             answers,
           ),
+
+          gyanAccountId,
         )
         .first<CreatedRequestRow>();
 
     if (!createdRequest) {
       throw new Error(
         "The service request could not be created.",
-      );
-    }
-
-    if (!signedIn) {
-      await recordAnonymousRequest(
-        env,
-        {
-          code:
-            shop.code,
-
-          name:
-            shop.name,
-
-          email:
-            shop.email_address,
-        },
       );
     }
 

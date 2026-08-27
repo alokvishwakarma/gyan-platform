@@ -139,6 +139,10 @@ import {
   handleGyanIdentityRoute,
 } from "./gyanIdentity";
 
+import {
+  handleGyanActivityRoute,
+} from "./gyanActivity";
+
 interface RegisterShopRequest {
   code?: unknown;
   name?: unknown;
@@ -374,7 +378,6 @@ async function handleGetShop(
     );
   }
 
-  
   const shop =
     await findShopByCode(
       env,
@@ -1646,6 +1649,26 @@ if (
 if (gyanIdentityResponse) {
   return gyanIdentityResponse;
 }
+
+
+  /*
+   * ------------------------------------------------
+   * Unified GYAN activity
+   * ------------------------------------------------
+   */
+
+  const gyanActivityResponse =
+    await handleGyanActivityRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (
+    gyanActivityResponse
+  ) {
+    return gyanActivityResponse;
+  }
 
   /*
    * MUST remain last.

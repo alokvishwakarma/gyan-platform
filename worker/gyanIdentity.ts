@@ -186,6 +186,7 @@ function publicGyanIdentity(
     email: string | null;
     registered: number;
   },
+  origin: string,
 ) {
   return {
     accountId:
@@ -198,7 +199,7 @@ function publicGyanIdentity(
       row.display_name,
 
     publicUrl:
-      `http://localhost:8787/${row.code.toLowerCase()}`,
+      `${origin}/${row.code.toLowerCase()}`,
 
     registered:
       Boolean(row.registered),
@@ -958,65 +959,122 @@ async function sendNewGyanAccountNotice(
 }
 
 
+
+async function loadPublicGyanAccountByCode(
+  db: D1Database,
+  rawCode: string,
+): Promise<{
+  id: number;
+  code: string;
+  displayName: string;
+  registered: boolean;
+  createdAt: string;
+} | null> {
+  const code =
+    rawCode
+      .trim()
+      .toUpperCase();
+
+  if (
+    !/^[A-Z0-9]{4,8}$/.test(
+      code,
+    )
+  ) {
+    return null;
+  }
+
+  const row =
+    await db
+      .prepare(
+        `
+        SELECT
+          ga.id,
+          ga.code,
+          ga.display_name,
+          ga.registered,
+          ga.created_at
+        FROM gyan_accounts ga
+        WHERE ga.code = ?
+
+        UNION ALL
+
+        SELECT
+          ga.id,
+          ga.code,
+          ga.display_name,
+          ga.registered,
+          ga.created_at
+        FROM gyan_account_aliases alias
+        INNER JOIN gyan_accounts ga
+          ON ga.id =
+            alias.account_id
+        WHERE alias.alias_code = ?
+
+        LIMIT 1
+        `,
+      )
+      .bind(
+        code,
+        code,
+      )
+      .first<{
+        id: number;
+        code: string;
+        display_name: string;
+        registered: number;
+        created_at: string;
+      }>();
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id:
+      row.id,
+
+    code:
+      row.code,
+
+    displayName:
+      row.display_name,
+
+    registered:
+      Boolean(
+        row.registered,
+      ),
+
+    createdAt:
+      row.created_at,
+  };
+}
+
+
 export async function handleGyanIdentityRoute(
   request: Request,
   env: GyanIdentityEnv,
   url: URL,
 ): Promise<Response | null> {
-  const publicMatch =
+  /*
+   * Public unified-GYAN lookup used by /ABCD pages.
+   *
+   * GET /api/gyan-identity/ABCD
+   */
+  const publicCodeMatch =
     url.pathname.match(
-      /^\/api\/gyan-identity\/([A-Za-z0-9]{4,5})$/,
+      /^\/api\/gyan-identity\/([A-Za-z0-9]{4,8})$/,
     );
 
   if (
-    publicMatch &&
     request.method ===
-      "GET"
+      "GET" &&
+    publicCodeMatch
   ) {
-    const code =
-      publicMatch[1]
-        .toUpperCase();
-
     const account =
-      await env.gyan_registry
-        .prepare(
-          `
-          SELECT
-            a.id,
-            a.code,
-            a.display_name,
-            a.registered,
-            a.created_at
-          FROM gyan_accounts a
-          WHERE a.code = ?
-
-          UNION ALL
-
-          SELECT
-            a.id,
-            a.code,
-            a.display_name,
-            a.registered,
-            a.created_at
-          FROM gyan_account_aliases x
-          JOIN gyan_accounts a
-            ON a.id = x.account_id
-          WHERE x.alias_code = ?
-
-          LIMIT 1
-          `,
-        )
-        .bind(
-          code,
-          code,
-        )
-        .first<{
-          id: number;
-          code: string;
-          display_name: string;
-          registered: number;
-          created_at: string;
-        }>();
+      await loadPublicGyanAccountByCode(
+        env.gyan_registry,
+        publicCodeMatch[1],
+      );
 
     if (!account) {
       return identityJson(
@@ -1029,20 +1087,7 @@ export async function handleGyanIdentityRoute(
     }
 
     return identityJson({
-      account: {
-        id:
-          account.id,
-        code:
-          account.code,
-        displayName:
-          account.display_name,
-        registered:
-          Boolean(
-            account.registered,
-          ),
-        createdAt:
-          account.created_at,
-      },
+      account,
     });
   }
 
@@ -1141,6 +1186,7 @@ export async function handleGyanIdentityRoute(
           identity:
             publicGyanIdentity(
               account,
+              url.origin,
             ),
         });
       }
@@ -1308,6 +1354,7 @@ export async function handleGyanIdentityRoute(
         account
           ? publicGyanIdentity(
               account,
+              url.origin,
             )
           : null,
     },

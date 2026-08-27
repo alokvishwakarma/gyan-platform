@@ -305,6 +305,22 @@ type EducationAttemptSummary = {
 };
 
 
+type GyanActivitySummary = {
+  puzzles: {
+    puzzleNumber: number;
+    puzzleDate: string;
+    fiveSolved: boolean;
+    sevenSolved: boolean;
+  }[];
+
+  serviceRequests: {
+    requestNumber: string;
+    status: string;
+    createdAt: string;
+  }[];
+};
+
+
 function getEffectiveEducationCountry():
   EducationCountry {
   const override =
@@ -733,6 +749,22 @@ export default function PublicHomePage({
     );
 
 
+  const [
+    gyanActivity,
+    setGyanActivity,
+  ] =
+    useState<GyanActivitySummary>({
+      puzzles: [],
+      serviceRequests: [],
+    });
+
+  const [
+    gyanActivityLoading,
+    setGyanActivityLoading,
+  ] =
+    useState(false);
+
+
 
   useEffect(() => {
     const controller =
@@ -839,9 +871,17 @@ export default function PublicHomePage({
     setShowPuzzle,
   ] =
     useState(
-      () =>
-        window.location.pathname ===
-          "/puzzle",
+      () => {
+        const pathname =
+          window.location.pathname;
+
+        return (
+          pathname ===
+            "/" ||
+          pathname ===
+            "/puzzle"
+        );
+      },
     );
 
 
@@ -1413,7 +1453,14 @@ export default function PublicHomePage({
     educationCode
       ?.trim()
       .toUpperCase() ||
-    "";
+    (
+      window.localStorage.getItem(
+        "gyan_browser_code_v1",
+      ) ??
+      ""
+    )
+      .trim()
+      .toUpperCase();
 
   const educationEmailKnown =
     activeEducationGyan
@@ -1523,6 +1570,129 @@ export default function PublicHomePage({
   );
 
 
+  useEffect(
+    () => {
+      if (
+        !educationRatingsCardOpen
+      ) {
+        return;
+      }
+
+      const controller =
+        new AbortController();
+
+      queueMicrotask(
+        () => {
+          if (
+            !controller.signal.aborted
+          ) {
+            setGyanActivityLoading(
+              true,
+            );
+          }
+        },
+      );
+
+      void fetch(
+        "/api/gyan-activity",
+        {
+          cache:
+            "no-store",
+
+          credentials:
+            "include",
+
+          signal:
+            controller.signal,
+        },
+      )
+        .then(
+          async (
+            response,
+          ) => {
+            if (
+              !response.ok
+            ) {
+              return null;
+            }
+
+            return await response.json() as
+              GyanActivitySummary;
+          },
+        )
+        .then(
+          (
+            body,
+          ) => {
+            if (
+              controller.signal.aborted ||
+              !body
+            ) {
+              return;
+            }
+
+            setGyanActivity({
+              puzzles:
+                Array.isArray(
+                  body.puzzles,
+                )
+                  ? body.puzzles
+                  : [],
+
+              serviceRequests:
+                Array.isArray(
+                  body.serviceRequests,
+                )
+                  ? body.serviceRequests
+                  : [],
+            });
+          },
+        )
+        .catch(
+          (
+            caught,
+          ) => {
+            if (
+              caught instanceof
+                DOMException &&
+              caught.name ===
+                "AbortError"
+            ) {
+              return;
+            }
+
+            if (
+              !controller.signal.aborted
+            ) {
+              setGyanActivity({
+                puzzles: [],
+                serviceRequests: [],
+              });
+            }
+          },
+        )
+        .finally(
+          () => {
+            if (
+              !controller.signal.aborted
+            ) {
+              setGyanActivityLoading(
+                false,
+              );
+            }
+          },
+        );
+
+      return () => {
+        controller.abort();
+      };
+    },
+    [
+      educationRatingsCardOpen,
+    ],
+  );
+
+
   const educationAttemptSummaryLoading =
     educationRatingsCardOpen &&
     Boolean(
@@ -1530,15 +1700,6 @@ export default function PublicHomePage({
     ) &&
     educationAttemptSummary ===
       null;
-
-  const educationAttemptCount =
-    educationAttemptSummary
-      ?.totalAttempts ??
-    0;
-
-  const educationGemCount =
-    3 +
-    educationAttemptCount;
 
 
   const headerLeft =
@@ -1681,178 +1842,239 @@ export default function PublicHomePage({
 
             {educationRatingsCardOpen && (
               <section
-                className="public-home__education-ratings-card"
+                className="public-home__education-ratings-card public-home__activity-dashboard"
                 role="dialog"
-                aria-label="Education ratings"
+                aria-label="GYAN activity"
               >
-                {educationHeaderCode
-                  ? (
-                      <>
-                        <div
-                          className="public-home__education-ratings-card-title"
-                        >
-                          <span
-                            aria-hidden="true"
-                          >
-                            ⭐
+                <div className="public-home__activity-top">
+                  <strong>
+                    My GYAN
+                    {educationHeaderCode
+                      ? ` [${educationHeaderCode}]`
+                      : ""}
+                  </strong>
+
+                  <button
+                    type="button"
+                    className="public-home__activity-close"
+                    aria-label="Close"
+                    onClick={() =>
+                      setEducationRatingsCardOpen(
+                        false,
+                      )
+                    }
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="public-home__activity-row">
+                  <strong>
+                    Puzzles:
+                  </strong>
+
+                  <div className="public-home__activity-strip">
+                    {gyanActivityLoading
+                      ? (
+                          <span className="public-home__activity-loading">
+                            Loading…
                           </span>
+                        )
+                      : gyanActivity.puzzles.length
+                        ? (
+                            gyanActivity.puzzles.map(
+                              (
+                                puzzle,
+                              ) => {
+                                const tone =
+                                  puzzle.sevenSolved
+                                    ? "green"
+                                    : puzzle.fiveSolved
+                                      ? "yellow"
+                                      : "white";
 
-                          <strong>
-                            My Ratings [{educationHeaderCode}]
-                            {educationCodeNeedsRecovery
-                              ? "*"
-                              : ""}
-                          </strong>
-                        </div>
-
-                        <small>
-                          Learning progress, scores and topic ratings are saved to this GYAN.
-                        </small>
-
-                        <div
-                          className="public-home__education-attempt-strip"
-                          aria-label="Education attempt results"
-                        >
-                          {educationAttemptSummaryLoading
-                            ? (
-                                <span
-                                  className="public-home__education-attempt-loading"
-                                >
-                                  Loading attempts…
-                                </span>
-                              )
-                            : educationAttemptSummary
-                                ?.recentAttempts
-                                .length
-                              ? (
-                                  educationAttemptSummary
-                                    .recentAttempts
-                                    .map(
-                                      (
-                                        attempt,
-                                      ) => {
-                                        const state =
-                                          attempt.scorePercent >=
-                                            80
-                                            ? "green"
-                                            : attempt.scorePercent >=
-                                                50
-                                              ? "yellow"
-                                              : "red";
-
-                                        return (
-                                          <span
-                                            key={
-                                              attempt.id
-                                            }
-                                            className={`public-home__education-attempt-box public-home__education-attempt-box--${state}`}
-                                            title={`${attempt.correctCount}/${attempt.questionCount} · ${attempt.scorePercent}% · ${attempt.topicCode}`}
-                                            aria-label={`Attempt ${attempt.scorePercent} percent`}
-                                          />
-                                        );
-                                      },
-                                    )
-                                )
-                              : (
+                                return (
                                   <span
-                                    className="public-home__education-attempt-empty"
-                                  >
-                                    No attempts yet
-                                  </span>
-                                )}
-                        </div>
+                                    key={
+                                      puzzle.puzzleNumber
+                                    }
+                                    className={`public-home__activity-box public-home__activity-box--${tone}`}
+                                    title={`Puzzle #${puzzle.puzzleNumber} · ${
+                                      puzzle.sevenSolved
+                                        ? "5×5 + 7×7 solved"
+                                        : puzzle.fiveSolved
+                                          ? "5×5 solved"
+                                          : "No completed attempt"
+                                    }`}
+                                  />
+                                );
+                              },
+                            )
+                          )
+                        : (
+                            <span className="public-home__activity-empty">
+                              No recent puzzles
+                            </span>
+                          )}
+                  </div>
+                </div>
 
-                        <div
-                          className="public-home__education-rewards"
-                          aria-label="GYAN rewards"
-                        >
-                          <span
-                            title="3 Welcome Gems + 1 Gem per saved Education attempt"
-                          >
-                            💎 {educationGemCount}
+                <div className="public-home__activity-row">
+                  <strong>
+                    Service Requests:
+                  </strong>
+
+                  <div className="public-home__activity-strip">
+                    {gyanActivityLoading
+                      ? (
+                          <span className="public-home__activity-loading">
+                            Loading…
                           </span>
+                        )
+                      : gyanActivity.serviceRequests.length
+                        ? (
+                            gyanActivity.serviceRequests.map(
+                              (
+                                request,
+                              ) => {
+                                const normalized =
+                                  request.status
+                                    .trim()
+                                    .toLowerCase();
 
-                          <span
-                            title="Lost & Found stickers available"
-                          >
-                            🏷️ 3
+                                const closed =
+                                  [
+                                    "completed",
+                                    "ready",
+                                    "closed",
+                                    "fulfilled",
+                                  ].includes(
+                                    normalized,
+                                  );
+
+                                return (
+                                  <span
+                                    key={
+                                      request.requestNumber
+                                    }
+                                    className={`public-home__activity-box public-home__activity-box--${
+                                      closed
+                                        ? "green"
+                                        : "yellow"
+                                    }`}
+                                    title={`${request.requestNumber} · ${request.status}`}
+                                  />
+                                );
+                              },
+                            )
+                          )
+                        : (
+                            <span className="public-home__activity-empty">
+                              No recent requests
+                            </span>
+                          )}
+                  </div>
+                </div>
+
+                <div className="public-home__activity-row">
+                  <strong>
+                    Education Ratings:
+                  </strong>
+
+                  <div className="public-home__activity-strip">
+                    {educationAttemptSummaryLoading
+                      ? (
+                          <span className="public-home__activity-loading">
+                            Loading…
                           </span>
-                        </div>
+                        )
+                      : educationAttemptSummary
+                          ?.recentAttempts
+                          .length
+                        ? (
+                            educationAttemptSummary
+                              .recentAttempts
+                              .map(
+                                (
+                                  attempt,
+                                ) => {
+                                  const state =
+                                    attempt.scorePercent >=
+                                      80
+                                      ? "green"
+                                      : attempt.scorePercent >=
+                                          50
+                                        ? "yellow"
+                                        : "red";
 
-                        {educationCodeNeedsRecovery && (
-                          <small
-                            className="public-home__education-ratings-warning"
-                          >
-                            * Add a recovery email so this GYAN can be restored if browser or device access code is lost.
-                          </small>
-                        )}
+                                  return (
+                                    <span
+                                      key={
+                                        attempt.id
+                                      }
+                                      className={`public-home__activity-box public-home__activity-box--${state}`}
+                                      title={`${attempt.correctCount}/${attempt.questionCount} · ${attempt.scorePercent}% · ${attempt.topicCode}`}
+                                    />
+                                  );
+                                },
+                              )
+                          )
+                        : (
+                            <span className="public-home__activity-empty">
+                              No attempts yet
+                            </span>
+                          )}
+                  </div>
+                </div>
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEducationRatingsCardOpen(
-                              false,
-                            );
+                <div className="public-home__activity-legend">
+                  <span>
+                    Puzzle: □ none · 🟨 5×5 · 🟩 5×5 + 7×7
+                  </span>
 
-                            setSearchFocused(
-                              false,
-                            );
+                  <span>
+                    Requests: 🟨 pending · 🟩 closed
+                  </span>
 
-                            setShowPuzzle(
-                              false,
-                            );
+                  <span>
+                    Education: 🟩 80%+ · 🟨 50–79% · 🟥 &lt;50%
+                  </span>
+                </div>
 
-                            setActiveView(
-                              "ratings",
-                            );
+                {educationCodeNeedsRecovery && (
+                  <small className="public-home__education-ratings-warning">
+                    * Add a recovery email so this GYAN can be restored if browser or device access code is lost.
+                  </small>
+                )}
 
-                            window.history.pushState(
-                              {},
-                              "",
-                              "/ratings",
-                            );
-                          }}
-                        >
-                          Open My Ratings
-                        </button>
-                      </>
-                    )
-                  : (
-                      <>
-                        <div
-                          className="public-home__education-ratings-card-title"
-                        >
-                          <span
-                            aria-hidden="true"
-                          >
-                            ⭐
-                          </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEducationRatingsCardOpen(
+                      false,
+                    );
 
-                          <strong>
-                            My Ratings
-                          </strong>
-                        </div>
+                    setSearchFocused(
+                      false,
+                    );
 
-                        <small>
-                          Activate a GYAN card to save learning progress and ratings automatically.
-                        </small>
+                    setShowPuzzle(
+                      false,
+                    );
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEducationRatingsCardOpen(
-                              false,
-                            );
+                    setActiveView(
+                      "ratings",
+                    );
 
-                            setCalendarOpen(
-                              true,
-                            );
-                          }}
-                        >
-                          Open Education Account
-                        </button>
-                      </>
-                    )}
+                    window.history.pushState(
+                      {},
+                      "",
+                      "/ratings",
+                    );
+                  }}
+                >
+                  Open My Ratings
+                </button>
               </section>
             )}
           </div>
