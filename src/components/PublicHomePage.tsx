@@ -406,11 +406,80 @@ export default function PublicHomePage({
     useState(false);
 
 
+  const initialCalendarMode =
+    new URLSearchParams(
+      window.location.search,
+    ).get(
+      "calendar",
+    );
+
   const [
     calendarOpen,
     setCalendarOpen,
   ] =
-    useState(false);
+    useState(
+      () =>
+        initialCalendarMode ===
+          "1" ||
+        initialCalendarMode ===
+          "print",
+    );
+
+  const [
+    calendarPrintDirect,
+    setCalendarPrintDirect,
+  ] =
+    useState(
+      () =>
+        initialCalendarMode ===
+          "print",
+    );
+
+
+  useEffect(
+    () => {
+      if (
+        !calendarOpen
+      ) {
+        return;
+      }
+
+      const parameters =
+        new URLSearchParams(
+          window.location.search,
+        );
+
+      const calendarParameter =
+        parameters.get(
+          "calendar",
+        );
+
+      if (
+        calendarParameter !==
+          "1" &&
+        calendarParameter !==
+          "print"
+      ) {
+        return;
+      }
+
+      parameters.delete(
+        "calendar",
+      );
+
+      const query =
+        parameters.toString();
+
+      window.history.replaceState(
+        {},
+        "",
+        `${window.location.pathname}${query ? `?${query}` : ""}`,
+      );
+    },
+    [
+      calendarOpen,
+    ],
+  );
 
 
   const [
@@ -425,6 +494,20 @@ export default function PublicHomePage({
     >(() => {
       const pathname =
         window.location.pathname;
+
+      if (
+        pathname ===
+          "/puzzle"
+      ) {
+        return "home";
+      }
+
+      if (
+        pathname ===
+          "/account"
+      ) {
+        return "home";
+      }
 
       if (
         pathname ===
@@ -452,11 +535,75 @@ export default function PublicHomePage({
     });
 
 
+  useEffect(
+    () => {
+      const pathname =
+        window.location.pathname;
+
+      queueMicrotask(
+        () => {
+          if (
+            pathname ===
+              "/services"
+          ) {
+            setShowPuzzle(
+              false,
+            );
+
+            return;
+          }
+
+          if (
+            pathname ===
+              "/puzzle"
+          ) {
+            setShowPuzzle(
+              true,
+            );
+          }
+        },
+      );
+    },
+    [],
+  );
+
+
+  // Explicit route guard: services never shows Puzzle.
   useEffect(() => {
     const syncViewFromPath =
       (): void => {
         const pathname =
           window.location.pathname;
+
+        if (
+          pathname ===
+            "/puzzle"
+        ) {
+          setActiveView(
+            "home",
+          );
+
+          setShowPuzzle(
+            true,
+          );
+
+          return;
+        }
+
+        if (
+          pathname ===
+            "/account"
+        ) {
+          setActiveView(
+            "home",
+          );
+
+          setShowPuzzle(
+            false,
+          );
+
+          return;
+        }
 
         if (
           pathname ===
@@ -691,7 +838,11 @@ export default function PublicHomePage({
     showPuzzle,
     setShowPuzzle,
   ] =
-    useState(true);
+    useState(
+      () =>
+        window.location.pathname ===
+          "/puzzle",
+    );
 
 
   const [
@@ -1420,6 +1571,10 @@ export default function PublicHomePage({
                 false,
               );
 
+              setCalendarPrintDirect(
+                true,
+              );
+
               setCalendarOpen(
                 true,
               );
@@ -1998,11 +2153,19 @@ export default function PublicHomePage({
           calendarOpen
             ? (
               <GyanCalendarPage
-                onClose={() =>
+                initialPrintOpen={
+                  calendarPrintDirect
+                }
+                useCurrentGyan
+                onClose={() => {
                   setCalendarOpen(
                     false,
-                  )
-                }
+                  );
+
+                  setCalendarPrintDirect(
+                    false,
+                  );
+                }}
               />
             )
             : activeView ===
@@ -2102,9 +2265,7 @@ export default function PublicHomePage({
                         />
                       )
                 )
-              : shellContent &&
-                activeView !==
-                  "services"
+              : shellContent
                 ? (
                   shellContent
                 )
@@ -2116,6 +2277,8 @@ export default function PublicHomePage({
          * =================================================
          */}
         {
+          activeView ===
+            "home" &&
           showPuzzle &&
           (
             <Puzzle

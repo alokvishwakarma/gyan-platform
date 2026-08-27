@@ -25,6 +25,15 @@ interface AuthMeResponse {
     | null;
 }
 
+interface GyanIdentity {
+  code: string;
+  displayName: string;
+  publicUrl: string;
+  accessCode?: string;
+  maskedEmail?: string;
+}
+
+
 interface UserAccountMenuProps {
   onOpenAdmin: () => void;
   onOpenChat: () => void;
@@ -37,14 +46,14 @@ interface UserAccountMenuProps {
     email: string,
   ) => void;
 
-  onOpenMyRatings?:
-    () => void;
-
-  educationCode?:
-    string;
-
-  educationEmailKnown?:
-    boolean;
+  /*
+   * Existing Education/account-menu props.
+   * Keep these accepted while the unified GYAN identity work
+   * is layered onto the current menu.
+   */
+  educationCode?: string;
+  educationEmailKnown?: boolean;
+  onOpenMyRatings?: () => void;
 }
 
 interface MyShopsResponse {
@@ -61,23 +70,22 @@ export default function UserAccountMenu({
   onOpenChat,
   onOpenMyShop,
   onRegisterMyShop,
-  onOpenMyRatings,
-  educationCode,
-  educationEmailKnown,
 }: UserAccountMenuProps) {
   const [
     open,
     setOpen,
   ] =
-    useState(false);
+    useState(
+      () =>
+        window.location.pathname ===
+          "/account",
+    );
 
   const [
     authOpen,
     setAuthOpen,
   ] =
     useState(false);
-
-
 
   const [
     loading,
@@ -92,6 +100,27 @@ export default function UserAccountMenu({
     useState<
       AuthUser | null
     >(null);
+
+  const [
+    gyanIdentity,
+    setGyanIdentity,
+  ] =
+    useState<
+      GyanIdentity | null
+    >(null);
+
+  const [
+    identityLoading,
+    setIdentityLoading,
+  ] =
+    useState(true);
+
+  const [
+    showAccessCode,
+    setShowAccessCode,
+  ] =
+    useState(false);
+
 
   const [
     myShopLoading,
@@ -115,6 +144,149 @@ export default function UserAccountMenu({
     setMyShopError,
   ] =
     useState("");
+
+  async function loadGyanIdentity():
+    Promise<void> {
+    setIdentityLoading(
+      true,
+    );
+
+    try {
+      const response =
+        await fetch(
+          "/api/gyan-identity",
+          {
+            method:
+              "POST",
+
+            credentials:
+              "include",
+
+            headers: {
+              "content-type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                browserCode:
+                  window.localStorage.getItem(
+                    "gyan_browser_code_v1",
+                  ) ??
+                  undefined,
+
+                client: {
+                  userAgent:
+                    window.navigator.userAgent,
+
+                  language:
+                    window.navigator.language,
+
+                  languages:
+                    Array.from(
+                      window.navigator.languages ??
+                      [],
+                    ),
+
+                  platform:
+                    window.navigator.platform ??
+                    "",
+
+                  touch:
+                    (
+                      window.navigator.maxTouchPoints ??
+                      0
+                    ) >
+                      0,
+
+                  screenWidth:
+                    window.screen.width,
+
+                  screenHeight:
+                    window.screen.height,
+
+                  viewportWidth:
+                    window.innerWidth,
+
+                  viewportHeight:
+                    window.innerHeight,
+
+                  referrer:
+                    document.referrer,
+
+                  utmSource:
+                    new URLSearchParams(
+                      window.location.search,
+                    ).get(
+                      "utm_source",
+                    ) ??
+                    "",
+
+                  utmMedium:
+                    new URLSearchParams(
+                      window.location.search,
+                    ).get(
+                      "utm_medium",
+                    ) ??
+                    "",
+
+                  utmCampaign:
+                    new URLSearchParams(
+                      window.location.search,
+                    ).get(
+                      "utm_campaign",
+                    ) ??
+                    "",
+                },
+              }),
+          },
+        );
+
+      const body =
+        await response.json() as {
+          identity?:
+            GyanIdentity;
+
+          error?:
+            string;
+        };
+
+      if (
+        !response.ok ||
+        !body.identity
+      ) {
+        throw new Error(
+          body.error ??
+            "GYAN identity could not be loaded.",
+        );
+      }
+
+      setGyanIdentity(
+        body.identity,
+      );
+
+      window.localStorage.setItem(
+        "gyan_browser_code_v1",
+        body.identity.code,
+      );
+    } catch (
+      error
+    ) {
+      console.error(
+        "Unable to load GYAN identity:",
+        error,
+      );
+
+      setGyanIdentity(
+        null,
+      );
+    } finally {
+      setIdentityLoading(
+        false,
+      );
+    }
+  }
+
 
   async function loadUser():
     Promise<void> {
@@ -158,6 +330,51 @@ export default function UserAccountMenu({
       setLoading(false);
     }
   }
+
+  useEffect(
+    () => {
+      void loadGyanIdentity();
+    },
+    [],
+  );
+
+
+  useEffect(
+    () => {
+      const parameters =
+        new URLSearchParams(
+          window.location.search,
+        );
+
+      if (
+        parameters.get(
+          "account",
+        ) !==
+          "1"
+      ) {
+        return;
+      }
+
+      setOpen(
+        true,
+      );
+
+      parameters.delete(
+        "account",
+      );
+
+      const query =
+        parameters.toString();
+
+      window.history.replaceState(
+        {},
+        "",
+        `${window.location.pathname}${query ? `?${query}` : ""}`,
+      );
+    },
+    [],
+  );
+
 
   useEffect(
     () => {
@@ -360,13 +577,71 @@ export default function UserAccountMenu({
   function openMyShop(
     shopCode: string,
   ): void {
-    setOpen(
+    setAccountMenuRoute(
       false,
     );
 
     onOpenMyShop(
       shopCode,
     );
+  }
+
+
+  useEffect(
+    () => {
+      const syncAccountRoute =
+        (): void => {
+          setOpen(
+            window.location.pathname ===
+              "/account",
+          );
+        };
+
+      window.addEventListener(
+        "popstate",
+        syncAccountRoute,
+      );
+
+      return () => {
+        window.removeEventListener(
+          "popstate",
+          syncAccountRoute,
+        );
+      };
+    },
+    [],
+  );
+
+
+  function setAccountMenuRoute(
+    nextOpen:
+      boolean,
+  ): void {
+    setAccountMenuRoute(
+      nextOpen,
+    );
+
+    const targetPath =
+      nextOpen
+        ? "/account"
+        : "/";
+
+    if (
+      window.location.pathname !==
+        targetPath
+    ) {
+      window.history.pushState(
+        {},
+        "",
+        targetPath,
+      );
+
+      window.dispatchEvent(
+        new PopStateEvent(
+          "popstate",
+        ),
+      );
+    }
   }
 
 
@@ -415,27 +690,10 @@ export default function UserAccountMenu({
       "",
     );
 
-    setOpen(
-      false,
-    );
+    setAccountMenuRoute(
+                        false,
+                      );
   }
-
-  const normalizedEducationCode =
-    educationCode
-      ?.trim()
-      .toUpperCase() ??
-    "";
-
-  const educationCodeLabel =
-    normalizedEducationCode
-      ? `${normalizedEducationCode}${
-          educationEmailKnown ===
-            false
-            ? "*"
-            : ""
-        }`
-      : "";
-
 
   return (
     <>
@@ -488,6 +746,81 @@ export default function UserAccountMenu({
             <div
               className="user-account-menu__popover user-account-menu__popover--portal"
             >
+            <div className="user-account-menu__identity">
+              <small>
+                Your GYAN
+              </small>
+
+              {
+                identityLoading ? (
+                  <strong>
+                    Loading…
+                  </strong>
+                ) : gyanIdentity ? (
+                  <>
+                    <strong>
+                      {
+                        gyanIdentity.displayName
+                      } · {
+                        gyanIdentity.code
+                      }
+                    </strong>
+
+                    <a
+                      href={
+                        gyanIdentity.publicUrl
+                      }
+                    >
+                      {
+                        gyanIdentity.publicUrl
+                          .replace(
+                            /^https?:\/\//,
+                            "",
+                          )
+                      }
+                    </a>
+
+                    {
+                      gyanIdentity.accessCode && (
+                        <span className="user-account-menu__access-code">
+                          Access Code{" "}
+                          <b>
+                            {
+                              showAccessCode
+                                ? gyanIdentity.accessCode
+                                : "•••••-•••••"
+                            }
+                          </b>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowAccessCode(
+                                (
+                                  current,
+                                ) =>
+                                  !current,
+                              )
+                            }
+                          >
+                            {
+                              showAccessCode
+                                ? "Hide"
+                                : "Show"
+                            }
+                          </button>
+                        </span>
+                      )
+                    }
+                  </>
+                ) : (
+                  <strong>
+                    GYAN unavailable
+                  </strong>
+                )
+              }
+            </div>
+
             {loading ? (
               <div
                 className="user-account-menu__status"
@@ -513,9 +846,9 @@ export default function UserAccountMenu({
                 <button
                   type="button"
                   onClick={() =>
-                    setOpen(
-                      false,
-                    )
+                    setAccountMenuRoute(
+                        false,
+                      )
                   }
                 >
                   🎮 Player
@@ -524,9 +857,9 @@ export default function UserAccountMenu({
                 <button
                   type="button"
                   onClick={() =>
-                    setOpen(
-                      false,
-                    )
+                    setAccountMenuRoute(
+                        false,
+                      )
                   }
                 >
                   🛍 Shopper
@@ -535,9 +868,9 @@ export default function UserAccountMenu({
                 <button
                   type="button"
                   onClick={() => {
-                    setOpen(
-                      false,
-                    );
+                    setAccountMenuRoute(
+                        false,
+                      );
 
                     onOpenChat();
                   }}
@@ -579,7 +912,7 @@ export default function UserAccountMenu({
                   <button
                     type="button"
                     onClick={() => {
-                      setOpen(
+                      setAccountMenuRoute(
                         false,
                       );
 
@@ -605,43 +938,9 @@ export default function UserAccountMenu({
                 <button
                   type="button"
                   onClick={() => {
-                    setOpen(
-                      false,
-                    );
-
-                    if (
-                      onOpenMyRatings
-                    ) {
-                      onOpenMyRatings();
-
-                      return;
-                    }
-
-                    window.history.pushState(
-                      {},
-                      "",
-                      "/ratings",
-                    );
-
-                    window.dispatchEvent(
-                      new PopStateEvent(
-                        "popstate",
-                      ),
-                    );
-                  }}
-                >
-                  ⭐ My Ratings
-                  {educationCodeLabel
-                    ? ` [${educationCodeLabel}]`
-                    : ""}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpen(
-                      false,
-                    );
+                    setAccountMenuRoute(
+                        false,
+                      );
 
                     onOpenAdmin();
                   }}
@@ -677,9 +976,9 @@ export default function UserAccountMenu({
                   type="button"
                   className="user-account-menu__signin"
                   onClick={() => {
-                    setOpen(
-                      false,
-                    );
+                    setAccountMenuRoute(
+                        false,
+                      );
 
                     setAuthOpen(
                       true,
@@ -689,50 +988,12 @@ export default function UserAccountMenu({
                   ✉️ Sign in
                 </button>
 
-                {educationCodeLabel && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOpen(
-                        false,
-                      );
-
-                      if (
-                        onOpenMyRatings
-                      ) {
-                        onOpenMyRatings();
-                        return;
-                      }
-
-                      window.history.pushState(
-                        {},
-                        "",
-                        "/ratings",
-                      );
-
-                      window.dispatchEvent(
-                        new PopStateEvent(
-                          "popstate",
-                        ),
-                      );
-                    }}
-                    title={
-                      educationEmailKnown ===
-                        false
-                        ? "Add an email so this GYAN can be recovered if access is lost."
-                        : "Open saved learning progress."
-                    }
-                  >
-                    ⭐ My Ratings [{educationCodeLabel}]
-                  </button>
-                )}
-
                 <button
                   type="button"
                   onClick={() => {
-                    setOpen(
-                      false,
-                    );
+                    setAccountMenuRoute(
+                        false,
+                      );
 
                     onOpenAdmin();
                   }}
@@ -743,9 +1004,9 @@ export default function UserAccountMenu({
                 <button
                   type="button"
                   onClick={() =>
-                    setOpen(
-                      false,
-                    )
+                    setAccountMenuRoute(
+                        false,
+                      )
                   }
                 >
                   Close
@@ -766,6 +1027,7 @@ export default function UserAccountMenu({
               );
 
               void loadUser();
+              void loadGyanIdentity();
             }}
           />,
           document.body,

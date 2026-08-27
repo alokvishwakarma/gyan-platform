@@ -44,8 +44,21 @@ interface GyanCalendarPageProps {
    * but opens directly in the chooser and defaults to A7.
    */
   registrationMode?:
+    boolean;  /*
+   * Opens directly in the final print/calendar chooser.
+   * Used by /?calendar=print from the public GYAN account card.
+   */
+  initialPrintOpen?:
+    boolean;
+
+  /*
+   * When true, Calendar/Print uses the current browser's unified GYAN
+   * identity instead of issuing a fresh calendar-access ABCD.
+   */
+  useCurrentGyan?:
     boolean;
 }
+
 
 interface CalendarMonthData {
   key: string;
@@ -320,6 +333,149 @@ type CalendarAccessRecord = {
       string;
   }[];
 };
+
+type UnifiedGyanIdentity = {
+  accountId?: number;
+  code: string;
+  displayName: string;
+  publicUrl: string;
+  accessCode?: string;
+};
+
+
+function nearestAccountPrintSize():
+  PrintSize {
+  const width =
+    window.innerWidth;
+
+  if (
+    width <=
+      480
+  ) {
+    return "A7";
+  }
+
+  if (
+    width <=
+      820
+  ) {
+    return "A6";
+  }
+
+  return "A5";
+}
+
+
+async function loadCurrentGyanRecord({
+  durationMonths,
+  artworkKey,
+}: {
+  durationMonths:
+    DurationMonths;
+
+  artworkKey:
+    ArtworkKey;
+}):
+  Promise<CalendarAccessRecord> {
+  const response =
+    await fetch(
+      "/api/gyan-identity",
+      {
+        method:
+          "POST",
+
+        credentials:
+          "include",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body:
+          JSON.stringify({
+            browserCode:
+              window.localStorage.getItem(
+                "gyan_browser_code_v1",
+              ) ??
+              undefined,
+          }),
+      },
+    );
+
+  const body =
+    await response.json() as {
+      identity?:
+        UnifiedGyanIdentity;
+
+      error?:
+        string;
+    };
+
+  if (
+    !response.ok ||
+    !body.identity
+  ) {
+    throw new Error(
+      body.error ??
+        "Your GYAN account could not be loaded.",
+    );
+  }
+
+  const identity =
+    body.identity;
+
+  return {
+    id:
+      identity.accountId ??
+      -1,
+
+    slug:
+      identity.code
+        .trim()
+        .toUpperCase(),
+
+    publicUrl:
+      identity.publicUrl,
+
+    qrUrl:
+      identity.publicUrl,
+
+    gyanName:
+      identity.displayName,
+
+    accessCode:
+      identity.accessCode ??
+      "•••••-•••••",
+
+    durationMonths,
+
+    welcomeGems:
+      getPrintConfig(
+        durationMonths === 12
+          ? "A5"
+          : durationMonths === 6
+            ? "A6"
+            : "A7",
+      ).welcomeGems,
+
+    artworkKey,
+
+    /*
+     * This record represents an already-existing unified GYAN account,
+     * not a newly issued calendar-access code.
+     */
+    status:
+      "CLAIMED",
+
+    /*
+     * /api/gyan-identity intentionally does not expose a raw email here.
+     */
+    email:
+      null,
+  };
+}
+
 
 type PrintSizeConfig = {
   id:
@@ -1739,6 +1895,8 @@ function PrintChooser({
   months,
   defaultSize =
     null,
+  useCurrentGyan =
+    false,
   onBack,
 }: {
   market:
@@ -1753,6 +1911,9 @@ function PrintChooser({
   defaultSize?:
     PrintSize |
     null;
+
+  useCurrentGyan?:
+    boolean;
 
   onBack:
     () => void;
@@ -1769,6 +1930,12 @@ function PrintChooser({
           defaultSize
         ) {
           return defaultSize;
+        }
+
+        if (
+          useCurrentGyan
+        ) {
+          return nearestAccountPrintSize();
         }
 
         return window.matchMedia(
@@ -1852,6 +2019,23 @@ function PrintChooser({
   ] =
     useState("");
 
+  function emailCalendarLink():
+    void {
+    const subject =
+      encodeURIComponent(
+        "GYAN Calendar",
+      );
+
+    const body =
+      encodeURIComponent(
+        `Open your GYAN Calendar: ${window.location.origin}/?calendar=print`,
+      );
+
+    window.location.href =
+      `mailto:?subject=${subject}&body=${body}`;
+  }
+
+
   const pdfSheetRef =
     useRef<
       HTMLDivElement |
@@ -1902,19 +2086,28 @@ function PrintChooser({
     setError("");
 
     try {
-      const [
-        record,
-      ] =
-        await issueCalendarAccessRecords({
-          count:
-            1,
+      const record =
+        useCurrentGyan
+          ? await loadCurrentGyanRecord({
+              durationMonths:
+                issuanceConfig.durationMonths,
 
-          durationMonths:
-            issuanceConfig.durationMonths,
+              artworkKey:
+                artwork,
+            })
+          : (
+              await issueCalendarAccessRecords({
+                count:
+                  1,
 
-          artworkKey:
-            artwork,
-        });
+                durationMonths:
+                  issuanceConfig.durationMonths,
+
+                artworkKey:
+                  artwork,
+              })
+            )[0] ??
+            null;
 
       setIssuedRecord(
         record,
@@ -1944,30 +2137,59 @@ function PrintChooser({
       let cancelled =
         false;
 
-      void issueCalendarAccessRecords({
-        count:
-          1,
+      const initialSize =
+        defaultSize ??
+        (
+          useCurrentGyan
+            ? nearestAccountPrintSize()
+            : window.matchMedia(
+                "(max-width: 620px)",
+              ).matches
+              ? "A7"
+              : "A5"
+        );
 
-        durationMonths:
-          12,
+      const initialConfig =
+        getPrintConfig(
+          initialSize,
+        );
 
-        artworkKey:
-          initialArtworkRef.current,
-      })
+      const initialRecordPromise =
+        useCurrentGyan
+          ? loadCurrentGyanRecord({
+              durationMonths:
+                initialConfig.durationMonths,
+
+              artworkKey:
+                initialArtworkRef.current,
+            })
+          : issueCalendarAccessRecords({
+              count:
+                1,
+
+              durationMonths:
+                12,
+
+              artworkKey:
+                initialArtworkRef.current,
+            }).then(
+              (
+                records,
+              ) =>
+                records[0] ??
+                null,
+            );
+
+      void initialRecordPromise
         .then(
           (
-            records,
+            record,
           ) => {
             if (
               cancelled
             ) {
               return;
             }
-
-            const [
-              record,
-            ] =
-              records;
 
             if (
               record
@@ -2026,6 +2248,32 @@ function PrintChooser({
         issuedRecord.artworkKey ===
           artwork
       ) {
+        return;
+      }
+
+      if (
+        useCurrentGyan
+      ) {
+        setIssuedRecord(
+          (
+            previous,
+          ) =>
+            previous
+              ? {
+                  ...previous,
+
+                  durationMonths:
+                    selected.durationMonths,
+
+                  welcomeGems:
+                    selected.welcomeGems,
+
+                  artworkKey:
+                    artwork,
+                }
+              : previous,
+        );
+
         return;
       }
 
@@ -2214,11 +2462,13 @@ function PrintChooser({
           [];
 
       const additionalCount =
-        Math.max(
-          0,
-          adminCount -
-            1,
-        );
+        useCurrentGyan
+          ? 0
+          : Math.max(
+              0,
+              adminCount -
+                1,
+            );
 
       const additionalRecords =
         additionalCount >
@@ -2981,31 +3231,48 @@ function PrintChooser({
           }
         </span>
 
-        <button
-          type="button"
-          disabled={
-            busy
-          }
-          onClick={() =>
-            void generatePdf()
-          }
-        >
-          <span className="gyan-calendar-print__button-label--desktop">
-            {
-              busy
-                ? "Preparing PDF…"
-                : "🖨️ Print PDF using selected size"
+        <div className="gyan-calendar-print__action-buttons">
+          <button
+            type="button"
+            className="gyan-calendar-print__email-button"
+            onClick={
+              emailCalendarLink
             }
-          </span>
+            aria-label="Email calendar link"
+            title="Email calendar link"
+          >
+            ✉️
+            <span>
+              Email
+            </span>
+          </button>
 
-          <span className="gyan-calendar-print__button-label--mobile">
-            {
+          <button
+            type="button"
+            disabled={
               busy
-                ? "Preparing…"
-                : "🖨️ Print PDF"
             }
-          </span>
-        </button>
+            onClick={() =>
+              void generatePdf()
+            }
+          >
+            <span className="gyan-calendar-print__button-label--desktop">
+              {
+                busy
+                  ? "Preparing PDF…"
+                  : "🖨️ Print PDF using selected size"
+              }
+            </span>
+
+            <span className="gyan-calendar-print__button-label--mobile">
+              {
+                busy
+                  ? "Preparing…"
+                  : "🖨️ Print PDF"
+              }
+            </span>
+          </button>
+        </div>
       </div>
     </section>
   );
@@ -3015,6 +3282,10 @@ function PrintChooser({
 export default function GyanCalendarPage({
   onClose,
   registrationMode =
+    false,
+  initialPrintOpen =
+    false,
+  useCurrentGyan =
     false,
 }: GyanCalendarPageProps) {
   const [
@@ -3031,7 +3302,8 @@ export default function GyanCalendarPage({
     setPrintOpen,
   ] =
     useState(
-      registrationMode,
+      registrationMode ||
+      initialPrintOpen,
     );
 
   const months =
@@ -3082,11 +3354,17 @@ export default function GyanCalendarPage({
         defaultSize={
           registrationMode
             ? "A7"
-            : null
+            : useCurrentGyan
+              ? nearestAccountPrintSize()
+              : null
+        }
+        useCurrentGyan={
+          useCurrentGyan
         }
         onBack={() => {
           if (
-            registrationMode
+            registrationMode ||
+            initialPrintOpen
           ) {
             onClose();
             return;

@@ -13,11 +13,18 @@ import {
 import LittleLearnerSettings
   from "./LittleLearnerSettings";
 
+import TextualPromptingTopic
+  from "./TextualPromptingTopic";
+
 import {
   LITTLE_LEARNER_TOPICS,
 } from "../config/littleLearnerTopics";
 
 import "./LittleLearnersPage.css";
+
+
+const TEXTUAL_PROMPTING_TOPIC_CODE =
+  "TEXTUAL_PROMPTING";
 
 
 interface LittleLearnersPageProps {
@@ -294,7 +301,26 @@ export default function LittleLearnersPage({
 
   useEffect(
     () => {
-      void refresh();
+      if (
+        topic ===
+        TEXTUAL_PROMPTING_TOPIC_CODE
+      ) {
+        return;
+      }
+
+      const timer =
+        window.setTimeout(
+          () => {
+            void refresh();
+          },
+          0,
+        );
+
+      return () => {
+        window.clearTimeout(
+          timer,
+        );
+      };
     },
     [
       level,
@@ -532,6 +558,29 @@ export default function LittleLearnersPage({
         onClose={() => {
           setSettingsOpen(
             false,
+          );
+        }}
+      />
+    );
+  }
+
+
+  if (
+    topic ===
+    TEXTUAL_PROMPTING_TOPIC_CODE
+  ) {
+    return (
+      <TextualPromptingTopic
+        studentCode={
+          studentCode
+        }
+        onBack={() => {
+          setTopic(
+            "ALL",
+          );
+
+          setSubtopic(
+            "",
           );
         }}
       />

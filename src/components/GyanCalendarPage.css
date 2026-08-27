@@ -7709,3 +7709,37 @@ span:nth-child(7n + 1) {
   letter-spacing:
     0.085em !important;
 }
+
+
+/* v1.1 — calendar direct-print actions */
+.gyan-calendar-print__action-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gyan-calendar-print__email-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .gyan-calendar-print__action-buttons {
+    width: 100%;
+    justify-content: stretch;
+    gap: 6px;
+  }
+
+  .gyan-calendar-print__action-buttons > button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .gyan-calendar-print__email-button span {
+    display: inline;
+  }
+}

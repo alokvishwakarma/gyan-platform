@@ -278,3 +278,185 @@
   background:
     #f5faf6;
 }
+
+
+/* Unified /ABCD GYAN landing card */
+.calendar-register-card--gyan-home {
+  gap: 8px;
+}
+
+.calendar-register-gyan-code {
+  margin-top: -2px;
+  font-size: 1.15rem;
+  letter-spacing: 0.08em;
+}
+
+.calendar-register-gyan-code-label,
+.calendar-register-gyan-summary,
+.calendar-register-public-note,
+.calendar-register-owner-device {
+  display: block;
+  font-size: 0.72rem;
+  color: #60747f;
+}
+
+.calendar-register-account-qr {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  margin: 4px auto 2px;
+}
+
+.calendar-register-account-url {
+  max-width: 100%;
+  color: #315f7a;
+  font-size: 0.68rem;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.calendar-register-account-url:hover {
+  text-decoration: underline;
+}
+
+.calendar-register-account-qr-link {
+  display: inline-grid;
+  place-items: center;
+  padding: 5px;
+  border: 1px solid #d9e3e8;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.calendar-register-account-qr-link svg {
+  display: block;
+  pointer-events: none;
+}
+
+.calendar-register-account-qr > strong {
+  font-size: 0.67rem;
+  letter-spacing: 0.08em;
+}
+
+.calendar-register-destination-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.calendar-register-destination {
+  min-width: 0;
+  min-height: 40px;
+  padding: 7px 8px;
+  border: 1px solid #d6e1e7;
+  border-radius: 8px;
+  background: #f8fbfc;
+  color: #314d5b;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.calendar-register-destination:hover {
+  background: #eef5f8;
+}
+
+.calendar-register-destination--wide {
+  grid-column: 1 / -1;
+}
+
+.calendar-register-account-notice {
+  margin-top: 2px;
+  font-size: 0.7rem;
+}
+
+@media (max-width: 360px) {
+  .calendar-register-destination {
+    padding-inline: 5px;
+    font-size: 0.7rem;
+  }
+}
+
+
+/* v1.1 — compact mobile account landing */
+@media (max-width: 600px) {
+  .calendar-register-page {
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    min-height: auto !important;
+    padding-top: 6px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .calendar-register-card--gyan-home {
+    margin-top: 0 !important;
+    padding-top: 8px !important;
+    gap: 5px !important;
+  }
+
+  .calendar-register-logo {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  .calendar-register-kicker {
+    margin-top: -2px !important;
+    margin-bottom: 0 !important;
+  }
+
+  .calendar-register-card--gyan-home h1 {
+    margin-top: 1px !important;
+    margin-bottom: 1px !important;
+  }
+}
+
+.calendar-register-card--gyan-home {
+  width: min(100%, 430px) !important;
+  margin-left: auto !important; margin-right: auto !important;
+  box-sizing: border-box !important;
+}
+.calendar-register-account-qr,.calendar-register-destination-grid { width:100%; box-sizing:border-box; }
+@media (max-width:600px) {
+  .calendar-register-page { padding:4px 8px 10px !important; }
+  .calendar-register-card--gyan-home {
+    width:100% !important; max-width:430px !important;
+    margin:0 auto !important; padding:7px 10px 10px !important;
+  }
+}
+
+/* =========================================================
+   MOBILE — CENTER GYAN ACCOUNT CARD EVENLY
+   ========================================================= */
+
+@media (max-width: 600px) {
+  .calendar-register-page {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .calendar-register-card,
+  .calendar-register-card--gyan-home {
+    width: calc(100% - 16px) !important;
+    max-width: 430px !important;
+
+    margin-left: auto !important;
+    margin-right: auto !important;
+
+    box-sizing: border-box !important;
+    align-self: center !important;
+  }
+}

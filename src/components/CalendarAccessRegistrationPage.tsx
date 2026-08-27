@@ -4,6 +4,10 @@ import {
   useState,
 } from "react";
 
+import {
+  QRCodeSVG,
+} from "qrcode.react";
+
 import "./CalendarAccessRegistrationPage.css";
 
 
@@ -44,6 +48,15 @@ interface CalendarRecord {
 
   expires_at:
     string | null;
+}
+
+
+interface UnifiedGyanAccount {
+  id: number;
+  code: string;
+  displayName: string;
+  registered: boolean;
+  createdAt: string;
 }
 
 
@@ -120,6 +133,18 @@ export default function CalendarAccessRegistrationPage({
     >(
       null,
     );
+
+  const [
+    unifiedAccount,
+    setUnifiedAccount,
+  ] =
+    useState<
+      UnifiedGyanAccount |
+      null
+    >(
+      null,
+    );
+
 
   const [
     authenticatedEmail,
@@ -277,14 +302,50 @@ export default function CalendarAccessRegistrationPage({
                 string;
             };
 
+          let accountBody:
+            {
+              account?:
+                UnifiedGyanAccount;
+
+              error?:
+                string;
+            } | null =
+              null;
+
           if (
             !recordResponse.ok ||
             !recordBody.record
           ) {
-            throw new Error(
-              recordBody.error ??
-              "This GYAN code could not be found.",
-            );
+            const accountResponse =
+              await fetch(
+                `/api/gyan-identity/${encodeURIComponent(
+                  normalizedSlug,
+                )}`,
+                {
+                  cache:
+                    "no-store",
+                },
+              );
+
+            accountBody =
+              await accountResponse.json() as {
+                account?:
+                  UnifiedGyanAccount;
+
+                error?:
+                  string;
+              };
+
+            if (
+              !accountResponse.ok ||
+              !accountBody.account
+            ) {
+              throw new Error(
+                accountBody.error ??
+                recordBody.error ??
+                "This GYAN code could not be found.",
+              );
+            }
           }
 
           const authBody =
@@ -310,7 +371,13 @@ export default function CalendarAccessRegistrationPage({
           }
 
           setRecord(
-            recordBody.record,
+            recordBody.record ??
+            null,
+          );
+
+          setUnifiedAccount(
+            accountBody?.account ??
+            null,
           );
 
           setAuthenticatedEmail(
@@ -332,7 +399,7 @@ export default function CalendarAccessRegistrationPage({
 
           if (
             authBody.authenticated &&
-            recordBody.record.status ===
+            recordBody.record?.status ===
               "GUEST_ACTIVE"
           ) {
             setShowProtect(
@@ -844,7 +911,8 @@ export default function CalendarAccessRegistrationPage({
 
 
   if (
-    !record
+    !record &&
+    !unifiedAccount
   ) {
     return (
       <main className="calendar-register-page">
@@ -886,6 +954,229 @@ export default function CalendarAccessRegistrationPage({
   }
 
 
+  if (
+    unifiedAccount
+  ) {
+    const publicUrl =
+      `${window.location.origin}/${unifiedAccount.code.toLowerCase()}`;
+
+    const localCode =
+      (
+        window.localStorage.getItem(
+          "gyan_browser_code_v1",
+        ) ??
+        ""
+      )
+        .trim()
+        .toUpperCase();
+
+    const sameBrowserOwner =
+      localCode ===
+      unifiedAccount.code.toUpperCase();
+
+    const navigate =
+      (
+        destination:
+          string,
+      ): void => {
+        window.location.assign(
+          destination,
+        );
+      };
+
+    const openAccount =
+      (): void => {
+        navigate(
+          "/account",
+        );
+      };
+
+    return (
+      <main className="calendar-register-page">
+        <section className="calendar-register-card calendar-register-card--gyan-home">
+          <div className="calendar-register-logo">
+            GYAN
+          </div>
+
+          <small className="calendar-register-kicker">
+            ACCOUNT
+          </small>
+
+          <h1>
+            {
+              unifiedAccount.displayName
+            }
+          </h1>
+
+          <strong className="calendar-register-gyan-code">
+            {
+              unifiedAccount.code
+            }
+          </strong>
+
+          <span className="calendar-register-gyan-code-label">
+            Your GYAN Code
+          </span>
+
+          <small className="calendar-register-gyan-summary">
+            One GYAN identity across GYAN.
+          </small>
+
+          <div className="calendar-register-account-qr">
+            <a
+              href={
+                publicUrl
+              }
+              className="calendar-register-account-url"
+            >
+              {
+                publicUrl
+              }
+            </a>
+
+            <a
+              href={
+                publicUrl
+              }
+              className="calendar-register-account-qr-link"
+              aria-label={`Open GYAN account ${unifiedAccount.code}`}
+              title={
+                publicUrl
+              }
+            >
+              <QRCodeSVG
+                value={
+                  publicUrl
+                }
+                size={
+                  112
+                }
+                level="M"
+                marginSize={
+                  1
+                }
+              />
+            </a>
+
+            <strong>
+              ACCOUNT
+            </strong>
+          </div>
+
+          {
+            sameBrowserOwner && (
+              <>
+          <div className="calendar-register-destination-grid">
+            <button
+              type="button"
+              className="calendar-register-destination"
+              onClick={() =>
+                navigate(
+                  "/puzzle",
+                )
+              }
+            >
+              🧩 GYAN Puzzle
+            </button>
+
+            <button
+              type="button"
+              className="calendar-register-destination"
+              onClick={() =>
+                navigate(
+                  "/education",
+                )
+              }
+            >
+              🎓 GYAN Education
+            </button>
+
+            <button
+              type="button"
+              className="calendar-register-destination"
+              onClick={() =>
+                navigate(
+                  "/services",
+                )
+              }
+            >
+              🧰 GYAN Services
+            </button>
+
+            <button
+              type="button"
+              className="calendar-register-destination"
+              onClick={
+                openAccount
+              }
+            >
+              👤 GYAN Account
+            </button>
+
+            <button
+              type="button"
+              className="calendar-register-destination calendar-register-destination--wide"
+              onClick={() =>
+                navigate(
+                  "/?calendar=print",
+                )
+              }
+            >
+              📅 GYAN Calendar
+            </button>
+          </div>
+
+              </>
+            )
+          }
+
+          {
+            sameBrowserOwner && (
+              <small className="calendar-register-owner-device">
+                ✓ This device owns {
+                  unifiedAccount.code
+                }.
+              </small>
+            )
+          }
+
+          {
+            !sameBrowserOwner &&
+            !unifiedAccount.registered && (
+              <small className="calendar-register-public-note">
+                Public profile · only owner-shared information is visible.
+              </small>
+            )
+          }
+
+          <button
+            type="button"
+            className="calendar-register-secondary"
+            onClick={
+              onBack
+            }
+          >
+            Go to gyan.cc
+          </button>
+        </section>
+      </main>
+    );
+  }
+
+
+  /*
+   * At this point:
+   * - !record && !unifiedAccount already returned the not-found state.
+   * - unifiedAccount already returned the unified-account state.
+   * Therefore the remaining legacy calendar path has a record.
+   *
+   * Assigning a non-null local gives TypeScript the narrowing it needs
+   * without sprinkling optional chaining through the existing calendar UI.
+   */
+  const calendarRecord =
+    record as CalendarRecord;
+
+
   return (
     <main className="calendar-register-page">
       <section className="calendar-register-card">
@@ -899,13 +1190,13 @@ export default function CalendarAccessRegistrationPage({
 
         <h1>
           {
-            record.gyan_name
+            calendarRecord.gyan_name
           }
         </h1>
 
         {
           !guestActive &&
-          record.status !==
+          calendarRecord.status !==
             "CLAIMED" && (
             <>
               <div className="calendar-register-benefit">
@@ -997,7 +1288,7 @@ export default function CalendarAccessRegistrationPage({
 
                 <p>
                   Your learning progress and reports can be saved to {
-                    record.gyan_name
+                    calendarRecord.gyan_name
                   }.
                 </p>
               </div>
@@ -1038,14 +1329,14 @@ export default function CalendarAccessRegistrationPage({
             <section className="calendar-register-protect-panel">
               <h2>
                 Protect {
-                  record.gyan_name
+                  calendarRecord.gyan_name
                 }
               </h2>
 
               <p>
                 Add a verified email for recovery and your full {
                   durationLabel(
-                    record.duration_months,
+                    calendarRecord.duration_months,
                   )
                 } complimentary access.
               </p>
@@ -1101,7 +1392,7 @@ export default function CalendarAccessRegistrationPage({
 
                           <p>
                             Open the verification link. It will bring you back to {
-                              record.gyan_name
+                              calendarRecord.gyan_name
                             }.
                           </p>
                         </div>
@@ -1177,7 +1468,7 @@ export default function CalendarAccessRegistrationPage({
 
               <h2>
                 {
-                  record.gyan_name
+                  calendarRecord.gyan_name
                 } is protected
               </h2>
 

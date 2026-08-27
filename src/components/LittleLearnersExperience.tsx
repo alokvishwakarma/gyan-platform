@@ -8,6 +8,12 @@ import LittleLearnersPage
 import WordsGrowingPage
   from "./WordsGrowingPage";
 
+import WordsHubPage
+  from "./WordsHubPage";
+
+import WordGrowingPromptPage
+  from "./WordGrowingPromptPage";
+
 import LittleLearnerCardSetup
   from "./LittleLearnerCardSetup";
 
@@ -31,7 +37,9 @@ interface LittleLearnersExperienceProps {
 
 type View =
   | "practice"
+  | "words-hub"
   | "words"
+  | "word-growing-prompt"
   | "progress"
   | "progress-setup"
   | "review";
@@ -71,6 +79,55 @@ export default function LittleLearnersExperience({
 
   if (
     view ===
+      "words-hub"
+  ) {
+    return (
+      <WordsHubPage
+        onBack={() => {
+          setView(
+            "practice",
+          );
+        }}
+
+        onOpenWordsGrowing={() => {
+          setView(
+            "words",
+          );
+        }}
+
+        onOpenPromptGrowing={() => {
+          setView(
+            "word-growing-prompt",
+          );
+        }}
+      />
+    );
+  }
+
+
+  if (
+    view ===
+      "word-growing-prompt"
+  ) {
+    return (
+      <WordGrowingPromptPage
+        studentCode={
+          studentCode ||
+          undefined
+        }
+
+        onBack={() => {
+          setView(
+            "words-hub",
+          );
+        }}
+      />
+    );
+  }
+
+
+  if (
+    view ===
       "words"
   ) {
     if (
@@ -80,7 +137,7 @@ export default function LittleLearnersExperience({
         <LittleLearnerCardSetup
           onBack={() => {
             setView(
-              "practice",
+              "words-hub",
             );
           }}
 
@@ -107,7 +164,7 @@ export default function LittleLearnersExperience({
 
         onBack={() => {
           setView(
-            "practice",
+            "words-hub",
           );
         }}
       />
@@ -249,7 +306,7 @@ export default function LittleLearnersExperience({
 
       onOpenWords={() => {
         setView(
-          "words",
+          "words-hub",
         );
       }}
     />

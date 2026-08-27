@@ -87,6 +87,13 @@ export const LITTLE_LEARNER_TOPICS:
   },
 
   {
+  code: "TEXTUAL_PROMPTING",
+  name: "Textual Prompting",
+  icon: "📝",
+  subtopics: [],
+},
+
+  {
     code:
       "ACTIONS",
     name:

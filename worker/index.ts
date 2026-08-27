@@ -135,6 +135,10 @@ import {
   handleSafetyResourceRoute,
 } from "./safetyResources";
 
+import {
+  handleGyanIdentityRoute,
+} from "./gyanIdentity";
+
 interface RegisterShopRequest {
   code?: unknown;
   name?: unknown;
@@ -1631,6 +1635,17 @@ if (
   ) {
     return safetyResourceResponse;
   }
+
+  const gyanIdentityResponse =
+  await handleGyanIdentityRoute(
+    request,
+    env,
+    url,
+  );
+
+if (gyanIdentityResponse) {
+  return gyanIdentityResponse;
+}
 
   /*
    * MUST remain last.

@@ -1,0 +1,116 @@
+.textual-prompting {
+  width: min(100%, 760px);
+  margin: 0 auto;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.textual-prompting__topbar {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.textual-prompting__topbar h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.textual-prompting__topbar p {
+  margin: 3px 0 0;
+  opacity: .72;
+  font-size: .86rem;
+}
+
+.textual-prompting__back,
+.textual-prompting button {
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, .16);
+  padding: 9px 14px;
+  font: inherit;
+  cursor: pointer;
+  background: white;
+}
+
+.textual-prompting__card {
+  border: 1px solid rgba(0, 0, 0, .12);
+  border-radius: 18px;
+  padding: 16px;
+  text-align: center;
+  background: white;
+}
+
+.textual-prompting__progress {
+  text-align: right;
+  font-size: .75rem;
+  opacity: .62;
+}
+
+.textual-prompting__picture {
+  min-height: 150px;
+  display: grid;
+  place-items: center;
+  font-size: clamp(5rem, 18vw, 8rem);
+}
+
+.textual-prompting__cue {
+  min-height: 84px;
+  display: grid;
+  place-items: center;
+  letter-spacing: .08em;
+  font-size: clamp(2.5rem, 12vw, 5rem);
+}
+
+.textual-prompting__waiting {
+  opacity: .24;
+}
+
+.textual-prompting__mic {
+  min-height: 24px;
+  margin: 2px 0 4px;
+  font-size: .86rem;
+  font-weight: 700;
+}
+
+.textual-prompting__mic--unsupported,
+.textual-prompting__mic--blocked {
+  font-weight: 600;
+  opacity: .7;
+}
+
+.textual-prompting__heard {
+  min-height: 22px;
+  margin-bottom: 10px;
+  font-size: .78rem;
+  opacity: .62;
+}
+
+.textual-prompting__actions,
+.textual-prompting__result {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+.textual-prompting__said,
+.textual-prompting__next {
+  font-weight: 750;
+}
+
+.textual-prompting__good {
+  font-weight: 750;
+}
+
+.textual-prompting__recent {
+  margin-top: 12px;
+  font-size: .84rem;
+}
+
+.textual-prompting__recent ul {
+  margin: 8px 0 0;
+  padding-left: 22px;
+}
