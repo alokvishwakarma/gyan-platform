@@ -39,7 +39,8 @@ import UserAccountMenu
 
 import "./PublicHomePage.css";
 
-
+import PuzzleRatingsStrip
+  from "./PuzzleRatingsStrip";
 
 
 interface PublicService {
@@ -883,6 +884,13 @@ export default function PublicHomePage({
         );
       },
     );
+
+
+  const [
+    puzzleInstanceKey,
+    setPuzzleInstanceKey,
+  ] =
+    useState(0);
 
 
   const [
@@ -1868,56 +1876,36 @@ export default function PublicHomePage({
                   </button>
                 </div>
 
-                <div className="public-home__activity-row">
-                  <strong>
-                    Puzzles:
-                  </strong>
+                <PuzzleRatingsStrip
+                  onOpenPuzzle={() => {
+                    setEducationRatingsCardOpen(
+                      false,
+                    );
 
-                  <div className="public-home__activity-strip">
-                    {gyanActivityLoading
-                      ? (
-                          <span className="public-home__activity-loading">
-                            Loading…
-                          </span>
-                        )
-                      : gyanActivity.puzzles.length
-                        ? (
-                            gyanActivity.puzzles.map(
-                              (
-                                puzzle,
-                              ) => {
-                                const tone =
-                                  puzzle.sevenSolved
-                                    ? "green"
-                                    : puzzle.fiveSolved
-                                      ? "yellow"
-                                      : "white";
+                    setSearchFocused(
+                      false,
+                    );
 
-                                return (
-                                  <span
-                                    key={
-                                      puzzle.puzzleNumber
-                                    }
-                                    className={`public-home__activity-box public-home__activity-box--${tone}`}
-                                    title={`Puzzle #${puzzle.puzzleNumber} · ${
-                                      puzzle.sevenSolved
-                                        ? "5×5 + 7×7 solved"
-                                        : puzzle.fiveSolved
-                                          ? "5×5 solved"
-                                          : "No completed attempt"
-                                    }`}
-                                  />
-                                );
-                              },
-                            )
-                          )
-                        : (
-                            <span className="public-home__activity-empty">
-                              No recent puzzles
-                            </span>
-                          )}
-                  </div>
-                </div>
+                    setActiveView(
+                      "home",
+                    );
+
+                    setPuzzleInstanceKey(
+                      (current) =>
+                        current + 1,
+                    );
+
+                    setShowPuzzle(
+                      true,
+                    );
+
+                    window.history.pushState(
+                      {},
+                      "",
+                      "/puzzle",
+                    );
+                  }}
+                />
 
                 <div className="public-home__activity-row">
                   <strong>
@@ -2441,50 +2429,108 @@ export default function PublicHomePage({
                 ? (
                   educationHeaderCode
                     ? (
-                        <StudentProgressPage
-                          studentCode={
-                            educationHeaderCode
-                          }
+                        <>
+                          <PuzzleRatingsStrip
+                            onOpenPuzzle={() => {
+                              setSearchFocused(
+                                false,
+                              );
 
-                          onBack={() => {
-                            setActiveView(
-                              "home",
-                            );
+                              setActiveView(
+                                "home",
+                              );
 
-                            setShowPuzzle(
-                              true,
-                            );
+                              setPuzzleInstanceKey(
+                                (current) =>
+                                  current + 1,
+                              );
 
-                            window.history.pushState(
-                              {},
-                              "",
-                              "/",
-                            );
-                          }}
+                              setShowPuzzle(
+                                true,
+                              );
 
-                          onContinueLearning={() => {
-                            openEducation();
-                          }}
-                        />
+                              window.history.pushState(
+                                {},
+                                "",
+                                "/puzzle",
+                              );
+                            }}
+                          />
+
+                          <StudentProgressPage
+                            studentCode={
+                              educationHeaderCode
+                            }
+
+                            onBack={() => {
+                              setActiveView(
+                                "home",
+                              );
+
+                              setShowPuzzle(
+                                true,
+                              );
+
+                              window.history.pushState(
+                                {},
+                                "",
+                                "/",
+                              );
+                            }}
+
+                            onContinueLearning={() => {
+                              openEducation();
+                            }}
+                          />
+                        </>
                       )
                     : (
-                        <MyRatingsPage
-                          onBack={() => {
-                            setActiveView(
-                              "home",
-                            );
+                        <>
+                          <PuzzleRatingsStrip
+                            onOpenPuzzle={() => {
+                              setSearchFocused(
+                                false,
+                              );
 
-                            setShowPuzzle(
-                              true,
-                            );
+                              setActiveView(
+                                "home",
+                              );
 
-                            window.history.pushState(
-                              {},
-                              "",
-                              "/",
-                            );
-                          }}
-                        />
+                              setPuzzleInstanceKey(
+                                (current) =>
+                                  current + 1,
+                              );
+
+                              setShowPuzzle(
+                                true,
+                              );
+
+                              window.history.pushState(
+                                {},
+                                "",
+                                "/puzzle",
+                              );
+                            }}
+                          />
+
+                          <MyRatingsPage
+                            onBack={() => {
+                              setActiveView(
+                                "home",
+                              );
+
+                              setShowPuzzle(
+                                true,
+                              );
+
+                              window.history.pushState(
+                                {},
+                                "",
+                                "/",
+                              );
+                            }}
+                          />
+                        </>
                       )
                 )
               : shellContent
@@ -2504,6 +2550,10 @@ export default function PublicHomePage({
           showPuzzle &&
           (
             <Puzzle
+              key={
+                puzzleInstanceKey
+              }
+
               onClose={() => {
                 setShowPuzzle(
                   false,

@@ -139,6 +139,11 @@ export type TextualPromptItem = {
   label:
     string;
 
+  group:
+    "known-independent" |
+    "known-with-prompt" |
+    "unfamiliar";
+
   acceptedSpeech:
     string[];
 };
@@ -146,103 +151,39 @@ export type TextualPromptItem = {
 
 export const DEFAULT_TEXTUAL_PROMPT_ITEMS:
   TextualPromptItem[] = [
-    {
-      word:
-        "MILK",
+    { word: "WATER", emoji: "💧", label: "water", group: "known-independent", acceptedSpeech: ["water"] },
+    { word: "APPLE", emoji: "🍎", label: "apple", group: "known-independent", acceptedSpeech: ["apple", "appl"] },
+    { word: "RED", emoji: "🔴", label: "red", group: "known-independent", acceptedSpeech: ["red"] },
+    { word: "YELLOW", emoji: "🟡", label: "yellow", group: "known-independent", acceptedSpeech: ["yellow"] },
+    { word: "ORANGE", emoji: "🟠", label: "orange", group: "known-independent", acceptedSpeech: ["orange"] },
+    { word: "EYES", emoji: "👀", label: "eyes", group: "known-independent", acceptedSpeech: ["eyes", "eye"] },
+    { word: "NOSE", emoji: "👃", label: "nose", group: "known-independent", acceptedSpeech: ["nose"] },
+    { word: "SHOE", emoji: "👟", label: "shoe", group: "known-independent", acceptedSpeech: ["shoe", "shoes"] },
+    { word: "GO", emoji: "▶️", label: "go", group: "known-independent", acceptedSpeech: ["go"] },
 
-      emoji:
-        "🥛",
+    { word: "PIZZA", emoji: "🍕", label: "pizza", group: "known-with-prompt", acceptedSpeech: ["pizza"] },
+    { word: "ICE CREAM", emoji: "🍦", label: "ice cream", group: "known-with-prompt", acceptedSpeech: ["ice cream", "icecream"] },
+    { word: "CEREALS", emoji: "🥣", label: "cereals", group: "known-with-prompt", acceptedSpeech: ["cereals", "cereal"] },
+    { word: "MILK", emoji: "🥛", label: "milk", group: "known-with-prompt", acceptedSpeech: ["milk", "mil"] },
+    { word: "SLIDE", emoji: "🛝", label: "slide", group: "known-with-prompt", acceptedSpeech: ["slide"] },
+    { word: "PUSH", emoji: "👉", label: "push", group: "known-with-prompt", acceptedSpeech: ["push"] },
+    { word: "ARM", emoji: "💪", label: "arm", group: "known-with-prompt", acceptedSpeech: ["arm"] },
+    { word: "PURPLE", emoji: "🟣", label: "purple", group: "known-with-prompt", acceptedSpeech: ["purple"] },
+    { word: "BOARD", emoji: "🧾", label: "board", group: "known-with-prompt", acceptedSpeech: ["board"] },
+    { word: "BIRD", emoji: "🐦", label: "bird", group: "known-with-prompt", acceptedSpeech: ["bird"] },
+    { word: "TREE", emoji: "🌳", label: "tree", group: "known-with-prompt", acceptedSpeech: ["tree"] },
+    { word: "LEAF", emoji: "🍃", label: "leaf", group: "known-with-prompt", acceptedSpeech: ["leaf"] },
 
-      label:
-        "milk",
-
-      acceptedSpeech:
-        [
-          "milk",
-          "mil",
-        ],
-    },
-
-    {
-      word:
-        "APPLE",
-
-      emoji:
-        "🍎",
-
-      label:
-        "apple",
-
-      acceptedSpeech:
-        [
-          "apple",
-          "appl",
-        ],
-    },
-
-    {
-      word:
-        "DUCK",
-
-      emoji:
-        "🦆",
-
-      label:
-        "duck",
-
-      acceptedSpeech:
-        [
-          "duck",
-        ],
-    },
-
-    {
-      word:
-        "BALL",
-
-      emoji:
-        "⚽",
-
-      label:
-        "ball",
-
-      acceptedSpeech:
-        [
-          "ball",
-        ],
-    },
-
-    {
-      word:
-        "BUS",
-
-      emoji:
-        "🚌",
-
-      label:
-        "bus",
-
-      acceptedSpeech:
-        [
-          "bus",
-        ],
-    },
-
-    {
-      word:
-        "WATER",
-
-      emoji:
-        "💧",
-
-      label:
-        "water",
-
-      acceptedSpeech:
-        [
-          "water",
-        ],
-    },
+    { word: "DAY", emoji: "🌞", label: "day", group: "unfamiliar", acceptedSpeech: ["day"] },
+    { word: "DAILY", emoji: "📅", label: "daily", group: "unfamiliar", acceptedSpeech: ["daily"] },
+    { word: "DESK", emoji: "🪑", label: "desk", group: "unfamiliar", acceptedSpeech: ["desk"] },
+    { word: "PORT", emoji: "⚓", label: "port", group: "unfamiliar", acceptedSpeech: ["port"] },
+    { word: "SPORT", emoji: "🏅", label: "sport", group: "unfamiliar", acceptedSpeech: ["sport"] },
+    { word: "FAN", emoji: "🪭", label: "fan", group: "unfamiliar", acceptedSpeech: ["fan"] },
+    { word: "PHONE", emoji: "📱", label: "phone", group: "unfamiliar", acceptedSpeech: ["phone"] },
+    { word: "PAN", emoji: "🍳", label: "pan", group: "unfamiliar", acceptedSpeech: ["pan"] },
+    { word: "ART", emoji: "🎨", label: "art", group: "unfamiliar", acceptedSpeech: ["art"] },
+    { word: "SMART", emoji: "💡", label: "smart", group: "unfamiliar", acceptedSpeech: ["smart"] },
   ];
 
 
@@ -439,6 +380,19 @@ export default function TextualPromptingTopic({
   onBack,
   onResult,
 }: Props) {
+  const [
+    selectedGroup,
+    setSelectedGroup,
+  ] =
+    useState<
+      "known-independent" |
+      "known-with-prompt" |
+      "unfamiliar"
+    >(
+      "known-independent",
+    );
+
+
   const usableItems =
     useMemo(
       () =>
@@ -449,11 +403,14 @@ export default function TextualPromptingTopic({
             item.word
               .trim()
               .length >
-            0,
+              0 &&
+            item.group ===
+              selectedGroup,
         ),
 
       [
         items,
+        selectedGroup,
       ],
     );
 
@@ -1265,9 +1222,78 @@ export default function TextualPromptingTopic({
           </h2>
 
           <p>
-            See it • Say it • Need less help over time
+            Known • Textual prompt • Unfamiliar decoding
           </p>
         </div>
+      </div>
+
+
+      <div
+        className="textual-prompting__sets"
+        aria-label="Textual Prompting word set"
+      >
+        <button
+          type="button"
+          className={
+            selectedGroup ===
+              "known-independent"
+              ? "is-active"
+              : ""
+          }
+          onClick={() => {
+            setSelectedGroup(
+              "known-independent",
+            );
+
+            restartTrial(
+              0,
+            );
+          }}
+        >
+          ✓ Known
+        </button>
+
+        <button
+          type="button"
+          className={
+            selectedGroup ===
+              "known-with-prompt"
+              ? "is-active"
+              : ""
+          }
+          onClick={() => {
+            setSelectedGroup(
+              "known-with-prompt",
+            );
+
+            restartTrial(
+              0,
+            );
+          }}
+        >
+          📝 Prompt
+        </button>
+
+        <button
+          type="button"
+          className={
+            selectedGroup ===
+              "unfamiliar"
+              ? "is-active"
+              : ""
+          }
+          onClick={() => {
+            setSelectedGroup(
+              "unfamiliar",
+            );
+
+            restartTrial(
+              0,
+            );
+          }}
+        >
+          🔤 Unfamiliar
+        </button>
       </div>
 
 

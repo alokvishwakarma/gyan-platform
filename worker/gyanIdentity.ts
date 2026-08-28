@@ -177,6 +177,47 @@ async function loadGyanAccount(
     }>();
 }
 
+
+async function loadPublicGyanAccountByCode(
+  db: D1Database,
+  code: string,
+) {
+  const normalizedCode =
+    code
+      .trim()
+      .toUpperCase();
+
+  return db
+    .prepare(
+      `
+      SELECT
+        ga.id,
+        ga.code,
+        ga.display_name,
+        ga.registered,
+        ga.created_at
+      FROM gyan_accounts ga
+      LEFT JOIN gyan_account_aliases aa
+        ON aa.account_id = ga.id
+      WHERE
+        ga.code = ?
+        OR aa.alias_code = ?
+      LIMIT 1
+      `,
+    )
+    .bind(
+      normalizedCode,
+      normalizedCode,
+    )
+    .first<{
+      id: number;
+      code: string;
+      display_name: string;
+      registered: number;
+      created_at: string;
+    }>();
+}
+
 function publicGyanIdentity(
   row: {
     id: number;
@@ -186,7 +227,9 @@ function publicGyanIdentity(
     email: string | null;
     registered: number;
   },
-  origin: string,
+
+  origin:
+    string,
 ) {
   return {
     accountId:
@@ -199,7 +242,7 @@ function publicGyanIdentity(
       row.display_name,
 
     publicUrl:
-      `${origin}/${row.code.toLowerCase()}`,
+      `${origin.replace(/\/$/, "")}/${row.code.toLowerCase()}`,
 
     registered:
       Boolean(row.registered),
@@ -960,93 +1003,102 @@ async function sendNewGyanAccountNotice(
 
 
 
-async function loadPublicGyanAccountByCode(
-  db: D1Database,
-  rawCode: string,
-): Promise<{
-  id: number;
-  code: string;
-  displayName: string;
-  registered: boolean;
-  createdAt: string;
-} | null> {
-  const code =
-    rawCode
-      .trim()
-      .toUpperCase();
+const GYAN_NAME_FIRST = [
+  "Stone",
+  "Red",
+  "Blue",
+  "Green",
+  "Golden",
+  "Silver",
+  "Sunny",
+  "Sunshine",
+  "Moon",
+  "River",
+  "Ocean",
+  "Cloud",
+  "Star",
+  "Bright",
+  "Swift",
+  "Happy",
+  "Clever",
+  "Quiet",
+  "Little",
+  "Grand",
+  "Purple",
+  "Amber",
+  "Coral",
+  "Crystal",
+  "Forest",
+  "Morning",
+  "Evening",
+  "Sky",
+  "Snow",
+  "Spring",
+  "Summer",
+  "Autumn",
+];
 
-  if (
-    !/^[A-Z0-9]{4,8}$/.test(
-      code,
-    )
-  ) {
-    return null;
-  }
+const GYAN_NAME_SECOND = [
+  "Peacock",
+  "Mouse",
+  "Falcon",
+  "Panda",
+  "Owl",
+  "Fox",
+  "Tiger",
+  "Koala",
+  "Rabbit",
+  "Dolphin",
+  "Sparrow",
+  "Turtle",
+  "Mango",
+  "Leaf",
+  "Lotus",
+  "Willow",
+  "Cedar",
+  "Maple",
+  "Comet",
+  "Moon",
+  "Star",
+  "Silver",
+  "Sun",
+  "Cloud",
+  "River",
+  "Meadow",
+  "Robin",
+  "Otter",
+  "Finch",
+  "Deer",
+  "Butterfly",
+  "Bee",
+];
 
-  const row =
-    await db
-      .prepare(
-        `
-        SELECT
-          ga.id,
-          ga.code,
-          ga.display_name,
-          ga.registered,
-          ga.created_at
-        FROM gyan_accounts ga
-        WHERE ga.code = ?
-
-        UNION ALL
-
-        SELECT
-          ga.id,
-          ga.code,
-          ga.display_name,
-          ga.registered,
-          ga.created_at
-        FROM gyan_account_aliases alias
-        INNER JOIN gyan_accounts ga
-          ON ga.id =
-            alias.account_id
-        WHERE alias.alias_code = ?
-
-        LIMIT 1
-        `,
+function randomGyanDisplayName():
+  string {
+  const first =
+    GYAN_NAME_FIRST[
+      Math.floor(
+        Math.random() *
+          GYAN_NAME_FIRST.length,
       )
-      .bind(
-        code,
-        code,
+    ];
+
+  const second =
+    GYAN_NAME_SECOND[
+      Math.floor(
+        Math.random() *
+          GYAN_NAME_SECOND.length,
       )
-      .first<{
-        id: number;
-        code: string;
-        display_name: string;
-        registered: number;
-        created_at: string;
-      }>();
+    ];
 
-  if (!row) {
-    return null;
-  }
+  const number =
+    Math.floor(
+      100 +
+        Math.random() *
+          900,
+    );
 
-  return {
-    id:
-      row.id,
-
-    code:
-      row.code,
-
-    displayName:
-      row.display_name,
-
-    registered:
-      Boolean(
-        row.registered,
-      ),
-
-    createdAt:
-      row.created_at,
-  };
+  return `${first}${second}${number}`;
 }
 
 
@@ -1055,14 +1107,9 @@ export async function handleGyanIdentityRoute(
   env: GyanIdentityEnv,
   url: URL,
 ): Promise<Response | null> {
-  /*
-   * Public unified-GYAN lookup used by /ABCD pages.
-   *
-   * GET /api/gyan-identity/ABCD
-   */
   const publicCodeMatch =
     url.pathname.match(
-      /^\/api\/gyan-identity\/([A-Za-z0-9]{4,8})$/,
+      /^\/api\/gyan-identity\/([A-Za-z0-9]{4,5})$/,
     );
 
   if (
@@ -1087,7 +1134,24 @@ export async function handleGyanIdentityRoute(
     }
 
     return identityJson({
-      account,
+      account: {
+        id:
+          account.id,
+
+        code:
+          account.code,
+
+        displayName:
+          account.display_name,
+
+        registered:
+          Boolean(
+            account.registered,
+          ),
+
+        createdAt:
+          account.created_at,
+      },
     });
   }
 
@@ -1098,6 +1162,97 @@ export async function handleGyanIdentityRoute(
     return null;
   }
 
+  /*
+   * GET is read-only.
+   *
+   * It may return the GYAN already owned by this browser, but it
+   * must NEVER allocate a new account. This keeps ordinary page
+   * navigation (including Home after opening /ABCD) free of account
+   * creation side effects.
+   */
+  if (
+    request.method ===
+      "GET"
+  ) {
+    const existingSecret =
+      identityCookie(
+        request,
+        "gyan_anon",
+      );
+
+    if (!existingSecret) {
+      return identityJson({
+        identity:
+          null,
+      });
+    }
+
+    const secretHash =
+      await identitySha256(
+        existingSecret,
+      );
+
+    const session =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT account_id
+          FROM gyan_browser_sessions
+          WHERE secret_hash = ?
+          LIMIT 1
+          `,
+        )
+        .bind(secretHash)
+        .first<{
+          account_id: number;
+        }>();
+
+    if (!session) {
+      return identityJson({
+        identity:
+          null,
+      });
+    }
+
+    const account =
+      await loadGyanAccount(
+        env.gyan_registry,
+        session.account_id,
+      );
+
+    if (!account) {
+      return identityJson({
+        identity:
+          null,
+      });
+    }
+
+    await env.gyan_registry
+      .prepare(
+        `
+        UPDATE gyan_browser_sessions
+        SET last_seen_at =
+          CURRENT_TIMESTAMP
+        WHERE secret_hash = ?
+        `,
+      )
+      .bind(secretHash)
+      .run();
+
+    return identityJson({
+      identity:
+        publicGyanIdentity(
+          account,
+          url.origin,
+        ),
+    });
+  }
+
+  /*
+   * POST is the explicit create/get-or-create operation.
+   * Existing owners receive their current account; browsers with
+   * no valid ownership cookie get a newly allocated GYAN.
+   */
   if (
     request.method !==
       "POST"
@@ -1124,8 +1279,10 @@ export async function handleGyanIdentityRoute(
           GyanIdentityClientInput;
       }>();
   } catch {
-    requestBody =
-      {};
+    /*
+     * Keep the default empty body when JSON is absent
+     * or malformed.
+     */
   }
 
   const creationClient =
@@ -1202,11 +1359,7 @@ export async function handleGyanIdentityRoute(
     `${identityRandomCode(5)}-${identityRandomCode(5)}`;
 
   const displayName =
-    `HappyMango${Math.floor(
-      100 +
-        Math.random() *
-          900,
-    )}`;
+    randomGyanDisplayName();
 
   const creationLocation =
     getGyanCreationLocation(

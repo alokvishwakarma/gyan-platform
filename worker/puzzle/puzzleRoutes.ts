@@ -837,6 +837,289 @@ export async function handlePuzzleRoute(
   }
 
 
+
+  /*
+   * ----------------------------------------
+   * Current GYAN puzzle history for My Ratings.
+   *
+   * GET /api/puzzle/my-history?limit=10
+   *
+   * - newest -> oldest in the response
+   * - frontend reverses for history -> today
+   * - solved is account-wide via gyan_account_id
+   * ----------------------------------------
+   */
+  if (
+    request.method ===
+      "GET" &&
+    url.pathname ===
+      "/api/puzzle/my-history"
+  ) {
+    const requestedLimit =
+      Number(
+        url.searchParams.get(
+          "limit",
+        ) ??
+          10,
+      );
+
+    const limit =
+      Math.max(
+        1,
+        Math.min(
+          14,
+          Number.isFinite(
+            requestedLimit,
+          )
+            ? Math.trunc(
+                requestedLimit,
+              )
+            : 10,
+        ),
+      );
+
+    const account =
+      await currentGyanAccount(
+        request,
+        env.gyan_registry,
+      );
+
+    const [
+      fiveRows,
+      sevenRows,
+    ] =
+      await Promise.all([
+        env.gyan_registry
+          .prepare(
+            `
+            SELECT
+              puzzle_number,
+              puzzle_date,
+              stage
+            FROM daily_puzzles
+            WHERE
+              stage = '5x5'
+              AND verified = 1
+              AND status = 'published'
+            ORDER BY
+              puzzle_date DESC,
+              puzzle_number DESC
+            LIMIT ?
+            `,
+          )
+          .bind(
+            limit,
+          )
+          .all<{
+            puzzle_number: number;
+            puzzle_date: string;
+            stage: PuzzleStage;
+          }>(),
+
+        env.gyan_registry
+          .prepare(
+            `
+            SELECT
+              puzzle_number,
+              puzzle_date,
+              stage
+            FROM daily_puzzles
+            WHERE
+              stage = '7x7'
+              AND verified = 1
+              AND status = 'published'
+            ORDER BY
+              puzzle_date DESC,
+              puzzle_number DESC
+            LIMIT ?
+            `,
+          )
+          .bind(
+            limit,
+          )
+          .all<{
+            puzzle_number: number;
+            puzzle_date: string;
+            stage: PuzzleStage;
+          }>(),
+      ]);
+
+    type ResultSummary = {
+      puzzle_number: number;
+      stage: PuzzleStage;
+      attempts: number;
+      best_gq: number | null;
+    };
+
+    let resultRows:
+      ResultSummary[] = [];
+
+    let averageGq:
+      number | null = null;
+
+    if (account) {
+      const [
+        resultSummary,
+        averageRow,
+      ] =
+        await Promise.all([
+          env.gyan_registry
+            .prepare(
+              `
+              SELECT
+                puzzle_number,
+                stage,
+                COUNT(*) AS attempts,
+                MAX(gq_score) AS best_gq
+              FROM puzzle_results
+              WHERE gyan_account_id = ?
+              GROUP BY
+                puzzle_number,
+                stage
+              `,
+            )
+            .bind(
+              account.id,
+            )
+            .all<ResultSummary>(),
+
+          env.gyan_registry
+            .prepare(
+              `
+              SELECT
+                ROUND(
+                  AVG(gq_score)
+                ) AS average_gq
+              FROM puzzle_results
+              WHERE
+                gyan_account_id = ?
+                AND gq_score > 0
+              `,
+            )
+            .bind(
+              account.id,
+            )
+            .first<{
+              average_gq:
+                number | null;
+            }>(),
+        ]);
+
+      resultRows =
+        resultSummary.results;
+
+      averageGq =
+        averageRow
+          ?.average_gq ??
+        null;
+    }
+
+    const resultMap =
+      new Map<
+        string,
+        ResultSummary
+      >();
+
+    for (
+      const result
+      of resultRows
+    ) {
+      resultMap.set(
+        `${result.stage}:${result.puzzle_number}`,
+        result,
+      );
+    }
+
+    const mapHistory =
+      (
+        rows: {
+          puzzle_number: number;
+          puzzle_date: string;
+          stage: PuzzleStage;
+        }[],
+      ) =>
+        rows.map(
+          (
+            row,
+            index,
+          ) => {
+            const result =
+              resultMap.get(
+                `${row.stage}:${row.puzzle_number}`,
+              );
+
+            const bestGq =
+              result
+                ?.best_gq ??
+              null;
+
+            /*
+             * Today, puzzle_results is written on a
+             * successful solve, so a positive GQ is
+             * the authoritative green state.
+             *
+             * "attempted" remains supported for future
+             * persisted failed attempts; the frontend
+             * also overlays today's local in-progress
+             * state as yellow.
+             */
+            const state:
+              | "none"
+              | "attempted"
+              | "solved" =
+                bestGq !=
+                  null &&
+                bestGq >
+                  0
+                  ? "solved"
+                  : (
+                      result
+                        ?.attempts ??
+                      0
+                    ) >
+                      0
+                    ? "attempted"
+                    : "none";
+
+            return {
+              puzzleNumber:
+                row.puzzle_number,
+
+              puzzleDate:
+                row.puzzle_date,
+
+              stage:
+                row.stage,
+
+              state,
+
+              bestGq,
+
+              current:
+                index ===
+                  0,
+            };
+          },
+        );
+
+    return jsonResponse({
+      averageGq,
+
+      puzzles: {
+        "5x5":
+          mapHistory(
+            fiveRows.results,
+          ),
+
+        "7x7":
+          mapHistory(
+            sevenRows.results,
+          ),
+      },
+    });
+  }
+
+
   /*
    * ----------------------------------------
    * GET recent published puzzles

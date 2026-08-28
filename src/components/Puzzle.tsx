@@ -462,6 +462,7 @@ interface RevealResult {
 }
 
 
+
 interface ResultClaimResponse {
   claimed: boolean;
 
@@ -568,6 +569,73 @@ interface SavedGameState {
 interface PuzzleProps {
   onClose?: () => void;
   onOpenEducation?: () => void;
+}
+
+
+interface PuzzleLaunchRequest {
+  puzzleNumber: number;
+  stage: PuzzleStage;
+  current: boolean;
+}
+
+const PUZZLE_LAUNCH_KEY =
+  "gyan-puzzle-launch-v1";
+
+
+function readPuzzleLaunchRequest():
+  PuzzleLaunchRequest | null {
+  try {
+    const raw =
+      window.sessionStorage.getItem(
+        PUZZLE_LAUNCH_KEY,
+      );
+
+    if (!raw) {
+      return null;
+    }
+
+    window.sessionStorage.removeItem(
+      PUZZLE_LAUNCH_KEY,
+    );
+
+    const value =
+      JSON.parse(
+        raw,
+      ) as Partial<
+        PuzzleLaunchRequest
+      >;
+
+    if (
+      !Number.isInteger(
+        value.puzzleNumber,
+      ) ||
+      (
+        value.stage !==
+          "5x5" &&
+        value.stage !==
+          "7x7"
+      ) ||
+      typeof value.current !==
+        "boolean"
+    ) {
+      return null;
+    }
+
+    return {
+      puzzleNumber:
+        Number(
+          value.puzzleNumber,
+        ),
+
+      stage:
+        value.stage,
+
+      current:
+        value.current,
+    };
+  } catch {
+    return null;
+  }
 }
 
 const MAX_CHANCES = 5;
@@ -2780,14 +2848,100 @@ export default function Puzzle({
 
     async function load() {
       try {
-        const loaded =
-          await fetchPuzzle(
-            "5x5",
+        const launch =
+          readPuzzleLaunchRequest();
+
+        const requestedStage:
+          PuzzleStage =
+            launch?.stage ??
+            "5x5";
+
+        let loaded:
+          PublicPuzzle;
+
+        let requestedIndex =
+          0;
+
+        if (
+          launch &&
+          !launch.current
+        ) {
+          const response =
+            await fetch(
+              `/api/puzzle/practice/${launch.puzzleNumber}?stage=${requestedStage}`,
+              {
+                cache:
+                  "no-store",
+              },
+            );
+
+          const body =
+            await response.json() as {
+              puzzle?:
+                PublicPuzzle;
+              error?:
+                string;
+            };
+
+          if (
+            !response.ok ||
+            !body.puzzle
+          ) {
+            throw new Error(
+              body.error ??
+                "Practice puzzle unavailable.",
+            );
+          }
+
+          loaded =
+            body.puzzle;
+        } else {
+          loaded =
+            await fetchPuzzle(
+              requestedStage,
+            );
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        const recent =
+          await fetchRecentPuzzles(
+            requestedStage,
+            10,
           );
 
         if (cancelled) {
           return;
         }
+
+        setRecentPuzzles(
+          recent,
+        );
+
+        requestedIndex =
+          recent.findIndex(
+            (
+              item,
+            ) =>
+              item.puzzleNumber ===
+                loaded.puzzleNumber &&
+              item.stage ===
+                loaded.stage,
+          );
+
+        if (
+          requestedIndex <
+            0
+        ) {
+          requestedIndex =
+            0;
+        }
+
+        setRecentPuzzleIndex(
+          requestedIndex,
+        );
 
         const saved =
           loadSavedState();
@@ -2797,12 +2951,7 @@ export default function Puzzle({
         );
 
         setStage(
-          "5x5",
-        );
-
-        void loadRecentPuzzleHistory(
-          "5x5",
-          loaded.puzzleNumber,
+          loaded.stage,
         );
 
         const challenge =
@@ -2823,12 +2972,18 @@ export default function Puzzle({
           ),
         );
 
-        if (
+        const canRestoreSaved =
+          requestedIndex ===
+            0 &&
           saved &&
           saved.puzzleNumber ===
             loaded.puzzleNumber &&
           saved.stage ===
-            "5x5"
+            loaded.stage;
+
+        if (
+          canRestoreSaved &&
+          saved
         ) {
           setBoard(
             cloneBoard(
@@ -2887,9 +3042,17 @@ export default function Puzzle({
             saved.activeSolveMs,
           );
 
-          if (
-            saved.qualified
-          ) {
+          setDisplaySolveMs(
+            saved.activeSolveMs,
+          );
+
+          const savedSolved =
+            loaded.stage ===
+              "5x5"
+              ? saved.qualified
+              : saved.medalWon;
+
+          if (savedSolved) {
             setCertificateBoard(
               cloneBoard(
                 saved.board,
@@ -2907,45 +3070,79 @@ export default function Puzzle({
             ),
           );
 
+          setMoves(0);
+          setMoveHistory([]);
+          setChancesRemaining(
+            MAX_CHANCES,
+          );
+          setAttemptFinished(
+            false,
+          );
+          setQualified(
+            false,
+          );
+          setMedalWon(
+            false,
+          );
           setPendingRevealCount(
             0,
           );
-
           setSkillStats(
             emptySkillStats(),
           );
-
           setRewardedMatchSignatures(
             [],
           );
-
           setFinalResultId(
             null,
           );
-
           setAssignedGuestName(
             "",
           );
-
           setSolveStartedAt(
             null,
           );
-
           setActiveSolveMs(
             0,
           );
-
           setDisplaySolveMs(
             0,
           );
+          setCertificateOpen(
+            false,
+          );
+          setCertificateBoard(
+            [],
+          );
         }
 
+        if (
+          requestedIndex >
+            0
+        ) {
+          void loadHistoricalSolution(
+            loaded.puzzleNumber,
+            loaded.stage,
+          );
+
+          setMessage("");
+        } else {
+          setHistoricalSolution(
+            null,
+          );
+
+          setMessage(
+            "Swipe or tap two squares to swap. Diagonal and opposite-edge swaps valid.",
+          );
+        }
+      } catch (
+        error
+      ) {
         setMessage(
-          "Swipe or tap two squares to swap. Diagonal and opposite-edge swaps valid.",
-        );
-      } catch {
-        setMessage(
-          "Puzzle unavailable.",
+          error instanceof
+            Error
+            ? error.message
+            : "Puzzle unavailable.",
         );
       } finally {
         if (!cancelled) {
@@ -5348,7 +5545,7 @@ export default function Puzzle({
           "verified"
       ) {
         setMessage(
-          "✓ Leaderboard profile updated.",
+          "✓ Account updated.",
         );
       } else {
         setMessage(
@@ -5502,7 +5699,7 @@ export default function Puzzle({
         );
       } else {
         setMessage(
-          "✓ Leaderboard profile updated.",
+          "✓ Account updated.",
         );
       }
 
@@ -7708,10 +7905,10 @@ export default function Puzzle({
                     type="button"
                     className="daily-puzzle__certificate-email-icon"
                     aria-label={
-                      "Update leaderboard profile"
+                      "Update account"
                     }
                     title={
-                      "Update leaderboard profile"
+                      "Update account"
                     }
                     disabled={
                       stage ===
@@ -8562,7 +8759,12 @@ export default function Puzzle({
                                   "nowrap",
                               }}
                             >
-                              #{entry.rank}
+                              {
+                                entry.rank <=
+                                  10
+                                  ? `${entry.rank}.`
+                                  : "—"
+                              }
                             </span>
 
                             <span

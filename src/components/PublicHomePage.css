@@ -1699,3 +1699,133 @@ button:hover {
     height: 17px;
   }
 }
+
+/* =========================================================
+   MY RATINGS — compact desktop/mobile refinement
+   Append to src/components/PublicHomePage.css
+   ========================================================= */
+
+.public-home__activity-dashboard {
+  gap: 4px;
+  padding: 8px 9px;
+}
+
+.public-home__activity-top {
+  min-height: 20px;
+}
+
+.public-home__activity-row {
+  gap: 4px;
+}
+
+.public-home__activity-legend {
+  gap: 2px;
+  margin-top: 1px;
+  font-size: 0.57rem;
+  line-height: 1.15;
+}
+
+.public-home__activity-dashboard
+  > button {
+  padding: 4px 8px;
+  min-height: 27px;
+  font-size: 0.64rem;
+}
+
+@media (max-width: 520px) {
+  .public-home__education-ratings-card.public-home__activity-dashboard {
+    /*
+     * Keep nearly the same compact desktop footprint instead of
+     * letting the mobile popup become a tall full-width panel.
+     */
+    width:
+      min(
+        310px,
+        calc(100vw - 12px)
+      );
+
+    left:
+      clamp(
+        -34px,
+        -6vw,
+        -8px
+      );
+
+    padding: 6px 7px;
+    gap: 2px;
+
+    max-height: 60dvh;
+    overflow-y: auto;
+
+    border-radius: 9px;
+  }
+
+  .public-home__activity-top {
+    min-height: 18px;
+    line-height: 1;
+  }
+
+  .public-home__activity-top > strong {
+    font-size: 0.66rem;
+  }
+
+  .public-home__activity-close {
+    width: 22px;
+    height: 22px;
+    min-height: 22px;
+    padding: 0;
+    line-height: 1;
+  }
+
+  .public-home__activity-row {
+    grid-template-columns:
+      auto minmax(0, 1fr);
+    gap: 3px;
+
+    min-height: 16px;
+  }
+
+  .public-home__activity-row > strong {
+    font-size: 0.58rem;
+    line-height: 1.05;
+  }
+
+  .public-home__activity-strip {
+    gap: 2px;
+  }
+
+  .public-home__activity-box {
+    width: 9px;
+    height: 9px;
+  }
+
+  .public-home__activity-loading,
+  .public-home__activity-empty {
+    font-size: 0.54rem;
+    line-height: 1.05;
+  }
+
+  .public-home__activity-legend {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 7px;
+    row-gap: 0;
+
+    margin-top: 0;
+
+    font-size: 0.51rem;
+    line-height: 1.05;
+  }
+
+  .public-home__education-ratings-warning {
+    font-size: 0.52rem !important;
+    line-height: 1.08 !important;
+  }
+
+  .public-home__activity-dashboard
+    > button {
+    padding: 3px 7px;
+    min-height: 24px;
+    font-size: 0.58rem;
+  }
+}

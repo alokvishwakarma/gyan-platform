@@ -1,6 +1,7 @@
 import {
   useEffect,
   useState,
+  type SyntheticEvent,
 } from "react";
 
 import {
@@ -65,93 +66,30 @@ interface MyShopsResponse {
   error?: string;
 }
 
-export default function UserAccountMenu({
-  onOpenAdmin,
-  onOpenChat,
-  onOpenMyShop,
-  onRegisterMyShop,
-}: UserAccountMenuProps) {
-  const [
-    open,
-    setOpen,
-  ] =
-    useState(
-      () =>
-        window.location.pathname ===
-          "/account",
-    );
 
-  const [
-    authOpen,
-    setAuthOpen,
-  ] =
-    useState(false);
-
-  const [
-    loading,
-    setLoading,
-  ] =
-    useState(true);
-
-  const [
-    user,
-    setUser,
-  ] =
-    useState<
-      AuthUser | null
-    >(null);
-
-  const [
-    gyanIdentity,
-    setGyanIdentity,
-  ] =
-    useState<
-      GyanIdentity | null
-    >(null);
-
-  const [
-    identityLoading,
-    setIdentityLoading,
-  ] =
-    useState(true);
-
-  const [
-    showAccessCode,
-    setShowAccessCode,
-  ] =
-    useState(false);
+/*
+ * Single-flight guard for EXPLICIT identity creation.
+ *
+ * Normal component mount uses GET and is read-only. If the user
+ * explicitly opens Account and no owned GYAN exists, POST may create
+ * one. Concurrent POST callers share this promise so StrictMode or
+ * rapid interaction cannot create duplicate accounts.
+ */
+let gyanIdentityCreateRequest:
+  Promise<GyanIdentity> | null =
+    null;
 
 
-  const [
-    myShopLoading,
-    setMyShopLoading,
-  ] =
-    useState(false);
+async function createOrGetGyanIdentity():
+  Promise<GyanIdentity> {
+  if (
+    gyanIdentityCreateRequest
+  ) {
+    return gyanIdentityCreateRequest;
+  }
 
-  const [
-    myShops,
-    setMyShops,
-  ] =
-    useState<
-      {
-        code: string;
-        name: string;
-      }[]
-    >([]);
-
-  const [
-    myShopError,
-    setMyShopError,
-  ] =
-    useState("");
-
-  async function loadGyanIdentity():
-    Promise<void> {
-    setIdentityLoading(
-      true,
-    );
-
-    try {
+  gyanIdentityCreateRequest =
+    (async () => {
       const response =
         await fetch(
           "/api/gyan-identity",
@@ -261,13 +199,115 @@ export default function UserAccountMenu({
         );
       }
 
+      return body.identity;
+    })();
+
+  try {
+    return await gyanIdentityCreateRequest;
+  } finally {
+    /*
+     * Keep only concurrent callers deduplicated.
+     * Future remounts can call the endpoint again; by then the cookie
+     * exists and the Worker returns the same account.
+     */
+    gyanIdentityCreateRequest =
+      null;
+  }
+}
+
+export default function UserAccountMenu({
+  onOpenAdmin,
+  onOpenChat,
+  onOpenMyShop,
+  onRegisterMyShop,
+}: UserAccountMenuProps) {
+  const [
+    open,
+    setOpen,
+  ] =
+    useState(false);
+
+  const [
+    authOpen,
+    setAuthOpen,
+  ] =
+    useState(false);
+
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(true);
+
+  const [
+    user,
+    setUser,
+  ] =
+    useState<
+      AuthUser | null
+    >(null);
+
+  const [
+    gyanIdentity,
+    setGyanIdentity,
+  ] =
+    useState<
+      GyanIdentity | null
+    >(null);
+
+  const [
+    identityLoading,
+    setIdentityLoading,
+  ] =
+    useState(true);
+
+  const [
+    showAccessCode,
+    setShowAccessCode,
+  ] =
+    useState(false);
+
+
+  const [
+    myShopLoading,
+    setMyShopLoading,
+  ] =
+    useState(false);
+
+  const [
+    myShops,
+    setMyShops,
+  ] =
+    useState<
+      {
+        code: string;
+        name: string;
+      }[]
+    >([]);
+
+  const [
+    myShopError,
+    setMyShopError,
+  ] =
+    useState("");
+
+  async function loadGyanIdentity():
+    Promise<void> {
+    setIdentityLoading(
+      true,
+    );
+
+    try {
+      const identity =
+        await createOrGetGyanIdentity();
+
       setGyanIdentity(
-        body.identity,
+        identity,
       );
 
       window.localStorage.setItem(
         "gyan_browser_code_v1",
-        body.identity.code,
+        identity.code,
       );
     } catch (
       error
@@ -286,7 +326,6 @@ export default function UserAccountMenu({
       );
     }
   }
-
 
   async function loadUser():
     Promise<void> {
@@ -333,44 +372,104 @@ export default function UserAccountMenu({
 
   useEffect(
     () => {
-      void loadGyanIdentity();
-    },
-    [],
-  );
+      const controller =
+        new AbortController();
 
+      void fetch(
+        "/api/gyan-identity",
+        {
+          method:
+            "GET",
 
-  useEffect(
-    () => {
-      const parameters =
-        new URLSearchParams(
-          window.location.search,
+          credentials:
+            "include",
+
+          cache:
+            "no-store",
+
+          signal:
+            controller.signal,
+        },
+      )
+        .then(
+          async (
+            response,
+          ) => {
+            const body =
+              await response.json() as {
+                identity?:
+                  GyanIdentity | null;
+
+                error?:
+                  string;
+              };
+
+            if (!response.ok) {
+              throw new Error(
+                body.error ??
+                  "GYAN identity could not be loaded.",
+              );
+            }
+
+            return body.identity ??
+              null;
+          },
+        )
+        .then(
+          (identity) => {
+            if (
+              controller.signal.aborted
+            ) {
+              return;
+            }
+
+            setGyanIdentity(
+              identity,
+            );
+
+            if (identity) {
+              window.localStorage.setItem(
+                "gyan_browser_code_v1",
+                identity.code,
+              );
+            }
+          },
+        )
+        .catch(
+          (error) => {
+            if (
+              controller.signal.aborted
+            ) {
+              return;
+            }
+
+            console.error(
+              "Unable to read GYAN identity:",
+              error,
+            );
+
+            setGyanIdentity(
+              null,
+            );
+          },
+        )
+        .finally(
+          () => {
+            if (
+              controller.signal.aborted
+            ) {
+              return;
+            }
+
+            setIdentityLoading(
+              false,
+            );
+          },
         );
 
-      if (
-        parameters.get(
-          "account",
-        ) !==
-          "1"
-      ) {
-        return;
-      }
-
-      setOpen(
-        true,
-      );
-
-      parameters.delete(
-        "account",
-      );
-
-      const query =
-        parameters.toString();
-
-      window.history.replaceState(
-        {},
-        "",
-        `${window.location.pathname}${query ? `?${query}` : ""}`,
-      );
+      return () => {
+        controller.abort();
+      };
     },
     [],
   );
@@ -577,7 +676,7 @@ export default function UserAccountMenu({
   function openMyShop(
     shopCode: string,
   ): void {
-    setAccountMenuRoute(
+    setOpen(
       false,
     );
 
@@ -587,61 +686,20 @@ export default function UserAccountMenu({
   }
 
 
-  useEffect(
-    () => {
-      const syncAccountRoute =
-        (): void => {
-          setOpen(
-            window.location.pathname ===
-              "/account",
-          );
-        };
-
-      window.addEventListener(
-        "popstate",
-        syncAccountRoute,
-      );
-
-      return () => {
-        window.removeEventListener(
-          "popstate",
-          syncAccountRoute,
-        );
-      };
-    },
-    [],
-  );
-
-
-  function setAccountMenuRoute(
-    nextOpen:
-      boolean,
+  function closeMenu(
+    event?:
+      SyntheticEvent,
   ): void {
-    setAccountMenuRoute(
-      nextOpen,
+    event?.preventDefault();
+    event?.stopPropagation();
+
+    setShowAccessCode(
+      false,
     );
 
-    const targetPath =
-      nextOpen
-        ? "/account"
-        : "/";
-
-    if (
-      window.location.pathname !==
-        targetPath
-    ) {
-      window.history.pushState(
-        {},
-        "",
-        targetPath,
-      );
-
-      window.dispatchEvent(
-        new PopStateEvent(
-          "popstate",
-        ),
-      );
-    }
+    setOpen(
+      false,
+    );
   }
 
 
@@ -653,6 +711,18 @@ export default function UserAccountMenu({
     setOpen(
       nextOpen,
     );
+
+    /*
+     * Opening Account is an explicit account action.
+     * Ordinary page load/Home uses GET only and never creates.
+     */
+    if (
+      nextOpen &&
+      !identityLoading &&
+      !gyanIdentity
+    ) {
+      void loadGyanIdentity();
+    }
 
     if (
       nextOpen &&
@@ -690,9 +760,9 @@ export default function UserAccountMenu({
       "",
     );
 
-    setAccountMenuRoute(
-                        false,
-                      );
+    setOpen(
+      false,
+    );
   }
 
   return (
@@ -745,7 +815,56 @@ export default function UserAccountMenu({
           createPortal(
             <div
               className="user-account-menu__popover user-account-menu__popover--portal"
+              onClick={(event) =>
+                event.stopPropagation()
+              }
             >
+            <button
+              type="button"
+              aria-label="Close account menu"
+              title="Close"
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+              onClick={(event) => {
+                closeMenu(
+                  event,
+                );
+              }}
+              style={{
+                position:
+                  "absolute",
+                top:
+                  "4px",
+                right:
+                  "5px",
+                width:
+                  "24px",
+                height:
+                  "24px",
+                padding:
+                  0,
+                display:
+                  "grid",
+                placeItems:
+                  "center",
+                border:
+                  0,
+                background:
+                  "transparent",
+                fontSize:
+                  "1rem",
+                lineHeight:
+                  1,
+                cursor:
+                  "pointer",
+                zIndex:
+                  2,
+              }}
+            >
+              ×
+            </button>
             <div className="user-account-menu__identity">
               <small>
                 Your GYAN
@@ -846,9 +965,9 @@ export default function UserAccountMenu({
                 <button
                   type="button"
                   onClick={() =>
-                    setAccountMenuRoute(
-                        false,
-                      )
+                    setOpen(
+                      false,
+                    )
                   }
                 >
                   🎮 Player
@@ -857,9 +976,9 @@ export default function UserAccountMenu({
                 <button
                   type="button"
                   onClick={() =>
-                    setAccountMenuRoute(
-                        false,
-                      )
+                    setOpen(
+                      false,
+                    )
                   }
                 >
                   🛍 Shopper
@@ -868,9 +987,9 @@ export default function UserAccountMenu({
                 <button
                   type="button"
                   onClick={() => {
-                    setAccountMenuRoute(
-                        false,
-                      );
+                    setOpen(
+                      false,
+                    );
 
                     onOpenChat();
                   }}
@@ -912,7 +1031,7 @@ export default function UserAccountMenu({
                   <button
                     type="button"
                     onClick={() => {
-                      setAccountMenuRoute(
+                      setOpen(
                         false,
                       );
 
@@ -938,9 +1057,9 @@ export default function UserAccountMenu({
                 <button
                   type="button"
                   onClick={() => {
-                    setAccountMenuRoute(
-                        false,
-                      );
+                    setOpen(
+                      false,
+                    );
 
                     onOpenAdmin();
                   }}
@@ -976,9 +1095,9 @@ export default function UserAccountMenu({
                   type="button"
                   className="user-account-menu__signin"
                   onClick={() => {
-                    setAccountMenuRoute(
-                        false,
-                      );
+                    setOpen(
+                      false,
+                    );
 
                     setAuthOpen(
                       true,
@@ -991,9 +1110,9 @@ export default function UserAccountMenu({
                 <button
                   type="button"
                   onClick={() => {
-                    setAccountMenuRoute(
-                        false,
-                      );
+                    setOpen(
+                      false,
+                    );
 
                     onOpenAdmin();
                   }}
@@ -1003,11 +1122,11 @@ export default function UserAccountMenu({
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setAccountMenuRoute(
-                        false,
-                      )
-                  }
+                  onClick={(event) => {
+                    closeMenu(
+                      event,
+                    );
+                  }}
                 >
                   Close
                 </button>

@@ -114,3 +114,24 @@
   margin: 8px 0 0;
   padding-left: 22px;
 }
+
+
+.textual-prompting__sets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 0 0 12px;
+}
+
+.textual-prompting__sets button {
+  min-height: 40px;
+  padding: 7px 12px;
+  font-size: .82rem;
+}
+
+.textual-prompting__sets button.is-active {
+  font-weight: 800;
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
