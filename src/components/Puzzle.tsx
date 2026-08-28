@@ -971,6 +971,34 @@ function aiBotNumber(puzzleNumber: number): number {
   return ((puzzleNumber * 37 + 17) % 90) + 10;
 }
 
+const PUZZLE_BOT_NAMES = [
+  "SummerMoon1234",
+  "GoldenOwl4821",
+  "RiverFalcon7318",
+  "BluePanda6041",
+  "SunnyRabbit3652",
+  "ForestOtter6392",
+  "PurpleFinch2751",
+  "OceanDeer8146",
+  "BrightBee4638",
+  "GreenTiger5924",
+  "CrystalSparrow7315",
+  "MorningPanda2684",
+  "EveningFox9051",
+  "SkyDolphin3472",
+  "SnowOwl6183",
+  "SpringRabbit7529",
+] as const;
+
+function aiBotName(
+  puzzleNumber: number,
+): string {
+  return PUZZLE_BOT_NAMES[
+    puzzleNumber %
+      PUZZLE_BOT_NAMES.length
+  ];
+}
+
 function aiBotGq(puzzleNumber: number): number {
   const five =
     116 +
@@ -1794,138 +1822,145 @@ function findCompletedWinningLine(
 ): {
   orientation:
     | "horizontal"
-    | "vertical";
+    | "vertical"
+    | "diagonal-down"
+    | "diagonal-up";
   tileIds: number[];
 } | null {
+  const candidateLines: Array<{
+    orientation:
+      | "horizontal"
+      | "vertical"
+      | "diagonal-down"
+      | "diagonal-up";
+    positions: Position[];
+  }> = [
+    ...Array.from(
+      { length: size },
+      (_, row) => ({
+        orientation:
+          "horizontal" as const,
+        positions:
+          Array.from(
+            { length: size },
+            (_, column) => ({
+              row,
+              column,
+            }),
+          ),
+      }),
+    ),
+
+    ...Array.from(
+      { length: size },
+      (_, column) => ({
+        orientation:
+          "vertical" as const,
+        positions:
+          Array.from(
+            { length: size },
+            (_, row) => ({
+              row,
+              column,
+            }),
+          ),
+      }),
+    ),
+
+    {
+      orientation:
+        "diagonal-down",
+      positions:
+        Array.from(
+          { length: size },
+          (_, index) => ({
+            row: index,
+            column: index,
+          }),
+        ),
+    },
+
+    {
+      orientation:
+        "diagonal-up",
+      positions:
+        Array.from(
+          { length: size },
+          (_, index) => ({
+            row:
+              size - 1 - index,
+            column:
+              index,
+          }),
+        ),
+    },
+  ];
+
   for (
-    let row = 0;
-    row < size;
-    row += 1
+    const candidate of
+    candidateLines
   ) {
+    const firstPosition =
+      candidate.positions[0];
+
     const first =
       board[
         indexOf(
-          row,
-          0,
+          firstPosition.row,
+          firstPosition.column,
           size,
         )
       ];
 
     if (
+      !first ||
       first.hidden
     ) {
       continue;
     }
 
+    const tileIds:
+      number[] = [];
+
     let matches =
       true;
 
-    const tileIds:
-      number[] = [
-        first.id,
-      ];
-
     for (
-      let column = 1;
-      column < size;
-      column += 1
+      const position of
+      candidate.positions
     ) {
-      const current =
+      const tile =
         board[
           indexOf(
-            row,
-            column,
+            position.row,
+            position.column,
             size,
           )
         ];
 
       if (
-        current.hidden ||
+        !tile ||
+        tile.hidden ||
         !sameMatchIdentity(
           first,
-          current,
+          tile,
         )
       ) {
-        matches = false;
+        matches =
+          false;
+
         break;
       }
 
       tileIds.push(
-        current.id,
+        tile.id,
       );
     }
 
     if (matches) {
       return {
         orientation:
-          "horizontal",
-        tileIds,
-      };
-    }
-  }
-
-  for (
-    let column = 0;
-    column < size;
-    column += 1
-  ) {
-    const first =
-      board[
-        indexOf(
-          0,
-          column,
-          size,
-        )
-      ];
-
-    if (
-      first.hidden
-    ) {
-      continue;
-    }
-
-    let matches =
-      true;
-
-    const tileIds:
-      number[] = [
-        first.id,
-      ];
-
-    for (
-      let row = 1;
-      row < size;
-      row += 1
-    ) {
-      const current =
-        board[
-          indexOf(
-            row,
-            column,
-            size,
-          )
-        ];
-
-      if (
-        current.hidden ||
-        !sameMatchIdentity(
-          first,
-          current,
-        )
-      ) {
-        matches = false;
-        break;
-      }
-
-      tileIds.push(
-        current.id,
-      );
-    }
-
-    if (matches) {
-      return {
-        orientation:
-          "vertical",
+          candidate.orientation,
         tileIds,
       };
     }
@@ -1933,7 +1968,6 @@ function findCompletedWinningLine(
 
   return null;
 }
-
 
 function isAcceptedPuzzleSolution(
   board: Tile[],
@@ -5812,7 +5846,11 @@ export default function Puzzle({
   const challengeName =
     hasHumanLeader
       ? humanLeader.name
-      : `AI Bot #${botNumber}`;
+      : puzzle
+        ? aiBotName(
+            puzzle.puzzleNumber,
+          )
+        : `AI Bot #${botNumber}`;
 
   const challengeGq =
     hasHumanLeader
@@ -8673,9 +8711,10 @@ export default function Puzzle({
                               {
                                 entry.name
                               }
+                              {" "}
                               {entry.isBot
-                                ? " 🤖"
-                                : ""}
+                                ? "🤖"
+                                : "🌟"}
                             </strong>
 
                             <span
@@ -8800,7 +8839,7 @@ export default function Puzzle({
                                   "nowrap",
                               }}
                             >
-                              {entry.name}
+                              {entry.name} 🌟
                             </strong>
 
                             <span

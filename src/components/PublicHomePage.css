@@ -1829,3 +1829,536 @@ button:hover {
     font-size: 0.58rem;
   }
 }
+
+/* =========================================================
+   MY GYAN / MY RATINGS — MOBILE CENTERED PANEL
+   =========================================================
+ *
+ * Mobile-only override:
+ * - centered against the viewport rather than the small brand wrapper
+ * - approximately the same width as the visible GYAN header
+ * - taller activity area for easier scanning
+ * - desktop behavior remains unchanged
+ */
+@media (max-width: 600px) {
+  .public-home__education-ratings-card.public-home__activity-dashboard {
+    position: fixed !important;
+
+    top:
+      calc(
+        var(
+          --gyan-header-height,
+          64px
+        ) +
+        6px
+      ) !important;
+
+    right: auto !important;
+    bottom: auto !important;
+    left: 50% !important;
+
+    width:
+      calc(
+        100vw -
+        48px
+      ) !important;
+
+    max-width: 430px !important;
+
+    height:
+      min(
+        72dvh,
+        620px
+      ) !important;
+
+    min-height:
+      min(
+        520px,
+        calc(
+          100dvh -
+          var(
+            --gyan-header-height,
+            64px
+          ) -
+          24px
+        )
+      ) !important;
+
+    max-height:
+      calc(
+        100dvh -
+        var(
+          --gyan-header-height,
+          64px
+        ) -
+        16px -
+        env(
+          safe-area-inset-bottom
+        )
+      ) !important;
+
+    margin: 0 !important;
+
+    padding:
+      10px
+      11px !important;
+
+    transform:
+      translateX(-50%) !important;
+
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+
+    overscroll-behavior:
+      contain;
+
+    -webkit-overflow-scrolling:
+      touch;
+
+    border-radius:
+      12px !important;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-top {
+    min-height: 28px;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-top
+    > strong {
+    font-size: 0.72rem;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-close {
+    width: 26px;
+    min-width: 26px;
+    height: 26px;
+    min-height: 26px;
+  }
+
+  /*
+   * Restore comfortable vertical rows inside the taller panel.
+   * This overrides the earlier compact two-column mobile rule.
+   */
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-row {
+    grid-template-columns:
+      1fr;
+
+    gap: 6px;
+
+    min-height: 0;
+
+    padding:
+      12px
+      0;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-row
+    > strong {
+    font-size: 0.65rem;
+    line-height: 1.15;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-strip {
+    gap: 4px;
+    min-height: 20px;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-box {
+    flex:
+      0
+      0
+      13px;
+
+    width: 13px;
+    height: 13px;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-loading,
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-empty {
+    font-size: 0.6rem;
+    line-height: 1.15;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-legend {
+    column-gap: 8px;
+    row-gap: 3px;
+
+    margin-top: 5px;
+
+    font-size: 0.54rem;
+    line-height: 1.15;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    > button {
+    min-height: 30px;
+    padding:
+      5px
+      9px;
+
+    font-size: 0.62rem;
+  }
+}
+
+/* =========================================================
+   MY GYAN / MY RATINGS — MOBILE COMPACT PANEL v2
+   =========================================================
+ *
+ * Final mobile override:
+ * - same visual width as the GYAN header
+ * - horizontally centered in the viewport
+ * - auto-height instead of a stretched fixed-height grid
+ * - compact activity rows
+ * - narrower Puzzle progress strip, closer to Puzzle UI
+ */
+@media (max-width: 600px) {
+  .public-home__education-ratings-card.public-home__activity-dashboard {
+    position: fixed !important;
+
+    top:
+      calc(
+        var(
+          --gyan-header-height,
+          64px
+        ) +
+        6px
+      ) !important;
+
+    right: auto !important;
+    bottom: auto !important;
+    left: 50% !important;
+
+    /*
+     * GYAN shell/header leaves about 20px on each side
+     * on the phone layout. Match that footprint.
+     */
+    width:
+      calc(
+        100vw -
+        40px
+      ) !important;
+
+    max-width:
+      min(
+        920px,
+        calc(
+          100vw -
+          40px
+        )
+      ) !important;
+
+    height: auto !important;
+    min-height: 0 !important;
+
+    max-height:
+      calc(
+        100dvh -
+        var(
+          --gyan-header-height,
+          64px
+        ) -
+        14px -
+        env(
+          safe-area-inset-bottom
+        )
+      ) !important;
+
+    margin: 0 !important;
+
+    padding:
+      8px
+      10px !important;
+
+    gap: 0 !important;
+
+    transform:
+      translateX(-50%) !important;
+
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+
+    border-radius:
+      12px !important;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-top {
+    min-height: 26px;
+    padding-bottom: 5px;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-top
+    > strong {
+    font-size: 0.7rem;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-close {
+    width: 25px;
+    min-width: 25px;
+    height: 25px;
+    min-height: 25px;
+  }
+
+  /*
+   * PuzzleRatingsStrip is the first content block immediately
+   * after the sticky My GYAN title. Keep it narrower and centered,
+   * similar to the compact Puzzle screen.
+   */
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    > .public-home__activity-top
+    + * {
+    width:
+      min(
+        82%,
+        265px
+      );
+
+    max-width:
+      265px;
+
+    margin:
+      2px auto
+      4px;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-row {
+    grid-template-columns:
+      1fr;
+
+    gap: 4px;
+
+    min-height: 0;
+
+    padding:
+      7px
+      0;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-row
+    > strong {
+    font-size: 0.62rem;
+    line-height: 1.1;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-strip {
+    gap: 3px;
+    min-height: 16px;
+    padding:
+      1px
+      0
+      2px;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-box {
+    flex:
+      0
+      0
+      12px;
+
+    width: 12px;
+    height: 12px;
+
+    border-radius: 3px;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-loading,
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-empty {
+    font-size: 0.57rem;
+    line-height: 1.1;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__education-ratings-warning {
+    margin-top: 4px;
+
+    font-size: 0.52rem !important;
+    line-height: 1.08 !important;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    > button {
+    min-height: 27px;
+
+    margin-top: 5px;
+
+    padding:
+      4px
+      8px;
+
+    font-size: 0.6rem;
+  }
+}
+
+/* =========================================================
+   MY GYAN — PUZZLE SUMMARY COMPACT / PUZZLE-LIKE
+   ========================================================= */
+
+.public-home__activity-puzzle-summary {
+  width:
+    min(
+      230px,
+      78%
+    );
+
+  max-width: 230px;
+
+  margin:
+    2px auto
+    5px;
+}
+
+/*
+ * Match "Puzzles [Average GQ: ...]" typography to the
+ * Service Requests / Education Ratings headings.
+ */
+.public-home__activity-puzzle-summary strong {
+  font-size: 0.62rem !important;
+  line-height: 1.1 !important;
+}
+
+.public-home__activity-puzzle-summary small {
+  font-size: 0.56rem !important;
+  line-height: 1.1 !important;
+}
+
+/*
+ * Let the PuzzleRatingsStrip breathe vertically while keeping
+ * its horizontal progress marks shorter, closer to the Puzzle UI.
+ */
+.public-home__activity-puzzle-summary > * {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+@media (max-width: 600px) {
+  .public-home__activity-puzzle-summary {
+    width:
+      min(
+        215px,
+        72%
+      );
+
+    max-width: 215px;
+
+    margin:
+      1px auto
+      4px;
+  }
+
+  .public-home__activity-puzzle-summary strong {
+    font-size: 0.62rem !important;
+  }
+
+  .public-home__activity-puzzle-summary small {
+    font-size: 0.55rem !important;
+  }
+
+  /*
+   * Slightly increase the vertical footprint of each nested
+   * Puzzle strip row without widening it.
+   */
+  .public-home__activity-puzzle-summary
+    button,
+  .public-home__activity-puzzle-summary
+    [role="button"] {
+    min-height: 22px;
+  }
+}
+
+/* =========================================================
+   MY GYAN — PUZZLE STRIPS v4
+   =========================================================
+ *
+ * Make the popup puzzle summary visually match the puzzle card:
+ * - full usable width
+ * - heading aligned left
+ * - same heading typography as Service Requests
+ * - taller progress segments
+ */
+.public-home__activity-puzzle-summary {
+  width: 100% !important;
+  max-width: none !important;
+
+  margin:
+    1px 0
+    5px !important;
+
+  text-align: left !important;
+}
+
+.public-home__activity-puzzle-summary strong {
+  font-size: 0.62rem !important;
+  font-weight: 700 !important;
+  line-height: 1.1 !important;
+
+  text-align: left !important;
+}
+
+.public-home__activity-puzzle-summary small {
+  font-size: 0.55rem !important;
+  line-height: 1.1 !important;
+}
+
+/*
+ * The embedded PuzzleRatingsStrip contains the two 5×5 / 7×7
+ * rows. Give each row the same vertical breathing room as the
+ * Puzzle card's top progress strip.
+ */
+.public-home__activity-puzzle-summary button,
+.public-home__activity-puzzle-summary [role="button"] {
+  min-height: 25px !important;
+}
+
+/*
+ * Progress-strip pieces have changed names a few times.
+ * These selectors stay scoped inside My GYAN and only increase
+ * the thin horizontal markers to puzzle-like height.
+ */
+.public-home__activity-puzzle-summary
+  [class*="segment"],
+.public-home__activity-puzzle-summary
+  [class*="slot"],
+.public-home__activity-puzzle-summary
+  [class*="mark"],
+.public-home__activity-puzzle-summary
+  [class*="dash"] {
+  min-height: 6px !important;
+  height: 6px !important;
+
+  border-radius: 999px !important;
+}
+
+@media (max-width: 600px) {
+  .public-home__activity-puzzle-summary {
+    width: 100% !important;
+    max-width: 100% !important;
+
+    margin:
+      1px 0
+      5px !important;
+  }
+
+  .public-home__activity-puzzle-summary button,
+  .public-home__activity-puzzle-summary [role="button"] {
+    min-height: 26px !important;
+  }
+}
+

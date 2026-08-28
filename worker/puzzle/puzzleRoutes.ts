@@ -698,6 +698,152 @@ async function sendMedalEmail(
 }
 
 
+
+async function allocateGuestName(
+  env: Env,
+  puzzleNumber: number,
+  resultId: string,
+): Promise<string> {
+  const existing =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT guest_name
+          FROM puzzle_guest_names
+          WHERE
+            puzzle_number = ?
+            AND result_id = ?
+          LIMIT 1
+        `,
+      )
+      .bind(
+        puzzleNumber,
+        resultId,
+      )
+      .first<{
+        guest_name: string;
+      }>();
+
+  if (existing?.guest_name) {
+    return existing.guest_name;
+  }
+
+  const adjectives = [
+    "Silver",
+    "Summer",
+    "Sunny",
+    "Golden",
+    "Blue",
+    "Green",
+    "Bright",
+    "River",
+    "Forest",
+    "Crystal",
+    "Morning",
+    "Spring",
+  ];
+
+  const animals = [
+    "Mouse",
+    "Owl",
+    "Rabbit",
+    "Falcon",
+    "Panda",
+    "Otter",
+    "Finch",
+    "Fox",
+    "Tiger",
+    "Bee",
+    "Deer",
+    "Sparrow",
+  ];
+
+  let hash = 0;
+
+  for (
+    let index = 0;
+    index < resultId.length;
+    index += 1
+  ) {
+    hash =
+      (
+        hash * 31 +
+        resultId.charCodeAt(
+          index,
+        )
+      ) >>> 0;
+  }
+
+  const adjective =
+    adjectives[
+      hash %
+        adjectives.length
+    ];
+
+  const animal =
+    animals[
+      Math.floor(
+        hash /
+          adjectives.length,
+      ) %
+        animals.length
+    ];
+
+  const number =
+    100 +
+    (
+      hash %
+        900
+    );
+
+  const guestName =
+    `${adjective}${animal}${number}`;
+
+  await env.gyan_registry
+    .prepare(
+      `
+        INSERT OR IGNORE INTO puzzle_guest_names (
+          puzzle_number,
+          result_id,
+          guest_name
+        )
+        VALUES (?, ?, ?)
+      `,
+    )
+    .bind(
+      puzzleNumber,
+      resultId,
+      guestName,
+    )
+    .run();
+
+  const saved =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT guest_name
+          FROM puzzle_guest_names
+          WHERE
+            puzzle_number = ?
+            AND result_id = ?
+          LIMIT 1
+        `,
+      )
+      .bind(
+        puzzleNumber,
+        resultId,
+      )
+      .first<{
+        guest_name: string;
+      }>();
+
+  return (
+    saved?.guest_name ??
+    guestName
+  );
+}
+
+
 export async function handlePuzzleRoute(
   request: Request,
   env: Env,
@@ -2775,7 +2921,7 @@ return jsonResponse({
             `ai-${puzzleNumber}-${index}`,
           stage,
           name:
-            `AI Bot ${String(
+            `SummerMoon${String(
               botNumber,
             ).padStart(
               4,

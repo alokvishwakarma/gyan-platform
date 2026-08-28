@@ -1,0 +1,426 @@
+/*
+ * StudentProgressPage.ratings.css
+ *
+ * Presentation-only refinement for /ratings.
+ * No report, review, save, or identity logic is changed.
+ */
+
+.student-progress {
+  box-sizing: border-box;
+
+  width:
+    min(
+      calc(100% - 24px),
+      920px
+    );
+
+  margin:
+    10px auto
+    18px;
+
+  padding:
+    12px;
+
+  border:
+    1px solid
+    rgba(
+      31,
+      69,
+      98,
+      0.14
+    );
+
+  border-radius:
+    16px;
+
+  background:
+    rgba(
+      255,
+      253,
+      249,
+      0.97
+    );
+
+  box-shadow:
+    0 14px 30px
+    rgba(
+      32,
+      54,
+      72,
+      0.08
+    );
+}
+
+.student-progress__header {
+  box-sizing: border-box;
+
+  display: grid;
+  grid-template-columns:
+    34px
+    minmax(
+      0,
+      1fr
+    )
+    34px;
+
+  align-items: center;
+
+  min-height: 42px;
+
+  padding:
+    2px
+    0
+    8px;
+
+  text-align: center;
+}
+
+.student-progress__header > button {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+
+  padding: 0;
+
+  border-radius: 9px;
+}
+
+.student-progress__header > div {
+  grid-column: 2;
+}
+
+.student-progress__header strong {
+  display: block;
+
+  font-size: 0.8rem;
+  line-height: 1.1;
+}
+
+.student-progress__header small {
+  display: block;
+
+  margin-top: 2px;
+
+  font-size: 0.58rem;
+  line-height: 1.1;
+
+  opacity: 0.68;
+}
+
+/*
+ * Identity becomes a small information strip instead of
+ * competing with the actual Education ratings.
+ */
+.student-progress__identity {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(
+        0,
+        1fr
+      )
+    );
+
+  gap: 6px;
+
+  margin:
+    2px 0
+    10px;
+
+  padding:
+    7px
+    8px;
+
+  border-radius: 10px;
+
+  background:
+    rgba(
+      237,
+      244,
+      248,
+      0.72
+    );
+}
+
+.student-progress__identity > div {
+  min-width: 0;
+
+  text-align: center;
+}
+
+.student-progress__identity span {
+  display: block;
+
+  font-size: 0.5rem;
+  line-height: 1.05;
+
+  opacity: 0.62;
+}
+
+.student-progress__identity strong {
+  display: block;
+
+  margin-top: 2px;
+
+  overflow: hidden;
+
+  font-size: 0.62rem;
+  line-height: 1.1;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * Education ratings are the main card on this screen.
+ */
+.student-progress__map {
+  box-sizing: border-box;
+
+  padding:
+    10px
+    10px
+    12px;
+
+  border:
+    1px solid
+    rgba(
+      31,
+      69,
+      98,
+      0.12
+    );
+
+  border-radius:
+    13px;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.72
+    );
+}
+
+.student-progress__map-title {
+  display: flex;
+
+  align-items: baseline;
+  justify-content: space-between;
+
+  gap: 8px;
+
+  margin-bottom: 10px;
+}
+
+.student-progress__map-title h1 {
+  margin: 0;
+
+  font-size: 0.72rem;
+  line-height: 1.1;
+}
+
+.student-progress__map-title small {
+  font-size: 0.52rem;
+  line-height: 1.1;
+
+  opacity: 0.7;
+}
+
+.student-progress__topic-circles {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(
+        94px,
+        1fr
+      )
+    );
+
+  gap: 9px;
+
+  align-items: stretch;
+}
+
+/*
+ * Keep the circular visual language, but make cards more
+ * compact so several Education ratings fit comfortably.
+ */
+.student-progress__topic-circle {
+  box-sizing: border-box;
+
+  width: 104px;
+  height: 104px;
+  min-width: 104px;
+  min-height: 104px;
+
+  margin-inline: auto;
+
+  padding:
+    10px
+    8px;
+
+  border-radius: 50%;
+}
+
+.student-progress__topic-circle > span {
+  font-size: 1.02rem;
+  line-height: 1;
+}
+
+.student-progress__topic-circle > strong {
+  margin-top: 5px;
+
+  font-size: 0.58rem;
+  line-height: 1.12;
+}
+
+.student-progress__topic-circle > small {
+  margin-top: 3px;
+
+  font-size: 0.5rem;
+  line-height: 1.05;
+}
+
+.student-progress__revision-note {
+  max-width: 680px;
+
+  margin:
+    10px auto
+    8px;
+
+  font-size: 0.56rem;
+  line-height: 1.35;
+
+  text-align: center;
+
+  opacity: 0.72;
+}
+
+.student-progress__primary {
+  display: block;
+
+  width: 100%;
+
+  min-height: 38px;
+
+  margin:
+    8px auto
+    0;
+
+  border-radius: 10px;
+
+  font-size: 0.66rem;
+  font-weight: 750;
+}
+
+@media (max-width: 600px) {
+  .student-progress {
+    width:
+      calc(
+        100vw -
+        40px
+      );
+
+    max-width:
+      calc(
+        100vw -
+        40px
+      );
+
+    margin:
+      8px auto
+      14px;
+
+    padding:
+      10px;
+
+    border-radius: 13px;
+  }
+
+  .student-progress__header {
+    grid-template-columns:
+      32px
+      minmax(
+        0,
+        1fr
+      )
+      32px;
+
+    min-height: 38px;
+
+    padding-bottom: 7px;
+  }
+
+  .student-progress__identity {
+    gap: 4px;
+
+    margin-bottom: 8px;
+
+    padding:
+      6px;
+  }
+
+  .student-progress__map {
+    padding:
+      9px
+      7px
+      10px;
+  }
+
+  .student-progress__map-title {
+    align-items: flex-start;
+
+    margin-bottom: 8px;
+  }
+
+  .student-progress__map-title h1 {
+    font-size: 0.68rem;
+  }
+
+  .student-progress__map-title small {
+    max-width: 150px;
+
+    text-align: right;
+
+    font-size: 0.48rem;
+  }
+
+  .student-progress__topic-circles {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(
+          0,
+          1fr
+        )
+      );
+
+    gap:
+      8px
+      6px;
+  }
+
+  .student-progress__topic-circle {
+    width: 108px;
+    height: 108px;
+    min-width: 108px;
+    min-height: 108px;
+  }
+
+  .student-progress__revision-note {
+    margin:
+      9px auto
+      7px;
+  }
+
+  .student-progress__primary {
+    min-height: 36px;
+
+    margin-top: 7px;
+  }
+}

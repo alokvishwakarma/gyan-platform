@@ -1765,12 +1765,20 @@ export default function PublicHomePage({
             <button
               type="button"
               className="public-home__brand-text public-home__brand-text-button"
-              onClick={() =>
+              onClick={() => {
+                if (
+                  !educationRatingsCardOpen
+                ) {
+                  setEducationAttemptSummary(
+                    null,
+                  );
+                }
+
                 setEducationRatingsCardOpen(
                   (current) =>
                     !current,
-                )
-              }
+                );
+              }}
               aria-expanded={
                 educationRatingsCardOpen
               }
@@ -1876,11 +1884,12 @@ export default function PublicHomePage({
                   </button>
                 </div>
 
-                <PuzzleRatingsStrip
-                  onOpenPuzzle={() => {
-                    setEducationRatingsCardOpen(
-                      false,
-                    );
+                <div className="public-home__activity-puzzle-summary">
+                  <PuzzleRatingsStrip
+                    onOpenPuzzle={() => {
+                      setEducationRatingsCardOpen(
+                        false,
+                      );
 
                     setSearchFocused(
                       false,
@@ -1904,8 +1913,9 @@ export default function PublicHomePage({
                       "",
                       "/puzzle",
                     );
-                  }}
-                />
+                    }}
+                  />
+                </div>
 
                 <div className="public-home__activity-row">
                   <strong>
@@ -2015,19 +2025,6 @@ export default function PublicHomePage({
                   </div>
                 </div>
 
-                <div className="public-home__activity-legend">
-                  <span>
-                    Puzzle: □ none · 🟨 5×5 · 🟩 5×5 + 7×7
-                  </span>
-
-                  <span>
-                    Requests: 🟨 pending · 🟩 closed
-                  </span>
-
-                  <span>
-                    Education: 🟩 80%+ · 🟨 50–79% · 🟥 &lt;50%
-                  </span>
-                </div>
 
                 {educationCodeNeedsRecovery && (
                   <small className="public-home__education-ratings-warning">
@@ -2430,34 +2427,7 @@ export default function PublicHomePage({
                   educationHeaderCode
                     ? (
                         <>
-                          <PuzzleRatingsStrip
-                            onOpenPuzzle={() => {
-                              setSearchFocused(
-                                false,
-                              );
-
-                              setActiveView(
-                                "home",
-                              );
-
-                              setPuzzleInstanceKey(
-                                (current) =>
-                                  current + 1,
-                              );
-
-                              setShowPuzzle(
-                                true,
-                              );
-
-                              window.history.pushState(
-                                {},
-                                "",
-                                "/puzzle",
-                              );
-                            }}
-                          />
-
-                          <StudentProgressPage
+<StudentProgressPage
                             studentCode={
                               educationHeaderCode
                             }
@@ -2486,34 +2456,7 @@ export default function PublicHomePage({
                       )
                     : (
                         <>
-                          <PuzzleRatingsStrip
-                            onOpenPuzzle={() => {
-                              setSearchFocused(
-                                false,
-                              );
-
-                              setActiveView(
-                                "home",
-                              );
-
-                              setPuzzleInstanceKey(
-                                (current) =>
-                                  current + 1,
-                              );
-
-                              setShowPuzzle(
-                                true,
-                              );
-
-                              window.history.pushState(
-                                {},
-                                "",
-                                "/puzzle",
-                              );
-                            }}
-                          />
-
-                          <MyRatingsPage
+<MyRatingsPage
                             onBack={() => {
                               setActiveView(
                                 "home",

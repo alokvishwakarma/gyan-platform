@@ -731,107 +731,90 @@ export default function EducationLearningHub({
         subject &&
         topic
       ) {
+        /*
+         * Unified GYAN identity owns the Education save.
+         * A recovery email is optional and must never
+         * prevent an attempt from being saved.
+         */
         const normalizedActiveEmail =
           activeGyanEmail
             ?.trim()
             .toLowerCase() ??
           "";
 
-        const hasValidActiveEmail =
-          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-            normalizedActiveEmail,
+        setAutoSaveMessage(
+          `Saving to [${activeGyanCodeLabel}]…`,
+        );
+
+        try {
+          const checkedAnswers =
+            Object.fromEntries(
+              entries,
+            );
+
+          const saved =
+            await saveEducationProgress({
+              studentName:
+                activeGyanName
+                  ?.trim() ||
+                "GYAN Learner",
+
+              email:
+                normalizedActiveEmail,
+
+              country,
+
+              grade:
+                grade.code,
+
+              subject:
+                subject.code,
+
+              topic:
+                topic.code,
+
+              studentCode:
+                normalizedActiveGyanCode,
+
+              answers:
+                questions.map(
+                  (question) => ({
+                    questionId:
+                      question.id,
+
+                    selectedChoice:
+                      checkedAnswers[
+                        question.id
+                      ]?.selectedChoice ??
+                      "",
+                  }),
+                ),
+            });
+
+          setSavedStudent(
+            saved.student,
           );
 
-        /*
-         * Unified GYAN accounts may exist without a
-         * recovery email. The current education save
-         * endpoint still requires a valid email, so do
-         * not submit an empty string and show an email
-         * validation error immediately after answering.
-         */
-        if (!hasValidActiveEmail) {
+          setReportTopics(
+            saved.report,
+          );
+
           setAutoSaveMessage(
-            `✓ Answers checked for [${activeGyanCodeLabel}] · Add a recovery email to save future attempts.`,
+            `✓ Saved to [${activeGyanCodeLabel}]`,
+          );
+        } catch (
+          saveCaught
+        ) {
+          setAutoSaveMessage(
+            "⚠ Progress could not be saved automatically.",
           );
 
           setError(
-            "",
+            saveCaught instanceof
+              Error
+              ? saveCaught.message
+              : "Progress could not be saved automatically.",
           );
-        } else {
-          setAutoSaveMessage(
-            `Saving to [${activeGyanCodeLabel}]…`,
-          );
-
-          try {
-            const checkedAnswers =
-              Object.fromEntries(
-                entries,
-              );
-
-            const saved =
-              await saveEducationProgress({
-                studentName:
-                  activeGyanName
-                    ?.trim() ||
-                  "GYAN Learner",
-
-                email:
-                  normalizedActiveEmail,
-
-                country,
-
-                grade:
-                  grade.code,
-
-                subject:
-                  subject.code,
-
-                topic:
-                  topic.code,
-
-                studentCode:
-                  normalizedActiveGyanCode,
-
-                answers:
-                  questions.map(
-                    (question) => ({
-                      questionId:
-                        question.id,
-
-                      selectedChoice:
-                        checkedAnswers[
-                          question.id
-                        ]?.selectedChoice ??
-                        "",
-                    }),
-                  ),
-              });
-
-            setSavedStudent(
-              saved.student,
-            );
-
-            setReportTopics(
-              saved.report,
-            );
-
-            setAutoSaveMessage(
-              `✓ Saved to [${activeGyanCodeLabel}]`,
-            );
-          } catch (
-            saveCaught
-          ) {
-            setAutoSaveMessage(
-              "⚠ Progress could not be saved automatically.",
-            );
-
-            setError(
-              saveCaught instanceof
-                Error
-                ? saveCaught.message
-                : "Progress could not be saved automatically.",
-            );
-          }
         }
       }
     } catch (

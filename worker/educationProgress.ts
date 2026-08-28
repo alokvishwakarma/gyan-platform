@@ -64,7 +64,7 @@ function normalizeCode(
 
 
 const GUEST_COOKIE =
-  "gyan_guest";
+  "gyan_anon";
 
 
 function cookieValue(
@@ -162,36 +162,53 @@ async function currentEducationGuest(
       token,
     );
 
-  return await env.gyan_registry
+  const identity =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            ga.id,
+            ga.code AS slug,
+            ga.display_name AS gyan_name,
+            ga.email,
+            'GUEST_ACTIVE' AS status
+
+          FROM gyan_browser_sessions gbs
+
+          INNER JOIN gyan_accounts ga
+            ON ga.id =
+               gbs.account_id
+
+          WHERE
+            gbs.secret_hash = ?
+
+          LIMIT 1
+        `,
+      )
+      .bind(
+        tokenHash,
+      )
+      .first<EducationGuest>();
+
+  if (!identity) {
+    return null;
+  }
+
+  await env.gyan_registry
     .prepare(
       `
-        SELECT
-          calendar_access_codes.id,
-          calendar_access_codes.slug,
-          calendar_access_codes.gyan_name,
-          calendar_access_codes.email,
-          calendar_access_codes.status
-
-        FROM calendar_guest_sessions
-
-        INNER JOIN calendar_access_codes
-          ON calendar_access_codes.id =
-             calendar_guest_sessions.calendar_access_id
-
-        WHERE
-          calendar_guest_sessions.token_hash = ?
-          AND calendar_guest_sessions.expires_at >
-              CURRENT_TIMESTAMP
-          AND calendar_access_codes.status =
-              'GUEST_ACTIVE'
-
-        LIMIT 1
+        UPDATE gyan_browser_sessions
+        SET last_seen_at =
+          CURRENT_TIMESTAMP
+        WHERE secret_hash = ?
       `,
     )
     .bind(
       tokenHash,
     )
-    .first<EducationGuest>();
+    .run();
+
+  return identity;
 }
 
 function randomCode():
@@ -668,13 +685,13 @@ async function saveProgress(
           FROM education_students
 
           WHERE
-            student_code = ?
+            gyan_account_id = ?
 
           LIMIT 1
           `,
         )
         .bind(
-          guestCode,
+          activeGuest.id,
         )
         .first<{
           id: number;
@@ -745,11 +762,9 @@ async function saveProgress(
 
   if (!student) {
     const studentCode =
-      useActiveGuest
-        ? guestCode
-        : await createUniqueStudentCode(
-            env,
-          );
+      await createUniqueStudentCode(
+        env,
+      );
 
     const insert =
       await env.gyan_registry
@@ -760,13 +775,14 @@ async function saveProgress(
             student_name,
             email,
             user_id,
+            gyan_account_id,
             country_code,
             grade_code,
             created_at,
             updated_at
           )
           VALUES (
-            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?,
             CURRENT_TIMESTAMP,
             CURRENT_TIMESTAMP
           )
@@ -778,6 +794,10 @@ async function saveProgress(
           effectiveEmail,
           user?.id ??
             null,
+          useActiveGuest &&
+              activeGuest
+            ? activeGuest.id
+            : null,
           country,
           grade,
         )
@@ -812,6 +832,11 @@ async function saveProgress(
               user_id,
               ?
             ),
+          gyan_account_id =
+            COALESCE(
+              gyan_account_id,
+              ?
+            ),
           updated_at =
             CURRENT_TIMESTAMP
 
@@ -823,6 +848,10 @@ async function saveProgress(
         effectiveEmail,
         user?.id ??
           null,
+        useActiveGuest &&
+            activeGuest
+          ? activeGuest.id
+          : null,
         student.id,
       )
       .run();
@@ -1191,7 +1220,7 @@ async function getReport(
     return jsonResponse(
       {
         error:
-          "Sign in with the verified email to view saved progress.",
+          "Open this GYAN on its linked device to view saved progress.",
       },
       401,
     );
@@ -1213,7 +1242,7 @@ async function getReport(
             FROM education_students
 
             WHERE
-              student_code = ?
+              gyan_account_id = ?
 
             LIMIT 1
           `
@@ -1239,7 +1268,7 @@ async function getReport(
         ...(
           activeGuest
             ? [
-                guestCode,
+                activeGuest!.id,
               ]
             : [
                 studentCode,
@@ -1311,10 +1340,10 @@ async function getReport(
         WHERE student_id = ?
 
         ORDER BY
-          created_at ASC,
-          id ASC
+          created_at DESC,
+          id DESC
 
-        LIMIT 60
+        LIMIT 10
         `,
       )
       .bind(
@@ -1375,8 +1404,10 @@ async function getReport(
         ),
 
       recentAttempts:
-        recentAttempts.results.map(
-          (attempt) => ({
+        [...recentAttempts.results]
+          .reverse()
+          .map(
+            (attempt) => ({
             id:
               Number(
                 attempt.id,
@@ -1403,10 +1434,10 @@ async function getReport(
                 attempt.scorePercent,
               ),
 
-            createdAt:
-              attempt.createdAt,
-          }),
-        ),
+              createdAt:
+                attempt.createdAt,
+            }),
+          ),
     },
   });
 }
@@ -1493,7 +1524,7 @@ async function getReviewQuestions(
     return jsonResponse(
       {
         error:
-          "Sign in with the verified email to revise saved work.",
+          "Open this GYAN on its linked device to revise saved work.",
       },
       401,
     );
@@ -1512,7 +1543,7 @@ async function getReviewQuestions(
             FROM education_students
 
             WHERE
-              student_code = ?
+              gyan_account_id = ?
 
             LIMIT 1
           `
@@ -1535,7 +1566,7 @@ async function getReviewQuestions(
         ...(
           activeGuest
             ? [
-                guestCode,
+                activeGuest!.id,
               ]
             : [
                 studentCode,

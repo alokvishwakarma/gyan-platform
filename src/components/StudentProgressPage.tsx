@@ -20,6 +20,7 @@ import {
 } from "../config/educationProgress";
 
 import "./StudentProgressPage.css";
+import "./StudentProgressPage.ratings.css";
 
 
 interface StudentProgressPageProps {
