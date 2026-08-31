@@ -8,8 +8,15 @@ import {
   createPortal,
 } from "react-dom";
 
+import {
+  QRCodeSVG,
+} from "qrcode.react";
+
 import AuthPanel
   from "./AuthPanel";
+
+import GyanCalendarPage
+  from "./GyanCalendarPage";
 
 import "./UserAccountMenu.css";
 
@@ -32,7 +39,140 @@ interface GyanIdentity {
   publicUrl: string;
   accessCode?: string;
   maskedEmail?: string;
+  registered?: boolean;
+  emailStatus?:
+    | "none"
+    | "pending"
+    | "verified";
+
+  goodies?: GyanGoodie[];
+  welcomeGems?: number;
 }
+
+
+type GyanGoodieType =
+  | "MESSAGE"
+  | "LOST_FOUND"
+  | "EMERGENCY"
+  | "CERTIFICATE"
+  | "HELP";
+
+type GyanGoodie = {
+  type: GyanGoodieType;
+  token: string;
+  publicUrl: string;
+};
+
+const GOODIE_ORDER:
+  GyanGoodieType[] = [
+    "MESSAGE",
+    "LOST_FOUND",
+    "EMERGENCY",
+    "CERTIFICATE",
+    "HELP",
+  ];
+
+function goodieLabel(
+  type: GyanGoodieType,
+): string {
+  if (type === "MESSAGE") {
+    return "G-Wink";
+  }
+
+  if (type === "LOST_FOUND") {
+    return "Lost & Found";
+  }
+
+  if (type === "EMERGENCY") {
+    return "Emergency";
+  }
+
+  if (type === "CERTIFICATE") {
+    return "Certificate";
+  }
+
+  return "Help";
+}
+
+function goodieIcon(
+  type: GyanGoodieType,
+): string {
+  if (type === "MESSAGE") {
+    return "💌";
+  }
+
+  if (type === "LOST_FOUND") {
+    return "🔎";
+  }
+
+  if (type === "EMERGENCY") {
+    return "🆘";
+  }
+
+  if (type === "CERTIFICATE") {
+    return "🏅";
+  }
+
+  return "🤝";
+}
+
+
+function gyanEmailStatus(
+  identity:
+    GyanIdentity,
+): {
+  label:
+    "Unregistered" |
+    "Pending verification" |
+    "Verified";
+  icon: string;
+  title: string;
+} {
+  if (
+    identity.emailStatus ===
+      "verified" ||
+    (
+      identity.registered &&
+      identity.maskedEmail
+    )
+  ) {
+    return {
+      label:
+        "Verified",
+      icon:
+        "✅",
+      title:
+        identity.maskedEmail ??
+        "Verified email",
+    };
+  }
+
+  if (
+    identity.emailStatus ===
+      "pending" ||
+    identity.maskedEmail
+  ) {
+    return {
+      label:
+        "Pending verification",
+      icon:
+        "🟡",
+      title:
+        identity.maskedEmail ??
+        "Pending email verification",
+    };
+  }
+
+  return {
+    label:
+      "Unregistered",
+    icon:
+      "✉️",
+    title:
+      "No verified email is linked to this GYAN.",
+  };
+}
+
 
 
 interface UserAccountMenuProps {
@@ -55,6 +195,10 @@ interface UserAccountMenuProps {
   educationCode?: string;
   educationEmailKnown?: boolean;
   onOpenMyRatings?: () => void;
+
+  isAdminAuthenticated?: boolean;
+
+  onGenerateQr?: () => void;
 }
 
 interface MyShopsResponse {
@@ -70,10 +214,10 @@ interface MyShopsResponse {
 /*
  * Single-flight guard for EXPLICIT identity creation.
  *
- * Normal component mount uses GET and is read-only. If the user
- * explicitly opens Account and no owned GYAN exists, POST may create
- * one. Concurrent POST callers share this promise so StrictMode or
- * rapid interaction cannot create duplicate accounts.
+ * Normal component mount first uses GET. If no GYAN belongs to this
+ * browser yet, startup falls through to the explicit POST create path.
+ * Concurrent POST callers share this promise so StrictMode or rapid
+ * interaction cannot create duplicate accounts.
  */
 let gyanIdentityCreateRequest:
   Promise<GyanIdentity> | null =
@@ -220,6 +364,9 @@ export default function UserAccountMenu({
   onOpenChat,
   onOpenMyShop,
   onRegisterMyShop,
+  isAdminAuthenticated =
+    false,
+  onGenerateQr,
 }: UserAccountMenuProps) {
   const [
     open,
@@ -266,6 +413,230 @@ export default function UserAccountMenu({
     setShowAccessCode,
   ] =
     useState(false);
+  const [
+    emailDraft,
+    setEmailDraft,
+  ] =
+    useState("");
+
+  const [
+    emailUpdating,
+    setEmailUpdating,
+  ] =
+    useState(false);
+
+  const [
+    emailPendingLocal,
+    setEmailPendingLocal,
+  ] =
+    useState(false);
+
+  const [
+    emailUpdateMessage,
+    setEmailUpdateMessage,
+  ] =
+    useState("");
+
+  const [
+    newCardWelcome,
+    setNewCardWelcome,
+  ] =
+    useState<
+      GyanIdentity | null
+    >(null);
+
+  const [
+    newCardEmailOpen,
+    setNewCardEmailOpen,
+  ] =
+    useState(false);
+
+  const [
+    newCardEmail,
+    setNewCardEmail,
+  ] =
+    useState("");
+
+  const [
+    newCardEmailStatus,
+    setNewCardEmailStatus,
+  ] =
+    useState("");
+
+  const [
+    cardDownloadRequested,
+    setCardDownloadRequested,
+  ] =
+    useState(false);
+
+  const [
+    unreadGWinks,
+    setUnreadGWinks,
+  ] =
+    useState(0);
+
+  function welcomeSeenKey(
+    code: string,
+  ): string {
+    return `gyan_new_card_welcome_seen_v1:${code
+      .trim()
+      .toUpperCase()}`;
+  }
+
+  const welcomePendingKey =
+    "gyan_new_card_welcome_pending_v1";
+
+  function isGWinkRevealRoute():
+    boolean {
+    return Boolean(
+      new URLSearchParams(
+        window.location.search,
+      ).get(
+        "wink",
+      ),
+    );
+  }
+
+  function markWelcomeSeen(
+    identity:
+      GyanIdentity,
+  ): void {
+    window.localStorage.setItem(
+      welcomeSeenKey(
+        identity.code,
+      ),
+      "1",
+    );
+
+    window.localStorage.removeItem(
+      welcomePendingKey,
+    );
+
+    setNewCardWelcome(
+      null,
+    );
+  }
+
+  function downloadCurrentCard(
+    identity:
+      GyanIdentity,
+  ): void {
+    window.localStorage.setItem(
+      "gyan_browser_code_v1",
+      identity.code,
+    );
+
+    setCardDownloadRequested(
+      true,
+    );
+  }
+
+async function emailCurrentCard(
+  recipient:
+    string,
+): Promise<void> {
+    const email =
+      recipient.trim();
+
+    if (!email) {
+      setNewCardEmailOpen(
+        true,
+      );
+
+      return;
+    }
+
+    setNewCardEmailStatus(
+      "Sending…",
+    );
+
+    try {
+      const response =
+        await fetch(
+          "/api/gyan-identity/email-card",
+          {
+            method:
+              "POST",
+
+            credentials:
+              "include",
+
+            headers: {
+              "content-type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                email,
+              }),
+          },
+        );
+
+      const body =
+        await response.json() as {
+          sent?: boolean;
+          error?: string;
+        };
+
+      if (
+        !response.ok ||
+        !body.sent
+      ) {
+        throw new Error(
+          body.error ??
+            "Unable to send GYAN Card email.",
+        );
+      }
+
+      setNewCardEmailStatus(
+        "✓ Sent",
+      );
+
+      if (
+        newCardWelcome
+      ) {
+        markWelcomeSeen(
+          newCardWelcome,
+        );
+      }
+    } catch (
+      error
+    ) {
+      setNewCardEmailStatus(
+        error instanceof
+          Error
+          ? error.message
+          : "Unable to send.",
+      );
+    }
+  }
+
+
+  function shareCurrentCardOnWhatsApp(
+    identity:
+      GyanIdentity,
+  ): void {
+    const message =
+      encodeURIComponent(
+        [
+          `My GYAN Card: ${identity.displayName} [${identity.code}]`,
+          identity.publicUrl,
+          "",
+          "Keeping this here so I can find my GYAN Card again. 🌱",
+        ].join("\n"),
+      );
+
+    window.open(
+      `https://wa.me/?text=${message}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+
+    markWelcomeSeen(
+      identity,
+    );
+  }
 
 
   const [
@@ -309,6 +680,22 @@ export default function UserAccountMenu({
         "gyan_browser_code_v1",
         identity.code,
       );
+
+      if (
+        window.localStorage.getItem(
+          welcomeSeenKey(
+            identity.code,
+          ),
+        ) !== "1"
+      ) {
+        setOpen(
+          false,
+        );
+
+        setNewCardWelcome(
+          identity,
+        );
+      }
     } catch (
       error
     ) {
@@ -370,6 +757,227 @@ export default function UserAccountMenu({
     }
   }
 
+  async function updateGyanEmail():
+    Promise<void> {
+    const email =
+      emailDraft
+        .trim()
+        .toLowerCase();
+
+    if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        email,
+      )
+    ) {
+      setEmailUpdateMessage(
+        "Enter a valid email.",
+      );
+
+      return;
+    }
+
+    setEmailUpdating(
+      true,
+    );
+
+    setEmailUpdateMessage(
+      "",
+    );
+
+    try {
+      const response =
+        await fetch(
+          "/api/gyan-identity/email",
+          {
+            method:
+              "POST",
+
+            credentials:
+              "include",
+
+            headers: {
+              "content-type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                email,
+              }),
+          },
+        );
+
+      const body =
+        await response.json() as {
+          saved?: boolean;
+          verificationSent?: boolean;
+          emailStatus?:
+            | "pending"
+            | "verified";
+          maskedEmail?: string;
+          error?: string;
+        };
+
+      if (
+        !body.saved
+      ) {
+        throw new Error(
+          body.error ??
+            "Email could not be saved.",
+        );
+      }
+
+      setGyanIdentity(
+        (
+          current,
+        ) =>
+          current
+            ? {
+                ...current,
+                maskedEmail:
+                  body.maskedEmail ??
+                  current.maskedEmail,
+                emailStatus:
+                  body.emailStatus ??
+                  "pending",
+                registered:
+                  body.emailStatus ===
+                    "verified"
+                    ? true
+                    : current.registered,
+              }
+            : current,
+      );
+
+      setEmailPendingLocal(
+        body.emailStatus !==
+          "verified",
+      );
+
+      setEmailUpdateMessage(
+        body.emailStatus ===
+          "verified"
+          ? "Verified."
+          : body.verificationSent
+            ? "Saved · verification sent."
+            : "Saved · verification pending.",
+      );
+
+      if (
+        !response.ok &&
+        body.error
+      ) {
+        console.warn(
+          body.error,
+        );
+      }
+    } catch (
+      caught
+    ) {
+      setEmailUpdateMessage(
+        caught instanceof Error
+          ? caught.message
+          : "Email could not be saved.",
+      );
+    } finally {
+      setEmailUpdating(
+        false,
+      );
+    }
+  }
+
+
+
+  useEffect(
+    () => {
+      let cancelled =
+        false;
+
+      async function refreshUnread():
+        Promise<void> {
+        try {
+          const response =
+            await fetch(
+              "/api/safety-resources/winks/unread",
+              {
+                credentials:
+                  "include",
+                cache:
+                  "no-store",
+              },
+            );
+
+          if (!response.ok) {
+            return;
+          }
+
+          const body =
+            await response.json() as {
+              unread?: number;
+            };
+
+          if (!cancelled) {
+            setUnreadGWinks(
+              Math.max(
+                0,
+                Number(
+                  body.unread ??
+                  0,
+                ),
+              ),
+            );
+          }
+        } catch {
+          // Keep account navigation usable if unread refresh fails.
+        }
+      }
+
+      void refreshUnread();
+
+      const refresh =
+        (): void => {
+          void refreshUnread();
+        };
+
+      window.addEventListener(
+        "focus",
+        refresh,
+      );
+
+      document.addEventListener(
+        "visibilitychange",
+        refresh,
+      );
+
+      window.addEventListener(
+        "gyan-wink-read",
+        refresh,
+      );
+
+      return () => {
+        cancelled =
+          true;
+
+        window.removeEventListener(
+          "focus",
+          refresh,
+        );
+
+        document.removeEventListener(
+          "visibilitychange",
+          refresh,
+        );
+
+        window.removeEventListener(
+          "gyan-wink-read",
+          refresh,
+        );
+      };
+    },
+    [],
+  );
+
+
   useEffect(
     () => {
       const controller =
@@ -411,8 +1019,18 @@ export default function UserAccountMenu({
               );
             }
 
-            return body.identity ??
-              null;
+            if (
+              body.identity
+            ) {
+              return body.identity;
+            }
+
+            /*
+             * No GYAN belongs to this browser yet.
+             * Create it immediately so the welcome dialog can appear
+             * without waiting for the Account icon to be clicked.
+             */
+            return createOrGetGyanIdentity();
           },
         )
         .then(
@@ -432,6 +1050,29 @@ export default function UserAccountMenu({
                 "gyan_browser_code_v1",
                 identity.code,
               );
+
+              if (
+                window.localStorage.getItem(
+                  welcomeSeenKey(
+                    identity.code,
+                  ),
+                ) !== "1"
+              ) {
+                if (
+                  isGWinkRevealRoute()
+                ) {
+                  window.localStorage.setItem(
+                    welcomePendingKey,
+                    identity.code
+                      .trim()
+                      .toUpperCase(),
+                  );
+                } else {
+                  setNewCardWelcome(
+                    identity,
+                  );
+                }
+              }
             }
           },
         )
@@ -472,6 +1113,64 @@ export default function UserAccountMenu({
       };
     },
     [],
+  );
+
+
+  useEffect(
+    () => {
+      const showPendingWelcome =
+        (): void => {
+          if (
+            !gyanIdentity
+          ) {
+            return;
+          }
+
+          const pendingCode =
+            window.localStorage.getItem(
+              welcomePendingKey,
+            );
+
+          if (
+            pendingCode !==
+              gyanIdentity.code
+                .trim()
+                .toUpperCase() ||
+            window.localStorage.getItem(
+              welcomeSeenKey(
+                gyanIdentity.code,
+              ),
+            ) === "1"
+          ) {
+            return;
+          }
+
+          setNewCardWelcome(
+            gyanIdentity,
+          );
+        };
+
+      window.addEventListener(
+        "gyan-show-welcome-pending",
+        showPendingWelcome,
+      );
+
+      if (
+        !isGWinkRevealRoute()
+      ) {
+        showPendingWelcome();
+      }
+
+      return () => {
+        window.removeEventListener(
+          "gyan-show-welcome-pending",
+          showPendingWelcome,
+        );
+      };
+    },
+    [
+      gyanIdentity,
+    ],
   );
 
 
@@ -778,7 +1477,19 @@ export default function UserAccountMenu({
             user
               ? "user-account-menu__trigger--signed-in"
               : "",
+
+            unreadGWinks > 0
+              ? "user-account-menu__trigger--unread"
+              : "",
           ].join(" ")}
+          style={{
+            position:
+              "relative",
+            color:
+              unreadGWinks > 0
+                ? "#b91c1c"
+                : undefined,
+          }}
           aria-label={
             user
               ? "Open signed-in user menu"
@@ -801,6 +1512,49 @@ export default function UserAccountMenu({
           >
             👤
           </span>
+
+          {unreadGWinks > 0 && (
+            <sup
+              aria-label={`${unreadGWinks} unread G-Winks`}
+              style={{
+                position:
+                  "absolute",
+                top:
+                  "-5px",
+                right:
+                  "-7px",
+                minWidth:
+                  "16px",
+                height:
+                  "16px",
+                padding:
+                  "0 4px",
+                border:
+                  "2px solid #fff",
+                borderRadius:
+                  "999px",
+                background:
+                  "#dc2626",
+                color:
+                  "#fff",
+                fontSize:
+                  "0.58rem",
+                fontWeight:
+                  900,
+                lineHeight:
+                  "12px",
+                textAlign:
+                  "center",
+              }}
+            >
+              {
+                unreadGWinks >
+                  99
+                  ? "99+"
+                  : unreadGWinks
+              }
+            </sup>
+          )}
 
           {user && (
             <b
@@ -892,10 +1646,6 @@ export default function UserAccountMenu({
                     >
                       {
                         gyanIdentity.publicUrl
-                          .replace(
-                            /^https?:\/\//,
-                            "",
-                          )
                       }
                     </a>
 
@@ -921,6 +1671,24 @@ export default function UserAccountMenu({
                                   !current,
                               )
                             }
+                            style={{
+                              flex:
+                                "0 0 auto",
+                              width:
+                                "auto",
+                              minWidth:
+                                0,
+                              minHeight:
+                                "20px",
+                              padding:
+                                "1px 5px",
+                              borderRadius:
+                                "5px",
+                              fontSize:
+                                "0.58rem",
+                              lineHeight:
+                                1.05,
+                            }}
                           >
                             {
                               showAccessCode
@@ -931,6 +1699,250 @@ export default function UserAccountMenu({
                         </span>
                       )
                     }
+
+                    {(() => {
+                      const emailStatus =
+                        gyanEmailStatus(
+                          gyanIdentity,
+                        );
+
+                      const effectiveStatus =
+                        emailPendingLocal &&
+                        !gyanIdentity.registered
+                          ? "Pending verification"
+                          : emailStatus.label;
+
+                      const statusColor =
+                        effectiveStatus ===
+                          "Verified"
+                          ? "#2e7d32"
+                          : effectiveStatus ===
+                              "Pending verification"
+                            ? "#d8a500"
+                            : "#8b5a2b";
+
+                      const statusTitle =
+                        effectiveStatus ===
+                          "Verified"
+                          ? "Verified email"
+                          : effectiveStatus ===
+                              "Pending verification"
+                            ? "Pending email verification"
+                            : "Email not registered";
+
+                      return (
+                        <>
+                          <div
+                            className="user-account-menu__email-editor"
+                            style={{
+                              display:
+                                "grid",
+                              gridTemplateColumns:
+                                "auto minmax(0, 1fr) auto",
+                              alignItems:
+                                "center",
+                              gap:
+                                "5px",
+                              width:
+                                "100%",
+                              boxSizing:
+                                "border-box",
+                              marginTop:
+                                "6px",
+                            }}
+                          >
+                            <span
+                              title={
+                                statusTitle
+                              }
+                              aria-label={
+                                statusTitle
+                              }
+                              style={{
+                                width:
+                                  "17px",
+                                height:
+                                  "17px",
+                                display:
+                                  "grid",
+                                placeItems:
+                                  "center",
+                                border:
+                                  `1.5px solid ${statusColor}`,
+                                borderRadius:
+                                  "999px",
+                                color:
+                                  statusColor,
+                                fontSize:
+                                  "0.58rem",
+                                fontWeight:
+                                  900,
+                                lineHeight:
+                                  1,
+                              }}
+                            >
+                              i
+                            </span>
+
+                            <input
+                              type="email"
+                              inputMode="email"
+                              autoComplete="email"
+                              value={
+                                emailDraft
+                              }
+                              onChange={(
+                                event,
+                              ) => {
+                                setEmailDraft(
+                                  event.target.value,
+                                );
+
+                                setEmailUpdateMessage(
+                                  "",
+                                );
+                              }}
+                              placeholder={
+                                gyanIdentity.maskedEmail ??
+                                "Email"
+                              }
+                              aria-label="GYAN email"
+                              style={{
+                                minWidth:
+                                  0,
+                                width:
+                                  "100%",
+                                height:
+                                  "24px",
+                                boxSizing:
+                                  "border-box",
+                                padding:
+                                  "2px 6px",
+                                border:
+                                  "1px solid #cbd5e1",
+                                borderRadius:
+                                  "5px",
+                                background:
+                                  "#fff",
+                                fontSize:
+                                  "0.61rem",
+                              }}
+                            />
+
+                            <button
+                              type="button"
+                              title="Update email / send verification"
+                              aria-label="Update email and send verification"
+                              disabled={
+                                emailUpdating
+                              }
+                              onClick={() =>
+                                void updateGyanEmail()
+                              }
+                              style={{
+                                flex:
+                                  "0 0 auto",
+                                width:
+                                  "24px",
+                                height:
+                                  "24px",
+                                minWidth:
+                                  "24px",
+                                minHeight:
+                                  "24px",
+                                padding:
+                                  0,
+                                display:
+                                  "grid",
+                                placeItems:
+                                  "center",
+                                border:
+                                  "1px solid #cbd5e1",
+                                borderRadius:
+                                  "5px",
+                                background:
+                                  "#fff",
+                                cursor:
+                                  emailUpdating
+                                    ? "wait"
+                                    : "pointer",
+                                fontSize:
+                                  "0.74rem",
+                                lineHeight:
+                                  1,
+                              }}
+                            >
+                              {
+                                emailUpdating
+                                  ? "…"
+                                  : "↻"
+                              }
+                            </button>
+                          </div>
+
+                          <small
+                            style={{
+                              display:
+                                "block",
+                              minHeight:
+                                "12px",
+                              marginTop:
+                                "2px",
+                              color:
+                                emailUpdateMessage
+                                  ? "#64748b"
+                                  : statusColor,
+                              fontSize:
+                                "0.54rem",
+                              lineHeight:
+                                1.1,
+                            }}
+                          >
+                            Email: {
+                              emailUpdateMessage ||
+                              effectiveStatus
+                            }
+                          </small>
+                        </>
+                      );
+                    })()}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(
+                          false,
+                        );
+
+                        setNewCardWelcome(
+                          gyanIdentity,
+                        );
+                      }}
+                      style={{
+                        width:
+                          "100%",
+                        marginTop:
+                          "7px",
+                        padding:
+                          "7px 9px",
+                        border:
+                          "1px solid #cbd5e1",
+                        borderRadius:
+                          "8px",
+                        background:
+                          "#fff",
+                        font:
+                          "inherit",
+                        fontSize:
+                          "0.68rem",
+                        fontWeight:
+                          800,
+                        cursor:
+                          "pointer",
+                      }}
+                    >
+                      🎁 Show GYAN Card
+                    </button>
                   </>
                 ) : (
                   <strong>
@@ -1067,6 +2079,22 @@ export default function UserAccountMenu({
                   ⚙ Admin
                 </button>
 
+                {isAdminAuthenticated &&
+                  onGenerateQr && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(
+                          false,
+                        );
+
+                        onGenerateQr();
+                      }}
+                    >
+                      ▣ Generate QR
+                    </button>
+                  )}
+
                 <button
                   type="button"
                   className="user-account-menu__logout"
@@ -1120,6 +2148,22 @@ export default function UserAccountMenu({
                   ⚙ Admin
                 </button>
 
+                {isAdminAuthenticated &&
+                  onGenerateQr && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(
+                          false,
+                        );
+
+                        onGenerateQr();
+                      }}
+                    >
+                      ▣ Generate QR
+                    </button>
+                  )}
+
                 <button
                   type="button"
                   onClick={(event) => {
@@ -1136,6 +2180,580 @@ export default function UserAccountMenu({
             document.body,
           )}
       </div>
+
+      {newCardWelcome &&
+        createPortal(
+          <div
+            role="presentation"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 5000,
+              display: "block",
+              padding: 0,
+              background: "rgb(15 23 42 / 42%)",
+              backdropFilter: "blur(2px)",
+            }}
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="gyan-new-card-title"
+              onClick={(event) =>
+                event.stopPropagation()
+              }
+              style={{
+                position: "absolute",
+                top:
+                  "calc(var(--gyan-header-height, 64px) + 6px)",
+                left: "50%",
+                transform:
+                  "translateX(-50%)",
+                boxSizing: "border-box",
+                width:
+                  "min(calc(100vw - 24px), 520px)",
+                maxHeight:
+                  "calc(100dvh - var(--gyan-header-height, 64px) - 18px)",
+                overflowY:
+                  "auto",
+                border:
+                  "1px solid rgb(148 163 184 / 38%)",
+                borderRadius: "18px",
+                padding: "13px 14px",
+                background: "#fffdf8",
+                boxShadow:
+                  "0 22px 60px rgb(15 23 42 / 24%)",
+                color: "#1f2937",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                }}
+              >
+                <div>
+                  <small
+                    style={{
+                      display: "block",
+                      marginBottom: "4px",
+                      fontSize: "0.68rem",
+                      fontWeight: 800,
+                      color: "#9a6700",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    New GYAN Card created
+                  </small>
+
+                  <h2
+                    id="gyan-new-card-title"
+                    style={{
+                      margin: 0,
+                      fontSize: "1.05rem",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    🎉 Your GYAN Card is ready!
+                  </h2>
+                </div>
+
+              </div>
+
+              <div
+                style={{
+                  margin: "14px 0 12px",
+                  padding: "11px 12px",
+                  borderRadius: "12px",
+                  background:
+                    "rgb(240 249 255 / 85%)",
+                  textAlign: "center",
+                }}
+              >
+                <strong
+                  style={{
+                    display: "block",
+                    fontSize: "0.92rem",
+                  }}
+                >
+                  {newCardWelcome.displayName}
+                </strong>
+
+                <span
+                  style={{
+                    display: "block",
+                    marginTop: "2px",
+                    fontSize: "0.74rem",
+                    fontWeight: 800,
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  [{newCardWelcome.code}]
+                </span>
+              </div>
+
+              <p
+                style={{
+                  margin: "0 0 7px",
+                  fontSize: "0.72rem",
+                  lineHeight: 1.25,
+                }}
+              >
+                Your free GYAN Card includes:
+              </p>
+
+              {newCardWelcome.goodies &&
+              newCardWelcome.goodies.length > 0 ? (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(5, minmax(0, 1fr))",
+                    gap: "5px",
+                    marginBottom: "9px",
+                  }}
+                >
+                  {[
+                    ...newCardWelcome.goodies,
+                  ]
+                    .sort(
+                      (
+                        first,
+                        second,
+                      ) =>
+                        GOODIE_ORDER.indexOf(
+                          first.type,
+                        ) -
+                        GOODIE_ORDER.indexOf(
+                          second.type,
+                        ),
+                    )
+                    .map(
+                      (
+                        goodie,
+                      ) => (
+                        <a
+                          key={
+                            goodie.type
+                          }
+                          href={
+                            goodie.publicUrl
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          title={
+                            goodieLabel(
+                              goodie.type,
+                            )
+                          }
+                          style={{
+                            minWidth: 0,
+                            color:
+                              "inherit",
+                            textDecoration:
+                              "none",
+                            textAlign:
+                              "center",
+                          }}
+                        >
+                          <small
+                            style={{
+                              display:
+                                "block",
+                              overflow:
+                                "hidden",
+                              marginBottom:
+                                "2px",
+                              fontSize:
+                                "0.42rem",
+                              lineHeight:
+                                1.05,
+                              textOverflow:
+                                "ellipsis",
+                              whiteSpace:
+                                "nowrap",
+                              color:
+                                "#64748b",
+                            }}
+                          >
+                            {goodie.publicUrl.replace(
+                              /^https?:\/\//,
+                              "",
+                            )}
+                          </small>
+
+                          <QRCodeSVG
+                            value={
+                              goodie.publicUrl
+                            }
+                            size={
+                              52
+                            }
+                            level="M"
+                            includeMargin
+                            style={{
+                              display:
+                                "block",
+                              width:
+                                "100%",
+                              maxWidth:
+                                "58px",
+                              height:
+                                "auto",
+                              margin:
+                                "0 auto",
+                              background:
+                                "#fff",
+                            }}
+                          />
+
+                          <strong
+                            style={{
+                              display:
+                                "block",
+                              marginTop:
+                                "2px",
+                              fontSize:
+                                "0.48rem",
+                              lineHeight:
+                                1.05,
+                            }}
+                          >
+                            {goodieIcon(
+                              goodie.type,
+                            )}{" "}
+                            {goodieLabel(
+                              goodie.type,
+                            )}
+                          </strong>
+                        </a>
+                      ),
+                    )}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    marginBottom:
+                      "9px",
+                    padding:
+                      "8px 10px",
+                    borderRadius:
+                      "9px",
+                    background:
+                      "#f8fafc",
+                    color:
+                      "#64748b",
+                    fontSize:
+                      "0.62rem",
+                    textAlign:
+                      "center",
+                  }}
+                >
+                  Preparing your unique GYAN QR goodies…
+                </div>
+              )}
+
+              <div
+                style={{
+                  marginBottom: "9px",
+                  padding: "6px 8px",
+                  borderRadius: "9px",
+                  background: "#f5f3ff",
+                  color: "#5b3ea8",
+                  fontSize: "0.62rem",
+                  fontWeight: 800,
+                  lineHeight: 1.2,
+                  textAlign: "center",
+                }}
+              >
+                💎 {
+                  newCardWelcome.welcomeGems ??
+                  0
+                } Welcome Gems · Play & Learn to earn more
+              </div>
+
+              <div
+                style={{
+                  marginBottom: "13px",
+                  padding: "8px 10px",
+                  borderRadius: "10px",
+                  background: "#fff7dd",
+                  color: "#7a5600",
+                  fontSize: "0.65rem",
+                  lineHeight: 1.3,
+                }}
+              >
+                ⓘ Saved on this device only. No registration required.
+              </div>
+
+              <div
+                style={{
+                  marginBottom:
+                    "8px",
+                  fontSize:
+                    "0.63rem",
+                  fontWeight:
+                    700,
+                  lineHeight:
+                    1.25,
+                  textAlign:
+                    "center",
+                  color:
+                    "#475569",
+                }}
+              >
+                Keep your GYAN Card safe before continuing:
+                download it, email it, or save it in WhatsApp.
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(3, minmax(0, 1fr))",
+                  gap: "8px",
+                }}
+              >
+                <button
+                  type="button"
+                  disabled={
+                    cardDownloadRequested
+                  }
+                  onClick={() =>
+                    downloadCurrentCard(
+                      newCardWelcome,
+                    )
+                  }
+                  style={{
+                    minHeight: "42px",
+                    border: "1px solid #b8c5d1",
+                    borderRadius: "10px",
+                    background: "#ffffff",
+                    font: "inherit",
+                    fontSize: "0.7rem",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  {
+                    cardDownloadRequested
+                      ? "Preparing PDF…"
+                      : "🖨️ Download"
+                  }
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setNewCardEmailOpen(
+                      (
+                        current,
+                      ) =>
+                        !current,
+                    )
+                  }
+                  style={{
+                    minHeight: "42px",
+                    border: "1px solid #b8c5d1",
+                    borderRadius: "10px",
+                    background: "#ffffff",
+                    font: "inherit",
+                    fontSize: "0.7rem",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  ✉️ Email
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    shareCurrentCardOnWhatsApp(
+                      newCardWelcome,
+                    )
+                  }
+                  style={{
+                    minHeight: "42px",
+                    border: "1px solid #b8c5d1",
+                    borderRadius: "10px",
+                    background: "#ffffff",
+                    font: "inherit",
+                    fontSize: "0.7rem",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  🟢 WhatsApp
+                </button>
+              </div>
+
+              {newCardEmailOpen && (
+                <div
+                  style={{
+                    display:
+                      "grid",
+                    gridTemplateColumns:
+                      "minmax(0, 1fr) auto",
+                    gap:
+                      "6px",
+                    marginTop:
+                      "8px",
+                  }}
+                >
+                  <input
+                    type="email"
+                    value={
+                      newCardEmail
+                    }
+                    placeholder="Email address"
+                    aria-label="Email address for GYAN Card"
+                    onChange={(
+                      event,
+                    ) =>
+                      setNewCardEmail(
+                        event.target.value,
+                      )
+                    }
+                    style={{
+                      minWidth:
+                        0,
+                      minHeight:
+                        "38px",
+                      boxSizing:
+                        "border-box",
+                      border:
+                        "1px solid #cbd5e1",
+                      borderRadius:
+                        "9px",
+                      padding:
+                        "7px 9px",
+                      font:
+                        "inherit",
+                      fontSize:
+                        "0.7rem",
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    disabled={
+                      !newCardEmail.trim()
+                    }
+                    onClick={() =>
+                      emailCurrentCard(
+                        newCardEmail,
+                      )
+                    }
+                    style={{
+                      minHeight:
+                        "38px",
+                      border:
+                        0,
+                      borderRadius:
+                        "9px",
+                      padding:
+                        "7px 11px",
+                      background:
+                        "#285f85",
+                      color:
+                        "#fff",
+                      font:
+                        "inherit",
+                      fontSize:
+                        "0.68rem",
+                      fontWeight:
+                        800,
+                      cursor:
+                        newCardEmail.trim()
+                          ? "pointer"
+                          : "default",
+                      opacity:
+                        newCardEmail.trim()
+                          ? 1
+                          : 0.55,
+                    }}
+                  >
+                    Send
+                  </button>
+                </div>
+              )}
+
+              {newCardEmailStatus && (
+                <div
+                  style={{
+                    marginTop:
+                      "5px",
+                    fontSize:
+                      "0.6rem",
+                    textAlign:
+                      "center",
+                    color:
+                      newCardEmailStatus.startsWith(
+                        "✓",
+                      )
+                        ? "#166534"
+                        : "#64748b",
+                  }}
+                >
+                  {
+                    newCardEmailStatus
+                  }
+                </div>
+              )}
+
+            </section>
+          </div>,
+          document.body,
+        )}
+
+      {cardDownloadRequested &&
+        newCardWelcome && (
+          <div
+            aria-hidden="true"
+            style={{
+              position:
+                "fixed",
+              left:
+                "-10000px",
+              top:
+                "0",
+              width:
+                "760px",
+              minHeight:
+                "1100px",
+              overflow:
+                "visible",
+              pointerEvents:
+                "none",
+              zIndex:
+                -1,
+            }}
+          >
+            <GyanCalendarPage
+              onClose={() =>
+                setCardDownloadRequested(
+                  false,
+                )
+              }
+              initialPrintOpen
+              useCurrentGyan
+              autoDownloadA5
+              onPdfDownloaded={() => {
+                setCardDownloadRequested(
+                  false,
+                );
+
+                markWelcomeSeen(
+                  newCardWelcome,
+                );
+              }}
+            />
+          </div>
+        )}
 
       {authOpen &&
         createPortal(

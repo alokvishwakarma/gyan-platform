@@ -850,3 +850,25 @@ strong {
   }
 }
 
+/* Optional defensive mobile override.
+   Append to END of UserAccountMenu.css only if an older mobile rule
+   stretches the Access Code Show/Hide button. */
+@media (max-width: 600px) {
+  .user-account-menu__access-code > button {
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 20px !important;
+    padding: 1px 5px !important;
+    font-size: 0.58rem !important;
+    line-height: 1.05 !important;
+  }
+
+  .user-account-menu__email-editor > button {
+    width: 24px !important;
+    min-width: 24px !important;
+    height: 24px !important;
+    min-height: 24px !important;
+    padding: 0 !important;
+  }
+}
+

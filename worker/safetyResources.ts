@@ -8,6 +8,7 @@ export interface SafetyResourcesEnv {
 
 
 type SafetyResourceType =
+  | "MESSAGE"
   | "CERTIFICATE"
   | "LOST_FOUND"
   | "EMERGENCY"
@@ -75,6 +76,164 @@ function cleanText(
 }
 
 
+
+function cookieValue(
+  request: Request,
+  name: string,
+): string {
+  const cookie =
+    request.headers.get(
+      "cookie",
+    ) ??
+    "";
+
+  for (
+    const part
+    of cookie.split(
+      ";",
+    )
+  ) {
+    const [
+      rawName,
+      ...rawValue
+    ] =
+      part
+        .trim()
+        .split(
+          "=",
+        );
+
+    if (
+      rawName ===
+        name
+    ) {
+      return decodeURIComponent(
+        rawValue.join(
+          "=",
+        ),
+      );
+    }
+  }
+
+  return "";
+}
+
+
+async function sha256Hex(
+  value: string,
+): Promise<string> {
+  const encoded =
+    new TextEncoder()
+      .encode(
+        value,
+      );
+
+  const digest =
+    await crypto.subtle.digest(
+      "SHA-256",
+      encoded,
+    );
+
+  return Array.from(
+    new Uint8Array(
+      digest,
+    ),
+  )
+    .map(
+      (
+        byte,
+      ) =>
+        byte
+          .toString(
+            16,
+          )
+          .padStart(
+            2,
+            "0",
+          ),
+    )
+    .join(
+      "",
+    );
+}
+
+
+async function currentBrowserAccount(
+  env:
+    SafetyResourcesEnv,
+  request:
+    Request,
+): Promise<{
+  id: number;
+  displayName: string;
+  email: string | null;
+} | null> {
+  const secret =
+    cookieValue(
+      request,
+      "gyan_anon",
+    );
+
+  if (!secret) {
+    return null;
+  }
+
+  const secretHash =
+    await safetySessionSha256Hex(
+      secret,
+    );
+
+  return env.gyan_registry
+    .prepare(
+      `
+        SELECT
+          ga.id,
+          ga.display_name,
+          ga.email
+
+        FROM gyan_browser_sessions bs
+
+        INNER JOIN gyan_accounts ga
+          ON ga.id =
+             bs.account_id
+
+        WHERE
+          bs.secret_hash = ?
+
+        LIMIT 1
+      `,
+    )
+    .bind(
+      secretHash,
+    )
+    .first<{
+      id:
+        number;
+
+      displayName:
+        string;
+
+      email:
+        string | null;
+    }>();
+}
+
+
+function createWinkToken():
+  string {
+  return crypto
+    .randomUUID()
+    .replace(
+      /-/g,
+      "",
+    )
+    .slice(
+      0,
+      16,
+    );
+}
+
+
 async function loadResource(
   env:
     SafetyResourcesEnv,
@@ -89,12 +248,34 @@ async function loadResource(
           r.calendar_access_id,
           r.resource_type,
           r.status,
-          c.gyan_name,
-          c.access_code,
-          c.slug
+          COALESCE(
+            ga.display_name,
+            c.gyan_name
+          ) AS gyan_name,
+
+          c.gyan_name
+            AS original_gyan_name,
+
+          COALESCE(
+            ga.access_code,
+            c.access_code
+          ) AS access_code,
+          COALESCE(
+            ga.code,
+            c.slug
+          ) AS slug,
+
+          ga.id AS gyan_account_id,
+          ga.email AS gyan_email
         FROM gyan_safety_resources r
         INNER JOIN calendar_access_codes c
           ON c.id = r.calendar_access_id
+        LEFT JOIN gyan_account_calendar_links gl
+          ON gl.calendar_access_id =
+             r.calendar_access_id
+        LEFT JOIN gyan_accounts ga
+          ON ga.id =
+             gl.gyan_account_id
         WHERE
           r.public_token = ?
         LIMIT 1
@@ -119,11 +300,20 @@ async function loadResource(
       gyan_name:
         string;
 
+      original_gyan_name:
+        string;
+
       access_code:
         string;
 
       slug:
         string;
+
+      gyan_account_id:
+        number | null;
+
+      gyan_email:
+        string | null;
     }>();
 }
 
@@ -329,7 +519,7 @@ function maskRecoveryEmail(
 }
 
 
-async function sha256Hex(
+async function safetySessionSha256Hex(
   value:
     string,
 ): Promise<string> {
@@ -456,6 +646,27 @@ function verificationHtml(
 }
 
 
+export async function cleanupExpiredGWinks(
+  env:
+    SafetyResourcesEnv,
+): Promise<number> {
+  const result =
+    await env.gyan_registry
+      .prepare(
+        `
+          DELETE FROM gyan_winks
+          WHERE
+            expires_at IS NOT NULL
+            AND expires_at <= CURRENT_TIMESTAMP
+        `,
+      )
+      .run();
+
+  return result.meta.changes ??
+    0;
+}
+
+
 export async function handleSafetyResourceRoute({
   request,
   env,
@@ -465,9 +676,255 @@ export async function handleSafetyResourceRoute({
   env: SafetyResourcesEnv;
   pathname: string;
 }): Promise<Response | null> {
+  if (
+    pathname ===
+      "/api/safety-resources/winks/recent" &&
+    request.method ===
+      "GET"
+  ) {
+    await cleanupExpiredGWinks(
+      env,
+    );
+
+    const account =
+      await currentBrowserAccount(
+        env,
+        request,
+      );
+
+    if (!account) {
+      return json({
+        messages: [],
+      });
+    }
+
+    const rows =
+      await env.gyan_registry
+        .prepare(
+          `
+            SELECT
+              w.id,
+              w.wink_token,
+              w.kind,
+              w.message,
+              w.read_at,
+              w.created_at,
+              w.sender_account_id,
+              w.recipient_account_id,
+
+              sr.public_token
+                AS resource_token,
+
+              sender.display_name
+                AS sender_display_name,
+
+              sender.code
+                AS sender_code,
+
+              recipient.display_name
+                AS recipient_display_name,
+
+              recipient.code
+                AS recipient_code
+
+            FROM gyan_winks w
+
+            INNER JOIN gyan_safety_resources sr
+              ON sr.id =
+                 w.safety_resource_id
+
+            LEFT JOIN gyan_accounts sender
+              ON sender.id =
+                 w.sender_account_id
+
+            LEFT JOIN gyan_accounts recipient
+              ON recipient.id =
+                 w.recipient_account_id
+
+            WHERE
+              (
+                w.recipient_account_id = ?
+                OR w.sender_account_id = ?
+              )
+              AND (
+                w.expires_at IS NULL
+                OR w.expires_at >
+                   CURRENT_TIMESTAMP
+              )
+
+            ORDER BY
+              w.created_at DESC,
+              w.id DESC
+
+            LIMIT 10
+          `,
+        )
+        .bind(
+          account.id,
+          account.id,
+        )
+        .all<{
+          id:
+            number;
+
+          wink_token:
+            string;
+
+          kind:
+            string;
+
+          message:
+            string;
+
+          read_at:
+            string | null;
+
+          created_at:
+            string;
+
+          sender_account_id:
+            number | null;
+
+          recipient_account_id:
+            number | null;
+
+          resource_token:
+            string;
+
+          sender_display_name:
+            string | null;
+
+          sender_code:
+            string | null;
+
+          recipient_display_name:
+            string | null;
+
+          recipient_code:
+            string | null;
+        }>();
+
+    return json({
+      messages:
+        rows.results.map(
+          (
+            message,
+          ) => ({
+            id:
+              message.id,
+
+            winkToken:
+              message.wink_token,
+
+            resourceToken:
+              message.resource_token,
+
+            kind:
+              message.kind,
+
+            preview:
+              message.message.slice(
+                0,
+                80,
+              ),
+
+            direction:
+              message.sender_account_id ===
+                account.id
+                ? "sent"
+                : "received",
+
+            senderDisplayName:
+              message.sender_display_name ??
+              "A GYAN Friend",
+
+            senderCode:
+              message.sender_code ??
+              null,
+
+            recipientDisplayName:
+              message.recipient_display_name ??
+              null,
+
+            recipientCode:
+              message.recipient_code ??
+              null,
+
+            read:
+              Boolean(
+                message.read_at,
+              ),
+
+            createdAt:
+              message.created_at,
+          }),
+        ),
+    });
+  }
+
+
+  if (
+    pathname ===
+      "/api/safety-resources/winks/unread" &&
+    request.method ===
+      "GET"
+  ) {
+    await cleanupExpiredGWinks(
+      env,
+    );
+
+    const account =
+      await currentBrowserAccount(
+        env,
+        request,
+      );
+
+    if (!account) {
+      return json({
+        unread:
+          0,
+      });
+    }
+
+    const row =
+      await env.gyan_registry
+        .prepare(
+          `
+            SELECT
+              COUNT(*) AS unread
+
+            FROM gyan_winks
+
+            WHERE
+              recipient_account_id = ?
+              AND read_at IS NULL
+              AND (
+                expires_at IS NULL
+                OR expires_at >
+                   CURRENT_TIMESTAMP
+              )
+          `,
+        )
+        .bind(
+          account.id,
+        )
+        .first<{
+          unread:
+            number;
+        }>();
+
+    return json({
+      unread:
+        Number(
+          row?.unread ??
+          0,
+        ),
+    });
+  }
+
   const match =
     pathname.match(
-      /^\/api\/safety-resources\/([a-z0-9]{10,12})(?:\/(lost-found|emergency|help)\/(finder|verify-owner|owner|chat|support|message|messages|email|verify-email))?$/i,
+      /^\/api\/safety-resources\/([a-z0-9]{10,12})(?:\/(lost-found|emergency|help|message)\/(finder|verify-owner|owner|chat|support|message|messages|email|verify-email|wink|winks|reply))?$/i,
     );
 
   if (!match) {
@@ -487,6 +944,10 @@ export async function handleSafetyResourceRoute({
     match[3]
       ?.toLowerCase() ??
     null;
+
+  await cleanupExpiredGWinks(
+    env,
+  );
 
   const row =
     await loadResource(
@@ -528,6 +989,12 @@ export async function handleSafetyResourceRoute({
           "help" &&
         row.resource_type !==
           "HELP"
+      ) ||
+      (
+        module ===
+          "message" &&
+        row.resource_type !==
+          "MESSAGE"
       )
     )
   ) {
@@ -691,6 +1158,15 @@ export async function handleSafetyResourceRoute({
       displayName:
         row.gyan_name,
 
+      messageCard:
+        row.resource_type ===
+          "MESSAGE"
+          ? {
+              purpose:
+                "Share a GYAN greeting or message using this QR.",
+            }
+          : undefined,
+
       lostFound,
 
       emergency,
@@ -709,6 +1185,1073 @@ export async function handleSafetyResourceRoute({
 
       safetyCards:
         helpData?.safetyCards,
+    });
+  }
+
+
+  if (
+    module ===
+      "message" &&
+    action ===
+      "winks" &&
+    request.method ===
+      "POST"
+  ) {
+    const body =
+      await request.json<{
+        kind?: unknown;
+        message?: unknown;
+        recipient?: unknown;
+        addFriend?: unknown;
+      }>();
+
+    const kind =
+      cleanText(
+        body.kind,
+        24,
+      );
+
+    const message =
+      cleanText(
+        body.message,
+        240,
+      );
+
+    const recipient =
+      cleanText(
+        body.recipient,
+        120,
+      );
+
+    const addFriend =
+      body.addFriend ===
+        true
+        ? 1
+        : 0;
+
+    let recipientAccount:
+      {
+        id: number;
+        code: string;
+        display_name: string;
+        email: string | null;
+      } | null =
+      null;
+
+    if (
+      recipient
+    ) {
+      recipientAccount =
+        await env.gyan_registry
+          .prepare(
+            `
+              SELECT
+                id,
+                code,
+                display_name,
+                email
+
+              FROM gyan_accounts
+
+              WHERE
+                UPPER(code) =
+                  UPPER(?)
+                OR LOWER(display_name) =
+                  LOWER(?)
+
+              ORDER BY
+                CASE
+                  WHEN UPPER(code) =
+                       UPPER(?)
+                  THEN 0
+                  ELSE 1
+                END
+
+              LIMIT 1
+            `,
+          )
+          .bind(
+            recipient,
+            recipient,
+            recipient,
+          )
+          .first<{
+            id: number;
+            code: string;
+            display_name: string;
+            email: string | null;
+          }>();
+
+      if (
+        !recipientAccount
+      ) {
+        return json(
+          {
+            error:
+              `GYAN recipient ${recipient} was not found.`,
+          },
+          404,
+        );
+      }
+    }
+
+    if (!message) {
+      return json(
+        {
+          error:
+            "Write a G-Wink message first.",
+        },
+        400,
+      );
+    }
+
+    let winkToken =
+      "";
+
+    for (
+      let attempt = 0;
+      attempt < 20;
+      attempt += 1
+    ) {
+      winkToken =
+        crypto
+          .randomUUID()
+          .replace(
+            /-/g,
+            "",
+          )
+          .slice(
+            0,
+            16,
+          );
+
+      try {
+        await env.gyan_registry
+          .prepare(
+            `
+              INSERT INTO gyan_winks (
+                safety_resource_id,
+                wink_token,
+                kind,
+                message,
+                recipient_query,
+                add_friend,
+                sender_account_id,
+                recipient_account_id,
+                expires_at
+              )
+              VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?,
+                datetime('now', '+30 days')
+              )
+            `,
+          )
+          .bind(
+            row.resource_id,
+            winkToken,
+            kind,
+            message,
+            recipient ||
+              null,
+            addFriend,
+            row.gyan_account_id,
+            recipientAccount?.id ??
+              null,
+          )
+          .run();
+
+        break;
+      } catch (
+        error
+      ) {
+        const detail =
+          error instanceof Error
+            ? error.message
+            : String(
+                error,
+              );
+
+        if (
+          detail.includes(
+            "UNIQUE",
+          )
+        ) {
+          winkToken =
+            "";
+
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    if (!winkToken) {
+      return json(
+        {
+          error:
+            "A G-Wink link could not be created.",
+        },
+        500,
+      );
+    }
+
+    const origin =
+      new URL(
+        request.url,
+      ).origin;
+
+    const revealUrl =
+      `${origin}/${token}?wink=${winkToken}`;
+
+    let recipientEmailSent =
+      false;
+
+    if (
+      recipientAccount &&
+      env.RESEND_API_KEY
+    ) {
+      const recipientEmail =
+        recipientAccount.email
+          ?.trim()
+          .toLowerCase() ??
+        "";
+
+      if (
+        recipientEmail
+      ) {
+        try {
+          const response =
+            await fetch(
+              "https://api.resend.com/emails",
+              {
+                method:
+                  "POST",
+
+                headers: {
+                  authorization:
+                    `Bearer ${env.RESEND_API_KEY}`,
+
+                  "content-type":
+                    "application/json",
+                },
+
+                body:
+                  JSON.stringify({
+                    from:
+                      "GYAN <admin@gyan.cc>",
+
+                    to: [
+                      recipientEmail,
+                    ],
+
+                    cc:
+                      recipientEmail ===
+                        "admin@gyan.cc"
+                        ? undefined
+                        : [
+                            "admin@gyan.cc",
+                          ],
+
+                    subject:
+                      `😉 New G-Wink from ${row.gyan_name}`,
+
+                    html:
+                      `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#243b47;"><h2>😉 You received a G-Wink</h2><p>From <strong>${row.gyan_name}</strong></p><p>The message is waiting in your GYAN account.</p><p><a href="${revealUrl}" style="display:inline-block;padding:10px 14px;background:#6d4cc2;color:#fff;text-decoration:none;border-radius:8px;">Open G-Wink</a></p><p style="font-size:12px;color:#667;word-break:break-all;">${revealUrl}</p></div>`,
+
+                    text:
+                      `You received a G-Wink from ${row.gyan_name}.\n\nOpen it here:\n${revealUrl}\n\nThe message is also waiting in your GYAN account.`,
+                  }),
+              },
+            );
+
+          recipientEmailSent =
+            response.ok;
+
+          if (
+            !response.ok
+          ) {
+            console.error(
+              "GYAN recipient G-Wink email failed:",
+              response.status,
+              await response.text(),
+            );
+          }
+        } catch (
+          error
+        ) {
+          console.error(
+            "GYAN recipient G-Wink email network error:",
+            error,
+          );
+        }
+      }
+    }
+
+    return json({
+      created:
+        true,
+
+      winkToken,
+
+      revealUrl,
+
+      deliveredToAccount:
+        recipientAccount
+          ? {
+              id:
+                recipientAccount.id,
+              code:
+                recipientAccount.code,
+              displayName:
+                recipientAccount.display_name,
+            }
+          : null,
+
+      recipientEmailSent,
+    });
+  }
+
+
+  if (
+    module ===
+      "message" &&
+    action ===
+      "wink" &&
+    request.method ===
+      "GET"
+  ) {
+    const winkToken =
+      cleanText(
+        new URL(
+          request.url,
+        ).searchParams.get(
+          "wink",
+        ),
+        64,
+      );
+
+    if (!winkToken) {
+      return json(
+        {
+          error:
+            "G-Wink link is incomplete.",
+        },
+        400,
+      );
+    }
+
+    const wink =
+      await env.gyan_registry
+        .prepare(
+          `
+            SELECT
+              w.kind,
+              w.message,
+              w.created_at,
+
+              sender.display_name
+                AS sender_display_name,
+
+              sender.code
+                AS sender_code,
+
+              (
+                SELECT
+                  source_calendar.gyan_name
+
+                FROM gyan_account_calendar_links source_link
+
+                INNER JOIN calendar_access_codes source_calendar
+                  ON source_calendar.id =
+                     source_link.calendar_access_id
+
+                WHERE
+                  source_link.gyan_account_id =
+                    w.sender_account_id
+
+                LIMIT 1
+              ) AS sender_original_name,
+
+              recipient.display_name
+                AS recipient_display_name,
+
+              recipient.code
+                AS recipient_code,
+
+              w.recipient_account_id
+
+            FROM gyan_winks w
+
+            LEFT JOIN gyan_accounts sender
+              ON sender.id =
+                 w.sender_account_id
+
+            LEFT JOIN gyan_accounts recipient
+              ON recipient.id =
+                 w.recipient_account_id
+
+            WHERE
+              w.safety_resource_id = ?
+              AND w.wink_token = ?
+              AND (
+                w.expires_at IS NULL
+                OR w.expires_at >
+                   CURRENT_TIMESTAMP
+              )
+
+            LIMIT 1
+          `,
+        )
+        .bind(
+          row.resource_id,
+          winkToken,
+        )
+        .first<{
+          kind:
+            string;
+
+          message:
+            string;
+
+          created_at:
+            string;
+
+          sender_display_name:
+            string | null;
+
+          sender_code:
+            string | null;
+
+          sender_original_name:
+            string | null;
+
+          recipient_display_name:
+            string | null;
+
+          recipient_code:
+            string | null;
+
+          recipient_account_id:
+            number | null;
+        }>();
+
+    if (
+      wink
+    ) {
+      const viewer =
+        await currentBrowserAccount(
+          env,
+          request,
+        );
+
+      if (
+        viewer &&
+        wink.recipient_account_id ===
+          viewer.id
+      ) {
+        await env.gyan_registry
+          .prepare(
+            `
+              UPDATE gyan_winks
+              SET read_at =
+                COALESCE(
+                  read_at,
+                  CURRENT_TIMESTAMP
+                )
+              WHERE
+                safety_resource_id = ?
+                AND wink_token = ?
+            `,
+          )
+          .bind(
+            row.resource_id,
+            winkToken,
+          )
+          .run();
+      }
+    }
+
+    if (!wink) {
+      return json(
+        {
+          error:
+            "This G-Wink could not be found.",
+        },
+        404,
+      );
+    }
+
+    return json({
+      wink: {
+        token:
+          winkToken,
+
+        kind:
+          wink.kind,
+
+        message:
+          wink.message,
+
+        senderDisplayName:
+          wink.sender_display_name ??
+          row.gyan_name,
+
+        senderCode:
+          wink.sender_code ??
+          null,
+
+        senderOriginalName:
+          wink.sender_original_name ??
+          null,
+
+        recipientDisplayName:
+          wink.recipient_display_name ??
+          null,
+
+        recipientCode:
+          wink.recipient_code ??
+          null,
+
+        createdAt:
+          wink.created_at,
+      },
+    });
+  }
+
+
+  if (
+    module ===
+      "message" &&
+    action ===
+      "reply" &&
+    request.method ===
+      "POST"
+  ) {
+    const body =
+      await request.json<{
+        winkToken?: unknown;
+        message?: unknown;
+      }>();
+
+    const originalWinkToken =
+      cleanText(
+        body.winkToken,
+        64,
+      );
+
+    const replyMessage =
+      cleanText(
+        body.message,
+        240,
+      );
+
+    if (
+      !originalWinkToken ||
+      !replyMessage
+    ) {
+      return json(
+        {
+          error:
+            "Write a reply first.",
+        },
+        400,
+      );
+    }
+
+    const original =
+      await env.gyan_registry
+        .prepare(
+          `
+            SELECT
+              id
+
+            FROM gyan_winks
+
+            WHERE
+              safety_resource_id = ?
+              AND wink_token = ?
+
+            LIMIT 1
+          `,
+        )
+        .bind(
+          row.resource_id,
+          originalWinkToken,
+        )
+        .first<{
+          id:
+            number;
+        }>();
+
+    if (!original) {
+      return json(
+        {
+          error:
+            "The original G-Wink could not be found.",
+        },
+        404,
+      );
+    }
+
+    if (
+      !row.gyan_account_id
+    ) {
+      return json(
+        {
+          error:
+            "The recipient GYAN account could not be found.",
+        },
+        409,
+      );
+    }
+
+    const sender =
+      await currentBrowserAccount(
+        env,
+        request,
+      );
+
+    let replyToken =
+      "";
+
+    for (
+      let attempt = 0;
+      attempt < 20;
+      attempt += 1
+    ) {
+      replyToken =
+        createWinkToken();
+
+      try {
+        await env.gyan_registry
+          .prepare(
+            `
+              INSERT INTO gyan_winks (
+                safety_resource_id,
+                wink_token,
+                kind,
+                message,
+                sender_account_id,
+                recipient_account_id,
+                parent_wink_id,
+                expires_at
+              )
+              VALUES (
+                ?, ?, '↩️', ?, ?, ?, ?,
+                datetime('now', '+30 days')
+              )
+            `,
+          )
+          .bind(
+            row.resource_id,
+            replyToken,
+            replyMessage,
+            sender?.id ??
+              null,
+            row.gyan_account_id,
+            original.id,
+          )
+          .run();
+
+        break;
+      } catch (
+        error
+      ) {
+        const detail =
+          error instanceof Error
+            ? error.message
+            : String(
+                error,
+              );
+
+        if (
+          detail.includes(
+            "UNIQUE",
+          )
+        ) {
+          replyToken =
+            "";
+
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    if (!replyToken) {
+      return json(
+        {
+          error:
+            "The reply could not be created.",
+        },
+        500,
+      );
+    }
+
+    const origin =
+      new URL(
+        request.url,
+      ).origin;
+
+    const replyUrl =
+      `${origin}/${token}?wink=${replyToken}`;
+
+    const senderName =
+      sender?.displayName ??
+      "A GYAN Friend";
+
+    let emailSent =
+      false;
+
+    if (
+      env.RESEND_API_KEY
+    ) {
+      const ownerEmail =
+        row.gyan_email
+          ?.trim()
+          .toLowerCase() ??
+        "";
+
+      const to =
+        ownerEmail
+          ? [
+              ownerEmail,
+            ]
+          : [
+              "admin@gyan.cc",
+            ];
+
+      const cc =
+        ownerEmail &&
+        ownerEmail !==
+          "admin@gyan.cc"
+          ? [
+              "admin@gyan.cc",
+            ]
+          : undefined;
+
+      try {
+        const response =
+          await fetch(
+            "https://api.resend.com/emails",
+            {
+              method:
+                "POST",
+
+              headers: {
+                authorization:
+                  `Bearer ${env.RESEND_API_KEY}`,
+
+                "content-type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify({
+                  from:
+                    "GYAN <admin@gyan.cc>",
+
+                  to,
+
+                  cc,
+
+                  subject:
+                    `↩️ New G-Wink reply from ${senderName}`,
+
+                  html:
+                    `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#243b47;"><h2>↩️ You received a G-Wink reply</h2><p>From <strong>${senderName}</strong></p><p>The reply is stored in your GYAN account.</p><p><a href="${replyUrl}" style="display:inline-block;padding:10px 14px;background:#6d4cc2;color:#fff;text-decoration:none;border-radius:8px;">Open reply</a></p><p style="font-size:12px;color:#667;word-break:break-all;">${replyUrl}</p></div>`,
+
+                  text:
+                    `You received a G-Wink reply from ${senderName}.\n\nOpen reply:\n${replyUrl}\n\nThe reply is stored in your GYAN account.`,
+                }),
+            },
+          );
+
+        emailSent =
+          response.ok;
+
+        if (
+          !response.ok
+        ) {
+          console.error(
+            "G-Wink reply email failed:",
+            response.status,
+            await response.text(),
+          );
+        }
+      } catch (
+        error
+      ) {
+        console.error(
+          "G-Wink reply email network error:",
+          error,
+        );
+      }
+    }
+
+    return json({
+      sent:
+        true,
+
+      replyToken,
+
+      replyUrl,
+
+      storedForAccount:
+        row.gyan_account_id,
+
+      emailSent,
+    });
+  }
+
+
+  if (
+    module ===
+      "message" &&
+    action ===
+      "email" &&
+    request.method ===
+      "POST"
+  ) {
+    if (
+      !env.RESEND_API_KEY
+    ) {
+      return json(
+        {
+          error:
+            "Email delivery is not configured.",
+        },
+        503,
+      );
+    }
+
+    const body =
+      await request.json<{
+        email?: unknown;
+        cc?: unknown;
+        winkToken?: unknown;
+        qrPngBase64?: unknown;
+      }>();
+
+    const email =
+      cleanText(
+        body.email,
+        320,
+      ).toLowerCase();
+
+    const cc =
+      cleanText(
+        body.cc,
+        320,
+      ).toLowerCase();
+
+    const winkToken =
+      cleanText(
+        body.winkToken,
+        64,
+      );
+
+    const qrPngBase64 =
+      typeof body.qrPngBase64 ===
+        "string"
+        ? body.qrPngBase64
+            .trim()
+        : "";
+
+    if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        email,
+      )
+    ) {
+      return json(
+        {
+          error:
+            "Enter a valid email address.",
+        },
+        400,
+      );
+    }
+
+    if (
+      cc &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        cc,
+      )
+    ) {
+      return json(
+        {
+          error:
+            "Enter a valid CC email address.",
+        },
+        400,
+      );
+    }
+
+    if (
+      !winkToken
+    ) {
+      return json(
+        {
+          error:
+            "Create the G-Wink before emailing it.",
+        },
+        400,
+      );
+    }
+
+    const savedWink =
+      await env.gyan_registry
+        .prepare(
+          `
+            SELECT id
+            FROM gyan_winks
+            WHERE
+              safety_resource_id = ?
+              AND wink_token = ?
+            LIMIT 1
+          `,
+        )
+        .bind(
+          row.resource_id,
+          winkToken,
+        )
+        .first();
+
+    if (!savedWink) {
+      return json(
+        {
+          error:
+            "This G-Wink could not be found.",
+        },
+        404,
+      );
+    }
+
+    if (
+      !qrPngBase64 ||
+      qrPngBase64.length >
+        4_000_000
+    ) {
+      return json(
+        {
+          error:
+            "G-Wink QR image is missing or too large.",
+        },
+        400,
+      );
+    }
+
+    const requestOrigin =
+      new URL(
+        request.url,
+      ).origin;
+
+    const winkUrl =
+      `${requestOrigin}/${token}?wink=${encodeURIComponent(
+        winkToken,
+      )}`;
+
+    let resendResponse:
+      Response;
+
+    try {
+      resendResponse =
+        await fetch(
+          "https://api.resend.com/emails",
+          {
+          method:
+            "POST",
+
+          headers: {
+            authorization:
+              `Bearer ${env.RESEND_API_KEY}`,
+
+            "content-type":
+              "application/json",
+          },
+
+          body:
+            JSON.stringify({
+              from:
+                "GYAN <admin@gyan.cc>",
+
+              to: [
+                email,
+              ],
+
+              cc:
+                cc
+                  ? [
+                      cc,
+                    ]
+                  : undefined,
+
+              subject:
+                `😉 You got a G-Wink from ${row.gyan_name}`,
+
+              html:
+                `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;text-align:center;color:#243b47;"><h2>😉 You got a G-Wink!</h2><p>From <strong>${row.gyan_name}</strong></p><p>The message is kept behind the QR and is not shown in this email.</p><p><a href="${winkUrl}" style="display:inline-block;padding:10px 14px;background:#6d4cc2;color:#fff;text-decoration:none;border-radius:8px;">Open G-Wink</a></p><p style="margin:10px 0 4px;font-size:12px;color:#667;">If you are reading this on your phone and cannot scan the QR, tap or copy this link:</p><p style="margin:0 0 12px;word-break:break-all;"><a href="${winkUrl}" style="color:#285f85;text-decoration:underline;">${winkUrl}</a></p><p style="font-size:12px;color:#667;">The attached PNG contains the G-Wink QR.</p></div>`,
+
+              text:
+                `You got a G-Wink from ${row.gyan_name}.\n\nOpen it here:\n${winkUrl}\n\nIf you cannot scan the QR from your phone, tap or copy the link above.\n\nThe message itself is not included in this email.`,
+
+              attachments: [
+                {
+                  filename:
+                    "G-Wink.png",
+
+                  content:
+                    qrPngBase64,
+                },
+              ],
+            }),
+          },
+        );
+    } catch (
+      error
+    ) {
+      console.error(
+        "G-Wink email network error:",
+        error,
+      );
+
+      return json(
+        {
+          error:
+            "Temporary network problem while sending G-Wink. Please try again.",
+          retryable:
+            true,
+        },
+        503,
+      );
+    }
+
+    if (
+      !resendResponse.ok
+    ) {
+      const detail =
+        await resendResponse.text();
+
+      console.error(
+        "G-Wink email failed:",
+        resendResponse.status,
+        detail,
+      );
+
+      return json(
+        {
+          error:
+            "G-Wink email could not be sent.",
+        },
+        502,
+      );
+    }
+
+    return json({
+      sent:
+        true,
     });
   }
 

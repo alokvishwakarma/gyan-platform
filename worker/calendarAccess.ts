@@ -19,6 +19,7 @@ type ArtworkKey =
 
 
 type SafetyResourceType =
+  | "MESSAGE"
   | "CERTIFICATE"
   | "LOST_FOUND"
   | "EMERGENCY"
@@ -261,10 +262,11 @@ async function loadSafetyResources(
             AND status = 'ACTIVE'
           ORDER BY
             CASE resource_type
-              WHEN 'CERTIFICATE' THEN 1
+              WHEN 'MESSAGE' THEN 1
               WHEN 'LOST_FOUND' THEN 2
               WHEN 'EMERGENCY' THEN 3
-              WHEN 'HELP' THEN 4
+              WHEN 'CERTIFICATE' THEN 4
+              WHEN 'HELP' THEN 5
               ELSE 99
             END
         `,
@@ -776,6 +778,329 @@ async function createOne(
   throw new Error(
     "Unable to allocate a unique calendar access record.",
   );
+}
+
+
+
+export interface UnifiedGyanGoodieBundle {
+  welcomeGems: number;
+  goodies: SafetyResourceRecord[];
+}
+
+const UNIFIED_GYAN_WELCOME_GEMS =
+  25;
+
+const UNIFIED_GYAN_RESOURCE_TYPES:
+  SafetyResourceType[] = [
+    "MESSAGE",
+    "LOST_FOUND",
+    "EMERGENCY",
+    "CERTIFICATE",
+    "HELP",
+  ];
+
+
+async function ensureOneSafetyResource(
+  env:
+    CalendarAccessEnv,
+  calendarAccessId:
+    number,
+  resourceType:
+    SafetyResourceType,
+): Promise<void> {
+  const existing =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT id
+          FROM gyan_safety_resources
+          WHERE
+            calendar_access_id = ?
+            AND resource_type = ?
+            AND status = 'ACTIVE'
+          LIMIT 1
+        `,
+      )
+      .bind(
+        calendarAccessId,
+        resourceType,
+      )
+      .first();
+
+  if (existing) {
+    return;
+  }
+
+  for (
+    let attempt = 0;
+    attempt < 30;
+    attempt += 1
+  ) {
+    const token =
+      createSafetyPublicToken();
+
+    try {
+      await env.gyan_registry
+        .prepare(
+          `
+            INSERT INTO gyan_safety_resources (
+              calendar_access_id,
+              resource_type,
+              public_token,
+              status
+            )
+            VALUES (?, ?, ?, 'ACTIVE')
+          `,
+        )
+        .bind(
+          calendarAccessId,
+          resourceType,
+          token,
+        )
+        .run();
+
+      return;
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : String(error);
+
+      if (
+        message.includes(
+          "UNIQUE",
+        )
+      ) {
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new Error(
+    `Unable to allocate ${resourceType} public token.`,
+  );
+}
+
+
+async function createUnifiedBridgeRecord(
+  env:
+    CalendarAccessEnv,
+): Promise<number> {
+  for (
+    let attempt = 0;
+    attempt < 30;
+    attempt += 1
+  ) {
+    const slug =
+      createSlug();
+
+    const internalName =
+      `${createGyanName()}Bridge`;
+
+    const internalAccessCode =
+      createAccessCode();
+
+    try {
+      const row =
+        await env.gyan_registry
+          .prepare(
+            `
+              INSERT INTO calendar_access_codes (
+                slug,
+                gyan_name,
+                access_code,
+                duration_months,
+                welcome_gems,
+                artwork_key,
+                status,
+                source
+              )
+              VALUES (
+                ?, ?, ?, 12, ?, 'EDUCATION',
+                'GUEST_ACTIVE', 'UNIFIED_GYAN'
+              )
+              RETURNING id
+            `,
+          )
+          .bind(
+            slug,
+            internalName,
+            internalAccessCode,
+            UNIFIED_GYAN_WELCOME_GEMS,
+          )
+          .first<{
+            id: number;
+          }>();
+
+      if (row?.id) {
+        return row.id;
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : String(error);
+
+      if (
+        message.includes(
+          "UNIQUE",
+        )
+      ) {
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new Error(
+    "Unable to create unified GYAN resource bridge.",
+  );
+}
+
+
+export async function ensureUnifiedGyanGoodies(
+  env:
+    CalendarAccessEnv,
+  accountId:
+    number,
+  origin:
+    string,
+): Promise<UnifiedGyanGoodieBundle> {
+  let link =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT calendar_access_id
+          FROM gyan_account_calendar_links
+          WHERE gyan_account_id = ?
+          LIMIT 1
+        `,
+      )
+      .bind(
+        accountId,
+      )
+      .first<{
+        calendar_access_id:
+          number;
+      }>();
+
+  if (!link) {
+    const calendarAccessId =
+      await createUnifiedBridgeRecord(
+        env,
+      );
+
+    await env.gyan_registry
+      .prepare(
+        `
+          INSERT INTO gyan_account_calendar_links (
+            gyan_account_id,
+            calendar_access_id
+          )
+          VALUES (?, ?)
+        `,
+      )
+      .bind(
+        accountId,
+        calendarAccessId,
+      )
+      .run();
+
+    link = {
+      calendar_access_id:
+        calendarAccessId,
+    };
+  }
+
+  for (
+    const resourceType
+    of UNIFIED_GYAN_RESOURCE_TYPES
+  ) {
+    await ensureOneSafetyResource(
+      env,
+      link.calendar_access_id,
+      resourceType,
+    );
+  }
+
+  await env.gyan_registry
+    .prepare(
+      `
+        INSERT OR IGNORE INTO gem_transactions (
+          calendar_access_id,
+          amount,
+          reason
+        )
+        VALUES (?, ?, 'WELCOME_UNIFIED_GYAN')
+      `,
+    )
+    .bind(
+      link.calendar_access_id,
+      UNIFIED_GYAN_WELCOME_GEMS,
+    )
+    .run();
+
+  const rows =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            resource_type,
+            public_token
+          FROM gyan_safety_resources
+          WHERE
+            calendar_access_id = ?
+            AND status = 'ACTIVE'
+          ORDER BY
+            CASE resource_type
+              WHEN 'MESSAGE' THEN 1
+              WHEN 'LOST_FOUND' THEN 2
+              WHEN 'EMERGENCY' THEN 3
+              WHEN 'CERTIFICATE' THEN 4
+              WHEN 'HELP' THEN 5
+              ELSE 99
+            END
+        `,
+      )
+      .bind(
+        link.calendar_access_id,
+      )
+      .all<{
+        resource_type:
+          SafetyResourceType;
+        public_token:
+          string;
+      }>();
+
+  const baseOrigin =
+    origin.replace(
+      /\/$/,
+      "",
+    );
+
+  return {
+    welcomeGems:
+      UNIFIED_GYAN_WELCOME_GEMS,
+
+    goodies:
+      rows.results.map(
+        (
+          row,
+        ) => ({
+          type:
+            row.resource_type,
+
+          token:
+            row.public_token,
+
+          publicUrl:
+            `${baseOrigin}/${row.public_token}`,
+        }),
+      ),
+  };
 }
 
 

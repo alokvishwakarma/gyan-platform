@@ -5,6 +5,10 @@ import {
   useState,
 } from "react";
 
+import {
+  createPortal,
+} from "react-dom";
+
 import FeaturedServiceCard
   from "./FeaturedServiceCard";
 
@@ -36,6 +40,9 @@ import GyanShell
 
 import UserAccountMenu
   from "./UserAccountMenu";
+
+import GWinkPage
+  from "./GWinkPage";
 
 import "./PublicHomePage.css";
 
@@ -99,6 +106,9 @@ interface PublicHomePageProps {
   onRegisterMyShop: (
     email: string,
   ) => void;
+
+  adminAuthenticated?:
+    boolean;
 
   shopName?: string;
   shopAddress?: string;
@@ -291,6 +301,34 @@ type ActiveEducationGyan = {
 };
 
 
+type EducationAttemptDetail = {
+  id: number;
+  subjectCode: string;
+  topicCode: string;
+  questionCount: number;
+  correctCount: number;
+  scorePercent: number;
+  createdAt: string;
+
+  questions: {
+    questionId: number;
+    text: string;
+
+    choices: {
+      A: string;
+      B: string;
+      C: string;
+      D: string;
+    };
+
+    selectedChoice: string;
+    correctChoice: string;
+    correct: boolean;
+    explanation?: string | null;
+  }[];
+};
+
+
 type EducationAttemptSummary = {
   totalAttempts: number;
 
@@ -303,6 +341,22 @@ type EducationAttemptSummary = {
     scorePercent: number;
     createdAt: string;
   }[];
+};
+
+
+type RecentGWinkMessage = {
+  id: number;
+  winkToken: string;
+  resourceToken: string;
+  kind: string;
+  preview: string;
+  direction: "sent" | "received";
+  senderDisplayName: string;
+  senderCode?: string | null;
+  recipientDisplayName?: string | null;
+  recipientCode?: string | null;
+  read: boolean;
+  createdAt: string;
 };
 
 
@@ -401,6 +455,9 @@ export default function PublicHomePage({
   onOpenMyShop,
 
   onRegisterMyShop,
+
+  adminAuthenticated =
+    false,
 
   shopName,
 
@@ -742,6 +799,50 @@ export default function PublicHomePage({
 
 
   const [
+    selectedEducationAttempt,
+    setSelectedEducationAttempt,
+  ] =
+    useState<
+      EducationAttemptDetail | null
+    >(null);
+
+  const [
+    educationAttemptDetailLoading,
+    setEducationAttemptDetailLoading,
+  ] =
+    useState(false);
+
+  const [
+    educationAttemptDetailError,
+    setEducationAttemptDetailError,
+  ] =
+    useState("");
+
+
+  const [
+    recentGWinks,
+    setRecentGWinks,
+  ] =
+    useState<
+      RecentGWinkMessage[]
+    >([]);
+
+  const [
+    recentGWinksLoading,
+    setRecentGWinksLoading,
+  ] =
+    useState(false);
+
+  const [
+    openGWink,
+    setOpenGWink,
+  ] =
+    useState<
+      RecentGWinkMessage | null
+    >(null);
+
+
+  const [
     educationAttemptSummary,
     setEducationAttemptSummary,
   ] =
@@ -765,6 +866,169 @@ export default function PublicHomePage({
   ] =
     useState(false);
 
+
+
+  async function openEducationAttempt(
+    attemptId:
+      number,
+  ): Promise<void> {
+    if (
+      !educationHeaderCode
+    ) {
+      return;
+    }
+
+    setEducationAttemptDetailLoading(
+      true,
+    );
+
+    setEducationAttemptDetailError(
+      "",
+    );
+
+    try {
+      const response =
+        await fetch(
+          `/api/education/attempt-detail?student=${encodeURIComponent(
+            educationHeaderCode,
+          )}&attempt=${encodeURIComponent(
+            String(
+              attemptId,
+            ),
+          )}`,
+          {
+            credentials:
+              "include",
+            cache:
+              "no-store",
+          },
+        );
+
+      const body =
+        await response.json() as {
+          attempt?:
+            EducationAttemptDetail;
+          error?:
+            string;
+        };
+
+      if (
+        !response.ok ||
+        !body.attempt
+      ) {
+        throw new Error(
+          body.error ??
+            "Education result could not be loaded.",
+        );
+      }
+
+      setSelectedEducationAttempt(
+        body.attempt,
+      );
+    } catch (
+      caught
+    ) {
+      setEducationAttemptDetailError(
+        caught instanceof Error
+          ? caught.message
+          : "Education result could not be loaded.",
+      );
+    } finally {
+      setEducationAttemptDetailLoading(
+        false,
+      );
+    }
+  }
+
+
+  useEffect(
+    () => {
+      if (
+        !educationRatingsCardOpen
+      ) {
+        return;
+      }
+
+      const controller =
+        new AbortController();
+
+      void Promise.resolve()
+        .then(
+          () => {
+            if (
+              !controller.signal.aborted
+            ) {
+              setRecentGWinksLoading(
+                true,
+              );
+            }
+          },
+        );
+
+      void fetch(
+        "/api/safety-resources/winks/recent",
+        {
+          credentials:
+            "include",
+          cache:
+            "no-store",
+          signal:
+            controller.signal,
+        },
+      )
+        .then(
+          async (
+            response,
+          ) => {
+            if (!response.ok) {
+              return {
+                messages: [],
+              };
+            }
+
+            return await response.json() as {
+              messages?:
+                RecentGWinkMessage[];
+            };
+          },
+        )
+        .then(
+          (
+            body,
+          ) => {
+            if (
+              controller.signal.aborted
+            ) {
+              return;
+            }
+
+            setRecentGWinks(
+              body.messages ??
+              [],
+            );
+          },
+        )
+        .finally(
+          () => {
+            if (
+              !controller.signal.aborted
+            ) {
+              setRecentGWinksLoading(
+                false,
+              );
+            }
+          },
+        );
+
+      return () => {
+        controller.abort();
+      };
+    },
+    [
+      educationRatingsCardOpen,
+      openGWink,
+    ],
+  );
 
 
   useEffect(() => {
@@ -1470,6 +1734,12 @@ export default function PublicHomePage({
       .trim()
       .toUpperCase();
 
+  const activityGyanName =
+    activeEducationGyan
+      ?.name
+      ?.trim() ??
+    "";
+
   const educationEmailKnown =
     activeEducationGyan
       ?.emailKnown ??
@@ -1765,20 +2035,12 @@ export default function PublicHomePage({
             <button
               type="button"
               className="public-home__brand-text public-home__brand-text-button"
-              onClick={() => {
-                if (
-                  !educationRatingsCardOpen
-                ) {
-                  setEducationAttemptSummary(
-                    null,
-                  );
-                }
-
+              onClick={() =>
                 setEducationRatingsCardOpen(
                   (current) =>
                     !current,
-                );
-              }}
+                )
+              }
               aria-expanded={
                 educationRatingsCardOpen
               }
@@ -1863,8 +2125,13 @@ export default function PublicHomePage({
                 aria-label="GYAN activity"
               >
                 <div className="public-home__activity-top">
-                  <strong>
-                    My GYAN
+                  <strong className="public-home__activity-heading">
+                    My Activity
+                    {
+                      activityGyanName
+                        ? ` ${activityGyanName}`
+                        : ""
+                    }
                     {educationHeaderCode
                       ? ` [${educationHeaderCode}]`
                       : ""}
@@ -1884,12 +2151,133 @@ export default function PublicHomePage({
                   </button>
                 </div>
 
+                <div
+                  className="public-home__activity-row public-home__activity-winks public-home__activity-inline-row"
+                >
+                  <strong>
+                    G-Winks:
+                  </strong>
+
+                  <div
+                    className="public-home__activity-strip"
+                    style={{
+                      display:
+                        "flex",
+                      alignItems:
+                        "center",
+                      gap:
+                        "4px",
+                      flexWrap:
+                        "nowrap",
+                      overflowX:
+                        "auto",
+                    }}
+                  >
+                    {
+                      recentGWinksLoading ? (
+                        <span className="public-home__activity-loading">
+                          Loading…
+                        </span>
+                      ) : recentGWinks.length ? (
+                        recentGWinks.map(
+                          (
+                            wink,
+                          ) => (
+                            <button
+                              key={
+                                wink.id
+                              }
+                              type="button"
+                              className={`public-home__activity-wink public-home__activity-wink--${wink.direction}`}
+                              title={`${
+                                wink.direction ===
+                                  "sent"
+                                  ? "Sent"
+                                  : "Received"
+                              } · ${
+                                wink.read
+                                  ? "Read"
+                                  : "Unread"
+                              } · ${
+                                wink.direction ===
+                                  "sent"
+                                  ? wink.recipientDisplayName ??
+                                    wink.recipientCode ??
+                                    "GYAN recipient"
+                                  : wink.senderDisplayName
+                              } · ${wink.preview}`}
+                              aria-label={`${
+                                wink.direction ===
+                                  "sent"
+                                  ? "Sent"
+                                  : "Received"
+                              } ${wink.read ? "read" : "unread"} G-Wink`}
+                              onClick={() => {
+                                setRecentGWinks(
+                                  (
+                                    current,
+                                  ) =>
+                                    current.map(
+                                      (
+                                        item,
+                                      ) =>
+                                        item.id ===
+                                          wink.id
+                                          ? {
+                                              ...item,
+                                              read:
+                                                true,
+                                            }
+                                          : item,
+                                    ),
+                                );
+
+                                setOpenGWink(
+                                  wink,
+                                );
+                              }}
+                              style={{
+                                flex:
+                                  "0 0 auto",
+                                width:
+                                  "28px",
+                                height:
+                                  "28px",
+                                padding:
+                                  0,
+                                border:
+                                  "1px solid rgba(15, 23, 42, 0.16)",
+                                background:
+                                  wink.read
+                                    ? "#86c98a"
+                                    : "#f5d76e",
+                                cursor:
+                                  "pointer",
+                                fontSize:
+                                  "0.9rem",
+                                lineHeight:
+                                  1,
+                              }}
+                            >
+                              ✉
+                            </button>
+                          ),
+                        )
+                      ) : (
+                        <span className="public-home__activity-empty">
+                          No G-Winks
+                        </span>
+                      )
+                    }
+                  </div>
+                </div>
+
                 <div className="public-home__activity-puzzle-summary">
                   <PuzzleRatingsStrip
                     onOpenPuzzle={() => {
-                      setEducationRatingsCardOpen(
-                        false,
-                      );
+                    setEducationRatingsCardOpen(
+                      false,
+                    );
 
                     setSearchFocused(
                       false,
@@ -1917,7 +2305,7 @@ export default function PublicHomePage({
                   />
                 </div>
 
-                <div className="public-home__activity-row">
+                <div className="public-home__activity-row public-home__activity-inline-row">
                   <strong>
                     Service Requests:
                   </strong>
@@ -1974,7 +2362,7 @@ export default function PublicHomePage({
                   </div>
                 </div>
 
-                <div className="public-home__activity-row">
+                <div className="public-home__activity-row public-home__activity-inline-row">
                   <strong>
                     Education Ratings:
                   </strong>
@@ -2006,12 +2394,19 @@ export default function PublicHomePage({
                                         : "red";
 
                                   return (
-                                    <span
+                                    <button
                                       key={
                                         attempt.id
                                       }
+                                      type="button"
                                       className={`public-home__activity-box public-home__activity-box--${state}`}
                                       title={`${attempt.correctCount}/${attempt.questionCount} · ${attempt.scorePercent}% · ${attempt.topicCode}`}
+                                      aria-label={`Open ${attempt.topicCode} result: ${attempt.correctCount} of ${attempt.questionCount}`}
+                                      onClick={() =>
+                                        void openEducationAttempt(
+                                          attempt.id,
+                                        )
+                                      }
                                     />
                                   );
                                 },
@@ -2024,7 +2419,6 @@ export default function PublicHomePage({
                           )}
                   </div>
                 </div>
-
 
                 {educationCodeNeedsRecovery && (
                   <small className="public-home__education-ratings-warning">
@@ -2286,6 +2680,380 @@ export default function PublicHomePage({
             🧰
           </button>
 
+          {(educationAttemptDetailLoading ||
+            educationAttemptDetailError ||
+            selectedEducationAttempt) &&
+            createPortal(
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Education result"
+                style={{
+                  position:
+                    "fixed",
+                  inset:
+                    0,
+                  zIndex:
+                    2147482000,
+                  display:
+                    "grid",
+                  placeItems:
+                    "start center",
+                  padding:
+                    "58px 10px 16px",
+                  background:
+                    "rgb(15 23 42 / 34%)",
+                  overflowY:
+                    "auto",
+                }}
+                onClick={() => {
+                  setSelectedEducationAttempt(
+                    null,
+                  );
+                  setEducationAttemptDetailError(
+                    "",
+                  );
+                }}
+              >
+                <section
+                  style={{
+                    position:
+                      "relative",
+                    width:
+                      "min(94vw, 650px)",
+                    maxHeight:
+                      "calc(100dvh - 78px)",
+                    overflowY:
+                      "auto",
+                    boxSizing:
+                      "border-box",
+                    padding:
+                      "12px",
+                    border:
+                      "1px solid #d8dee7",
+                    borderRadius:
+                      "14px",
+                    background:
+                      "#fffdf8",
+                    boxShadow:
+                      "0 18px 50px rgb(15 23 42 / 20%)",
+                  }}
+                  onClick={(
+                    event,
+                  ) =>
+                    event.stopPropagation()
+                  }
+                >
+                  <button
+                    type="button"
+                    aria-label="Close education result"
+                    onClick={() => {
+                      setSelectedEducationAttempt(
+                        null,
+                      );
+                      setEducationAttemptDetailError(
+                        "",
+                      );
+                    }}
+                    style={{
+                      position:
+                        "absolute",
+                      top:
+                        "7px",
+                      right:
+                        "7px",
+                      width:
+                        "26px",
+                      height:
+                        "26px",
+                      padding:
+                        0,
+                      border:
+                        "1px solid #d8dee7",
+                      borderRadius:
+                        "999px",
+                      background:
+                        "#fff",
+                      cursor:
+                        "pointer",
+                    }}
+                  >
+                    ×
+                  </button>
+
+                  <strong
+                    style={{
+                      display:
+                        "block",
+                      paddingRight:
+                        "34px",
+                      marginBottom:
+                        "4px",
+                    }}
+                  >
+                    Education Result
+                  </strong>
+
+                  {educationAttemptDetailLoading ? (
+                    <p>
+                      Loading…
+                    </p>
+                  ) : educationAttemptDetailError ? (
+                    <p
+                      style={{
+                        color:
+                          "#a33131",
+                      }}
+                    >
+                      {
+                        educationAttemptDetailError
+                      }
+                    </p>
+                  ) : selectedEducationAttempt ? (
+                    <>
+                      <small
+                        style={{
+                          display:
+                            "block",
+                          marginBottom:
+                            "10px",
+                          color:
+                            "#64748b",
+                        }}
+                      >
+                        {
+                          selectedEducationAttempt.topicCode
+                        }
+                        {" · "}
+                        {
+                          selectedEducationAttempt.correctCount
+                        }/
+                        {
+                          selectedEducationAttempt.questionCount
+                        }
+                        {" · "}
+                        {
+                          new Date(
+                            selectedEducationAttempt.createdAt,
+                          ).toLocaleString()
+                        }
+                      </small>
+
+                      <div
+                        style={{
+                          display:
+                            "grid",
+                          gap:
+                            "8px",
+                        }}
+                      >
+                        {
+                          selectedEducationAttempt.questions.map(
+                            (
+                              question,
+                              index,
+                            ) => (
+                              <article
+                                key={
+                                  question.questionId
+                                }
+                                style={{
+                                  padding:
+                                    "9px",
+                                  border:
+                                    `1px solid ${
+                                      question.correct
+                                        ? "#86c98a"
+                                        : "#ef9a9a"
+                                    }`,
+                                  borderRadius:
+                                    "9px",
+                                  background:
+                                    "#fff",
+                                }}
+                              >
+                                <strong
+                                  style={{
+                                    display:
+                                      "block",
+                                    marginBottom:
+                                      "5px",
+                                    fontSize:
+                                      "0.76rem",
+                                  }}
+                                >
+                                  {
+                                    index +
+                                    1
+                                  }. {
+                                    question.text
+                                  }
+                                </strong>
+
+                                {
+                                  (
+                                    [
+                                      "A",
+                                      "B",
+                                      "C",
+                                      "D",
+                                    ] as const
+                                  ).map(
+                                    (
+                                      choice,
+                                    ) => {
+                                      const selected =
+                                        question.selectedChoice ===
+                                        choice;
+
+                                      const correct =
+                                        question.correctChoice ===
+                                        choice;
+
+                                      return (
+                                        <div
+                                          key={
+                                            choice
+                                          }
+                                          style={{
+                                            padding:
+                                              "3px 5px",
+                                            margin:
+                                              "2px 0",
+                                            borderRadius:
+                                              "5px",
+                                            background:
+                                              correct
+                                                ? "#e7f6e8"
+                                                : selected
+                                                  ? "#fde8e8"
+                                                  : "transparent",
+                                            fontSize:
+                                              "0.7rem",
+                                          }}
+                                        >
+                                          <b>
+                                            {
+                                              choice
+                                            }.
+                                          </b>{" "}
+                                          {
+                                            question.choices[
+                                              choice
+                                            ]
+                                          }
+                                          {
+                                            selected
+                                              ? "  ← your answer"
+                                              : ""
+                                          }
+                                          {
+                                            correct
+                                              ? "  ✓"
+                                              : ""
+                                          }
+                                        </div>
+                                      );
+                                    },
+                                  )
+                                }
+
+                                {
+                                  question.explanation && (
+                                    <small
+                                      style={{
+                                        display:
+                                          "block",
+                                        marginTop:
+                                          "5px",
+                                        color:
+                                          "#64748b",
+                                      }}
+                                    >
+                                      {
+                                        question.explanation
+                                      }
+                                    </small>
+                                  )
+                                }
+                              </article>
+                            ),
+                          )
+                        }
+                      </div>
+                    </>
+                  ) : null}
+                </section>
+              </div>,
+              document.body,
+            )}
+
+          {openGWink &&
+            createPortal(
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="G-Wink"
+                style={{
+                  position:
+                    "fixed",
+                  inset:
+                    0,
+                  zIndex:
+                    2147483000,
+                  display:
+                    "grid",
+                  placeItems:
+                    "start center",
+                  padding:
+                    "58px 10px 14px",
+                  background:
+                    "rgb(15 23 42 / 34%)",
+                  overflowY:
+                    "auto",
+                }}
+                onClick={() =>
+                  setOpenGWink(
+                    null,
+                  )
+                }
+              >
+                <div
+                  style={{
+                    position:
+                      "relative",
+                    zIndex:
+                      2147483001,
+                    width:
+                      "min(96vw, 720px)",
+                  }}
+                  onClick={(
+                    event,
+                  ) =>
+                    event.stopPropagation()
+                  }
+                >
+                  <GWinkPage
+                    token={
+                      openGWink.resourceToken
+                    }
+                    winkToken={
+                      openGWink.winkToken
+                    }
+                    displayName={
+                      openGWink.senderDisplayName
+                    }
+                    onBack={() =>
+                      setOpenGWink(
+                        null,
+                      )
+                    }
+                  />
+                </div>
+              </div>,
+              document.body,
+            )}
+
           <UserAccountMenu
             onOpenAdmin={
               onOpenAdmin
@@ -2295,6 +3063,10 @@ export default function PublicHomePage({
             }
             onOpenMyShop={
               onOpenMyShop
+            }
+
+            isAdminAuthenticated={
+              adminAuthenticated
             }
 
             educationCode={
@@ -2427,7 +3199,34 @@ export default function PublicHomePage({
                   educationHeaderCode
                     ? (
                         <>
-<StudentProgressPage
+                          <PuzzleRatingsStrip
+                            onOpenPuzzle={() => {
+                              setSearchFocused(
+                                false,
+                              );
+
+                              setActiveView(
+                                "home",
+                              );
+
+                              setPuzzleInstanceKey(
+                                (current) =>
+                                  current + 1,
+                              );
+
+                              setShowPuzzle(
+                                true,
+                              );
+
+                              window.history.pushState(
+                                {},
+                                "",
+                                "/puzzle",
+                              );
+                            }}
+                          />
+
+                          <StudentProgressPage
                             studentCode={
                               educationHeaderCode
                             }
@@ -2456,7 +3255,34 @@ export default function PublicHomePage({
                       )
                     : (
                         <>
-<MyRatingsPage
+                          <PuzzleRatingsStrip
+                            onOpenPuzzle={() => {
+                              setSearchFocused(
+                                false,
+                              );
+
+                              setActiveView(
+                                "home",
+                              );
+
+                              setPuzzleInstanceKey(
+                                (current) =>
+                                  current + 1,
+                              );
+
+                              setShowPuzzle(
+                                true,
+                              );
+
+                              window.history.pushState(
+                                {},
+                                "",
+                                "/puzzle",
+                              );
+                            }}
+                          />
+
+                          <MyRatingsPage
                             onBack={() => {
                               setActiveView(
                                 "home",

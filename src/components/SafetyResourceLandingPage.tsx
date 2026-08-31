@@ -9,8 +9,12 @@ import {
 
 import "./SafetyResourceLandingPage.css";
 
+import GWinkPage
+  from "./GWinkPage";
+
 
 type SafetyResourceType =
+  | "MESSAGE"
   | "CERTIFICATE"
   | "LOST_FOUND"
   | "EMERGENCY"
@@ -86,6 +90,13 @@ function titleFor(
 ): string {
   if (
     type ===
+      "MESSAGE"
+  ) {
+    return "G-Wink";
+  }
+
+  if (
+    type ===
       "CERTIFICATE"
   ) {
     return "GYAN Certificate";
@@ -112,6 +123,13 @@ function titleFor(
 function messageFor(
   type: SafetyResourceType,
 ): string {
+  if (
+    type ===
+      "MESSAGE"
+  ) {
+    return "Make a G-Wink. Your message stays behind the QR.";
+  }
+
   if (
     type ===
       "CERTIFICATE"
@@ -2350,6 +2368,28 @@ export default function SafetyResourceLandingPage({
   }
 
 
+  if (
+    !loading &&
+    !error &&
+    resource?.type ===
+      "MESSAGE"
+  ) {
+    return (
+      <GWinkPage
+        token={
+          token
+        }
+        displayName={
+          resource.displayName
+        }
+        onBack={
+          onBack
+        }
+      />
+    );
+  }
+
+
   return (
     <main className="safety-resource">
       <section className="safety-resource__card">
@@ -2410,19 +2450,24 @@ export default function SafetyResourceLandingPage({
               <div className="safety-resource__privacy-line">
                 {
                   resource.type ===
-                    "EMERGENCY"
-                    ? "Owner-approved emergency information · Access Code required to edit"
+                    "MESSAGE"
+                    ? "Semi-private G-Wink · your message stays behind the QR"
                     : resource.type ===
-                        "CERTIFICATE"
-                      ? "Shareable certificate card · private learning history is not exposed"
+                        "EMERGENCY"
+                      ? "Owner-approved emergency information · Access Code required to edit"
                       : resource.type ===
-                          "HELP"
-                        ? "Account-specific guide · private credentials are not exposed"
-                        : "Private return card · no phone or email exposed"
+                          "CERTIFICATE"
+                        ? "Shareable certificate card · private learning history is not exposed"
+                        : resource.type ===
+                            "HELP"
+                          ? "Account-specific guide · private credentials are not exposed"
+                          : "Private return card · no phone or email exposed"
                 }
               </div>
 
               {
+                resource.type !==
+                  "MESSAGE" &&
                 resource.type !==
                   "LOST_FOUND" &&
                 resource.type !==
@@ -3033,6 +3078,8 @@ export default function SafetyResourceLandingPage({
               }
 
               {
+                resource.type !==
+                  "MESSAGE" &&
                 resource.type !==
                   "CERTIFICATE" && (
                   <small>

@@ -2362,3 +2362,1083 @@ button:hover {
   }
 }
 
+/* =========================================================
+   MY GYAN — G-WINKS FIRST + PUZZLE STRIP MATCH
+   Append this block to the END of PublicHomePage.css.
+   ========================================================= */
+
+/*
+ * Older My GYAN CSS assumed PuzzleRatingsStrip was the first
+ * element after .public-home__activity-top. G-Winks is now first,
+ * so cancel that old "first child = puzzle" sizing rule.
+ */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > .public-home__activity-top
+  + .public-home__activity-winks {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 0 5px !important;
+}
+
+
+/* Keep G-Winks immediately under the My GYAN title. */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-winks {
+  order: -20 !important;
+
+  grid-template-columns:
+    auto minmax(0, 1fr);
+
+  align-items: center;
+
+  min-height: 0;
+
+  padding:
+    2px 0
+    6px !important;
+
+  border-bottom:
+    1px solid
+    rgba(
+      100,
+      116,
+      139,
+      0.18
+    );
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-winks
+  > strong {
+  white-space: nowrap;
+}
+
+
+/*
+ * Puzzle summary gets its own wrapper now, rather than relying
+ * on its DOM position.
+ */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary {
+  order: -10 !important;
+
+  width: 100% !important;
+  max-width: none !important;
+
+  margin:
+    1px 0
+    5px !important;
+
+  text-align: left !important;
+}
+
+
+/*
+ * Use the compact Puzzle-screen progress-bar proportions.
+ * The Puzzle screen's marks are short rounded bars rather than
+ * the longer My GYAN marks shown in the left red box.
+ */
+.public-home__activity-puzzle-summary
+  [class*="segment"],
+.public-home__activity-puzzle-summary
+  [class*="slot"],
+.public-home__activity-puzzle-summary
+  [class*="mark"],
+.public-home__activity-puzzle-summary
+  [class*="dash"] {
+  box-sizing: border-box !important;
+
+  flex:
+    0 0 24px !important;
+
+  width: 24px !important;
+  min-width: 24px !important;
+
+  height: 7px !important;
+  min-height: 7px !important;
+  max-height: 7px !important;
+
+  border-radius: 4px !important;
+}
+
+
+/* Match the spacing between the Puzzle-screen bars. */
+.public-home__activity-puzzle-summary
+  [class*="strip"],
+.public-home__activity-puzzle-summary
+  [class*="track"],
+.public-home__activity-puzzle-summary
+  [class*="progress"] {
+  gap: 4px !important;
+}
+
+
+/*
+ * Do not let previous mobile rules make the puzzle summary narrow
+ * again. It should use the same available width as Service Requests.
+ */
+@media (max-width: 600px) {
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-winks,
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-puzzle-summary {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .public-home__activity-puzzle-summary
+    [class*="segment"],
+  .public-home__activity-puzzle-summary
+    [class*="slot"],
+  .public-home__activity-puzzle-summary
+    [class*="mark"],
+  .public-home__activity-puzzle-summary
+    [class*="dash"] {
+    flex:
+      0 0 22px !important;
+
+    width: 22px !important;
+    min-width: 22px !important;
+  }
+}
+
+/* =========================================================
+   MY ACTIVITY — compact heading + exact 7px puzzle strips
+   Append to END of PublicHomePage.css
+   ========================================================= */
+
+/* Compact heading; close button stays at top-right. */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-top {
+  position: relative;
+  min-height: 24px;
+  padding-right: 28px;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-heading {
+  font-size: 0.72rem !important;
+  font-weight: 800 !important;
+  line-height: 1.1 !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+
+  padding: 0;
+
+  display: grid;
+  place-items: center;
+
+  line-height: 1;
+}
+
+
+/*
+ * My Activity puzzle progress strips:
+ * EXACT 7px height on desktop and mobile.
+ */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="segment"],
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="slot"],
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="mark"],
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="dash"] {
+  box-sizing: border-box !important;
+
+  height: 7px !important;
+  min-height: 7px !important;
+  max-height: 7px !important;
+
+  border-radius: 4px !important;
+}
+
+
+/*
+ * Keep the row itself compact; only the little progress bars
+ * are 7px high.
+ */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  button,
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [role="button"] {
+  min-height: 21px !important;
+}
+
+
+/* Legend is removed from TSX; hide any stale copy from old markup. */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-legend {
+  display: none !important;
+}
+
+/* =========================================================
+   MY ACTIVITY — FINAL COMPACT ONE-ROW LAYOUT
+   Append this block to the END of PublicHomePage.css
+   ========================================================= */
+
+/* Dialog title row */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-top {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+
+  min-height: 26px !important;
+
+  margin-bottom: 4px !important;
+  padding:
+    0
+    28px
+    2px
+    0 !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-heading {
+  font-size: 0.76rem !important;
+  font-weight: 800 !important;
+  line-height: 1.05 !important;
+}
+
+
+/* Close X — fixed at upper-right */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-close {
+  position: absolute !important;
+  top: 5px !important;
+  right: 7px !important;
+
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+
+  padding: 0 !important;
+
+  display: grid !important;
+  place-items: center !important;
+
+  line-height: 1 !important;
+}
+
+
+/* G-Winks / Service Requests / Education all remain on ONE ROW */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-inline-row {
+  display: flex !important;
+  align-items: center !important;
+
+  grid-template-columns: none !important;
+
+  gap: 6px !important;
+
+  min-height: 25px !important;
+
+  padding:
+    3px
+    0 !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-inline-row
+  > strong {
+  flex: 0 0 auto !important;
+
+  margin: 0 !important;
+
+  font-size: 0.64rem !important;
+  line-height: 1 !important;
+
+  white-space: nowrap !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-inline-row
+  > .public-home__activity-strip {
+  flex:
+    1
+    1
+    auto !important;
+
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+
+  gap: 4px !important;
+
+  min-width: 0 !important;
+  min-height: 18px !important;
+
+  padding: 0 !important;
+
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+
+/* Message boxes — compact Y/G indicators */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-winks
+  button {
+  flex:
+    0
+    0
+    24px !important;
+
+  width: 24px !important;
+  height: 24px !important;
+
+  min-width: 24px !important;
+  min-height: 24px !important;
+
+  padding: 0 !important;
+
+  border-radius: 5px !important;
+
+  font-size: 0.78rem !important;
+}
+
+
+/* Service / education colored status boxes */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-inline-row
+  .public-home__activity-box {
+  flex:
+    0
+    0
+    15px !important;
+
+  width: 15px !important;
+  height: 15px !important;
+
+  min-width: 15px !important;
+  min-height: 15px !important;
+
+  border-radius: 3px !important;
+}
+
+
+/* Puzzle block */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary {
+  width: 100% !important;
+  max-width: none !important;
+
+  margin:
+    2px
+    0
+    4px !important;
+
+  padding: 0 !important;
+
+  text-align: left !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  strong {
+  font-size: 0.64rem !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  small {
+  font-size: 0.56rem !important;
+  line-height: 1 !important;
+}
+
+
+/*
+ * EXACT puzzle progress-bar height requested: 7px.
+ */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="segment"],
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="slot"],
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="mark"],
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="dash"] {
+  box-sizing: border-box !important;
+
+  flex:
+    0
+    0
+    24px !important;
+
+  width: 24px !important;
+  min-width: 24px !important;
+
+  height: 7px !important;
+  min-height: 7px !important;
+  max-height: 7px !important;
+
+  border-radius: 4px !important;
+}
+
+
+/* Keep 5×5 and 7×7 rows short and close together. */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  button,
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [role="button"] {
+  min-height: 19px !important;
+}
+
+
+/* Remove the old explanatory legend permanently. */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-legend {
+  display: none !important;
+}
+
+
+/* Open My Ratings button remains compact */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > button {
+  min-height: 29px !important;
+
+  margin-top: 6px !important;
+
+  padding:
+    5px
+    9px !important;
+
+  font-size: 0.61rem !important;
+}
+
+
+/* Phone: still keep all activity items on one line. */
+@media (max-width: 600px) {
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-inline-row {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+
+    gap: 5px !important;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-inline-row
+    > strong {
+    font-size: 0.61rem !important;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-puzzle-summary
+    [class*="segment"],
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-puzzle-summary
+    [class*="slot"],
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-puzzle-summary
+    [class*="mark"],
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-puzzle-summary
+    [class*="dash"] {
+    height: 7px !important;
+    min-height: 7px !important;
+    max-height: 7px !important;
+  }
+}
+
+/* =========================================================
+   MY ACTIVITY — LAYOUT RESET / FINAL STACKED PANEL
+   Append this block to the VERY END of PublicHomePage.css.
+   It intentionally overrides older My GYAN / My Activity patches.
+   ========================================================= */
+
+/*
+ * Root cause of the collapsed screenshot:
+ * an older dashboard rule is laying the direct children out
+ * horizontally. Force the dialog itself back to a vertical stack.
+ */
+.public-home__education-ratings-card.public-home__activity-dashboard {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+
+  gap: 0 !important;
+}
+
+
+/* Every direct content section gets its own full-width line. */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > .public-home__activity-top,
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > .public-home__activity-winks,
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > .public-home__activity-puzzle-summary,
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > .public-home__activity-inline-row,
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > .public-home__education-ratings-warning,
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > button {
+  flex: 0 0 auto !important;
+
+  width: 100% !important;
+  max-width: none !important;
+
+  box-sizing: border-box !important;
+}
+
+
+/* ---------------------------------------------------------
+   Title
+   --------------------------------------------------------- */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > .public-home__activity-top {
+  position: relative !important;
+
+  display: flex !important;
+  align-items: center !important;
+
+  min-height: 27px !important;
+
+  margin: 0 0 4px !important;
+
+  padding:
+    1px
+    30px
+    3px
+    0 !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-heading {
+  font-size: 0.76rem !important;
+  font-weight: 800 !important;
+  line-height: 1.05 !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-close {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+
+  padding: 0 !important;
+
+  display: grid !important;
+  place-items: center !important;
+}
+
+
+/* ---------------------------------------------------------
+   Inline rows:
+   G-Winks, Service Requests, Education Ratings
+   --------------------------------------------------------- */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > .public-home__activity-inline-row {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+
+  align-items: center !important;
+
+  gap: 6px !important;
+
+  min-height: 25px !important;
+
+  margin: 0 !important;
+
+  padding:
+    3px
+    0 !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > .public-home__activity-inline-row
+  > strong {
+  flex: 0 0 auto !important;
+
+  margin: 0 !important;
+
+  font-size: 0.64rem !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+
+  white-space: nowrap !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > .public-home__activity-inline-row
+  > .public-home__activity-strip {
+  flex: 1 1 auto !important;
+
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+
+  align-items: center !important;
+
+  gap: 4px !important;
+
+  min-width: 0 !important;
+  min-height: 18px !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+
+/* G-Wink message icons */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-winks
+  button {
+  flex: 0 0 24px !important;
+
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+
+  padding: 0 !important;
+
+  border-radius: 5px !important;
+
+  font-size: 0.78rem !important;
+}
+
+
+/* Service / Education colored boxes */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-inline-row
+  .public-home__activity-box {
+  flex: 0 0 15px !important;
+
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px !important;
+  min-height: 15px !important;
+
+  border-radius: 3px !important;
+}
+
+
+/* ---------------------------------------------------------
+   Puzzle — own vertical block
+   --------------------------------------------------------- */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > .public-home__activity-puzzle-summary {
+  display: block !important;
+
+  margin:
+    2px
+    0
+    4px !important;
+
+  padding: 0 !important;
+
+  text-align: left !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  strong {
+  font-size: 0.64rem !important;
+  font-weight: 800 !important;
+  line-height: 1.05 !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  small {
+  font-size: 0.56rem !important;
+  line-height: 1.05 !important;
+}
+
+
+/* 5×5 and 7×7 remain separate rows. */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  button,
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [role="button"] {
+  min-height: 20px !important;
+}
+
+
+/* EXACTLY 7px progress-bar height. */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="segment"],
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="slot"],
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="mark"],
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="dash"] {
+  box-sizing: border-box !important;
+
+  flex: 0 0 24px !important;
+
+  width: 24px !important;
+  min-width: 24px !important;
+
+  height: 7px !important;
+  min-height: 7px !important;
+  max-height: 7px !important;
+
+  border-radius: 4px !important;
+}
+
+
+/* No legend. */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-legend {
+  display: none !important;
+}
+
+
+/* Open My Ratings button */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > button {
+  align-self: flex-start !important;
+
+  width: auto !important;
+
+  min-height: 29px !important;
+
+  margin-top: 6px !important;
+
+  padding:
+    5px
+    9px !important;
+
+  font-size: 0.61rem !important;
+}
+
+
+/* Mobile keeps the same stacked structure. */
+@media (max-width: 600px) {
+  .public-home__education-ratings-card.public-home__activity-dashboard {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    > .public-home__activity-inline-row {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-puzzle-summary
+    [class*="segment"],
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-puzzle-summary
+    [class*="slot"],
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-puzzle-summary
+    [class*="mark"],
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-puzzle-summary
+    [class*="dash"] {
+    height: 7px !important;
+    min-height: 7px !important;
+    max-height: 7px !important;
+  }
+}
+
+/* =========================================================
+   MY ACTIVITY — ORDER FIX
+   Append this to the VERY END of PublicHomePage.css.
+   Older patches used negative order values for G-Winks/Puzzles.
+   This explicitly restores the intended vertical order.
+   ========================================================= */
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > .public-home__activity-top {
+  order: 0 !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > .public-home__activity-winks {
+  order: 1 !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > .public-home__activity-puzzle-summary {
+  order: 2 !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > .public-home__activity-inline-row:not(.public-home__activity-winks) {
+  order: 3 !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > .public-home__education-ratings-warning {
+  order: 4 !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  > button {
+  order: 5 !important;
+}
+
+/* =========================================================
+   MY ACTIVITY — G-WINK OVERLAY + TRUE 7PX PUZZLE BARS
+   Append to the VERY END of PublicHomePage.css.
+   ========================================================= */
+
+/*
+ * PuzzleRatingsStrip uses its own internal classes, so target the
+ * actual thin visual descendants as well as historical class names.
+ * The row stays clickable/tall enough; only the colored/empty bars
+ * themselves are forced to 7px.
+ */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="segment"],
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="slot"],
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="mark"],
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="dash"],
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="bar"] {
+  box-sizing: border-box !important;
+
+  height: 7px !important;
+  min-height: 7px !important;
+  max-height: 7px !important;
+
+  border-radius: 4px !important;
+}
+
+
+/*
+ * Some PuzzleRatingsStrip versions render the marks as spans directly
+ * inside the progress track. This catches those without shrinking the
+ * 5×5 / 7×7 row or its label.
+ */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="progress"]
+  > span,
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="track"]
+  > span,
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [class*="strip"]
+  > span {
+  box-sizing: border-box !important;
+
+  height: 7px !important;
+  min-height: 7px !important;
+  max-height: 7px !important;
+
+  border-radius: 4px !important;
+}
+
+
+/* Keep the two puzzle rows compact but do not make the click target 7px. */
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  button,
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-puzzle-summary
+  [role="button"] {
+  min-height: 20px !important;
+}
+
+
+/*
+ * Defensive stacking reset: puzzle/card content must never paint over
+ * the fixed G-Wink dialog.
+ */
+.public-home__education-ratings-card,
+.public-home__activity-puzzle-summary {
+  isolation: auto;
+}
+
+
+/* Mobile uses the exact same 7px visual-bar height. */
+@media (max-width: 600px) {
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-puzzle-summary
+    [class*="segment"],
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-puzzle-summary
+    [class*="slot"],
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-puzzle-summary
+    [class*="mark"],
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-puzzle-summary
+    [class*="dash"],
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-puzzle-summary
+    [class*="bar"],
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-puzzle-summary
+    [class*="progress"]
+    > span,
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-puzzle-summary
+    [class*="track"]
+    > span,
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-puzzle-summary
+    [class*="strip"]
+    > span {
+    height: 7px !important;
+    min-height: 7px !important;
+    max-height: 7px !important;
+  }
+}
+
+/* =========================================================
+   MY ACTIVITY — G-WINK SHAPES
+   Sent = circle; Received = square.
+   Append to the VERY END of PublicHomePage.css.
+   ========================================================= */
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-winks
+  .public-home__activity-wink--sent {
+  border-radius: 999px !important;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-winks
+  .public-home__activity-wink--received {
+  border-radius: 5px !important;
+}
+
+/* =========================================================
+   MY ACTIVITY — education score results
+   Append to END of PublicHomePage.css
+   ========================================================= */
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-result-chip {
+  flex: 0 0 auto;
+
+  min-width: 30px;
+  height: 18px;
+
+  box-sizing: border-box;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0 4px;
+
+  border:
+    1px solid
+    rgba(15, 23, 42, 0.14);
+
+  border-radius: 5px;
+
+  font-size: 0.55rem;
+  font-weight: 800;
+  line-height: 1;
+
+  color: #1f2937;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-result-chip--green {
+  background: #86c98a;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-result-chip--yellow {
+  background: #f5d76e;
+}
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-result-chip--red {
+  background: #ef9a9a;
+}
+
+@media (max-width: 600px) {
+  .public-home__education-ratings-card.public-home__activity-dashboard
+    .public-home__activity-result-chip {
+    min-width: 28px;
+    height: 17px;
+    padding: 0 3px;
+    font-size: 0.52rem;
+  }
+}
+
+/* =========================================================
+   MY ACTIVITY — EDUCATION RESULT SQUARES
+   Append to END of PublicHomePage.css.
+   ========================================================= */
+
+.public-home__education-ratings-card.public-home__activity-dashboard
+  .public-home__activity-inline-row
+  button.public-home__activity-box {
+  flex:
+    0
+    0
+    15px !important;
+
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px !important;
+  min-height: 15px !important;
+
+  padding: 0 !important;
+
+  border:
+    1px solid
+    rgba(15, 23, 42, 0.14);
+
+  border-radius: 3px !important;
+
+  cursor: pointer;
+}
+

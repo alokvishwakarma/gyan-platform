@@ -1,3 +1,7 @@
+import {
+  ensureUnifiedGyanGoodies,
+} from "./calendarAccess";
+
 interface GyanIdentityEnv {
   gyan_registry: D1Database;
   RESEND_API_KEY?: string;
@@ -218,7 +222,89 @@ async function loadPublicGyanAccountByCode(
     }>();
 }
 
-function publicGyanIdentity(
+async function sendGyanAccountVerificationEmail({
+  env,
+  email,
+  displayName,
+  verifyUrl,
+}: {
+  env: GyanIdentityEnv;
+  email: string;
+  displayName: string;
+  verifyUrl: string;
+}): Promise<void> {
+  if (!env.RESEND_API_KEY) {
+    throw new Error(
+      "Email verification is not configured.",
+    );
+  }
+
+  const response =
+    await fetch(
+      "https://api.resend.com/emails",
+      {
+        method:
+          "POST",
+
+        headers: {
+          Authorization:
+            `Bearer ${env.RESEND_API_KEY}`,
+
+          "Content-Type":
+            "application/json",
+        },
+
+        body:
+          JSON.stringify({
+            from:
+              "GYAN <admin@gyan.cc>",
+
+            to: [
+              email,
+            ],
+
+            subject:
+              "Verify your GYAN email",
+
+            text: [
+              `Hi ${displayName},`,
+              "",
+              "Please verify this email for your GYAN account:",
+              verifyUrl,
+              "",
+              "If you did not request this, you can ignore this email.",
+            ].join(
+              "\\n",
+            ),
+
+            html:
+              `<p>Hi ${displayName},</p>` +
+              `<p>Please verify this email for your GYAN account.</p>` +
+              `<p><a href="${verifyUrl}">Verify email</a></p>` +
+              `<p>If you did not request this, you can ignore this email.</p>`,
+          }),
+      },
+    );
+
+  if (!response.ok) {
+    const details =
+      await response.text();
+
+    console.error(
+      "GYAN email verification failed:",
+      response.status,
+      details,
+    );
+
+    throw new Error(
+      "Verification email could not be sent.",
+    );
+  }
+}
+
+
+async function publicGyanIdentity(
+  env: GyanIdentityEnv,
   row: {
     id: number;
     code: string;
@@ -231,6 +317,45 @@ function publicGyanIdentity(
   origin:
     string,
 ) {
+  const bundle =
+    await ensureUnifiedGyanGoodies(
+      env,
+      row.id,
+      origin,
+    );
+
+  const pendingEmail =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT email
+          FROM gyan_account_email_verifications
+          WHERE
+            account_id = ?
+            AND verified_at IS NULL
+          ORDER BY updated_at DESC
+          LIMIT 1
+        `,
+      )
+      .bind(
+        row.id,
+      )
+      .first<{
+        email: string;
+      }>();
+
+  const emailForDisplay =
+    row.email ??
+    pendingEmail?.email ??
+    null;
+
+  const emailStatus =
+    row.email
+      ? "verified"
+      : pendingEmail?.email
+        ? "pending"
+        : "none";
+
   return {
     accountId:
       row.id,
@@ -258,9 +383,17 @@ function publicGyanIdentity(
       undefined,
 
     maskedEmail:
-      row.email
-        ? `${row.email.slice(0, 1)}••••@${row.email.split("@")[1] ?? ""}`
+      emailForDisplay
+        ? `${emailForDisplay.slice(0, 1)}••••@${emailForDisplay.split("@")[1] ?? ""}`
         : undefined,
+
+    emailStatus,
+
+    welcomeGems:
+      bundle.welcomeGems,
+
+    goodies:
+      bundle.goodies,
   };
 }
 
@@ -1107,6 +1240,546 @@ export async function handleGyanIdentityRoute(
   env: GyanIdentityEnv,
   url: URL,
 ): Promise<Response | null> {
+  if (
+    url.pathname ===
+      "/api/gyan-identity/email" &&
+    request.method ===
+      "POST"
+  ) {
+    const existingSecret =
+      identityCookie(
+        request,
+        "gyan_anon",
+      );
+
+    if (!existingSecret) {
+      return identityJson(
+        {
+          error:
+            "GYAN ownership could not be verified.",
+        },
+        401,
+      );
+    }
+
+    const secretHash =
+      await identitySha256(
+        existingSecret,
+      );
+
+    const session =
+      await env.gyan_registry
+        .prepare(
+          `
+            SELECT account_id
+            FROM gyan_browser_sessions
+            WHERE secret_hash = ?
+            LIMIT 1
+          `,
+        )
+        .bind(
+          secretHash,
+        )
+        .first<{
+          account_id: number;
+        }>();
+
+    if (!session) {
+      return identityJson(
+        {
+          error:
+            "GYAN ownership could not be verified.",
+        },
+        401,
+      );
+    }
+
+    const account =
+      await loadGyanAccount(
+        env.gyan_registry,
+        session.account_id,
+      );
+
+    if (!account) {
+      return identityJson(
+        {
+          error:
+            "GYAN account could not be loaded.",
+        },
+        404,
+      );
+    }
+
+    let body:
+      {
+        email?: unknown;
+      } = {};
+
+    try {
+      body =
+        await request.json<{
+          email?: unknown;
+        }>();
+    } catch {
+      return identityJson(
+        {
+          error:
+            "Invalid request.",
+        },
+        400,
+      );
+    }
+
+    const email =
+      typeof body.email ===
+        "string"
+        ? body.email
+            .trim()
+            .toLowerCase()
+        : "";
+
+    if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        email,
+      )
+    ) {
+      return identityJson(
+        {
+          error:
+            "Enter a valid email address.",
+        },
+        400,
+      );
+    }
+
+    if (
+      account.email &&
+      account.email
+        .trim()
+        .toLowerCase() ===
+        email
+    ) {
+      return identityJson({
+        saved:
+          true,
+        emailStatus:
+          "verified",
+        maskedEmail:
+          `${email.slice(0, 1)}••••@${email.split("@")[1] ?? ""}`,
+      });
+    }
+
+    const token =
+      identityRandomSecret();
+
+    const tokenHash =
+      await identitySha256(
+        token,
+      );
+
+    /*
+     * Save the email BEFORE sending verification.
+     * This is intentionally persistent even while pending.
+     */
+    await env.gyan_registry
+      .prepare(
+        `
+          INSERT INTO gyan_account_email_verifications (
+            account_id,
+            email,
+            token_hash,
+            expires_at
+          )
+          VALUES (
+            ?, ?, ?,
+            datetime(
+              'now',
+              '+30 minutes'
+            )
+          )
+          ON CONFLICT(account_id)
+          DO UPDATE SET
+            email =
+              excluded.email,
+            token_hash =
+              excluded.token_hash,
+            expires_at =
+              excluded.expires_at,
+            verified_at =
+              NULL,
+            updated_at =
+              CURRENT_TIMESTAMP
+        `,
+      )
+      .bind(
+        account.id,
+        email,
+        tokenHash,
+      )
+      .run();
+
+    const verifyUrl =
+      new URL(
+        "/api/gyan-identity/email/verify",
+        url.origin,
+      );
+
+    verifyUrl.searchParams.set(
+      "token",
+      token,
+    );
+
+    try {
+      await sendGyanAccountVerificationEmail({
+        env,
+        email,
+        displayName:
+          account.display_name,
+        verifyUrl:
+          verifyUrl.toString(),
+      });
+    } catch (error) {
+      console.error(
+        "Unable to send GYAN verification email:",
+        error,
+      );
+
+      /*
+       * Keep the saved pending email even if delivery fails.
+       */
+      return identityJson(
+        {
+          saved:
+            true,
+          verificationSent:
+            false,
+          emailStatus:
+            "pending",
+          maskedEmail:
+            `${email.slice(0, 1)}••••@${email.split("@")[1] ?? ""}`,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Verification email could not be sent.",
+        },
+        502,
+      );
+    }
+
+    return identityJson({
+      saved:
+        true,
+      verificationSent:
+        true,
+      emailStatus:
+        "pending",
+      maskedEmail:
+        `${email.slice(0, 1)}••••@${email.split("@")[1] ?? ""}`,
+    });
+  }
+
+
+  if (
+    url.pathname ===
+      "/api/gyan-identity/email/verify" &&
+    request.method ===
+      "GET"
+  ) {
+    const token =
+      String(
+        url.searchParams.get(
+          "token",
+        ) ?? "",
+      ).trim();
+
+    if (!token) {
+      return Response.redirect(
+        new URL(
+          "/?email=invalid",
+          url.origin,
+        ).toString(),
+        302,
+      );
+    }
+
+    const tokenHash =
+      await identitySha256(
+        token,
+      );
+
+    const pending =
+      await env.gyan_registry
+        .prepare(
+          `
+            SELECT
+              account_id,
+              email
+            FROM gyan_account_email_verifications
+            WHERE
+              token_hash = ?
+              AND verified_at IS NULL
+              AND expires_at >
+                CURRENT_TIMESTAMP
+            LIMIT 1
+          `,
+        )
+        .bind(
+          tokenHash,
+        )
+        .first<{
+          account_id: number;
+          email: string;
+        }>();
+
+    if (!pending) {
+      return Response.redirect(
+        new URL(
+          "/?email=invalid",
+          url.origin,
+        ).toString(),
+        302,
+      );
+    }
+
+    await env.gyan_registry.batch([
+      env.gyan_registry
+        .prepare(
+          `
+            UPDATE gyan_accounts
+            SET
+              email = ?,
+              registered = 1,
+              updated_at =
+                CURRENT_TIMESTAMP
+            WHERE id = ?
+          `,
+        )
+        .bind(
+          pending.email,
+          pending.account_id,
+        ),
+
+      env.gyan_registry
+        .prepare(
+          `
+            UPDATE gyan_account_email_verifications
+            SET
+              verified_at =
+                CURRENT_TIMESTAMP,
+              updated_at =
+                CURRENT_TIMESTAMP
+            WHERE
+              account_id = ?
+              AND token_hash = ?
+          `,
+        )
+        .bind(
+          pending.account_id,
+          tokenHash,
+        ),
+    ]);
+
+    return Response.redirect(
+      new URL(
+        "/?email=verified",
+        url.origin,
+      ).toString(),
+      302,
+    );
+  }
+
+
+  if (
+    url.pathname ===
+      "/api/gyan-identity/email-card" &&
+    request.method ===
+      "POST"
+  ) {
+    if (!env.RESEND_API_KEY) {
+      return identityJson(
+        {
+          error:
+            "Email delivery is not configured.",
+        },
+        503,
+      );
+    }
+
+    const existingSecret =
+      identityCookie(
+        request,
+        "gyan_anon",
+      );
+
+    if (!existingSecret) {
+      return identityJson(
+        {
+          error:
+            "GYAN ownership could not be verified.",
+        },
+        401,
+      );
+    }
+
+    const secretHash =
+      await identitySha256(
+        existingSecret,
+      );
+
+    const session =
+      await env.gyan_registry
+        .prepare(
+          `
+            SELECT account_id
+            FROM gyan_browser_sessions
+            WHERE secret_hash = ?
+            LIMIT 1
+          `,
+        )
+        .bind(
+          secretHash,
+        )
+        .first<{
+          account_id: number;
+        }>();
+
+    if (!session) {
+      return identityJson(
+        {
+          error:
+            "GYAN ownership could not be verified.",
+        },
+        401,
+      );
+    }
+
+    const account =
+      await loadGyanAccount(
+        env.gyan_registry,
+        session.account_id,
+      );
+
+    if (!account) {
+      return identityJson(
+        {
+          error:
+            "GYAN Card not found.",
+        },
+        404,
+      );
+    }
+
+    const body =
+      await request.json<{
+        email?: unknown;
+      }>();
+
+    const email =
+      typeof body.email ===
+        "string"
+        ? body.email
+            .trim()
+            .toLowerCase()
+        : "";
+
+    if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        email,
+      )
+    ) {
+      return identityJson(
+        {
+          error:
+            "Enter a valid email address.",
+        },
+        400,
+      );
+    }
+
+    const identity =
+      await publicGyanIdentity(
+        env,
+        account,
+        url.origin,
+      );
+
+    const goodieLines =
+      identity.goodies
+        .map(
+          (
+            goodie,
+          ) =>
+            `${goodie.type}: ${goodie.publicUrl}`,
+        )
+        .join(
+          "\n",
+        );
+
+    const text =
+      [
+        `Your GYAN Card: ${identity.displayName} [${identity.code}]`,
+        "",
+        identity.publicUrl,
+        "",
+        `Welcome Gems: ${identity.welcomeGems}`,
+        "",
+        "Your GYAN QR goodies:",
+        goodieLines,
+        "",
+        "Keep this email somewhere safe so you can find your GYAN Card again.",
+      ].join(
+        "\n",
+      );
+
+    const response =
+      await fetch(
+        "https://api.resend.com/emails",
+        {
+          method:
+            "POST",
+
+          headers: {
+            Authorization:
+              `Bearer ${env.RESEND_API_KEY}`,
+
+            "Content-Type":
+              "application/json",
+          },
+
+          body:
+            JSON.stringify({
+              from:
+                "GYAN <admin@gyan.cc>",
+
+              to: [
+                email,
+              ],
+
+              subject:
+                `Your GYAN Card · ${identity.displayName} [${identity.code}]`,
+
+              text,
+            }),
+        },
+      );
+
+    if (!response.ok) {
+      return identityJson(
+        {
+          error:
+            "Unable to send the GYAN Card email.",
+        },
+        502,
+      );
+    }
+
+    return identityJson({
+      sent:
+        true,
+    });
+  }
+
+
   const publicCodeMatch =
     url.pathname.match(
       /^\/api\/gyan-identity\/([A-Za-z0-9]{4,5})$/,
@@ -1241,10 +1914,11 @@ export async function handleGyanIdentityRoute(
 
     return identityJson({
       identity:
-        publicGyanIdentity(
-          account,
-          url.origin,
-        ),
+        await publicGyanIdentity(
+              env,
+              account,
+              url.origin,
+            ),
     });
   }
 
@@ -1341,7 +2015,8 @@ export async function handleGyanIdentityRoute(
 
         return identityJson({
           identity:
-            publicGyanIdentity(
+            await publicGyanIdentity(
+              env,
               account,
               url.origin,
             ),
@@ -1505,7 +2180,8 @@ export async function handleGyanIdentityRoute(
     {
       identity:
         account
-          ? publicGyanIdentity(
+          ? await publicGyanIdentity(
+              env,
               account,
               url.origin,
             )

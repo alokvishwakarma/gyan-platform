@@ -57,6 +57,24 @@ interface GyanCalendarPageProps {
    */
   useCurrentGyan?:
     boolean;
+
+  /*
+   * Independent print mode is used by Admin -> Generate QR.
+   * It never creates calendar-access records. All QR destinations are
+   * generic public URLs and the recipient gets/reuses a GYAN on visit.
+   */
+  isIndependent?:
+    boolean;
+
+  /*
+   * Welcome-dialog direct download: render the existing A5 PDF machinery
+   * without showing the print chooser, download once, then close.
+   */
+  autoDownloadA5?:
+    boolean;
+
+  onPdfDownloaded?:
+    () => void;
 }
 
 
@@ -321,6 +339,7 @@ type CalendarAccessRecord = {
 
   safetyCards?: {
     type:
+      | "MESSAGE"
       | "CERTIFICATE"
       | "LOST_FOUND"
       | "EMERGENCY"
@@ -340,6 +359,21 @@ type UnifiedGyanIdentity = {
   displayName: string;
   publicUrl: string;
   accessCode?: string;
+
+  goodies?: {
+    type:
+      | "MESSAGE"
+      | "CERTIFICATE"
+      | "LOST_FOUND"
+      | "EMERGENCY"
+      | "HELP";
+
+    token:
+      string;
+
+    publicUrl:
+      string;
+  }[];
 };
 
 
@@ -473,6 +507,49 @@ async function loadCurrentGyanRecord({
      */
     email:
       null,
+
+    safetyCards:
+      identity.goodies,
+  };
+}
+
+
+
+function createIndependentRecord({
+  durationMonths,
+  artworkKey,
+}: {
+  durationMonths:
+    DurationMonths;
+
+  artworkKey:
+    ArtworkKey;
+}):
+  CalendarAccessRecord {
+  return {
+    id: -1,
+    slug: "",
+    publicUrl: "https://gyan.cc/",
+    qrUrl: "https://gyan.cc/",
+    gyanName: "Independent GYAN",
+    accessCode: "ON-SCAN",
+    durationMonths,
+    welcomeGems:
+      getPrintConfig(
+        durationMonths === 12
+          ? "A5"
+          : durationMonths === 6
+            ? "A6"
+            : "A7",
+      ).welcomeGems,
+    artworkKey,
+    status: "GENERATED",
+    email: null,
+
+    /*
+     * Intentionally omit safetyCards so A5SafetyCards uses the
+     * privacy-friendly generic preview URLs.
+     */
   };
 }
 
@@ -1054,6 +1131,7 @@ function CalendarArtwork({
 
 
 type A5SafetyCardKind =
+  | "MESSAGE"
   | "CERTIFICATE"
   | "LOST_FOUND"
   | "EMERGENCY"
@@ -1085,6 +1163,14 @@ function A5SafetyCards({
       publicUrl:
         string;
     }> = [
+      {
+        type:
+          "MESSAGE",
+        token:
+          "",
+        publicUrl:
+          "https://gyan.cc/",
+      },
       {
         type:
           "CERTIFICATE",
@@ -1124,18 +1210,44 @@ function A5SafetyCards({
       A5SafetyCardKind,
       number
     > = {
-      LOST_FOUND: 0,
-      CERTIFICATE: 1,
-      EMERGENCY: 2,
-      HELP: 3,
+      MESSAGE: 0,
+      LOST_FOUND: 1,
+      CERTIFICATE: 2,
+      EMERGENCY: 3,
+      HELP: 4,
     };
+
+  const recordCards =
+    record
+      ?.safetyCards
+      ?.slice() ??
+    [];
+
+  const hasMessage =
+    recordCards.some(
+      (
+        card,
+      ) =>
+        card.type ===
+          "MESSAGE",
+    );
 
   const cards =
     (
-      record
-        ?.safetyCards
-        ?.length === 4
-        ? record.safetyCards
+      recordCards.length > 0
+        ? hasMessage
+          ? recordCards
+          : [
+              {
+                type:
+                  "MESSAGE" as const,
+                token:
+                  "",
+                publicUrl:
+                  "https://gyan.cc/",
+              },
+              ...recordCards,
+            ]
         : fallbackCards
     )
       .slice()
@@ -1150,6 +1262,13 @@ function A5SafetyCards({
       type:
         A5SafetyCardKind,
     ): string => {
+      if (
+        type ===
+          "MESSAGE"
+      ) {
+        return "GYAN MESSAGE";
+      }
+
       if (
         type ===
           "CERTIFICATE"
@@ -1180,7 +1299,7 @@ function A5SafetyCards({
         ✂ FREE GYAN CARDS
       </div>
 
-      <div className="gyan-a5-safety__cards">
+      <div className="gyan-a5-safety__cards gyan-a5-safety__cards--five">
         {
           cards.map(
             (
@@ -1194,10 +1313,23 @@ function A5SafetyCards({
               >
                 <div className="gyan-a5-safety__qr-group">
                   <div className="gyan-a5-safety__site">
-                    https://gyan.cc/{card.token}
+                    {
+                      card.token
+                        ? `https://gyan.cc/${card.token}`
+                        : "https://gyan.cc/"
+                    }
                   </div>
 
-                  <div className="gyan-a5-safety__qr">
+                  <a
+                    className="gyan-a5-safety__qr gyan-print-card-v2__qr-link"
+                    href={card.publicUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={card.publicUrl}
+                    aria-label={`Open ${labelFor(
+                      card.type,
+                    )}`}
+                  >
                     <QRCodeSVG
                       value={
                         card.publicUrl
@@ -1211,7 +1343,7 @@ function A5SafetyCards({
                         card.type,
                       )}`}
                     />
-                  </div>
+                  </a>
 
                   <strong className="gyan-a5-safety__label">
                     {
@@ -1992,6 +2124,11 @@ function PrintChooser({
     null,
   useCurrentGyan =
     false,
+  isIndependent =
+    false,
+  autoDownloadA5 =
+    false,
+  onPdfDownloaded,
   onBack,
 }: {
   market:
@@ -2010,6 +2147,15 @@ function PrintChooser({
   useCurrentGyan?:
     boolean;
 
+  isIndependent?:
+    boolean;
+
+  autoDownloadA5?:
+    boolean;
+
+  onPdfDownloaded?:
+    () => void;
+
   onBack:
     () => void;
 }) {
@@ -2022,13 +2168,20 @@ function PrintChooser({
     >(
       () => {
         if (
+          autoDownloadA5
+        ) {
+          return "A5";
+        }
+
+        if (
           defaultSize
         ) {
           return defaultSize;
         }
 
         if (
-          useCurrentGyan
+          useCurrentGyan ||
+          isIndependent
         ) {
           return nearestAccountPrintSize();
         }
@@ -2147,6 +2300,11 @@ function PrintChooser({
       null,
     );
 
+  const autoDownloadStartedRef =
+    useRef(
+      false,
+    );
+
   const selected =
     getPrintConfig(
       selectedSize,
@@ -2182,27 +2340,35 @@ function PrintChooser({
 
     try {
       const record =
-        useCurrentGyan
-          ? await loadCurrentGyanRecord({
+        isIndependent
+          ? createIndependentRecord({
               durationMonths:
                 issuanceConfig.durationMonths,
 
               artworkKey:
                 artwork,
             })
-          : (
-              await issueCalendarAccessRecords({
-                count:
-                  1,
-
+          : useCurrentGyan
+            ? await loadCurrentGyanRecord({
                 durationMonths:
                   issuanceConfig.durationMonths,
 
                 artworkKey:
                   artwork,
               })
-            )[0] ??
-            null;
+            : (
+                await issueCalendarAccessRecords({
+                  count:
+                    1,
+
+                  durationMonths:
+                    issuanceConfig.durationMonths,
+
+                  artworkKey:
+                    artwork,
+                })
+              )[0] ??
+              null;
 
       setIssuedRecord(
         record,
@@ -2235,7 +2401,8 @@ function PrintChooser({
       const initialSize =
         defaultSize ??
         (
-          useCurrentGyan
+          useCurrentGyan ||
+          isIndependent
             ? nearestAccountPrintSize()
             : window.matchMedia(
                 "(max-width: 620px)",
@@ -2250,30 +2417,40 @@ function PrintChooser({
         );
 
       const initialRecordPromise =
-        useCurrentGyan
-          ? loadCurrentGyanRecord({
-              durationMonths:
-                initialConfig.durationMonths,
+        isIndependent
+          ? Promise.resolve(
+              createIndependentRecord({
+                durationMonths:
+                  initialConfig.durationMonths,
 
-              artworkKey:
-                initialArtworkRef.current,
-            })
-          : issueCalendarAccessRecords({
-              count:
-                1,
+                artworkKey:
+                  initialArtworkRef.current,
+              }),
+            )
+          : useCurrentGyan
+            ? loadCurrentGyanRecord({
+                durationMonths:
+                  initialConfig.durationMonths,
 
-              durationMonths:
-                12,
+                artworkKey:
+                  initialArtworkRef.current,
+              })
+            : issueCalendarAccessRecords({
+                count:
+                  1,
 
-              artworkKey:
-                initialArtworkRef.current,
-            }).then(
-              (
-                records,
-              ) =>
-                records[0] ??
-                null,
-            );
+                durationMonths:
+                  12,
+
+                artworkKey:
+                  initialArtworkRef.current,
+              }).then(
+                (
+                  records,
+                ) =>
+                  records[0] ??
+                  null,
+              );
 
       void initialRecordPromise
         .then(
@@ -2347,14 +2524,33 @@ function PrintChooser({
       }
 
       if (
-        useCurrentGyan
+        useCurrentGyan ||
+        isIndependent
       ) {
-        setIssuedRecord(
-          (
-            previous,
-          ) =>
-            previous
-              ? {
+        /*
+         * These modes do not persist preview changes to
+         * /api/calendar-access. Defer the local preview sync so
+         * state is not updated synchronously inside the effect.
+         */
+        queueMicrotask(
+          () => {
+            setIssuedRecord(
+              (
+                previous,
+              ) => {
+                if (
+                  !previous ||
+                  (
+                    previous.durationMonths ===
+                      selected.durationMonths &&
+                    previous.artworkKey ===
+                      artwork
+                  )
+                ) {
+                  return previous;
+                }
+
+                return {
                   ...previous,
 
                   durationMonths:
@@ -2365,8 +2561,10 @@ function PrintChooser({
 
                   artworkKey:
                     artwork,
-                }
-              : previous,
+                };
+              },
+            );
+          },
         );
 
         return;
@@ -2436,6 +2634,8 @@ function PrintChooser({
       selected,
       issuedRecord,
       artwork,
+      useCurrentGyan,
+      isIndependent,
     ],
   );
 
@@ -2519,12 +2719,12 @@ function PrintChooser({
   }
 
   async function generatePdf():
-    Promise<void> {
+    Promise<boolean> {
     if (
       !selected ||
       busy
     ) {
-      return;
+      return false;
     }
 
     setBusy(
@@ -2566,19 +2766,34 @@ function PrintChooser({
             );
 
       const additionalRecords =
-        additionalCount >
-          0
-          ? await issueCalendarAccessRecords({
-              count:
-                additionalCount,
+        isIndependent
+          ? Array.from(
+              {
+                length:
+                  additionalCount,
+              },
+              () =>
+                createIndependentRecord({
+                  durationMonths:
+                    selected.durationMonths,
 
-              durationMonths:
-                selected.durationMonths,
+                  artworkKey:
+                    artwork,
+                }),
+            )
+          : additionalCount >
+              0
+            ? await issueCalendarAccessRecords({
+                count:
+                  additionalCount,
 
-              artworkKey:
-                artwork,
-            })
-          : [];
+                durationMonths:
+                  selected.durationMonths,
+
+                artworkKey:
+                  artwork,
+              })
+            : [];
 
       batchRecords = [
         singleRecord,
@@ -2650,10 +2865,78 @@ function PrintChooser({
             true,
         });
 
+      const addPdfLinks =
+        (
+          element:
+            HTMLElement,
+        ):
+          void => {
+          const pageRect =
+            element.getBoundingClientRect();
+
+          if (
+            pageRect.width <= 0 ||
+            pageRect.height <= 0
+          ) {
+            return;
+          }
+
+          const scaleX =
+            selected.pdfWidthMm /
+            pageRect.width;
+
+          const scaleY =
+            selected.pdfHeightMm /
+            pageRect.height;
+
+          const links =
+            Array.from(
+              element.querySelectorAll<HTMLAnchorElement>(
+                "a[href]",
+              ),
+            );
+
+          links.forEach(
+            (
+              link,
+            ) => {
+              const href =
+                link.href;
+
+              if (
+                !href
+              ) {
+                return;
+              }
+
+              const rect =
+                link.getBoundingClientRect();
+
+              pdf.link(
+                (rect.left - pageRect.left) *
+                  scaleX,
+                (rect.top - pageRect.top) *
+                  scaleY,
+                rect.width *
+                  scaleX,
+                rect.height *
+                  scaleY,
+                {
+                  url:
+                    href,
+                },
+              );
+            },
+          );
+        };
+
+
       const addCanvasPage =
         (
           canvas:
             HTMLCanvasElement,
+          element:
+            HTMLElement,
           first:
             boolean,
         ):
@@ -2690,6 +2973,10 @@ function PrintChooser({
             selected.pdfHeightMm,
             undefined,
             "FAST",
+          );
+
+          addPdfLinks(
+            element,
           );
         };
 
@@ -2732,18 +3019,26 @@ function PrintChooser({
 
           addCanvasPage(
             canvas,
+            pages[index],
             index ===
               0,
           );
         }
 
         printedIds.push(
-          ...batchRecords.map(
-            (
-              record,
-            ) =>
-              record.id,
-          ),
+          ...batchRecords
+            .map(
+              (
+                record,
+              ) =>
+                record.id,
+            )
+            .filter(
+              (
+                id,
+              ) =>
+                id > 0,
+            ),
         );
       } else {
         const root =
@@ -2765,21 +3060,66 @@ function PrintChooser({
 
         addCanvasPage(
           canvas,
+          root,
           true,
         );
 
-        printedIds.push(
-          singleRecord.id,
+        if (
+          singleRecord.id > 0
+        ) {
+          printedIds.push(
+            singleRecord.id,
+          );
+        }
+      }
+
+      const fileName =
+        useCurrentGyan
+          ? `GYAN-${singleRecord.slug.toUpperCase()}-A5.pdf`
+          : `gyan-${selected.id.toLowerCase()}-${selected.durationMonths}months.pdf`;
+
+      pdf.save(
+        fileName,
+      );
+
+      if (
+        !isIndependent
+      ) {
+        await markCalendarAccessPrinted(
+          printedIds,
         );
       }
 
-      pdf.save(
-        `gyan-${selected.id.toLowerCase()}-${selected.durationMonths}months.pdf`,
-      );
+      onPdfDownloaded?.();
 
-      await markCalendarAccessPrinted(
-        printedIds,
-      );
+      if (
+        autoDownloadA5 &&
+        useCurrentGyan &&
+        new URLSearchParams(
+          window.location.search,
+        ).get(
+          "autodownload",
+        ) ===
+          "1"
+      ) {
+        window.localStorage.setItem(
+          `gyan_new_card_welcome_seen_v1:${singleRecord.slug
+            .trim()
+            .toUpperCase()}`,
+          "1",
+        );
+
+        window.setTimeout(
+          () => {
+            window.location.replace(
+              "/",
+            );
+          },
+          250,
+        );
+      }
+
+      return true;
     } catch (
       caught
     ) {
@@ -2794,12 +3134,38 @@ function PrintChooser({
           ? caught.message
           : "PDF could not be generated.",
       );
+
+      return false;
     } finally {
       setBusy(
         false,
       );
     }
   }
+
+  useEffect(
+    () => {
+      if (
+        !autoDownloadA5 ||
+        autoDownloadStartedRef.current ||
+        !issuedRecord ||
+        busy
+      ) {
+        return;
+      }
+
+      autoDownloadStartedRef.current =
+        true;
+
+      void generatePdf();
+    },
+    [
+      autoDownloadA5,
+      issuedRecord,
+      busy,
+    ],
+  );
+
 
   return (
     <section className="gyan-calendar-print gyan-calendar-print--v2">
@@ -2826,9 +3192,11 @@ function PrintChooser({
 
             <strong>
               {
-                issuedRecord
-                  ? `GYAN.CC/${issuedRecord.slug.toUpperCase()}`
-                  : "GYAN.CC/ABCD"
+                isIndependent
+                  ? "GYAN.CC/ · Independent"
+                  : issuedRecord
+                    ? `GYAN.CC/${issuedRecord.slug.toUpperCase()}`
+                    : "GYAN.CC/ABCD"
               }
             </strong>
 
@@ -2842,9 +3210,11 @@ function PrintChooser({
 
             <b>
               {
-                issuedRecord
-                  ?.accessCode ??
-                "•••••-•••••"
+                isIndependent
+                  ? "Created on first use"
+                  : issuedRecord
+                    ?.accessCode ??
+                    "•••••-•••••"
               }
             </b>
           </div>
@@ -3014,7 +3384,11 @@ function PrintChooser({
                   ),
                 )
               }
-              aria-label="Number of unique GYAN cards to generate"
+              aria-label={
+                isIndependent
+                  ? "Number of independent GYAN cards to generate"
+                  : "Number of unique GYAN cards to generate"
+              }
             >
               {
                 getAdminCountOptions(
@@ -3263,10 +3637,11 @@ function PrintChooser({
                 adminBatch.map(
                   (
                     record,
+                    index,
                   ) => (
                     <div
                       key={
-                        record.id
+                        `${record.id}-${index}`
                       }
                       className="gyan-calendar-batch-page-v2"
                       style={{
@@ -3382,7 +3757,27 @@ export default function GyanCalendarPage({
     false,
   useCurrentGyan =
     false,
+  isIndependent =
+    false,
+  autoDownloadA5 =
+    false,
+  onPdfDownloaded,
 }: GyanCalendarPageProps) {
+  const routeAutoDownloadA5 =
+    new URLSearchParams(
+      window.location.search,
+    ).get(
+      "autodownload",
+    ) ===
+      "1";
+
+  const shouldAutoDownloadA5 =
+    autoDownloadA5 ||
+    routeAutoDownloadA5;
+
+  const shouldUseCurrentGyan =
+    useCurrentGyan ||
+    routeAutoDownloadA5;
   const [
     market,
     setMarket,
@@ -3398,7 +3793,8 @@ export default function GyanCalendarPage({
   ] =
     useState(
       registrationMode ||
-      initialPrintOpen,
+      initialPrintOpen ||
+      shouldAutoDownloadA5,
     );
 
   const months =
@@ -3447,14 +3843,26 @@ export default function GyanCalendarPage({
           months
         }
         defaultSize={
-          registrationMode
-            ? "A7"
-            : useCurrentGyan
-              ? nearestAccountPrintSize()
-              : null
+          shouldAutoDownloadA5
+            ? "A5"
+            : registrationMode
+              ? "A7"
+              : shouldUseCurrentGyan ||
+                  isIndependent
+                ? nearestAccountPrintSize()
+                : null
         }
         useCurrentGyan={
-          useCurrentGyan
+          shouldUseCurrentGyan
+        }
+        isIndependent={
+          isIndependent
+        }
+        autoDownloadA5={
+          shouldAutoDownloadA5
+        }
+        onPdfDownloaded={
+          onPdfDownloaded
         }
         onBack={() => {
           if (

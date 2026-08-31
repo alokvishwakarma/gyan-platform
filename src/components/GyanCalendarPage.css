@@ -7768,3 +7768,27 @@ span:nth-child(7n + 1) {
   }
 }
 
+/* GYAN A5: keep all five detachable QR cards on one line */
+.gyan-a5-safety__cards--five {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: start;
+  gap: 4px;
+}
+
+.gyan-a5-safety__cards--five .gyan-a5-safety__card {
+  min-width: 0;
+}
+
+.gyan-a5-safety__cards--five .gyan-a5-safety__qr svg {
+  width: 100%;
+  height: auto;
+  max-width: 76px;
+}
+
+.gyan-a5-safety__cards--five .gyan-a5-safety__site {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+

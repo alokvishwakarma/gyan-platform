@@ -1895,6 +1895,307 @@ async function getReviewQuestions(
 }
 
 
+
+async function getAttemptDetail(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
+  const activeGuest =
+    await currentEducationGuest(
+      request,
+      env,
+    );
+
+  const user =
+    await currentUser(
+      request,
+      env,
+    );
+
+  const studentCode =
+    normalizeCode(
+      url.searchParams.get(
+        "student",
+      ),
+    );
+
+  const attemptId =
+    Number(
+      url.searchParams.get(
+        "attempt",
+      ) ??
+      0,
+    );
+
+  if (
+    !studentCode ||
+    !Number.isInteger(
+      attemptId,
+    ) ||
+    attemptId <= 0
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "student and attempt are required.",
+      },
+      400,
+    );
+  }
+
+  if (
+    !activeGuest &&
+    !user
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "Open this GYAN on its linked device to view saved progress.",
+      },
+      401,
+    );
+  }
+
+  const student =
+    await env.gyan_registry
+      .prepare(
+        activeGuest
+          ? `
+            SELECT
+              id,
+              student_code
+
+            FROM education_students
+
+            WHERE
+              gyan_account_id = ?
+
+            LIMIT 1
+          `
+          : `
+            SELECT
+              id,
+              student_code
+
+            FROM education_students
+
+            WHERE
+              student_code = ?
+              AND email = ?
+
+            LIMIT 1
+          `,
+      )
+      .bind(
+        ...(
+          activeGuest
+            ? [
+                activeGuest.id,
+              ]
+            : [
+                studentCode,
+                user!.email,
+              ]
+        ),
+      )
+      .first<{
+        id: number;
+        student_code: string;
+      }>();
+
+  if (!student) {
+    return jsonResponse(
+      {
+        error:
+          "Student card not found for this GYAN.",
+      },
+      404,
+    );
+  }
+
+  if (
+    normalizeCode(
+      student.student_code,
+    ) !==
+      studentCode
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "This education result does not belong to the active GYAN.",
+      },
+      403,
+    );
+  }
+
+  const attempt =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            id,
+            subject_code AS subjectCode,
+            topic_code AS topicCode,
+            question_count AS questionCount,
+            correct_count AS correctCount,
+            score_percent AS scorePercent,
+            created_at AS createdAt
+
+          FROM education_attempts
+
+          WHERE
+            id = ?
+            AND student_id = ?
+
+          LIMIT 1
+        `,
+      )
+      .bind(
+        attemptId,
+        student.id,
+      )
+      .first<{
+        id: number;
+        subjectCode: string;
+        topicCode: string;
+        questionCount: number;
+        correctCount: number;
+        scorePercent: number;
+        createdAt: string;
+      }>();
+
+  if (!attempt) {
+    return jsonResponse(
+      {
+        error:
+          "Education attempt not found.",
+      },
+      404,
+    );
+  }
+
+  const answers =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            aa.question_id AS questionId,
+            aa.selected_choice AS selectedChoice,
+            aa.correct,
+
+            q.question_text AS questionText,
+            q.choice_a AS choiceA,
+            q.choice_b AS choiceB,
+            q.choice_c AS choiceC,
+            q.choice_d AS choiceD,
+            q.correct_choice AS correctChoice,
+            q.explanation
+
+          FROM education_attempt_answers aa
+
+          INNER JOIN education_questions q
+            ON q.id =
+               aa.question_id
+
+          WHERE
+            aa.attempt_id = ?
+
+          ORDER BY
+            aa.id ASC
+        `,
+      )
+      .bind(
+        attemptId,
+      )
+      .all<{
+        questionId: number;
+        selectedChoice: string;
+        correct: number;
+        questionText: string;
+        choiceA: string;
+        choiceB: string;
+        choiceC: string;
+        choiceD: string;
+        correctChoice: string;
+        explanation: string | null;
+      }>();
+
+  return jsonResponse({
+    attempt: {
+      id:
+        Number(
+          attempt.id,
+        ),
+
+      subjectCode:
+        attempt.subjectCode,
+
+      topicCode:
+        attempt.topicCode,
+
+      questionCount:
+        Number(
+          attempt.questionCount,
+        ),
+
+      correctCount:
+        Number(
+          attempt.correctCount,
+        ),
+
+      scorePercent:
+        Number(
+          attempt.scorePercent,
+        ),
+
+      createdAt:
+        attempt.createdAt,
+
+      questions:
+        answers.results.map(
+          (
+            answer,
+          ) => ({
+            questionId:
+              Number(
+                answer.questionId,
+              ),
+
+            text:
+              answer.questionText,
+
+            choices: {
+              A:
+                answer.choiceA,
+              B:
+                answer.choiceB,
+              C:
+                answer.choiceC,
+              D:
+                answer.choiceD,
+            },
+
+            selectedChoice:
+              answer.selectedChoice,
+
+            correctChoice:
+              answer.correctChoice,
+
+            correct:
+              Boolean(
+                answer.correct,
+              ),
+
+            explanation:
+              answer.explanation,
+          }),
+        ),
+    },
+  });
+}
+
+
 export async function handleEducationProgressRoute(
   request: Request,
   env: Env,
@@ -1920,6 +2221,19 @@ export async function handleEducationProgressRoute(
       "/api/education/report"
   ) {
     return getReport(
+      request,
+      env,
+      url,
+    );
+  }
+
+  if (
+    request.method ===
+      "GET" &&
+    url.pathname ===
+      "/api/education/attempt-detail"
+  ) {
+    return getAttemptDetail(
       request,
       env,
       url,

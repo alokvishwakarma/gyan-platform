@@ -2262,6 +2262,9 @@ if (
         <PublicHomePage
           services={services}
           loading={servicesLoading}
+          adminAuthenticated={
+            adminAuthenticated
+          }
           educationCode={
   studentRouteCode ??
   undefined
