@@ -1,27 +1,22 @@
 /*
  * ========================================================
- * GYAN Puzzle Hardness Checker — v1
+ * GYAN Puzzle Triviality Checker — targeted v2
  * ========================================================
  *
- * Goal:
- * Prevent a puzzle labelled Medium / Hard / Very Hard
- * from having an obviously easier horizontal/vertical
- * solution.
+ * Purpose:
+ * Reject "egregiously trivial" puzzles that have an
+ * obvious solution in 0, 1, 2, or 3 PRODUCTIVE swaps.
  *
- * v1 deliberately checks only EASY-style solutions:
+ * This is intentionally NOT an exhaustive BFS.
  *
- *   MEDIUM:
- *     reject if a simple line exists in 0–1 legal swaps.
+ * For each valid winning geometry and candidate color:
+ * - inspect only swaps that increase that color's occupancy
+ *   on that geometry;
+ * - recurse to depth 3;
+ * - use full toroidal 8-neighbor movement:
+ *   orthogonal, diagonal, edge wrap, diagonal wrap.
  *
- *   HARD / VERY HARD / RARE:
- *     reject if a simple line exists in 0–2 legal swaps.
- *
- * Mystery squares do NOT create extra combinations here.
- * The generator already knows their true colors, so the
- * checker evaluates those underlying colors directly.
- *
- * This is intentionally a bounded validator, not a full
- * exhaustive puzzle solver.
+ * This keeps memory flat and is practical for 5x5 / 7x7.
  */
 
 export type HardnessModeKey =
@@ -45,6 +40,8 @@ export interface HardnessPuzzleInput {
 
   mode: {
     key: HardnessModeKey;
+    wrappedOffset?: number;
+    pattern?: "line" | "diagonal" | "wrapped";
   };
 }
 
@@ -54,13 +51,6 @@ export interface HardnessCheckResult {
 
   accepted: boolean;
 
-  /*
-   * Number of legal swaps needed to reach an
-   * ordinary horizontal/vertical solution.
-   *
-   * null means no simple solution was found
-   * inside the bounded search depth.
-   */
   easiestSimpleMoves:
     number | null;
 
@@ -74,12 +64,15 @@ export interface HardnessCheckResult {
     string;
 }
 
+interface Position {
+  row: number;
+  column: number;
+}
 
 interface SwapPair {
   first: number;
   second: number;
 }
-
 
 function indexOf(
   row: number,
@@ -93,109 +86,225 @@ function indexOf(
 }
 
 
-function hasSimpleLine(
-  colors: string[],
-  size: number,
-): boolean {
-  /*
-   * Horizontal.
-   */
-  for (
-    let row = 0;
-    row < size;
-    row += 1
+function wrappedOffsetForMode(
+  mode:
+    HardnessPuzzleInput["mode"],
+): number {
+  if (
+    typeof mode.wrappedOffset ===
+      "number"
   ) {
-    const first =
-      colors[
-        indexOf(
-          row,
-          0,
-          size,
-        )
-      ];
-
-    let same =
-      true;
-
-    for (
-      let column = 1;
-      column < size;
-      column += 1
-    ) {
-      if (
-        colors[
-          indexOf(
-            row,
-            column,
-            size,
-          )
-        ] !==
-        first
-      ) {
-        same =
-          false;
-
-        break;
-      }
-    }
-
-    if (same) {
-      return true;
-    }
+    return mode.wrappedOffset;
   }
 
-  /*
-   * Vertical.
-   */
-  for (
-    let column = 0;
-    column < size;
-    column += 1
+  if (
+    mode.key ===
+      "VERY_HARD_1"
   ) {
-    const first =
-      colors[
-        indexOf(
-          0,
-          column,
-          size,
-        )
-      ];
-
-    let same =
-      true;
-
-    for (
-      let row = 1;
-      row < size;
-      row += 1
-    ) {
-      if (
-        colors[
-          indexOf(
-            row,
-            column,
-            size,
-          )
-        ] !==
-        first
-      ) {
-        same =
-          false;
-
-        break;
-      }
-    }
-
-    if (same) {
-      return true;
-    }
+    return 1;
   }
 
-  return false;
+  if (
+    mode.key ===
+      "VERY_HARD_2"
+  ) {
+    return 2;
+  }
+
+  if (
+    mode.key ===
+      "VERY_HARD_3"
+  ) {
+    return 3;
+  }
+
+  if (
+    mode.key ===
+      "RARE"
+  ) {
+    return 4;
+  }
+
+  return 0;
 }
 
+function patternKind(
+  mode:
+    HardnessPuzzleInput["mode"],
+):
+  | "line"
+  | "diagonal"
+  | "wrapped" {
+  if (
+    mode.pattern
+  ) {
+    return mode.pattern;
+  }
 
-function legalSwapPairs(
+  if (
+    mode.key ===
+      "HARD"
+  ) {
+    return "diagonal";
+  }
+
+  if (
+    mode.key ===
+      "VERY_HARD_1" ||
+    mode.key ===
+      "VERY_HARD_2" ||
+    mode.key ===
+      "VERY_HARD_3" ||
+    mode.key ===
+      "RARE"
+  ) {
+    return "wrapped";
+  }
+
+  return "line";
+}
+
+function winningPatterns(
+  size: number,
+  mode:
+    HardnessPuzzleInput["mode"],
+): Position[][] {
+  const kind =
+    patternKind(
+      mode,
+    );
+
+  if (
+    kind ===
+      "line"
+  ) {
+    return [
+      ...Array.from(
+        {
+          length:
+            size,
+        },
+        (
+          _,
+          row,
+        ) =>
+          Array.from(
+            {
+              length:
+                size,
+            },
+            (
+              __,
+              column,
+            ) => ({
+              row,
+              column,
+            }),
+          ),
+      ),
+
+      ...Array.from(
+        {
+          length:
+            size,
+        },
+        (
+          _,
+          column,
+        ) =>
+          Array.from(
+            {
+              length:
+                size,
+            },
+            (
+              __,
+              row,
+            ) => ({
+              row,
+              column,
+            }),
+          ),
+      ),
+    ];
+  }
+
+  if (
+    kind ===
+      "diagonal"
+  ) {
+    return [
+      Array.from(
+        {
+          length:
+            size,
+        },
+        (
+          _,
+          row,
+        ) => ({
+          row,
+          column:
+            row,
+        }),
+      ),
+
+      Array.from(
+        {
+          length:
+            size,
+        },
+        (
+          _,
+          row,
+        ) => ({
+          row,
+          column:
+            size -
+            1 -
+            row,
+        }),
+      ),
+    ];
+  }
+
+  const offset =
+    (
+      wrappedOffsetForMode(
+        mode,
+      ) %
+        size +
+      size
+    ) %
+    size;
+
+  /*
+   * Match the existing wrapped puzzle definition:
+   * one deterministic wrapped ↘ geometry for this mode.
+   */
+  return [
+    Array.from(
+      {
+        length:
+          size,
+      },
+      (
+        _,
+        row,
+      ) => ({
+        row,
+        column:
+          (
+            row +
+            offset
+          ) %
+          size,
+      }),
+    ),
+  ];
+}
+
+function legalSpatialSwapPairs(
   size: number,
 ): SwapPair[] {
   const pairs:
@@ -207,7 +316,14 @@ function legalSwapPairs(
   function add(
     first: number,
     second: number,
-  ) {
+  ): void {
+    if (
+      first ===
+        second
+    ) {
+      return;
+    }
+
     const low =
       Math.min(
         first,
@@ -236,8 +352,10 @@ function legalSwapPairs(
     );
 
     pairs.push({
-      first: low,
-      second: high,
+      first:
+        low,
+      second:
+        high,
     });
   }
 
@@ -259,124 +377,94 @@ function legalSwapPairs(
         );
 
       /*
-       * Orthogonal neighbours.
+       * All 8 neighboring offsets with toroidal wrap.
+       * Duplicates are eliminated by add().
        */
-      if (
-        column + 1 <
-        size
+      for (
+        let rowDelta = -1;
+        rowDelta <= 1;
+        rowDelta += 1
       ) {
-        add(
-          here,
-          indexOf(
-            row,
-            column + 1,
-            size,
-          ),
-        );
-      }
+        for (
+          let columnDelta = -1;
+          columnDelta <= 1;
+          columnDelta += 1
+        ) {
+          if (
+            rowDelta ===
+              0 &&
+            columnDelta ===
+              0
+          ) {
+            continue;
+          }
 
-      if (
-        row + 1 <
-        size
-      ) {
-        add(
-          here,
-          indexOf(
-            row + 1,
-            column,
-            size,
-          ),
-        );
-      }
+          const neighborRow =
+            (
+              row +
+              rowDelta +
+              size
+            ) %
+            size;
 
-      /*
-       * Diagonal neighbours.
-       */
-      if (
-        row + 1 <
-          size &&
-        column + 1 <
-          size
-      ) {
-        add(
-          here,
-          indexOf(
-            row + 1,
-            column + 1,
-            size,
-          ),
-        );
-      }
+          const neighborColumn =
+            (
+              column +
+              columnDelta +
+              size
+            ) %
+            size;
 
-      if (
-        row + 1 <
-          size &&
-        column - 1 >=
-          0
-      ) {
-        add(
-          here,
-          indexOf(
-            row + 1,
-            column - 1,
-            size,
-          ),
-        );
+          add(
+            here,
+            indexOf(
+              neighborRow,
+              neighborColumn,
+              size,
+            ),
+          );
+        }
       }
     }
-  }
-
-  /*
-   * Opposite horizontal edges.
-   */
-  for (
-    let row = 0;
-    row < size;
-    row += 1
-  ) {
-    add(
-      indexOf(
-        row,
-        0,
-        size,
-      ),
-      indexOf(
-        row,
-        size - 1,
-        size,
-      ),
-    );
-  }
-
-  /*
-   * Opposite vertical edges.
-   */
-  for (
-    let column = 0;
-    column < size;
-    column += 1
-  ) {
-    add(
-      indexOf(
-        0,
-        column,
-        size,
-      ),
-      indexOf(
-        size - 1,
-        column,
-        size,
-      ),
-    );
   }
 
   return pairs;
 }
 
+function occupancy(
+  colors:
+    string[],
+  targetIndices:
+    Set<number>,
+  color:
+    string,
+): number {
+  let count =
+    0;
+
+  for (
+    const index of
+    targetIndices
+  ) {
+    if (
+      colors[
+        index
+      ] ===
+        color
+    ) {
+      count +=
+        1;
+    }
+  }
+
+  return count;
+}
 
 function swapColors(
-  colors: string[],
-  pair: SwapPair,
+  colors:
+    string[],
+  pair:
+    SwapPair,
 ): string[] {
   const next =
     [...colors];
@@ -400,156 +488,167 @@ function swapColors(
   return next;
 }
 
+function productivePairs(
+  colors:
+    string[],
+  targetIndices:
+    Set<number>,
+  color:
+    string,
+  allPairs:
+    SwapPair[],
+): SwapPair[] {
+  const result:
+    SwapPair[] = [];
+
+  for (
+    const pair of
+    allPairs
+  ) {
+    const firstInside =
+      targetIndices.has(
+        pair.first,
+      );
+
+    const secondInside =
+      targetIndices.has(
+        pair.second,
+      );
+
+    /*
+     * A direct productive swap must cross the boundary.
+     */
+    if (
+      firstInside ===
+        secondInside
+    ) {
+      continue;
+    }
+
+    const insideIndex =
+      firstInside
+        ? pair.first
+        : pair.second;
+
+    const outsideIndex =
+      firstInside
+        ? pair.second
+        : pair.first;
+
+    /*
+     * Move candidate color INTO a missing target cell.
+     */
+    if (
+      colors[
+        insideIndex
+      ] !==
+        color &&
+      colors[
+        outsideIndex
+      ] ===
+        color
+    ) {
+      result.push(
+        pair,
+      );
+    }
+  }
+
+  return result;
+}
 
 function boardKey(
-  colors: string[],
+  colors:
+    string[],
 ): string {
-  /*
-   * Color names are stable and small.
-   * Joining is sufficient for the bounded v1 search.
-   */
-  return colors.join(
-    ",",
-  );
+  return colors.join(",");
 }
 
 
-function easySearchDepth(
+function isWinningState(
+  colors:
+    string[],
+  size: number,
   mode:
-    HardnessModeKey,
-): number {
-  if (
-    mode ===
-      "EASY"
+    HardnessPuzzleInput["mode"],
+): boolean {
+  const patterns =
+    winningPatterns(
+      size,
+      mode,
+    );
+
+  for (
+    const pattern of
+    patterns
   ) {
-    return 0;
+    const indices =
+      pattern.map(
+        (
+          position,
+        ) =>
+          indexOf(
+            position.row,
+            position.column,
+            size,
+          ),
+      );
+
+    const firstColor =
+      colors[
+        indices[0]
+      ];
+
+    if (
+      indices.every(
+        (
+          index,
+        ) =>
+          colors[index] ===
+            firstColor,
+      )
+    ) {
+      return true;
+    }
   }
 
-  if (
-    mode ===
-      "MEDIUM"
-  ) {
-    return 1;
-  }
-
-  return 2;
+  return false;
 }
 
 
-export function checkPuzzleHardness(
-  puzzle:
-    HardnessPuzzleInput,
-): HardnessCheckResult {
-  const requestedMode =
-    puzzle.mode.key;
-
-  const checkedDepth =
-    easySearchDepth(
-      requestedMode,
-    );
-
-  /*
-   * EASY puzzles are allowed to be easy.
-   */
-  if (
-    requestedMode ===
-      "EASY"
-  ) {
-    return {
-      requestedMode,
-
-      accepted:
-        true,
-
-      easiestSimpleMoves:
-        hasSimpleLine(
-          puzzle.startBoard.map(
-            (
-              tile,
-            ) =>
-              tile.color,
-          ),
-          puzzle.size,
-        )
-          ? 0
-          : null,
-
-      checkedDepth,
-
-      statesChecked:
-        1,
-
-      reason:
-        "Easy puzzle; hardness rejection is not required.",
-    };
-  }
-
-  /*
-   * Important:
-   * Use the true colors behind mystery tiles.
-   * We are validating the generated board, not what
-   * the player currently knows.
-   */
-  const startColors =
-    puzzle.startBoard.map(
-      (
-        tile,
-      ) =>
-        tile.color,
-    );
-
+function shortestExactSolution(
+  startColors:
+    string[],
+  size: number,
+  mode:
+    HardnessPuzzleInput["mode"],
+  maximumDepth:
+    number,
+): {
+  moves:
+    number | null;
+  statesChecked:
+    number;
+} {
   let statesChecked =
     1;
 
   if (
-    hasSimpleLine(
+    isWinningState(
       startColors,
-      puzzle.size,
+      size,
+      mode,
     )
   ) {
     return {
-      requestedMode,
-
-      accepted:
-        false,
-
-      easiestSimpleMoves:
-        0,
-
-      checkedDepth,
-
+      moves: 0,
       statesChecked,
-
-      reason:
-        "Simple horizontal/vertical solution already exists.",
     };
   }
 
-  if (
-    checkedDepth ===
-      0
-  ) {
-    return {
-      requestedMode,
-
-      accepted:
-        true,
-
-      easiestSimpleMoves:
-        null,
-
-      checkedDepth,
-
-      statesChecked,
-
-      reason:
-        "No simple solution found inside bounded search.",
-    };
-  }
-
-  const swapPairs =
-    legalSwapPairs(
-      puzzle.size,
+  const allPairs =
+    legalSpatialSwapPairs(
+      size,
     );
 
   const visited =
@@ -567,7 +666,7 @@ export function checkPuzzleHardness(
   for (
     let depth = 1;
     depth <=
-      checkedDepth;
+      maximumDepth;
     depth += 1
   ) {
     const nextFrontier:
@@ -579,11 +678,10 @@ export function checkPuzzleHardness(
     ) {
       for (
         const pair of
-        swapPairs
+        allPairs
       ) {
         /*
-         * Swapping identical colors produces the same
-         * color-state and cannot create a new solution.
+         * Swapping equal colors cannot change the board state.
          */
         if (
           colors[
@@ -623,32 +721,23 @@ export function checkPuzzleHardness(
           1;
 
         if (
-          hasSimpleLine(
+          isWinningState(
             next,
-            puzzle.size,
+            size,
+            mode,
           )
         ) {
           return {
-            requestedMode,
-
-            accepted:
-              false,
-
-            easiestSimpleMoves:
+            moves:
               depth,
 
-            checkedDepth,
-
             statesChecked,
-
-            reason:
-              `Simple horizontal/vertical solution found in ${depth} legal swap${depth === 1 ? "" : "s"}.`,
           };
         }
 
         if (
           depth <
-          checkedDepth
+            maximumDepth
         ) {
           nextFrontier.push(
             next,
@@ -662,6 +751,319 @@ export function checkPuzzleHardness(
   }
 
   return {
+    moves:
+      null,
+
+    statesChecked,
+  };
+}
+
+
+function shortestProductiveSolution(
+  startColors:
+    string[],
+  size: number,
+  mode:
+    HardnessPuzzleInput["mode"],
+  maximumDepth:
+    number,
+): {
+  moves:
+    number | null;
+  statesChecked:
+    number;
+} {
+  const patterns =
+    winningPatterns(
+      size,
+      mode,
+    );
+
+  const allPairs =
+    legalSpatialSwapPairs(
+      size,
+    );
+
+  const colors =
+    Array.from(
+      new Set(
+        startColors,
+      ),
+    );
+
+  let statesChecked =
+    0;
+
+  for (
+    const pattern of
+    patterns
+  ) {
+    const targetIndices =
+      new Set(
+        pattern.map(
+          (
+            position,
+          ) =>
+            indexOf(
+              position.row,
+              position.column,
+              size,
+            ),
+        ),
+      );
+
+    for (
+      const color of
+      colors
+    ) {
+      const startingOccupancy =
+        occupancy(
+          startColors,
+          targetIndices,
+          color,
+        );
+
+      statesChecked +=
+        1;
+
+      if (
+        startingOccupancy ===
+          size
+      ) {
+        return {
+          moves:
+            0,
+          statesChecked,
+        };
+      }
+
+      /*
+       * Even with perfect productive moves, each swap can
+       * increase occupancy by at most one.
+       */
+      if (
+        size -
+          startingOccupancy >
+        maximumDepth
+      ) {
+        continue;
+      }
+
+      const visited =
+        new Set<string>();
+
+      function search(
+        current:
+          string[],
+        depth:
+          number,
+      ): number | null {
+        const currentOccupancy =
+          occupancy(
+            current,
+            targetIndices,
+            color,
+          );
+
+        statesChecked +=
+          1;
+
+        if (
+          currentOccupancy ===
+            size
+        ) {
+          return depth;
+        }
+
+        if (
+          depth >=
+            maximumDepth
+        ) {
+          return null;
+        }
+
+        const missing =
+          size -
+          currentOccupancy;
+
+        if (
+          depth +
+            missing >
+          maximumDepth
+        ) {
+          return null;
+        }
+
+        const stateKey =
+          `${depth}|${current.join(",")}`;
+
+        if (
+          visited.has(
+            stateKey,
+          )
+        ) {
+          return null;
+        }
+
+        visited.add(
+          stateKey,
+        );
+
+        for (
+          const pair of
+          productivePairs(
+            current,
+            targetIndices,
+            color,
+            allPairs,
+          )
+        ) {
+          const next =
+            swapColors(
+              current,
+              pair,
+            );
+
+          const found =
+            search(
+              next,
+              depth +
+                1,
+            );
+
+          if (
+            found !==
+              null
+          ) {
+            return found;
+          }
+        }
+
+        return null;
+      }
+
+      const found =
+        search(
+          startColors,
+          0,
+        );
+
+      if (
+        found !==
+          null
+      ) {
+        return {
+          moves:
+            found,
+          statesChecked,
+        };
+      }
+    }
+  }
+
+  return {
+    moves:
+      null,
+    statesChecked,
+  };
+}
+
+export function checkPuzzleHardness(
+  puzzle:
+    HardnessPuzzleInput,
+): HardnessCheckResult {
+  const checkedDepth =
+    3;
+
+  const requestedMode =
+    puzzle.mode.key;
+
+  const startColors =
+    puzzle.startBoard.map(
+      (
+        tile,
+      ) =>
+        tile.color,
+    );
+
+  /*
+   * Exact certification through depth 2.
+   *
+   * This uses every legal toroidal 8-neighbor swap,
+   * including wrapped diagonals such as A2 <-> E3
+   * and A1 <-> E5 on a 5x5 board.
+   */
+  const exactResult =
+    shortestExactSolution(
+      startColors,
+      puzzle.size,
+      puzzle.mode,
+      2,
+    );
+
+  if (
+    exactResult.moves !==
+      null
+  ) {
+    return {
+      requestedMode,
+
+      accepted:
+        false,
+
+      easiestSimpleMoves:
+        exactResult.moves,
+
+      checkedDepth,
+
+      statesChecked:
+        exactResult.statesChecked,
+
+      reason:
+        exactResult.moves ===
+          0
+          ? "Puzzle starts already solved."
+          : `Exact spatial solution found in ${exactResult.moves} move${exactResult.moves === 1 ? "" : "s"}.`,
+    };
+  }
+
+  /*
+   * Depth 3 remains targeted/productive to avoid the
+   * much larger exhaustive third layer.
+   */
+  const productiveResult =
+    shortestProductiveSolution(
+      startColors,
+      puzzle.size,
+      puzzle.mode,
+      checkedDepth,
+    );
+
+  if (
+    productiveResult.moves !==
+      null
+  ) {
+    return {
+      requestedMode,
+
+      accepted:
+        false,
+
+      easiestSimpleMoves:
+        productiveResult.moves,
+
+      checkedDepth,
+
+      statesChecked:
+        exactResult.statesChecked +
+        productiveResult.statesChecked,
+
+      reason:
+        `Obvious productive solution found in ${productiveResult.moves} move${productiveResult.moves === 1 ? "" : "s"}.`,
+    };
+  }
+
+  return {
     requestedMode,
 
     accepted:
@@ -672,13 +1074,14 @@ export function checkPuzzleHardness(
 
     checkedDepth,
 
-    statesChecked,
+    statesChecked:
+      exactResult.statesChecked +
+      productiveResult.statesChecked,
 
     reason:
-      `No simple horizontal/vertical solution found within ${checkedDepth} legal swap${checkedDepth === 1 ? "" : "s"}.`,
+      "No exact solution within 2 moves and no monotonic productive solution within 3 legal spatial swaps.",
   };
 }
-
 
 export function passesPuzzleHardness(
   puzzle:

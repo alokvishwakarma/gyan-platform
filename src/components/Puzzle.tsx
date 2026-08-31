@@ -756,31 +756,51 @@ function swapKind(
   second: Position,
   size: number,
 ): SwapKind {
-  const rowDifference =
+  const rawRowDifference =
     Math.abs(
       first.row -
         second.row,
     );
 
-  const columnDifference =
+  const rawColumnDifference =
     Math.abs(
       first.column -
         second.column,
     );
 
   /*
-   * Normal horizontal / vertical neighbor.
+   * Spatial / toroidal distance.
+   *
+   * Opposite edges touch, including diagonally:
+   *
+   * 5×5 examples:
+   * A2 <-> E3
+   * A1 <-> E5
    */
+  const rowDifference =
+    Math.min(
+      rawRowDifference,
+      size -
+        rawRowDifference,
+    );
+
+  const columnDifference =
+    Math.min(
+      rawColumnDifference,
+      size -
+        rawColumnDifference,
+    );
+
   if (
-    rowDifference +
-      columnDifference ===
-    1
+    rowDifference === 0 &&
+    columnDifference === 0
   ) {
-    return "normal";
+    return null;
   }
 
   /*
-   * Diagonal neighbor.
+   * Diagonal spatial neighbor,
+   * including wrapped diagonals.
    */
   if (
     rowDifference === 1 &&
@@ -790,51 +810,26 @@ function swapKind(
   }
 
   /*
-   * Horizontal edge neighbors.
+   * Orthogonal spatial neighbor.
    *
-   * C1 <-> Csize on the same row.
+   * Preserve "edge" classification for wrapped
+   * horizontal / vertical moves so existing GQ
+   * telemetry remains unchanged.
    */
   if (
-    first.row ===
-      second.row &&
-    (
-      (
-        first.column === 0 &&
-        second.column ===
-          size - 1
-      ) ||
-      (
-        second.column === 0 &&
-        first.column ===
-          size - 1
-      )
-    )
+    rowDifference +
+      columnDifference ===
+    1
   ) {
-    return "edge";
-  }
+    const crossesVisibleEdge =
+      rawRowDifference ===
+        size - 1 ||
+      rawColumnDifference ===
+        size - 1;
 
-  /*
-   * Vertical edge neighbors.
-   *
-   * R1 <-> Rsize in the same column.
-   */
-  if (
-    first.column ===
-      second.column &&
-    (
-      (
-        first.row === 0 &&
-        second.row ===
-          size - 1
-      ) ||
-      (
-        second.row === 0 &&
-        first.row ===
-          size - 1
-      )
-    )
-  ) {
-    return "edge";
+    return crossesVisibleEdge
+      ? "edge"
+      : "normal";
   }
 
   return null;
@@ -5272,16 +5267,28 @@ export default function Puzzle({
           : -1;
     }
 
-    if (
-      row < 0 ||
-      row >=
-        puzzle.size ||
-      column < 0 ||
-      column >=
+    /*
+     * Spatial wrapping for swipe gestures.
+     *
+     * Examples on 5×5:
+     * A2 ↖ / ↙ can wrap to E1 / E3 as appropriate,
+     * and A1 ↖ wraps diagonally to E5.
+     */
+    row =
+      (
+        row %
+          puzzle.size +
         puzzle.size
-    ) {
-      return;
-    }
+      ) %
+      puzzle.size;
+
+    column =
+      (
+        column %
+          puzzle.size +
+        puzzle.size
+      ) %
+      puzzle.size;
 
     void performSwap(
       {

@@ -31,20 +31,85 @@ interface EducationPortalProps {
     ) => void;
 }
 
-const GRADES:
+const FOUNDATION_ROWS:
   Array<
-    [string, string]
+    Array<
+      [string, string]
+    >
   > = [
-  ["PREK", "Pre-K"],
+    [
+      ["GRADE_12", "12"],
+      ["GRADE_11", "11"],
+      ["GRADE_10", "10"],
+      ["GRADE_9", "9"],
+      ["GRADE_8", "8"],
+    ],
 
-  ...Array.from(
-    { length: 12 },
-    (_, index) => [
-      `GRADE_${index + 1}`,
-      String(index + 1),
-    ] as [string, string],
-  ),
-];
+    [
+      ["GRADE_7", "7"],
+      ["GRADE_6", "6"],
+      ["GRADE_5", "5"],
+      ["GRADE_4", "4"],
+      ["GRADE_3", "3"],
+    ],
+
+    [
+      ["GRADE_2", "2"],
+      ["GRADE_1", "1"],
+      ["K", "K"],
+      ["PREK", "Pre-K"],
+    ],
+  ];
+
+function normalizeProgramCode(
+  value: string,
+): string {
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(
+      /[^A-Z0-9]+/g,
+      "_",
+    )
+    .replace(
+      /^_+|_+$/g,
+      "",
+    );
+}
+
+function findProgram(
+  config:
+    EducationCountryConfig |
+    null,
+  candidates:
+    string[],
+) {
+  if (
+    !config
+  ) {
+    return undefined;
+  }
+
+  const normalizedCandidates =
+    candidates.map(
+      normalizeProgramCode,
+    );
+
+  return (
+    config.programs ??
+    []
+  ).find(
+    (
+      program,
+    ) =>
+      program.enabled &&
+      normalizedCandidates.includes(
+        normalizeProgramCode(
+          program.code,
+        ),
+      ),
+  );
+}
 
 export default function EducationPortal({
   country,
@@ -126,26 +191,40 @@ export default function EducationPortal({
     ],
   );
 
-  const programs =
-    (
-      config
-        ?.programs ??
-      []
-    )
-      .filter(
-        (
-          program,
-        ) =>
-          program.enabled,
-      )
-      .sort(
-        (
-          first,
-          second,
-        ) =>
-          first.sortOrder -
-          second.sortOrder,
-      );
+  /*
+   * Advanced v1 is intentionally focused on IIT-JEE and NEET.
+   *
+   * If older config uses IIT / JEE / IIT_JEE variants,
+   * treat them as the same IIT-JEE program.
+   */
+  const iitJeeProgram =
+    findProgram(
+      config,
+      [
+        "IIT_JEE",
+        "IIT-JEE",
+        "IIT",
+        "JEE",
+      ],
+    );
+
+  const neetProgram =
+    findProgram(
+      config,
+      [
+        "NEET",
+      ],
+    );
+
+  const iitJeeEnabled =
+    country ===
+      "IN" &&
+    !loading;
+
+  const neetEnabled =
+    country ===
+      "IN" &&
+    !loading;
 
   return (
     <main
@@ -168,33 +247,8 @@ export default function EducationPortal({
           <strong>
             🎓 Education Portal
           </strong>
-
-          <small>
-            {
-              country ===
-                "IN"
-                ? "India"
-                : "United States"
-            }
-          </small>
         </div>
       </header>
-
-      <div
-        className="education-portal__compact-intro"
-      >
-        <strong>
-          GYAN Education
-        </strong>
-
-        <span>
-          What would you like to learn?
-        </span>
-
-        <small>
-          Choose a grade, test, or enrichment program.
-        </small>
-      </div>
 
       {
         loading && (
@@ -208,46 +262,184 @@ export default function EducationPortal({
 
       {
         !loading &&
+        country ===
+          "IN" && (
+          <section
+            className="education-portal__section education-portal__section--advanced"
+          >
+            <h2>
+              Advanced
+            </h2>
+
+            <div
+              className="education-portal__advanced-list"
+            >
+              {
+                iitJeeEnabled && (
+                  <div
+                    className="education-portal__advanced-row"
+                  >
+                    <strong>
+                      IIT-JEE
+                    </strong>
+
+                    <div
+                      className="education-portal__advanced-actions"
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onSelect({
+                            type:
+                              "program",
+
+                            /*
+                             * Use the EXISTING configured program code.
+                             * The topic/subject flow keys off this exact
+                             * value. Older GYAN data commonly uses IIT,
+                             * while the UI label can still say IIT-JEE.
+                             */
+                            code:
+                              iitJeeProgram
+                                ?.code ??
+                              "IIT",
+
+                            name:
+                              iitJeeProgram
+                                ?.name ??
+                              "IIT-JEE",
+                          })
+                        }
+                      >
+                        Questions
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.location.href =
+                            "/class?category=iit-jee";
+                        }}
+                      >
+                        Classes
+                      </button>
+                    </div>
+                  </div>
+                )
+              }
+
+              {
+                neetEnabled && (
+                  <div
+                    className="education-portal__advanced-row"
+                  >
+                    <strong>
+                      NEET
+                    </strong>
+
+                    <div
+                      className="education-portal__advanced-actions"
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onSelect({
+                            type:
+                              "program",
+
+                            code:
+                              neetProgram
+                                ?.code ??
+                              "NEET",
+
+                            name:
+                              neetProgram
+                                ?.name ??
+                              "NEET",
+                          })
+                        }
+                      >
+                        Questions
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.location.href =
+                            "/class?category=neet";
+                        }}
+                      >
+                        Classes
+                      </button>
+                    </div>
+                  </div>
+                )
+              }
+            </div>
+          </section>
+        )
+      }
+
+      {
+        !loading &&
         config
           ?.preK12Enabled && (
           <section
             className="education-portal__section education-portal__section--grades"
           >
+            <h2>
+              Foundation
+            </h2>
+
             <div
-              className="education-portal__grid education-portal__grid--grades"
+              className="education-portal__foundation"
             >
               {
-                GRADES.map(
+                FOUNDATION_ROWS.map(
                   (
-                    [
-                      code,
-                      name,
-                    ],
+                    row,
+                    rowIndex,
                   ) => (
-                    <button
-                      type="button"
+                    <div
+                      className="education-portal__foundation-row"
                       key={
-                        code
-                      }
-                      onClick={() =>
-                        onSelect({
-                          type:
-                            "grade",
-                          code,
-                          name,
-                        })
+                        rowIndex
                       }
                     >
-                      <span>
-                        📘
-                      </span>
+                      {
+                        row.map(
+                          (
+                            [
+                              code,
+                              name,
+                            ],
+                          ) => (
+                            <button
+                              type="button"
+                              key={
+                                code
+                              }
+                              onClick={() =>
+                                onSelect({
+                                  type:
+                                    "grade",
 
-                      <strong>
-                        {
-                          name
-                        }
-                      </strong>
-                    </button>
+                                  code,
+
+                                  name,
+                                })
+                              }
+                            >
+                              <strong>
+                                {
+                                  name
+                                }
+                              </strong>
+                            </button>
+                          ),
+                        )
+                      }
+                    </div>
                   ),
                 )
               }
@@ -259,81 +451,40 @@ export default function EducationPortal({
       {
         !loading && (
           <section
-            className="education-portal__section"
+            className="education-portal__section education-portal__section--aba"
           >
             <h2>
-              Tests & enrichment
+              ABA
             </h2>
 
-            <div
-              className="education-portal__grid"
-            >
-              <button
-                type="button"
-                className="education-portal__little-learners"
-                onClick={() =>
-                  onSelect({
-                    type:
-                      "program",
+            <button
+              type="button"
+              className="education-portal__little-learners"
+              onClick={() =>
+                onSelect({
+                  type:
+                    "program",
 
-                    code:
-                      "LITTLE_LEARNERS",
+                  code:
+                    "LITTLE_LEARNERS",
 
-                    name:
-                      "Little Learners",
-                  })
-                }
-              >
-                <span>
-                  🌱
-                </span>
-
-                <strong>
-                  ABA
-                </strong>
-
-                <small>
-                  Little Learners
-                </small>
-              </button>
-
-              {
-                programs.map(
-                  (
-                    program,
-                  ) => (
-                    <button
-                      type="button"
-                      key={
-                        program.code
-                      }
-                      onClick={() =>
-                        onSelect({
-                          type:
-                            "program",
-
-                          code:
-                            program.code,
-
-                          name:
-                            program.name,
-                        })
-                      }
-                    >
-                      <span>
-                        🎯
-                      </span>
-
-                      <strong>
-                        {
-                          program.name
-                        }
-                      </strong>
-                    </button>
-                  ),
-                )
+                  name:
+                    "Little Learners",
+                })
               }
-            </div>
+            >
+              <span>
+                🌱
+              </span>
+
+              <strong>
+                ABA
+              </strong>
+
+              <small>
+                Little Learners
+              </small>
+            </button>
           </section>
         )
       }

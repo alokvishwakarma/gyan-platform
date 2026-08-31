@@ -85,6 +85,8 @@ import {
   clearAdminLocationOverride,
 } from "./location/adminLocation";
 
+import ClassPage from "./components/ClassPage";
+
 interface ShopProfile {
   code: string;
   name: string;
@@ -2118,10 +2120,25 @@ if (
   }
 
   /*
+   * Top-level GYAN Classes master calendar.
+   * Keep this before the root-level short-code calendar resolver.
+   */
+  if (
+    window.location.pathname ===
+      "/class"
+  ) {
+    return (
+      <ClassPage />
+    );
+  }
+
+
+  /*
    * Primary public routes:
    *   /           -> Puzzle/Home
    *   /puzzle     -> Puzzle/Home
    *   /education  -> Education
+   *   /class      -> Master Class Calendar
    *   /register   -> Generate unique GYAN + preview + print
    *
    * PublicHomePage already resolves /education explicitly and treats
