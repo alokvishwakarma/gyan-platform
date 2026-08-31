@@ -217,13 +217,9 @@ export default function EducationPortal({
     );
 
   const iitJeeEnabled =
-    country ===
-      "IN" &&
     !loading;
 
   const neetEnabled =
-    country ===
-      "IN" &&
     !loading;
 
   return (
@@ -261,9 +257,7 @@ export default function EducationPortal({
       }
 
       {
-        !loading &&
-        country ===
-          "IN" && (
+        !loading && (
           <section
             className="education-portal__section education-portal__section--advanced"
           >
