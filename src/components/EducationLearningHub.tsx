@@ -52,6 +52,7 @@ type Step =
   | "topics"
   | "questions"
   | "report"
+  | "program-report"
   | "student-card"
   | "little-learners"
   | "mock-tests";
@@ -66,6 +67,48 @@ type AnswerState = {
     correctChoice: string;
     explanation: string;
   };
+};
+
+
+type EducationAttemptSummary = {
+  totalAttempts: number;
+
+  recentAttempts: {
+    id: number;
+    subjectCode: string;
+    topicCode: string;
+    questionCount: number;
+    correctCount: number;
+    scorePercent: number;
+    createdAt: string;
+  }[];
+};
+
+
+type EducationTopicProgress = {
+  subjectCode: string;
+  topicCode: string;
+  uniqueQuestionsAttempted: number;
+  answersCount: number;
+  correctAnswers: number;
+  scorePercent: number | null;
+};
+
+
+type EducationProgressReport = {
+  attemptSummary: EducationAttemptSummary;
+  topicProgress: EducationTopicProgress[];
+};
+
+
+type ProgramReportTopic = {
+  subjectCode: string;
+  subjectName: string;
+  topicCode: string;
+  topicName: string;
+  questionCount: number;
+  completionPercent: number;
+  scorePercent: number | null;
 };
 
 
@@ -235,6 +278,44 @@ export default function EducationLearningHub({
     );
 
   const [
+    attemptSummary,
+    setAttemptSummary,
+  ] =
+    useState<
+      EducationAttemptSummary |
+      null
+    >(
+      null,
+    );
+
+  const [
+,
+    setTopicProgress,
+  ] =
+    useState<
+      EducationTopicProgress[]
+    >(
+      [],
+    );
+
+
+  const [
+    programReportTopics,
+    setProgramReportTopics,
+  ] =
+    useState<
+      ProgramReportTopic[]
+    >(
+      [],
+    );
+
+  const [
+    programReportLoading,
+    setProgramReportLoading,
+  ] =
+    useState(false);
+
+  const [
     saveFormOpen,
     setSaveFormOpen,
   ] =
@@ -317,6 +398,413 @@ export default function EducationLearningHub({
             : ""
         }`
       : "";
+
+
+  function scoreState(
+    scorePercent:
+      number |
+      null |
+      undefined,
+  ):
+    "green" |
+    "light-green" |
+    "yellow" |
+    "orange" |
+    "red" |
+    "none" {
+    if (
+      scorePercent ==
+        null
+    ) {
+      return "none";
+    }
+
+    if (
+      scorePercent >=
+        80
+    ) {
+      return "green";
+    }
+
+    if (
+      scorePercent >=
+        60
+    ) {
+      return "light-green";
+    }
+
+    if (
+      scorePercent >=
+        40
+    ) {
+      return "yellow";
+    }
+
+    if (
+      scorePercent >=
+        20
+    ) {
+      return "orange";
+    }
+
+    return "red";
+  }
+
+
+  function latestTopicAttempt(
+    subjectCode: string,
+    topicCode: string,
+  ) {
+    return attemptSummary
+      ?.recentAttempts
+      .filter(
+        (attempt) =>
+          attempt.subjectCode ===
+            subjectCode &&
+          attempt.topicCode ===
+            topicCode,
+      )
+      .sort(
+        (left, right) =>
+          right.createdAt.localeCompare(
+            left.createdAt,
+          ),
+      )[0];
+  }
+
+
+  async function loadEducationProgressReport():
+    Promise<EducationProgressReport> {
+    const empty:
+      EducationProgressReport = {
+      attemptSummary: {
+        totalAttempts:
+          0,
+        recentAttempts:
+          [],
+      },
+      topicProgress:
+        [],
+    };
+
+    if (
+      !normalizedActiveGyanCode
+    ) {
+      setAttemptSummary(
+        empty.attemptSummary,
+      );
+      setTopicProgress(
+        [],
+      );
+
+      return empty;
+    }
+
+    const response =
+      await fetch(
+        `/api/education/report?student=${encodeURIComponent(
+          normalizedActiveGyanCode,
+        )}`,
+        {
+          credentials:
+            "include",
+          cache:
+            "no-store",
+        },
+      );
+
+    if (
+      !response.ok
+    ) {
+      throw new Error(
+        "Progress report could not be loaded.",
+      );
+    }
+
+    const body =
+      await response.json() as {
+        attemptSummary?:
+          EducationAttemptSummary;
+        topicProgress?:
+          EducationTopicProgress[];
+      };
+
+    const result:
+      EducationProgressReport = {
+      attemptSummary:
+        body.attemptSummary ??
+        empty.attemptSummary,
+      topicProgress:
+        Array.isArray(
+          body.topicProgress,
+        )
+          ? body.topicProgress
+          : [],
+    };
+
+    setAttemptSummary(
+      result.attemptSummary,
+    );
+    setTopicProgress(
+      result.topicProgress,
+    );
+
+    return result;
+  }
+
+
+  async function openProgramReport(
+    program:
+      "JEE" |
+      "NEET",
+  ): Promise<void> {
+    if (
+      program !==
+        "JEE"
+    ) {
+      return;
+    }
+
+    setProgramReportLoading(
+      true,
+    );
+    setError("");
+
+    try {
+      const progressReport =
+        await loadEducationProgressReport();
+
+      const reportSubjects =
+        await loadSubjects(
+          "IN",
+          "PROGRAM_JEE",
+        );
+
+      const progressByTopic =
+        new Map<
+          string,
+          EducationTopicProgress
+        >(
+          progressReport.topicProgress.map(
+            (item) => [
+              `${item.subjectCode}::${item.topicCode}`,
+              item,
+            ],
+          ),
+        );
+
+      const rows:
+        ProgramReportTopic[] =
+          [];
+
+      for (
+        const reportSubject of
+          reportSubjects
+      ) {
+        const reportSubjectTopics =
+          await loadTopics(
+            "IN",
+            "PROGRAM_JEE",
+            reportSubject.code,
+          );
+
+        for (
+          const reportTopic of
+            reportSubjectTopics
+        ) {
+          const progressItem =
+            progressByTopic.get(
+              `${reportSubject.code}::${reportTopic.code}`,
+            );
+
+          const uniqueQuestionsAttempted =
+            progressItem
+              ?.uniqueQuestionsAttempted ??
+            0;
+
+          const completionPercent =
+            reportTopic.questionCount >
+              0
+              ? Math.min(
+                  100,
+                  Math.round(
+                    (
+                      uniqueQuestionsAttempted /
+                      reportTopic.questionCount
+                    ) *
+                      100,
+                  ),
+                )
+              : 0;
+
+          rows.push({
+            subjectCode:
+              reportSubject.code,
+            subjectName:
+              reportSubject.name
+                .replace(
+                  /^JEE\s+/i,
+                  "",
+                ),
+            topicCode:
+              reportTopic.code,
+            topicName:
+              reportTopic.name,
+            questionCount:
+              reportTopic.questionCount,
+            completionPercent,
+            scorePercent:
+              progressItem
+                ?.scorePercent ??
+              null,
+          });
+        }
+      }
+
+      setGrade({
+        type:
+          "program",
+        code:
+          "PROGRAM_JEE",
+        name:
+          "IIT-JEE",
+      });
+      setSubjects(
+        reportSubjects,
+      );
+      setProgramReportTopics(
+        rows,
+      );
+      setStep(
+        "program-report",
+      );
+    } catch (
+      caught
+    ) {
+      setError(
+        caught instanceof
+          Error
+          ? caught.message
+          : "Progress report could not be loaded.",
+      );
+    } finally {
+      setProgramReportLoading(
+        false,
+      );
+    }
+  }
+
+
+  async function openProgramReportTopic(
+    reportItem:
+      ProgramReportTopic,
+  ): Promise<void> {
+    setLoading(
+      true,
+    );
+    setError("");
+
+    try {
+      const nextSubjects =
+        subjects.length
+          ? subjects
+          : await loadSubjects(
+              "IN",
+              "PROGRAM_JEE",
+            );
+
+      const nextSubject =
+        nextSubjects.find(
+          (item) =>
+            item.code ===
+            reportItem.subjectCode,
+        );
+
+      if (
+        !nextSubject
+      ) {
+        throw new Error(
+          "Subject could not be opened.",
+        );
+      }
+
+      const nextTopics =
+        await loadTopics(
+          "IN",
+          "PROGRAM_JEE",
+          nextSubject.code,
+        );
+
+      const nextTopic =
+        nextTopics.find(
+          (item) =>
+            item.code ===
+            reportItem.topicCode,
+        );
+
+      if (
+        !nextTopic
+      ) {
+        throw new Error(
+          "Topic could not be opened.",
+        );
+      }
+
+      const nextQuestions =
+        await loadPracticeQuestions(
+          "IN",
+          "PROGRAM_JEE",
+          nextSubject.code,
+          nextTopic.code,
+        );
+
+      setGrade({
+        type:
+          "program",
+        code:
+          "PROGRAM_JEE",
+        name:
+          "IIT-JEE",
+      });
+      setSubjects(
+        nextSubjects,
+      );
+      setSubject(
+        nextSubject,
+      );
+      setTopics(
+        nextTopics,
+      );
+      setTopic(
+        nextTopic,
+      );
+      setQuestions(
+        nextQuestions,
+      );
+      setAnswers(
+        {},
+      );
+      setSubmitted(
+        false,
+      );
+      setStep(
+        "questions",
+      );
+    } catch (
+      caught
+    ) {
+      setError(
+        caught instanceof
+          Error
+          ? caught.message
+          : "Topic could not be opened.",
+      );
+    } finally {
+      setLoading(
+        false,
+      );
+    }
+  }
 
 
   function learningCountryFor(
@@ -548,6 +1036,18 @@ export default function EducationLearningHub({
       setExpandedSubjectCode(null);
       setLoading(true);
       setError("");
+
+      if (
+        programGradeCode ===
+          "PROGRAM_JEE"
+      ) {
+        void loadEducationProgressReport()
+          .catch(
+            () => {
+              // Practice must remain available if report data cannot load.
+            },
+          );
+      }
 
       try {
         const nextSubjects =
@@ -1331,6 +1831,14 @@ export default function EducationLearningHub({
             );
           }}
 
+          onReport={(
+            program,
+          ) => {
+            void openProgramReport(
+              program,
+            );
+          }}
+
           onSelect={(
             selection,
           ) => {
@@ -1356,6 +1864,17 @@ export default function EducationLearningHub({
         <button
           type="button"
           onClick={() => {
+            if (
+              step ===
+                "program-report"
+            ) {
+              setStep(
+                "portal",
+              );
+
+              return;
+            }
+
             if (
               step ===
                 "student-card" ||
@@ -1568,6 +2087,14 @@ export default function EducationLearningHub({
                                                   topicItem.code
                                                 }
                                                 type="button"
+                                                className={
+                                                  `education-learning__topic-status education-learning__topic-status--${scoreState(
+                                                    latestTopicAttempt(
+                                                      item.code,
+                                                      topicItem.code,
+                                                    )?.scorePercent,
+                                                  )}`
+                                                }
                                                 disabled={
                                                   topicItem.questionCount <
                                                     5
@@ -1586,10 +2113,16 @@ export default function EducationLearningHub({
 
                                                 <small>
                                                   {
-                                                    topicItem.questionCount
+                                                    latestTopicAttempt(
+                                                      item.code,
+                                                      topicItem.code,
+                                                    )
+                                                      ? `${latestTopicAttempt(
+                                                          item.code,
+                                                          topicItem.code,
+                                                        )?.scorePercent}% · ${topicItem.questionCount} questions`
+                                                      : `${topicItem.questionCount} questions · New`
                                                   }
-                                                  {" "}
-                                                  questions
                                                 </small>
                                               </button>
                                             ),
@@ -2012,6 +2545,202 @@ export default function EducationLearningHub({
                     Choose Another Topic
                   </button>
                 </div>
+              )
+            }
+          </section>
+        )
+      }
+
+
+      {
+        step ===
+          "program-report" && (
+          <section
+            className="education-learning__program-report"
+          >
+            <div
+              className="education-learning__report-title"
+            >
+              <h1>
+                📊 IIT-JEE Progress
+              </h1>
+
+              <small>
+                Bar width = completion · color = accuracy
+              </small>
+            </div>
+
+            {
+              programReportLoading ? (
+                <div
+                  className="education-learning__state"
+                >
+                  Preparing report…
+                </div>
+              ) : (
+                <>
+                  {
+                    Array.from(
+                      new Set(
+                        programReportTopics.map(
+                          (item) =>
+                            item.subjectName,
+                        ),
+                      ),
+                    ).map(
+                      (
+                        subjectName,
+                      ) => (
+                        <section
+                          key={
+                            subjectName
+                          }
+                          className="education-learning__program-report-group"
+                        >
+                          <h2>
+                            {
+                              subjectName
+                            }
+                          </h2>
+
+                          <div
+                            className="education-learning__compact-report-grid"
+                          >
+                            {
+                              programReportTopics
+                                .filter(
+                                  (item) =>
+                                    item.subjectName ===
+                                      subjectName,
+                                )
+                                .map(
+                                  (
+                                    item,
+                                  ) => {
+                                    const accuracyState =
+                                      scoreState(
+                                        item.scorePercent,
+                                      );
+
+                                    return (
+                                      <button
+                                        type="button"
+                                        key={
+                                          `${item.subjectCode}:${item.topicCode}`
+                                        }
+                                        className={`education-learning__compact-report-item education-learning__compact-report-item--${accuracyState}`}
+                                        onClick={() =>
+                                          void openProgramReportTopic(
+                                            item,
+                                          )
+                                        }
+                                        title={`${item.topicName} · ${item.completionPercent}% completed · ${
+                                          item.scorePercent == null
+                                            ? "Not scored yet"
+                                            : `${item.scorePercent}% correct`
+                                        }`}
+                                      >
+                                        <span
+                                          className="education-learning__compact-report-title"
+                                        >
+                                          {
+                                            item.topicName
+                                          }
+                                        </span>
+
+                                        <span
+                                          className="education-learning__compact-report-meter"
+                                          aria-hidden="true"
+                                        >
+                                          <span
+                                            className={`education-learning__compact-report-fill education-learning__compact-report-fill--${accuracyState}`}
+                                            style={{
+                                              width:
+                                                `${item.completionPercent}%`,
+                                            }}
+                                          />
+                                        </span>
+
+                                        <span
+                                          className={`education-learning__compact-report-circle education-learning__compact-report-circle--${scoreState(
+                                            item.scorePercent ==
+                                              null
+                                              ? null
+                                              : (
+                                                  item.completionPercent *
+                                                  item.scorePercent
+                                                ) /
+                                                100,
+                                          )}`}
+                                          title={
+                                            item.scorePercent ==
+                                              null
+                                              ? "Not attempted"
+                                              : "Progress × accuracy"
+                                          }
+                                          aria-label={
+                                            item.scorePercent ==
+                                              null
+                                              ? "Not attempted"
+                                              : "Combined progress and accuracy"
+                                          }
+                                        />
+                                      </button>
+                                    );
+                                  },
+                                )
+                            }
+                          </div>
+                        </section>
+                      ),
+                    )
+                  }
+
+                  <div
+                    className="education-learning__program-report-actions"
+                  >
+                    <button
+                      type="button"
+                      className="education-learning__primary"
+                      onClick={() => {
+                        setMockProgram(
+                          "JEE",
+                        );
+
+                        setStep(
+                          "mock-tests",
+                        );
+                      }}
+                    >
+                      📝 Take Mock Test
+                    </button>
+
+                    <button
+                      type="button"
+                      className="education-learning__secondary"
+                      onClick={() =>
+                        void selectPortal({
+                          type:
+                            "program",
+                          code:
+                            "IIT",
+                          name:
+                            "IIT-JEE",
+                        })
+                      }
+                    >
+                      🎯 Practice Topics
+                    </button>
+
+                    <button
+                      type="button"
+                      className="education-learning__secondary education-learning__publish-progress"
+                      disabled
+                    >
+                      🏅 Publish Progress Certificate
+                    </button>
+                  </div>
+                </>
               )
             }
           </section>

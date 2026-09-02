@@ -36,6 +36,13 @@ interface EducationPortalProps {
         | "JEE"
         | "NEET",
     ) => void;
+
+  onReport:
+    (
+      program:
+        | "JEE"
+        | "NEET",
+    ) => void;
 }
 
 const FOUNDATION_ROWS:
@@ -141,6 +148,7 @@ export default function EducationPortal({
   onBack,
   onSelect,
   onMockTests,
+  onReport,
 }: EducationPortalProps) {
   const [
     config,
@@ -343,6 +351,18 @@ export default function EducationPortal({
                         }
                       >
                         Mock Tests
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onReport(
+                            "JEE",
+                          )
+                        }
+                        title="IIT-JEE progress report"
+                      >
+                        📊 Report
                       </button>
 
                       <button

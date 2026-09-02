@@ -238,3 +238,16 @@
     min-height: 33px;
   }
 }
+
+/* IIT-JEE Report joins the existing compact action row. */
+@media (max-width: 430px) {
+  .education-portal__advanced-actions {
+    gap: 3px;
+  }
+
+  .education-portal__advanced-actions button {
+    padding-inline: 5px;
+    font-size: 0.59rem;
+  }
+}
+

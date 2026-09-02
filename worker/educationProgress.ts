@@ -922,6 +922,32 @@ async function saveProgress(
     ),
   );
 
+  await env.gyan_registry.batch(
+    graded.map(
+      (
+        answer,
+      ) =>
+        env.gyan_registry
+          .prepare(
+            `
+            INSERT OR IGNORE INTO education_student_question_history (
+              student_id,
+              question_id,
+              first_attempted_at
+            )
+            VALUES (
+              ?, ?,
+              CURRENT_TIMESTAMP
+            )
+            `,
+          )
+          .bind(
+            student.id,
+            answer.questionId,
+          ),
+    ),
+  );
+
   await env.gyan_registry
     .prepare(
       `
@@ -1359,6 +1385,65 @@ async function getReport(
         createdAt: string;
       }>();
 
+  const topicProgress =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          s.subject_code AS subjectCode,
+          t.topic_code AS topicCode,
+          COUNT(h.question_id) AS uniqueQuestionsAttempted,
+          COALESCE(m.questions_answered, 0) AS answersCount,
+          COALESCE(m.correct_answers, 0) AS correctAnswers,
+          m.score_percent AS scorePercent
+
+        FROM education_student_question_history h
+
+        JOIN education_questions q
+          ON q.id = h.question_id
+
+        JOIN education_subtopics st
+          ON st.id = q.subtopic_id
+
+        JOIN education_topics t
+          ON t.id = st.topic_id
+
+        JOIN education_subjects s
+          ON s.id = t.subject_id
+
+        LEFT JOIN education_topic_mastery m
+          ON m.student_id = h.student_id
+          AND m.subject_code = s.subject_code
+          AND m.topic_code = t.topic_code
+
+        WHERE
+          h.student_id = ?
+          AND q.active = 1
+
+        GROUP BY
+          s.subject_code,
+          t.topic_code,
+          m.questions_answered,
+          m.correct_answers,
+          m.score_percent
+
+        ORDER BY
+          s.subject_code,
+          t.topic_code
+        `,
+      )
+      .bind(
+        student.id,
+      )
+      .all<{
+        subjectCode: string;
+        topicCode: string;
+        uniqueQuestionsAttempted: number;
+        answersCount: number;
+        correctAnswers: number;
+        scorePercent: number | null;
+      }>();
+
   return jsonResponse({
     student: {
       code:
@@ -1393,6 +1478,38 @@ async function getReport(
         student.country_code,
         student.grade_code,
         subject,
+      ),
+
+    topicProgress:
+      topicProgress.results.map(
+        (item) => ({
+          subjectCode:
+            item.subjectCode,
+          topicCode:
+            item.topicCode,
+          uniqueQuestionsAttempted:
+            Number(
+              item.uniqueQuestionsAttempted ??
+              0,
+            ),
+          answersCount:
+            Number(
+              item.answersCount ??
+              0,
+            ),
+          correctAnswers:
+            Number(
+              item.correctAnswers ??
+              0,
+            ),
+          scorePercent:
+            item.scorePercent ==
+              null
+              ? null
+              : Number(
+                  item.scorePercent,
+                ),
+        }),
       ),
 
     attemptSummary: {
