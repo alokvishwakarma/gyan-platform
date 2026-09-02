@@ -15,6 +15,10 @@ import FeaturedServiceCard
 import Puzzle
   from "./Puzzle";
 
+import GyanHomeChooser, {
+  type GyanHomeDestination,
+} from "./GyanHomeChooser";
+
 import GyanAboutPanel
   from "./GyanAboutPanel";
 
@@ -443,6 +447,39 @@ function getEffectiveEducationCountry():
 }
 
 
+const GYAN_HOME_DESTINATION_KEY =
+  "gyan_home_destination_v1";
+
+const GYAN_CARD_WELCOME_EVENT =
+  "gyan-card-welcome-change";
+
+const GYAN_CARD_WELCOME_SESSION_KEY =
+  "gyan_card_welcome_open_v1";
+
+
+function getRememberedGyanHome():
+  GyanHomeDestination | null {
+  try {
+    const value =
+      window.localStorage.getItem(
+        GYAN_HOME_DESTINATION_KEY,
+      );
+
+    if (
+      value === "education" ||
+      value === "services" ||
+      value === "puzzle"
+    ) {
+      return value;
+    }
+  } catch {
+    // localStorage may be unavailable in privacy-restricted browsers.
+  }
+
+  return null;
+}
+
+
 export default function PublicHomePage({
   services,
 
@@ -553,6 +590,98 @@ export default function PublicHomePage({
     [
       calendarOpen,
     ],
+  );
+
+
+  const [
+    homeChooserOpen,
+    setHomeChooserOpen,
+  ] =
+    useState(
+      () =>
+        window.location.pathname ===
+          "/" &&
+        getRememberedGyanHome() ===
+          null,
+    );
+
+
+  const [
+    gyanCardWelcomeOpen,
+    setGyanCardWelcomeOpen,
+  ] =
+    useState(
+      () => {
+        try {
+          return (
+            window.sessionStorage.getItem(
+              GYAN_CARD_WELCOME_SESSION_KEY,
+            ) === "1"
+          );
+        } catch {
+          return false;
+        }
+      },
+    );
+
+
+  useEffect(
+    () => {
+      const syncWelcomeState =
+        (): void => {
+          try {
+            setGyanCardWelcomeOpen(
+              window.sessionStorage.getItem(
+                GYAN_CARD_WELCOME_SESSION_KEY,
+              ) === "1",
+            );
+          } catch {
+            // Keep the current state when sessionStorage is unavailable.
+          }
+        };
+
+
+      const handleWelcomeChange =
+        (
+          event:
+            Event,
+        ): void => {
+        const customEvent =
+          event as
+            CustomEvent<{
+              open?:
+                boolean;
+            }>;
+
+        setGyanCardWelcomeOpen(
+          Boolean(
+            customEvent.detail
+              ?.open,
+          ),
+        );
+      };
+
+
+      /*
+       * Child effects can run before this listener is attached.
+       * Synchronize once from sessionStorage so that the destination
+       * chooser never remains visible underneath the New GYAN Card.
+       */
+      syncWelcomeState();
+
+      window.addEventListener(
+        GYAN_CARD_WELCOME_EVENT,
+        handleWelcomeChange,
+      );
+
+      return () => {
+        window.removeEventListener(
+          GYAN_CARD_WELCOME_EVENT,
+          handleWelcomeChange,
+        );
+      };
+    },
+    [],
   );
 
 
@@ -1142,12 +1271,103 @@ export default function PublicHomePage({
 
         return (
           pathname ===
-            "/" ||
-          pathname ===
             "/puzzle"
         );
       },
     );
+
+
+  useEffect(
+    () => {
+      if (
+        window.location.pathname !==
+        "/"
+      ) {
+        return;
+      }
+
+      const destination =
+        getRememberedGyanHome();
+
+      if (!destination) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setHomeChooserOpen(
+          true,
+        );
+
+        setShowPuzzle(
+          false,
+        );
+
+        return;
+      }
+
+      setHomeChooserOpen(
+        false,
+      );
+
+      if (
+        destination ===
+        "education"
+      ) {
+        setEducationCountry(
+          getEffectiveEducationCountry(),
+        );
+
+        setShowPuzzle(
+          false,
+        );
+
+        setActiveView(
+          "education",
+        );
+
+        window.history.replaceState(
+          {},
+          "",
+          "/education",
+        );
+
+        return;
+      }
+
+      if (
+        destination ===
+        "services"
+      ) {
+        setShowPuzzle(
+          false,
+        );
+
+        setActiveView(
+          "services",
+        );
+
+        window.history.replaceState(
+          {},
+          "",
+          "/services",
+        );
+
+        return;
+      }
+
+      setActiveView(
+        "home",
+      );
+
+      setShowPuzzle(
+        true,
+      );
+
+      window.history.replaceState(
+        {},
+        "",
+        "/puzzle",
+      );
+    },
+    [],
+  );
 
 
   const [
@@ -1601,8 +1821,86 @@ export default function PublicHomePage({
   }
 
 
+  function chooseGyanHome(
+    destination:
+      GyanHomeDestination,
+    remember:
+      boolean,
+  ): void {
+    try {
+      if (remember) {
+        window.localStorage.setItem(
+          GYAN_HOME_DESTINATION_KEY,
+          destination,
+        );
+      } else {
+        window.localStorage.removeItem(
+          GYAN_HOME_DESTINATION_KEY,
+        );
+      }
+    } catch {
+      // Continue navigation even if localStorage is unavailable.
+    }
+
+    setHomeChooserOpen(
+      false,
+    );
+
+    if (
+      destination ===
+      "education"
+    ) {
+      openEducation();
+      return;
+    }
+
+    if (
+      destination ===
+      "services"
+    ) {
+      openServices();
+      return;
+    }
+
+    setSearchText(
+      "",
+    );
+
+    setSearchFocused(
+      false,
+    );
+
+    setCalendarOpen(
+      false,
+    );
+
+    setActiveView(
+      "home",
+    );
+
+    setPuzzleInstanceKey(
+      (current) =>
+        current + 1,
+    );
+
+    setShowPuzzle(
+      true,
+    );
+
+    window.history.pushState(
+      {},
+      "",
+      "/puzzle",
+    );
+  }
+
+
   function openEducation():
     void {
+    setHomeChooserOpen(
+      false,
+    );
+
     setSearchText(
       "",
     );
@@ -1637,6 +1935,10 @@ export default function PublicHomePage({
 
   function openServices():
     void {
+    setHomeChooserOpen(
+      false,
+    );
+
     setSearchText(
       "",
     );
@@ -2630,19 +2932,42 @@ export default function PublicHomePage({
         <div
           className="public-home__header-actions"
         >
-          <button
-            type="button"
-            className="public-home__search-button"
-            aria-label="Search services"
-            title="Search services"
-            onClick={() =>
-              setSearchFocused(
-                true,
-              )
-            }
-          >
-            🔎
-          </button>
+<button
+  type="button"
+  className="public-home__search-button"
+  aria-label="Open GYAN Puzzle"
+  title="GYAN Puzzle"
+  onClick={() => {
+    setSearchFocused(
+      false,
+    );
+
+    setCalendarOpen(
+      false,
+    );
+
+    setActiveView(
+      "home",
+    );
+
+    setPuzzleInstanceKey(
+      (current) =>
+        current + 1,
+    );
+
+    setShowPuzzle(
+      true,
+    );
+
+    window.history.pushState(
+      {},
+      "",
+      "/puzzle",
+    );
+  }}
+>
+  🧩
+</button>
 
           <button
             type="button"
@@ -3316,6 +3641,7 @@ export default function PublicHomePage({
         {
           activeView ===
             "home" &&
+          !homeChooserOpen &&
           showPuzzle &&
           (
             <Puzzle
@@ -3658,6 +3984,22 @@ export default function PublicHomePage({
             )
         }
       </GyanShell>
+
+
+      {
+        homeChooserOpen &&
+        !gyanCardWelcomeOpen &&
+        window.location.pathname ===
+          "/" &&
+        createPortal(
+          <GyanHomeChooser
+            onChoose={
+              chooseGyanHome
+            }
+          />,
+          document.body,
+        )
+      }
 
 
       {

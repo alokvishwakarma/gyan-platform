@@ -15,6 +15,13 @@ export type FixedMockQuestion = {
   key: string;
   difficulty: string;
   text: string;
+  questionFormat:
+    | "SINGLE_CHOICE"
+    | "NUMERICAL"
+    | "MULTI_SELECT"
+    | "INTEGER"
+    | "MATCHING"
+    | "COMPREHENSION";
   choices: {
     A: string;
     B: string;

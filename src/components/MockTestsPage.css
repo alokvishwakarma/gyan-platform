@@ -605,3 +605,57 @@
     height: 180px;
   }
 }
+
+
+/* Numerical-answer questions used by JEE Main Section B. */
+.mock-tests__numerical {
+  margin-top: 5px;
+}
+
+.mock-tests__numerical label {
+  display: grid;
+  grid-template-columns: minmax(92px, auto) minmax(90px, 160px);
+  align-items: center;
+  justify-content: start;
+  gap: 7px;
+}
+
+.mock-tests__numerical span {
+  font-size: 0.62rem;
+  font-weight: 850;
+  color: #526a84;
+}
+
+.mock-tests__numerical input {
+  min-width: 0;
+  min-height: 31px;
+  box-sizing: border-box;
+  border: 1px solid #cbd9e4;
+  border-radius: 7px;
+  padding: 4px 7px;
+  background: #fff;
+  color: #17345c;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.mock-tests__numerical input:focus {
+  outline: 2px solid rgba(23, 74, 115, 0.16);
+  border-color: #174a73;
+}
+
+@media (max-width: 430px) {
+  .mock-tests__numerical label {
+    grid-template-columns: minmax(82px, auto) minmax(78px, 135px);
+    gap: 5px;
+  }
+
+  .mock-tests__numerical span {
+    font-size: 0.58rem;
+  }
+
+  .mock-tests__numerical input {
+    min-height: 29px;
+  }
+}

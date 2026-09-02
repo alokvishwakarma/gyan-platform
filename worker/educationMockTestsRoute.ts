@@ -205,6 +205,7 @@ async function loadFixedTest(
           q.question_key,
           q.difficulty,
           q.question_text,
+          COALESCE(qm.question_format, 'SINGLE_CHOICE') AS question_format,
           q.choice_a,
           q.choice_b,
           q.choice_c,
@@ -212,6 +213,8 @@ async function loadFixedTest(
         FROM education_mock_test_questions mtq
         JOIN education_questions q
           ON q.id = mtq.question_id
+        LEFT JOIN education_question_metadata qm
+          ON qm.question_id = q.id
         WHERE mtq.mock_test_id = ?
           AND q.active = 1
         ORDER BY mtq.question_order
@@ -228,6 +231,7 @@ async function loadFixedTest(
         question_key: string;
         difficulty: string;
         question_text: string;
+        question_format: string;
         choice_a: string;
         choice_b: string;
         choice_c: string;
@@ -249,6 +253,8 @@ async function loadFixedTest(
           row.difficulty,
         text:
           row.question_text,
+        questionFormat:
+          row.question_format,
         choices: {
           A: row.choice_a,
           B: row.choice_b,
@@ -457,10 +463,14 @@ async function scoreFixedTest(
           mtq.marks_unanswered,
           q.id AS question_id,
           q.correct_choice,
+          q.choice_a,
+          COALESCE(qm.question_format, 'SINGLE_CHOICE') AS question_format,
           q.explanation
         FROM education_mock_test_questions mtq
         JOIN education_questions q
           ON q.id = mtq.question_id
+        LEFT JOIN education_question_metadata qm
+          ON qm.question_id = q.id
         WHERE mtq.mock_test_id = ?
           AND q.active = 1
         ORDER BY mtq.question_order
@@ -475,6 +485,8 @@ async function scoreFixedTest(
         marks_unanswered: number | null;
         question_id: number;
         correct_choice: string;
+        choice_a: string;
+        question_format: string;
         explanation: string;
       }>();
 
@@ -507,17 +519,44 @@ async function scoreFixedTest(
             String(questionId)
           ];
 
+        const questionFormat =
+          row.question_format
+            .trim()
+            .toUpperCase();
+
+        const isNumerical =
+          questionFormat === "NUMERICAL" ||
+          questionFormat === "INTEGER";
+
         const selectedChoice =
           typeof selectedRaw === "string"
-            ? selectedRaw
-                .trim()
-                .toUpperCase()
+            ? isNumerical
+              ? selectedRaw.trim()
+              : selectedRaw
+                  .trim()
+                  .toUpperCase()
             : "";
 
         const correctChoice =
-          row.correct_choice
-            .trim()
-            .toUpperCase();
+          isNumerical
+            ? row.choice_a.trim()
+            : row.correct_choice
+                .trim()
+                .toUpperCase();
+
+        const numericalCorrect =
+          isNumerical &&
+          selectedChoice !== "" &&
+          Number.isFinite(
+            Number(selectedChoice),
+          ) &&
+          Number.isFinite(
+            Number(correctChoice),
+          ) &&
+          Math.abs(
+            Number(selectedChoice) -
+            Number(correctChoice),
+          ) < 1e-9;
 
         const marksCorrect =
           Number(
@@ -567,8 +606,10 @@ async function scoreFixedTest(
           unansweredCount += 1;
           section.unanswered += 1;
         } else if (
-          selectedChoice ===
-          correctChoice
+          isNumerical
+            ? numericalCorrect
+            : selectedChoice ===
+                correctChoice
         ) {
           marksAwarded =
             marksCorrect;

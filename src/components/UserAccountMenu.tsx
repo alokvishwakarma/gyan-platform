@@ -20,6 +20,13 @@ import GyanCalendarPage
 
 import "./UserAccountMenu.css";
 
+const GYAN_CARD_WELCOME_EVENT =
+  "gyan-card-welcome-change";
+
+const GYAN_CARD_WELCOME_SESSION_KEY =
+  "gyan_card_welcome_open_v1";
+
+
 interface AuthUser {
   id: number;
   email: string;
@@ -470,6 +477,12 @@ export default function UserAccountMenu({
     useState(false);
 
   const [
+    welcomeSaved,
+    setWelcomeSaved,
+  ] =
+    useState(false);
+
+  const [
     unreadGWinks,
     setUnreadGWinks,
   ] =
@@ -485,6 +498,74 @@ export default function UserAccountMenu({
 
   const welcomePendingKey =
     "gyan_new_card_welcome_pending_v1";
+
+
+  useEffect(
+    () => {
+      const welcomeOpen =
+        Boolean(
+          newCardWelcome,
+        );
+
+      try {
+        if (welcomeOpen) {
+          window.sessionStorage.setItem(
+            GYAN_CARD_WELCOME_SESSION_KEY,
+            "1",
+          );
+        } else {
+          window.sessionStorage.removeItem(
+            GYAN_CARD_WELCOME_SESSION_KEY,
+          );
+        }
+      } catch {
+        // Continue normally when sessionStorage is unavailable.
+      }
+
+      window.dispatchEvent(
+        new CustomEvent(
+          GYAN_CARD_WELCOME_EVENT,
+          {
+            detail: {
+              open:
+                welcomeOpen,
+            },
+          },
+        ),
+      );
+    },
+    [
+      newCardWelcome,
+    ],
+  );
+
+
+  useEffect(
+    () =>
+      () => {
+        try {
+          window.sessionStorage.removeItem(
+            GYAN_CARD_WELCOME_SESSION_KEY,
+          );
+        } catch {
+          // Ignore storage cleanup failures.
+        }
+
+        window.dispatchEvent(
+          new CustomEvent(
+            GYAN_CARD_WELCOME_EVENT,
+            {
+              detail: {
+                open:
+                  false,
+              },
+            },
+          ),
+        );
+      },
+    [],
+  );
+
 
   function isGWinkRevealRoute():
     boolean {
@@ -512,8 +593,27 @@ export default function UserAccountMenu({
       welcomePendingKey,
     );
 
+    setWelcomeSaved(
+      true,
+    );
+  }
+
+  function closeWelcomeDialog():
+    void {
     setNewCardWelcome(
       null,
+    );
+
+    setWelcomeSaved(
+      false,
+    );
+
+    setNewCardEmailOpen(
+      false,
+    );
+
+    setNewCardEmailStatus(
+      "",
     );
   }
 
@@ -530,6 +630,30 @@ export default function UserAccountMenu({
       true,
     );
   }
+
+
+  function printCurrentCard(
+    identity:
+      GyanIdentity,
+  ): void {
+    window.localStorage.setItem(
+      "gyan_browser_code_v1",
+      identity.code,
+    );
+
+    window.open(
+      "/?calendar=print",
+      "_blank",
+      "noopener,noreferrer",
+    );
+
+    markWelcomeSeen(
+      identity,
+    );
+
+    closeWelcomeDialog();
+  }
+
 
 async function emailCurrentCard(
   recipient:
@@ -689,6 +813,10 @@ async function emailCurrentCard(
         ) !== "1"
       ) {
         setOpen(
+          false,
+        );
+
+        setWelcomeSaved(
           false,
         );
 
@@ -1068,6 +1196,10 @@ async function emailCurrentCard(
                       .toUpperCase(),
                   );
                 } else {
+                  setWelcomeSaved(
+                    false,
+                  );
+
                   setNewCardWelcome(
                     identity,
                   );
@@ -1144,6 +1276,10 @@ async function emailCurrentCard(
           ) {
             return;
           }
+
+          setWelcomeSaved(
+            false,
+          );
 
           setNewCardWelcome(
             gyanIdentity,
@@ -1914,6 +2050,14 @@ async function emailCurrentCard(
                           false,
                         );
 
+                        setWelcomeSaved(
+                          window.localStorage.getItem(
+                            welcomeSeenKey(
+                              gyanIdentity.code,
+                            ),
+                          ) === "1",
+                        );
+
                         setNewCardWelcome(
                           gyanIdentity,
                         );
@@ -2261,61 +2405,405 @@ async function emailCurrentCard(
                   </h2>
                 </div>
 
+                {welcomeSaved && (
+                  <button
+                    type="button"
+                    aria-label="Close GYAN Card"
+                    title="Close"
+                    onClick={
+                      closeWelcomeDialog
+                    }
+                    style={{
+                      width:
+                        "30px",
+                      minWidth:
+                        "30px",
+                      height:
+                        "30px",
+                      padding:
+                        0,
+                      border:
+                        0,
+                      borderRadius:
+                        "999px",
+                      background:
+                        "rgb(226 232 240 / 82%)",
+                      color:
+                        "#334155",
+                      cursor:
+                        "pointer",
+                      font:
+                        "inherit",
+                      fontSize:
+                        "1rem",
+                      fontWeight:
+                        900,
+                      lineHeight:
+                        1,
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+
               </div>
 
               <div
                 style={{
-                  margin: "14px 0 12px",
-                  padding: "11px 12px",
-                  borderRadius: "12px",
-                  background:
-                    "rgb(240 249 255 / 85%)",
-                  textAlign: "center",
+                  margin:
+                    "13px 0 11px",
+                  display:
+                    "flex",
+                  alignItems:
+                    "center",
+                  justifyContent:
+                    "center",
+                  gap:
+                    "6px",
+                  textAlign:
+                    "center",
                 }}
               >
                 <strong
                   style={{
-                    display: "block",
-                    fontSize: "0.92rem",
+                    fontSize:
+                      "0.82rem",
+                    lineHeight:
+                      1.05,
                   }}
                 >
                   {newCardWelcome.displayName}
+                  {" "}
+                  <span
+                    style={{
+                      color:
+                        "#64748b",
+                      fontSize:
+                        "0.68rem",
+                      letterSpacing:
+                        "0.04em",
+                    }}
+                  >
+                    [{newCardWelcome.code}]
+                  </span>
                 </strong>
 
                 <span
                   style={{
-                    display: "block",
-                    marginTop: "2px",
-                    fontSize: "0.74rem",
-                    fontWeight: 800,
-                    letterSpacing: "0.08em",
+                    color:
+                      "#5b3ea8",
+                    fontSize:
+                      "0.62rem",
+                    fontWeight:
+                      850,
+                    whiteSpace:
+                      "nowrap",
                   }}
                 >
-                  [{newCardWelcome.code}]
+                  💎 {
+                    newCardWelcome.welcomeGems ??
+                    0
+                  }*
                 </span>
               </div>
 
-              <p
+              <div
                 style={{
-                  margin: "0 0 7px",
-                  fontSize: "0.72rem",
-                  lineHeight: 1.25,
+                  display:
+                    "grid",
+                  gridTemplateColumns:
+                    "84px minmax(0, 1fr)",
+                  gap:
+                    "5px",
+                  alignItems:
+                    "stretch",
+                  marginBottom:
+                    "11px",
                 }}
               >
-                Your free GYAN Card includes:
-              </p>
+                <a
+                  href={
+                    newCardWelcome.publicUrl
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                  title="My GYAN Home"
+                  style={{
+                    minWidth:
+                      0,
+                    color:
+                      "#7a4d32",
+                    textDecoration:
+                      "none",
+                    textAlign:
+                      "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      marginBottom:
+                        "1px",
+                      color:
+                        "#8a5a3b",
+                      fontSize:
+                        "0.4rem",
+                      fontWeight:
+                        900,
+                      letterSpacing:
+                        "0.04em",
+                    }}
+                  >
+                    GYAN HOME
+                  </div>
+
+                  <QRCodeSVG
+                    value={
+                      newCardWelcome.publicUrl
+                    }
+                    size={
+                      76
+                    }
+                    level="M"
+                    includeMargin
+                    style={{
+                      display:
+                        "block",
+                      width:
+                        "76px",
+                      maxWidth:
+                        "100%",
+                      height:
+                        "auto",
+                      margin:
+                        "0 auto",
+                      background:
+                        "#fff",
+                    }}
+                  />
+
+                  <strong
+                    style={{
+                      display:
+                        "block",
+                      marginTop:
+                        "1px",
+                      fontSize:
+                        "0.42rem",
+                      lineHeight:
+                        1,
+                      whiteSpace:
+                        "nowrap",
+                    }}
+                  >
+                    🏠 GYAN
+                  </strong>
+                </a>
+
+                <div
+                  style={{
+                    minWidth:
+                      0,
+                    padding:
+                      "3px 4px 4px",
+                    border:
+                      "1px solid #8fb39a",
+                    borderRadius:
+                      "8px",
+                    background:
+                      "#f7fbf8",
+                  }}
+                >
+                  <div
+                    style={{
+                      marginBottom:
+                        "1px",
+                      color:
+                        "#356442",
+                      fontSize:
+                        "0.43rem",
+                      fontWeight:
+                        900,
+                      letterSpacing:
+                        "0.07em",
+                      textAlign:
+                        "center",
+                    }}
+                  >
+                    FEATURES
+                  </div>
+
+                  <div
+                    style={{
+                      display:
+                        "grid",
+                      gridTemplateColumns:
+                        "repeat(3, minmax(0, 1fr))",
+                      gap:
+                        "3px",
+                    }}
+                  >
+                    {[
+                      {
+                        label:
+                          "Education",
+                        icon:
+                          "🎓",
+                        path:
+                          "/education",
+                      },
+                      {
+                        label:
+                          "Services",
+                        icon:
+                          "🧰",
+                        path:
+                          "/services",
+                      },
+                      {
+                        label:
+                          "Puzzle",
+                        icon:
+                          "🧩",
+                        path:
+                          "/puzzle",
+                      },
+                    ].map(
+                      (
+                        shortcut,
+                      ) => {
+                        const shortcutUrl =
+                          new URL(
+                            shortcut.path,
+                            newCardWelcome.publicUrl,
+                          ).toString();
+
+                        return (
+                          <a
+                            key={
+                              shortcut.path
+                            }
+                            href={
+                              shortcutUrl
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                            title={
+                              shortcut.label
+                            }
+                            style={{
+                              minWidth:
+                                0,
+                              color:
+                                "#356442",
+                              textDecoration:
+                                "none",
+                              textAlign:
+                                "center",
+                            }}
+                          >
+                            <QRCodeSVG
+                              value={
+                                shortcutUrl
+                              }
+                              size={
+                                54
+                              }
+                              level="M"
+                              includeMargin
+                              style={{
+                                display:
+                                  "block",
+                                width:
+                                  "54px",
+                                maxWidth:
+                                  "100%",
+                                height:
+                                  "auto",
+                                margin:
+                                  "0 auto",
+                                background:
+                                  "#fff",
+                              }}
+                            />
+
+                            <strong
+                              style={{
+                                display:
+                                  "block",
+                                marginTop:
+                                  "1px",
+                                overflow:
+                                  "hidden",
+                                fontSize:
+                                  "0.38rem",
+                                lineHeight:
+                                  1,
+                                textOverflow:
+                                  "ellipsis",
+                                whiteSpace:
+                                  "nowrap",
+                              }}
+                            >
+                              {
+                                shortcut.icon
+                              }{" "}
+                              {
+                                shortcut.label
+                              }
+                            </strong>
+                          </a>
+                        );
+                      },
+                    )}
+                  </div>
+                </div>
+              </div>
 
               {newCardWelcome.goodies &&
               newCardWelcome.goodies.length > 0 ? (
                 <div
                   style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "repeat(5, minmax(0, 1fr))",
-                    gap: "5px",
-                    marginBottom: "9px",
+                    marginBottom:
+                      "13px",
+                    padding:
+                      "4px",
+                    border:
+                      "1px solid #9bbbd0",
+                    borderRadius:
+                      "9px",
+                    background:
+                      "#f7fbff",
                   }}
                 >
+                  <div
+                    style={{
+                      marginBottom:
+                        "2px",
+                      color:
+                        "#2f6385",
+                      fontSize:
+                        "0.46rem",
+                      fontWeight:
+                        900,
+                      letterSpacing:
+                        "0.08em",
+                      textAlign:
+                        "left",
+                    }}
+                  >
+                    GOODIES / FREE SERVICES
+                  </div>
+
+                  <div
+                    style={{
+                      display:
+                        "grid",
+                      gridTemplateColumns:
+                        "repeat(5, minmax(0, 1fr))",
+                      gap:
+                        "3px",
+                    }}
+                  >
                   {[
                     ...newCardWelcome.goodies,
                   ]
@@ -2350,47 +2838,22 @@ async function emailCurrentCard(
                             )
                           }
                           style={{
-                            minWidth: 0,
+                            minWidth:
+                              0,
                             color:
-                              "inherit",
+                              "#2f6385",
                             textDecoration:
                               "none",
                             textAlign:
                               "center",
                           }}
                         >
-                          <small
-                            style={{
-                              display:
-                                "block",
-                              overflow:
-                                "hidden",
-                              marginBottom:
-                                "2px",
-                              fontSize:
-                                "0.42rem",
-                              lineHeight:
-                                1.05,
-                              textOverflow:
-                                "ellipsis",
-                              whiteSpace:
-                                "nowrap",
-                              color:
-                                "#64748b",
-                            }}
-                          >
-                            {goodie.publicUrl.replace(
-                              /^https?:\/\//,
-                              "",
-                            )}
-                          </small>
-
                           <QRCodeSVG
                             value={
                               goodie.publicUrl
                             }
                             size={
-                              52
+                              44
                             }
                             level="M"
                             includeMargin
@@ -2398,9 +2861,9 @@ async function emailCurrentCard(
                               display:
                                 "block",
                               width:
-                                "100%",
+                                "44px",
                               maxWidth:
-                                "58px",
+                                "100%",
                               height:
                                 "auto",
                               margin:
@@ -2415,11 +2878,17 @@ async function emailCurrentCard(
                               display:
                                 "block",
                               marginTop:
-                                "2px",
+                                "1px",
+                              overflow:
+                                "hidden",
                               fontSize:
-                                "0.48rem",
+                                "0.36rem",
                               lineHeight:
-                                1.05,
+                                1,
+                              textOverflow:
+                                "ellipsis",
+                              whiteSpace:
+                                "nowrap",
                             }}
                           >
                             {goodieIcon(
@@ -2432,22 +2901,23 @@ async function emailCurrentCard(
                         </a>
                       ),
                     )}
+                  </div>
                 </div>
               ) : (
                 <div
                   style={{
                     marginBottom:
-                      "9px",
+                      "6px",
                     padding:
-                      "8px 10px",
+                      "5px 7px",
                     borderRadius:
-                      "9px",
+                      "7px",
                     background:
                       "#f8fafc",
                     color:
                       "#64748b",
                     fontSize:
-                      "0.62rem",
+                      "0.54rem",
                     textAlign:
                       "center",
                   }}
@@ -2458,63 +2928,12 @@ async function emailCurrentCard(
 
               <div
                 style={{
-                  marginBottom: "9px",
-                  padding: "6px 8px",
-                  borderRadius: "9px",
-                  background: "#f5f3ff",
-                  color: "#5b3ea8",
-                  fontSize: "0.62rem",
-                  fontWeight: 800,
-                  lineHeight: 1.2,
-                  textAlign: "center",
-                }}
-              >
-                💎 {
-                  newCardWelcome.welcomeGems ??
-                  0
-                } Welcome Gems · Play & Learn to earn more
-              </div>
-
-              <div
-                style={{
-                  marginBottom: "13px",
-                  padding: "8px 10px",
-                  borderRadius: "10px",
-                  background: "#fff7dd",
-                  color: "#7a5600",
-                  fontSize: "0.65rem",
-                  lineHeight: 1.3,
-                }}
-              >
-                ⓘ Saved on this device only. No registration required.
-              </div>
-
-              <div
-                style={{
-                  marginBottom:
-                    "8px",
-                  fontSize:
-                    "0.63rem",
-                  fontWeight:
-                    700,
-                  lineHeight:
-                    1.25,
-                  textAlign:
-                    "center",
-                  color:
-                    "#475569",
-                }}
-              >
-                Keep your GYAN Card safe before continuing:
-                download it, email it, or save it in WhatsApp.
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
+                  display:
+                    "grid",
                   gridTemplateColumns:
-                    "repeat(3, minmax(0, 1fr))",
-                  gap: "8px",
+                    "repeat(4, minmax(0, 1fr))",
+                  gap:
+                    "6px",
                 }}
               >
                 <button
@@ -2528,12 +2947,12 @@ async function emailCurrentCard(
                     )
                   }
                   style={{
-                    minHeight: "42px",
+                    minHeight: "32px",
                     border: "1px solid #b8c5d1",
                     borderRadius: "10px",
                     background: "#ffffff",
                     font: "inherit",
-                    fontSize: "0.7rem",
+                    fontSize: "0.64rem",
                     fontWeight: 800,
                     cursor: "pointer",
                   }}
@@ -2548,6 +2967,35 @@ async function emailCurrentCard(
                 <button
                   type="button"
                   onClick={() =>
+                    printCurrentCard(
+                      newCardWelcome,
+                    )
+                  }
+                  style={{
+                    minHeight:
+                      "32px",
+                    border:
+                      "1px solid #b8c5d1",
+                    borderRadius:
+                      "9px",
+                    background:
+                      "#ffffff",
+                    font:
+                      "inherit",
+                    fontSize:
+                      "0.64rem",
+                    fontWeight:
+                      800,
+                    cursor:
+                      "pointer",
+                  }}
+                >
+                  🖨️ Print
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
                     setNewCardEmailOpen(
                       (
                         current,
@@ -2556,12 +3004,12 @@ async function emailCurrentCard(
                     )
                   }
                   style={{
-                    minHeight: "42px",
+                    minHeight: "32px",
                     border: "1px solid #b8c5d1",
                     borderRadius: "10px",
                     background: "#ffffff",
                     font: "inherit",
-                    fontSize: "0.7rem",
+                    fontSize: "0.64rem",
                     fontWeight: 800,
                     cursor: "pointer",
                   }}
@@ -2577,12 +3025,12 @@ async function emailCurrentCard(
                     )
                   }
                   style={{
-                    minHeight: "42px",
+                    minHeight: "32px",
                     border: "1px solid #b8c5d1",
                     borderRadius: "10px",
                     background: "#ffffff",
                     font: "inherit",
-                    fontSize: "0.7rem",
+                    fontSize: "0.64rem",
                     fontWeight: 800,
                     cursor: "pointer",
                   }}
@@ -2590,6 +3038,64 @@ async function emailCurrentCard(
                   🟢 WhatsApp
                 </button>
               </div>
+
+              <div
+                style={{
+                  marginTop:
+                    "4px",
+                  color:
+                    "#5b3ea8",
+                  fontSize:
+                    "0.48rem",
+                  fontWeight:
+                    750,
+                  lineHeight:
+                    1.05,
+                  textAlign:
+                    "center",
+                }}
+              >
+                * 💎 {
+                  newCardWelcome.welcomeGems ??
+                  0
+                } Welcome Gems
+              </div>
+
+              <div
+                style={{
+                  marginTop:
+                    "4px",
+                  color:
+                    "#7a5600",
+                  fontSize:
+                    "0.5rem",
+                  lineHeight:
+                    1.1,
+                  textAlign:
+                    "center",
+                }}
+              >
+                ⓘ Saved on this device only. No registration required.
+              </div>
+
+              {welcomeSaved && (
+                <div
+                  style={{
+                    marginTop:
+                      "7px",
+                    fontSize:
+                      "0.62rem",
+                    fontWeight:
+                      800,
+                    textAlign:
+                      "center",
+                    color:
+                      "#166534",
+                  }}
+                >
+                  ✓ GYAN Card saved. You may close this window.
+                </div>
+              )}
 
               {newCardEmailOpen && (
                 <div
@@ -2750,6 +3256,8 @@ async function emailCurrentCard(
                 markWelcomeSeen(
                   newCardWelcome,
                 );
+
+                closeWelcomeDialog();
               }}
             />
           </div>

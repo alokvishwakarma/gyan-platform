@@ -416,24 +416,13 @@ async function loadCurrentGyanRecord({
       "/api/gyan-identity",
       {
         method:
-          "POST",
+          "GET",
 
         credentials:
           "include",
 
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-
-        body:
-          JSON.stringify({
-            browserCode:
-              window.localStorage.getItem(
-                "gyan_browser_code_v1",
-              ) ??
-              undefined,
-          }),
+        cache:
+          "no-store",
       },
     );
 
@@ -3073,9 +3062,22 @@ function PrintChooser({
         }
       }
 
+      const safeDisplayName =
+        singleRecord.gyanName
+          .trim()
+          .replace(
+            /[^a-z0-9_-]+/gi,
+            "-",
+          )
+          .replace(
+            /^-+|-+$/g,
+            "",
+          ) ||
+        singleRecord.slug.toUpperCase();
+
       const fileName =
         useCurrentGyan
-          ? `GYAN-${singleRecord.slug.toUpperCase()}-A5.pdf`
+          ? `GYAN-${safeDisplayName}-${singleRecord.slug.toUpperCase()}-A5.pdf`
           : `gyan-${selected.id.toLowerCase()}-${selected.durationMonths}months.pdf`;
 
       pdf.save(

@@ -1020,8 +1020,30 @@ async function sendNewGyanAccountNotice(
       ? "[LOCAL] "
       : "";
 
+  const locationLabel =
+    [
+      notice.location.city,
+      notice.location.regionCode,
+      notice.location.countryCode,
+    ]
+      .filter(
+        (
+          value,
+        ): value is string =>
+          Boolean(
+            value &&
+            value.trim(),
+          ),
+      )
+      .join(" ");
+
   const subject =
-    `${prefix}New GYAN Account · ${notice.code} · ${notice.displayName}`;
+    `${prefix}New GYAN Account · ${notice.code} · ${notice.displayName}` +
+    (
+      locationLabel
+        ? ` · ${locationLabel}`
+        : ""
+    );
 
   const publicUrl =
     notice.isLocal
@@ -1076,8 +1098,6 @@ async function sendNewGyanAccountNotice(
       `UTM Source: ${show(notice.client.utmSource)}`,
       `UTM Medium: ${show(notice.client.utmMedium)}`,
       `UTM Campaign: ${show(notice.client.utmCampaign)}`,
-      "",
-      publicUrl,
     ].join(
       "\n",
     );
@@ -1310,6 +1330,7 @@ export async function handleGyanIdentityRoute(
       );
     }
 
+    // eslint-disable-next-line no-useless-assignment
     let body:
       {
         email?: unknown;
@@ -1959,10 +1980,36 @@ export async function handleGyanIdentityRoute(
      */
   }
 
+  /*
+   * Safety guard:
+   *
+   * A brand-new browser identity must be created only by the real
+   * browser/client flow. We observed a second anonymous POST arriving
+   * without client information and racing the normal browser POST,
+   * which could create two GYAN accounts on one fresh device.
+   *
+   * Existing-cookie handling remains below this guard for normal
+   * browser requests; anonymous no-client creation is rejected.
+   */
+  if (
+    !requestBody.client
+  ) {
+    console.warn(
+      "Rejected GYAN identity creation without client payload.",
+    );
+
+    return identityJson(
+      {
+        error:
+          "GYAN identity creation requires browser client information.",
+      },
+      400,
+    );
+  }
+
   const creationClient =
     getGyanCreationClient(
-      requestBody.client ??
-      null,
+      requestBody.client,
     );
 
 

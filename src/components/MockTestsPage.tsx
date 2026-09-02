@@ -160,8 +160,18 @@ export default function MockTestsPage({
     });
   }
 
-  async function openMiniAMain():
-  Promise<void> {
+  async function openFixedTest(
+    options: {
+      kind:
+        "FULL" |
+        "MINI";
+      testCode:
+        string;
+      level:
+        "MAIN" |
+        "ADVANCED";
+    },
+  ): Promise<void> {
     setRunnerLoading(
       true,
     );
@@ -178,13 +188,13 @@ export default function MockTestsPage({
             "JEE",
 
           kind:
-            "MINI",
+            options.kind,
 
           testCode:
-            "MINI_A",
+            options.testCode,
 
           level:
-            "MAIN",
+            options.level,
 
           version:
             1,
@@ -415,7 +425,15 @@ export default function MockTestsPage({
             <strong>
               📝 {
                 fixedTest.name
-              } · JEE Main
+              } · {
+                fixedTest.level ===
+                  "MAIN"
+                  ? "JEE Main"
+                  : fixedTest.level ===
+                      "ADVANCED"
+                    ? "JEE Advanced"
+                    : fixedTest.level
+              }
             </strong>
 
             <small>
@@ -425,7 +443,14 @@ export default function MockTestsPage({
                 fixedTest.questionCount
               } questions · {
                 fixedTest.maximumMarks
-              } marks
+              } marks{
+                fixedTest.kind ===
+                  "FULL" &&
+                fixedTest.level ===
+                  "MAIN"
+                  ? " · 180 min"
+                  : ""
+              }
             </small>
           </div>
         </header>
@@ -456,7 +481,7 @@ export default function MockTestsPage({
                 {
                   runnerLoading
                     ? "Submitting…"
-                    : "Submit Mini A"
+                    : `Submit ${fixedTest.name}`
                 }
               </button>
             )
@@ -592,6 +617,51 @@ export default function MockTestsPage({
                       </small>
                     </div>
 
+                    {
+                      question.questionFormat ===
+                        "NUMERICAL" ||
+                      question.questionFormat ===
+                        "INTEGER" ? (
+                        <div
+                          className="mock-tests__numerical"
+                        >
+                          <label>
+                            <span>
+                              Numerical answer
+                            </span>
+
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              step="any"
+                              value={
+                                fixedAnswers[
+                                  question.id
+                                ] ??
+                                ""
+                              }
+                              disabled={
+                                Boolean(
+                                  fixedScore,
+                                )
+                              }
+                              onChange={(
+                                event,
+                              ) =>
+                                setFixedAnswers(
+                                  (
+                                    current,
+                                  ) => ({
+                                    ...current,
+                                    [question.id]:
+                                      event.target.value,
+                                  }),
+                                )
+                              }
+                            />
+                          </label>
+                        </div>
+                      ) : (
                     <div
                       className="mock-tests__choices"
                     >
@@ -686,6 +756,8 @@ export default function MockTestsPage({
                         )
                       }
                     </div>
+                      )
+                    }
 
                     {
                       review && (
@@ -739,7 +811,7 @@ export default function MockTestsPage({
                 {
                   runnerLoading
                     ? "Submitting…"
-                    : "Submit Mini A"
+                    : `Submit ${fixedTest.name}`
                 }
               </button>
             )
@@ -1030,19 +1102,50 @@ export default function MockTestsPage({
                           <>
                             <button
                               type="button"
-                              onClick={() =>
-                                available
-                                  ? chooseAvailable(
-                                      label,
-                                      "JEE Main",
-                                    )
-                                  : requestAccess(
-                                      label,
-                                      "JEE Main",
-                                    )
+                              disabled={
+                                runnerLoading
                               }
+                              onClick={() => {
+                                if (
+                                  testNumber ===
+                                    1
+                                ) {
+                                  void openFixedTest({
+                                    kind:
+                                      "FULL",
+                                    testCode:
+                                      "TEST_1",
+                                    level:
+                                      "MAIN",
+                                  });
+
+                                  return;
+                                }
+
+                                if (
+                                  available
+                                ) {
+                                  chooseAvailable(
+                                    label,
+                                    "JEE Main",
+                                  );
+
+                                  return;
+                                }
+
+                                requestAccess(
+                                  label,
+                                  "JEE Main",
+                                );
+                              }}
                             >
-                              Main
+                              {
+                                testNumber ===
+                                  1 &&
+                                runnerLoading
+                                  ? "Opening…"
+                                  : "Main"
+                              }
                             </button>
 
                             <button
@@ -1157,7 +1260,14 @@ export default function MockTestsPage({
                                   letter ===
                                     "A"
                                 ) {
-                                  void openMiniAMain();
+                                  void openFixedTest({
+                                    kind:
+                                      "MINI",
+                                    testCode:
+                                      "MINI_A",
+                                    level:
+                                      "MAIN",
+                                  });
 
                                   return;
                                 }

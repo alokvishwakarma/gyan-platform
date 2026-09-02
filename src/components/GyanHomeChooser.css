@@ -1,0 +1,430 @@
+.gyan-home-choice__overlay {
+  position:
+    fixed;
+  inset:
+    0;
+  z-index:
+    2147481000;
+
+  display:
+    grid;
+  place-items:
+    start center;
+
+  padding:
+    calc(
+      var(
+        --gyan-header-height,
+        64px
+      ) +
+      8px
+    )
+    8px
+    8px;
+
+  box-sizing:
+    border-box;
+
+  background:
+    rgb(
+      15 23 42 /
+      34%
+    );
+
+  backdrop-filter:
+    blur(
+      3px
+    );
+
+  overflow-y:
+    auto;
+}
+
+
+.gyan-home-choice {
+  width:
+    min(
+      100%,
+      430px
+    );
+
+  margin:
+    0 auto;
+
+  padding:
+    9px;
+
+  box-sizing:
+    border-box;
+
+  border:
+    1px solid
+    rgb(
+      23 74 115 /
+      14%
+    );
+
+  border-radius:
+    14px;
+
+  background:
+    #fffdf9;
+
+  box-shadow:
+    0 16px 42px
+    rgb(
+      20 45 65 /
+      22%
+    );
+}
+
+
+.gyan-home-choice__heading {
+  margin-bottom:
+    5px;
+  text-align:
+    center;
+}
+
+
+.gyan-home-choice__heading h1 {
+  margin:
+    0;
+  color:
+    #174a73;
+  font-size:
+    1rem;
+  line-height:
+    1.15;
+}
+
+
+.gyan-home-choice__heading p {
+  margin:
+    2px 0 0;
+  color:
+    #687983;
+  font-size:
+    0.65rem;
+  line-height:
+    1.15;
+}
+
+
+.gyan-home-choice__remember-row {
+  min-height:
+    22px;
+
+  display:
+    flex;
+  align-items:
+    center;
+  justify-content:
+    center;
+}
+
+
+.gyan-home-choice__remember-row--top {
+  margin-bottom:
+    4px;
+}
+
+
+.gyan-home-choice__remember-row--bottom {
+  margin-top:
+    4px;
+}
+
+
+.gyan-home-choice__remember {
+  display:
+    inline-flex;
+  align-items:
+    center;
+  gap:
+    5px;
+
+  color:
+    #526674;
+
+  font-size:
+    0.62rem;
+  font-weight:
+    750;
+
+  cursor:
+    pointer;
+  user-select:
+    none;
+}
+
+
+.gyan-home-choice__remember input {
+  width:
+    15px;
+  height:
+    15px;
+  margin:
+    0;
+
+  accent-color:
+    #174a73;
+}
+
+
+.gyan-home-choice__cards {
+  display:
+    grid;
+  gap:
+    6px;
+}
+
+
+.gyan-home-choice__card {
+  width:
+    100%;
+
+  min-height:
+    64px;
+
+  padding:
+    7px 9px;
+
+  box-sizing:
+    border-box;
+
+  display:
+    grid;
+
+  grid-template-columns:
+    34px minmax(0, 1fr) auto;
+
+  align-items:
+    center;
+
+  gap:
+    7px;
+
+  border:
+    1px solid #d7e1e8;
+
+  border-radius:
+    10px;
+
+  background:
+    #fff;
+
+  color:
+    #334d60;
+
+  font:
+    inherit;
+
+  text-align:
+    left;
+
+  cursor:
+    pointer;
+}
+
+
+.gyan-home-choice__card:active {
+  transform:
+    translateY(
+      1px
+    );
+}
+
+
+.gyan-home-choice__card--education {
+  border-color:
+    #a8cadf;
+
+  background:
+    #f4f9fc;
+}
+
+
+.gyan-home-choice__card--services {
+  background:
+    #fffdf8;
+}
+
+
+.gyan-home-choice__card--puzzle {
+  border-color:
+    #cfc3e8;
+
+  background:
+    #faf8ff;
+}
+
+
+.gyan-home-choice__icon {
+  display:
+    grid;
+
+  place-items:
+    center;
+
+  font-size:
+    1.45rem;
+
+  line-height:
+    1;
+}
+
+
+.gyan-home-choice__copy {
+  min-width:
+    0;
+
+  display:
+    grid;
+
+  gap:
+    2px;
+}
+
+
+.gyan-home-choice__copy strong {
+  overflow:
+    hidden;
+
+  color:
+    #294a62;
+
+  font-size:
+    0.82rem;
+
+  line-height:
+    1.08;
+
+  text-overflow:
+    ellipsis;
+
+  white-space:
+    nowrap;
+}
+
+
+.gyan-home-choice__copy small {
+  overflow:
+    hidden;
+
+  color:
+    #6b7b85;
+
+  font-size:
+    0.6rem;
+
+  line-height:
+    1.12;
+
+  text-overflow:
+    ellipsis;
+
+  white-space:
+    nowrap;
+}
+
+
+.gyan-home-choice__card b {
+  align-self:
+    center;
+
+  color:
+    #e97825;
+
+  font-size:
+    0.61rem;
+
+  line-height:
+    1;
+
+  white-space:
+    nowrap;
+}
+
+
+.gyan-home-choice__card--services b {
+  color:
+    #667781;
+}
+
+
+.gyan-home-choice__card--puzzle b {
+  color:
+    #7258a5;
+}
+
+
+.gyan-home-choice__card:focus-visible {
+  outline:
+    2px solid #174a73;
+
+  outline-offset:
+    2px;
+}
+
+
+@media (
+  max-width:
+    360px
+) {
+  .gyan-home-choice__overlay {
+    padding-left:
+      5px;
+
+    padding-right:
+      5px;
+  }
+
+
+  .gyan-home-choice {
+    width:
+      100%;
+
+    padding:
+      6px;
+  }
+
+
+  .gyan-home-choice__card {
+    min-height:
+      60px;
+
+    padding:
+      6px 7px;
+
+    grid-template-columns:
+      31px minmax(0, 1fr) auto;
+
+    gap:
+      5px;
+  }
+
+
+  .gyan-home-choice__icon {
+    font-size:
+      1.3rem;
+  }
+
+
+  .gyan-home-choice__copy strong {
+    font-size:
+      0.77rem;
+  }
+
+
+  .gyan-home-choice__copy small {
+    font-size:
+      0.56rem;
+  }
+
+
+  .gyan-home-choice__card b {
+    font-size:
+      0.57rem;
+  }
+}
