@@ -677,16 +677,30 @@ export default function MockTestsPage({
                           (
                             choice,
                           ) => {
-                            const isSelected =
+                            const isMultiSelect =
+                              question.questionFormat ===
+                              "MULTI_SELECT";
+
+                            const selectedValue =
                               fixedAnswers[
                                 question.id
-                              ] ===
-                              choice;
+                              ] ?? "";
+
+                            const isSelected =
+                              isMultiSelect
+                                ? selectedValue.includes(
+                                    choice,
+                                  )
+                                : selectedValue ===
+                                  choice;
 
                             const isCorrectAfterSubmit =
                               review
-                                ?.correctChoice ===
-                              choice;
+                                ?.correctChoice
+                                .includes(
+                                  choice,
+                                ) ??
+                              false;
 
                             return (
                               <label
@@ -710,7 +724,11 @@ export default function MockTestsPage({
                                   )}
                               >
                                 <input
-                                  type="radio"
+                                  type={
+                                    isMultiSelect
+                                      ? "checkbox"
+                                      : "radio"
+                                  }
                                   name={
                                     `mock-${question.id}`
                                   }
@@ -729,11 +747,59 @@ export default function MockTestsPage({
                                     setFixedAnswers(
                                       (
                                         current,
-                                      ) => ({
-                                        ...current,
-                                        [question.id]:
-                                          choice,
-                                      }),
+                                      ) => {
+                                        if (
+                                          !isMultiSelect
+                                        ) {
+                                          return {
+                                            ...current,
+                                            [question.id]:
+                                              choice,
+                                          };
+                                        }
+
+                                        const next =
+                                          new Set(
+                                            (
+                                              current[
+                                                question.id
+                                              ] ??
+                                              ""
+                                            )
+                                              .split(
+                                                "",
+                                              )
+                                              .filter(
+                                                Boolean,
+                                              ),
+                                          );
+
+                                        if (
+                                          next.has(
+                                            choice,
+                                          )
+                                        ) {
+                                          next.delete(
+                                            choice,
+                                          );
+                                        } else {
+                                          next.add(
+                                            choice,
+                                          );
+                                        }
+
+                                        return {
+                                          ...current,
+                                          [question.id]:
+                                            Array.from(
+                                              next,
+                                            )
+                                              .sort()
+                                              .join(
+                                                "",
+                                              ),
+                                        };
+                                      },
                                     )
                                   }
                                 />
@@ -1058,12 +1124,12 @@ export default function MockTestsPage({
                 testNumber,
               ) => {
                 const available =
-                  testNumber <=
-                  2;
+                  testNumber ===
+                  1;
 
                 const restricted =
                   testNumber >=
-                    3 &&
+                    2 &&
                   testNumber <=
                     8;
 
@@ -1122,17 +1188,6 @@ export default function MockTestsPage({
                                   return;
                                 }
 
-                                if (
-                                  available
-                                ) {
-                                  chooseAvailable(
-                                    label,
-                                    "JEE Main",
-                                  );
-
-                                  return;
-                                }
-
                                 requestAccess(
                                   label,
                                   "JEE Main",
@@ -1144,25 +1199,51 @@ export default function MockTestsPage({
                                   1 &&
                                 runnerLoading
                                   ? "Opening…"
-                                  : "Main"
+                                  : testNumber ===
+                                      1
+                                    ? "Main"
+                                    : "🔒 Main"
                               }
                             </button>
 
                             <button
                               type="button"
-                              onClick={() =>
-                                available
-                                  ? chooseAvailable(
-                                      label,
-                                      "JEE Advanced",
-                                    )
-                                  : requestAccess(
-                                      label,
-                                      "JEE Advanced",
-                                    )
+                              disabled={
+                                runnerLoading
                               }
+                              onClick={() => {
+                                if (
+                                  testNumber ===
+                                    1
+                                ) {
+                                  void openFixedTest({
+                                    kind:
+                                      "FULL",
+                                    testCode:
+                                      "TEST_1",
+                                    level:
+                                      "ADVANCED",
+                                  });
+
+                                  return;
+                                }
+
+                                requestAccess(
+                                  label,
+                                  "JEE Advanced",
+                                );
+                              }}
                             >
-                              Advanced
+                              {
+                                testNumber ===
+                                  1 &&
+                                runnerLoading
+                                  ? "Opening…"
+                                  : testNumber ===
+                                      1
+                                    ? "Advanced"
+                                    : "🔒 Advanced"
+                              }
                             </button>
                           </>
                         ) : (
@@ -1215,7 +1296,7 @@ export default function MockTestsPage({
 
                 const restricted =
                   index >=
-                  2;
+                  1;
 
                 const label =
                   `Mini ${letter}`;
@@ -1272,17 +1353,6 @@ export default function MockTestsPage({
                                   return;
                                 }
 
-                                if (
-                                  available
-                                ) {
-                                  chooseAvailable(
-                                    label,
-                                    "JEE Main",
-                                  );
-
-                                  return;
-                                }
-
                                 requestAccess(
                                   label,
                                   "JEE Main",
@@ -1294,25 +1364,51 @@ export default function MockTestsPage({
                                   "A" &&
                                 runnerLoading
                                   ? "Opening…"
-                                  : "Main"
+                                  : letter ===
+                                      "A"
+                                    ? "Main"
+                                    : "🔒 Main"
                               }
                             </button>
 
                             <button
                               type="button"
-                              onClick={() =>
-                                available
-                                  ? chooseAvailable(
-                                      label,
-                                      "JEE Advanced",
-                                    )
-                                  : requestAccess(
-                                      label,
-                                      "JEE Advanced",
-                                    )
+                              disabled={
+                                runnerLoading
                               }
+                              onClick={() => {
+                                if (
+                                  letter ===
+                                    "A"
+                                ) {
+                                  void openFixedTest({
+                                    kind:
+                                      "MINI",
+                                    testCode:
+                                      "MINI_A",
+                                    level:
+                                      "ADVANCED",
+                                  });
+
+                                  return;
+                                }
+
+                                requestAccess(
+                                  label,
+                                  "JEE Advanced",
+                                );
+                              }}
                             >
-                              Advanced
+                              {
+                                letter ===
+                                  "A" &&
+                                runnerLoading
+                                  ? "Opening…"
+                                  : letter ===
+                                      "A"
+                                    ? "Advanced"
+                                    : "🔒 Advanced"
+                              }
                             </button>
                           </>
                         ) : (

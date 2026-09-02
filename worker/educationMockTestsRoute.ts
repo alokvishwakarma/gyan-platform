@@ -215,6 +215,8 @@ async function loadFixedTest(
           ON q.id = mtq.question_id
         LEFT JOIN education_question_metadata qm
           ON qm.question_id = q.id
+        LEFT JOIN education_mock_question_answers mqa
+          ON mqa.question_id = q.id
         WHERE mtq.mock_test_id = ?
           AND q.active = 1
         ORDER BY mtq.question_order
@@ -464,6 +466,7 @@ async function scoreFixedTest(
           q.id AS question_id,
           q.correct_choice,
           q.choice_a,
+          mqa.answer_key,
           COALESCE(qm.question_format, 'SINGLE_CHOICE') AS question_format,
           q.explanation
         FROM education_mock_test_questions mtq
@@ -486,6 +489,7 @@ async function scoreFixedTest(
         question_id: number;
         correct_choice: string;
         choice_a: string;
+        answer_key: string | null;
         question_format: string;
         explanation: string;
       }>();
@@ -528,21 +532,58 @@ async function scoreFixedTest(
           questionFormat === "NUMERICAL" ||
           questionFormat === "INTEGER";
 
+        const isMultiSelect =
+          questionFormat ===
+          "MULTI_SELECT";
+
+        const normalizeMultiSelect =
+          (
+            value: string,
+          ): string =>
+            Array.from(
+              new Set(
+                value
+                  .trim()
+                  .toUpperCase()
+                  .replace(
+                    /[^ABCD]/g,
+                    "",
+                  )
+                  .split(
+                    "",
+                  )
+                  .filter(
+                    Boolean,
+                  ),
+              ),
+            )
+              .sort()
+              .join("");
+
         const selectedChoice =
           typeof selectedRaw === "string"
             ? isNumerical
               ? selectedRaw.trim()
-              : selectedRaw
-                  .trim()
-                  .toUpperCase()
+              : isMultiSelect
+                ? normalizeMultiSelect(
+                    selectedRaw,
+                  )
+                : selectedRaw
+                    .trim()
+                    .toUpperCase()
             : "";
 
         const correctChoice =
           isNumerical
             ? row.choice_a.trim()
-            : row.correct_choice
-                .trim()
-                .toUpperCase();
+            : isMultiSelect
+              ? normalizeMultiSelect(
+                  row.answer_key ??
+                    row.correct_choice,
+                )
+              : row.correct_choice
+                  .trim()
+                  .toUpperCase();
 
         const numericalCorrect =
           isNumerical &&
