@@ -118,9 +118,11 @@
   font: inherit;
   font-size: 0.68rem;
   font-weight: 800;
+  white-space: nowrap;
   cursor: pointer;
 }
 
+/* Class is the strongest action in each Advanced row. */
 .education-portal__advanced-actions button:last-child {
   border-color: #df8a49;
   background: #fff4e9;
@@ -219,9 +221,13 @@
     gap: 5px;
   }
 
+  .education-portal__advanced-actions {
+    gap: 4px;
+  }
+
   .education-portal__advanced-actions button {
-    padding-inline: 7px;
-    font-size: 0.64rem;
+    padding-inline: 6px;
+    font-size: 0.62rem;
   }
 
   .education-portal__foundation-row {

@@ -149,6 +149,14 @@ export const LITTLE_LEARNER_TOPICS:
       },
     ],
   },
+
+  {
+  code: "ECHOLALIA",
+  name: "Echolalia",
+  icon: "💬",
+  subtopics: [],
+},
+
 ];
 
 

@@ -1869,7 +1869,18 @@ export function generatePuzzle(
    *
    * If a background arrangement accidentally
    * looks too easy, generate another candidate.
+   *
+   * Emergency fallback:
+   * keep the LAST structurally verified candidate.
+   * This means candidate 499 wins if it is solvable,
+   * even when it misses only visual/hardness quality
+   * certification. We never publish an unverified
+   * / unsolvable candidate merely to avoid a 500.
    */
+  let fallbackPuzzle:
+    GeneratedPuzzle | null =
+      null;
+
   for (
     let candidate = 0;
     candidate < 500;
@@ -2019,6 +2030,29 @@ const random =
         false,
     };
 
+    /*
+     * Safety check comes before quality checks.
+     *
+     * Remember the latest solvable candidate so
+     * candidate 499 can act as the emergency
+     * fallback if all quality-certified candidates
+     * fail.
+     */
+    const structurallyVerified =
+      verifyPuzzle(
+        draft,
+      );
+
+    if (
+      structurallyVerified
+    ) {
+      fallbackPuzzle = {
+        ...draft,
+        verified:
+          true,
+      };
+    }
+
     if (
       !visualStartAcceptable(
         draft,
@@ -2028,9 +2062,7 @@ const random =
     }
 
     if (
-      !verifyPuzzle(
-        draft,
-      )
+      !structurallyVerified
     ) {
       continue;
     }
@@ -2067,8 +2099,27 @@ const random =
     };
   }
 
+  /*
+   * No candidate passed every quality gate.
+   *
+   * Prefer availability over hardness certification,
+   * but ONLY with a puzzle that verifyPuzzle()
+   * proved solvable. Because fallbackPuzzle is
+   * overwritten as we iterate, candidate 499 is
+   * used when it is structurally valid.
+   */
+  if (
+    fallbackPuzzle
+  ) {
+    console.warn(
+      `Using verified fallback ${stage} puzzle #${puzzleNumber} after all 500 quality candidates failed.`,
+    );
+
+    return fallbackPuzzle;
+  }
+
   throw new Error(
-    `Unable to generate acceptable ${stage} puzzle #${puzzleNumber}.`,
+    `Unable to generate a verified ${stage} puzzle #${puzzleNumber} after 500 candidates.`,
   );
 }
 

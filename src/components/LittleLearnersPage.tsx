@@ -16,6 +16,9 @@ import LittleLearnerSettings
 import TextualPromptingTopic
   from "./TextualPromptingTopic";
 
+import EcholaliaTopic
+  from "./EcholaliaTopic";
+
 import {
   LITTLE_LEARNER_TOPICS,
 } from "../config/littleLearnerTopics";
@@ -25,6 +28,9 @@ import "./LittleLearnersPage.css";
 
 const TEXTUAL_PROMPTING_TOPIC_CODE =
   "TEXTUAL_PROMPTING";
+
+const ECHOLALIA_TOPIC_CODE =
+  "ECHOLALIA";
 
 
 interface LittleLearnersPageProps {
@@ -303,7 +309,9 @@ export default function LittleLearnersPage({
     () => {
       if (
         topic ===
-        TEXTUAL_PROMPTING_TOPIC_CODE
+          TEXTUAL_PROMPTING_TOPIC_CODE ||
+        topic ===
+          ECHOLALIA_TOPIC_CODE
       ) {
         return;
       }
@@ -582,6 +590,22 @@ export default function LittleLearnersPage({
           setSubtopic(
             "",
           );
+        }}
+      />
+    );
+  }
+
+
+  if (
+    topic ===
+    ECHOLALIA_TOPIC_CODE
+  ) {
+    return (
+      <EcholaliaTopic
+        studentCode={studentCode}
+        onBack={() => {
+          setTopic("ALL");
+          setSubtopic("");
         }}
       />
     );

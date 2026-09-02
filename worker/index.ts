@@ -143,6 +143,10 @@ import {
   handleGyanActivityRoute,
 } from "./gyanActivity";
 
+import {
+  handleEducationMockTestsRoute,
+} from "./educationMockTestsRoute";
+
 interface RegisterShopRequest {
   code?: unknown;
   name?: unknown;
@@ -1650,6 +1654,18 @@ if (gyanIdentityResponse) {
   return gyanIdentityResponse;
 }
 
+const educationMockTestsResponse =
+  await handleEducationMockTestsRoute(
+    request,
+    env,
+    url,
+  );
+
+if (
+  educationMockTestsResponse
+) {
+  return educationMockTestsResponse;
+}
 
   /*
    * ------------------------------------------------

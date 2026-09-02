@@ -255,32 +255,43 @@ async function loadPublishedByDate(
 }
 
 function localDateKey(): string {
-  const now =
-    new Date();
+  const parts =
+    new Intl.DateTimeFormat(
+      "en-US",
+      {
+        timeZone:
+          "America/Los_Angeles",
+        year:
+          "numeric",
+        month:
+          "2-digit",
+        day:
+          "2-digit",
+      },
+    ).formatToParts(
+      new Date(),
+    );
 
   const year =
-    now.getFullYear();
+    parts.find(
+      (part) =>
+        part.type === "year",
+    )?.value ?? "";
 
   const month =
-    String(
-      now.getMonth() + 1,
-    ).padStart(
-      2,
-      "0",
-    );
+    parts.find(
+      (part) =>
+        part.type === "month",
+    )?.value ?? "";
 
   const day =
-    String(
-      now.getDate(),
-    ).padStart(
-      2,
-      "0",
-    );
+    parts.find(
+      (part) =>
+        part.type === "day",
+    )?.value ?? "";
 
   return `${year}-${month}-${day}`;
 }
-
-
 
 async function nextPuzzleNumber(
   env: Env,

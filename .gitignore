@@ -27,3 +27,7 @@ dist-ssr
 
 # Cloudflare Wrangler local state
 .wrangler/
+
+# Local database backups / generated question exports
+backup_*.sql
+jee-*-questions.json

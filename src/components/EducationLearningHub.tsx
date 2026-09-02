@@ -9,6 +9,9 @@ import QRCode
 import EducationPortal
   from "./EducationPortal";
 
+import MockTestsPage
+  from "./MockTestsPage";
+
 import LittleLearnersExperience
   from "./LittleLearnersExperience";
 
@@ -50,7 +53,8 @@ type Step =
   | "questions"
   | "report"
   | "student-card"
-  | "little-learners";
+  | "little-learners"
+  | "mock-tests";
 
 
 type AnswerState = {
@@ -115,6 +119,36 @@ export default function EducationLearningHub({
     >(
       null,
     );
+
+  const [
+    mockProgram,
+    setMockProgram,
+  ] =
+    useState<
+      | "JEE"
+      | "NEET"
+      | null
+    >(
+      null,
+    );
+
+
+  const [
+    expandedSubjectCode,
+    setExpandedSubjectCode,
+  ] =
+    useState<string | null>(
+      null,
+    );
+
+  const [
+    subjectTopicsLoading,
+    setSubjectTopicsLoading,
+  ] =
+    useState(
+      false,
+    );
+
 
   const [
     subjects,
@@ -285,6 +319,33 @@ export default function EducationLearningHub({
       : "";
 
 
+  function learningCountryFor(
+    selection:
+      PortalSelection |
+      null,
+  ): EducationCountry {
+    /*
+     * IIT-JEE and NEET catalogs are India programs.
+     * They must continue to use IN even if the portal's
+     * general country selection is currently US.
+     */
+    if (
+      selection?.type ===
+        "program" &&
+      (
+        selection.code ===
+          "PROGRAM_JEE" ||
+        selection.code ===
+          "PROGRAM_NEET"
+      )
+    ) {
+      return "IN";
+    }
+
+    return country;
+  }
+
+
   const educationAccessNotice =
     normalizedActiveGyanCode &&
     activeGyanEmailKnown ===
@@ -337,7 +398,9 @@ export default function EducationLearningHub({
   ): Promise<void> {
     const next =
       await loadTopics(
-        country,
+        learningCountryFor(
+          selection,
+        ),
         selection.code,
         selectedSubject.code,
       );
@@ -353,6 +416,68 @@ export default function EducationLearningHub({
     setStep(
       "topics",
     );
+  }
+
+
+  async function toggleProgramSubject(
+    selectedSubject:
+      LearningItem,
+  ): Promise<void> {
+    if (
+      !grade ||
+      grade.type !==
+        "program"
+    ) {
+      return;
+    }
+
+    if (
+      expandedSubjectCode ===
+        selectedSubject.code
+    ) {
+      setExpandedSubjectCode(
+        null,
+      );
+      return;
+    }
+
+    setSubjectTopicsLoading(
+      true,
+    );
+    setError(
+      "",
+    );
+
+    try {
+      const nextTopics =
+        await loadTopics(
+          learningCountryFor(
+            grade,
+          ),
+          grade.code,
+          selectedSubject.code,
+        );
+
+      setSubject(
+        selectedSubject,
+      );
+      setTopics(
+        nextTopics,
+      );
+      setExpandedSubjectCode(
+        selectedSubject.code,
+      );
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Topics unavailable.",
+      );
+    } finally {
+      setSubjectTopicsLoading(
+        false,
+      );
+    }
   }
 
 
@@ -382,12 +507,28 @@ export default function EducationLearningHub({
       selection.type ===
         "program"
     ) {
+      const normalizedProgramCode =
+        selection.code
+          .trim()
+          .replace(/[^A-Z0-9]+/gi, "_")
+          .toUpperCase();
+
+      /*
+       * Keep IIT-JEE UI aliases mapped to the existing
+       * PROGRAM_IIT catalog key used by GYAN data.
+       *
+       * Config may call the program IIT-JEE / IIT_JEE / JEE,
+       * but those labels must not create a new empty
+       * PROGRAM_IIT_JEE grade bucket.
+       */
       const programGradeCode =
-        selection.code.startsWith("PROGRAM_")
-          ? selection.code
-          : `PROGRAM_${selection.code
-              .replace(/[^A-Z0-9]+/gi, "_")
-              .toUpperCase()}`;
+        normalizedProgramCode === "IIT" ||
+        normalizedProgramCode === "IIT_JEE" ||
+        normalizedProgramCode === "JEE"
+          ? "PROGRAM_JEE"
+          : normalizedProgramCode.startsWith("PROGRAM_")
+            ? normalizedProgramCode
+            : `PROGRAM_${normalizedProgramCode}`;
 
       const programSelection:
         PortalSelection = {
@@ -404,13 +545,16 @@ export default function EducationLearningHub({
       setGrade(programSelection);
       setSubject(null);
       setTopic(null);
+      setExpandedSubjectCode(null);
       setLoading(true);
       setError("");
 
       try {
         const nextSubjects =
           await loadSubjects(
-            country,
+            learningCountryFor(
+              programSelection,
+            ),
             programGradeCode,
           );
 
@@ -424,6 +568,14 @@ export default function EducationLearningHub({
             nextSubjects[0],
           );
           return;
+        }
+
+        if (
+          nextSubjects.length === 0
+        ) {
+          setError(
+            "No subjects are configured for this program yet.",
+          );
         }
 
         setStep("subjects");
@@ -442,6 +594,9 @@ export default function EducationLearningHub({
 
     setGrade(
       selection,
+    );
+    setExpandedSubjectCode(
+      null,
     );
 
     setLoading(
@@ -534,7 +689,9 @@ export default function EducationLearningHub({
     try {
       const next =
         await loadPracticeQuestions(
-          country,
+          learningCountryFor(
+            grade,
+          ),
           grade.code,
           subject.code,
           item.code,
@@ -591,7 +748,9 @@ export default function EducationLearningHub({
     try {
       const next =
         await loadPracticeQuestions(
-          country,
+          learningCountryFor(
+            grade,
+          ),
           grade.code,
           subject.code,
           topic.code,
@@ -762,7 +921,10 @@ export default function EducationLearningHub({
               email:
                 normalizedActiveEmail,
 
-              country,
+              country:
+                learningCountryFor(
+                  grade,
+                ),
 
               grade:
                 grade.code,
@@ -967,7 +1129,10 @@ export default function EducationLearningHub({
           email:
             normalizedEmail,
 
-          country,
+          country:
+            learningCountryFor(
+              grade,
+            ),
 
           grade:
             grade.code,
@@ -1114,6 +1279,31 @@ export default function EducationLearningHub({
 
   if (
     step ===
+      "mock-tests" &&
+    mockProgram
+  ) {
+    return (
+      <>
+        {educationAccessNotice}
+
+        <MockTestsPage
+          program={
+            mockProgram
+          }
+
+          onBack={() => {
+            setStep(
+              "portal",
+            );
+          }}
+        />
+      </>
+    );
+  }
+
+
+  if (
+    step ===
       "portal"
   ) {
     return (
@@ -1128,6 +1318,18 @@ export default function EducationLearningHub({
           onBack={
             onBack
           }
+
+          onMockTests={(
+            program,
+          ) => {
+            setMockProgram(
+              program,
+            );
+
+            setStep(
+              "mock-tests",
+            );
+          }}
 
           onSelect={(
             selection,
@@ -1171,9 +1373,23 @@ export default function EducationLearningHub({
               step ===
                 "questions"
             ) {
-              setStep(
-                "topics",
-              );
+              if (
+                grade?.type ===
+                  "program"
+              ) {
+                setStep(
+                  "subjects",
+                );
+
+                setExpandedSubjectCode(
+                  subject?.code ??
+                    null,
+                );
+              } else {
+                setStep(
+                  "topics",
+                );
+              }
 
               return;
             }
@@ -1253,45 +1469,187 @@ export default function EducationLearningHub({
           "subjects" && (
           <section>
             <h1>
-              Choose a subject
+              {
+                grade?.type ===
+                  "program"
+                  ? "Choose a subject / topic"
+                  : "Choose a subject"
+              }
             </h1>
 
-            <div
-              className="education-learning__cards"
-            >
-              {
-                subjects.map(
-                  (
-                    item,
-                  ) => (
-                    <button
-                      key={
-                        item.code
-                      }
-                      type="button"
-                      onClick={() => {
-                        if (
-                          !grade
-                        ) {
-                          return;
-                        }
+            {
+              grade?.type ===
+                "program" ? (
+                <div
+                  className="education-learning__subject-accordion"
+                >
+                  {
+                    subjects.map(
+                      (item) => {
+                        const expanded =
+                          expandedSubjectCode ===
+                            item.code;
 
-                        void loadTopicList(
-                          grade,
-                          item,
+                        return (
+                          <section
+                            key={
+                              item.code
+                            }
+                            className={[
+                              "education-learning__subject-block",
+                              expanded
+                                ? "education-learning__subject-block--expanded"
+                                : "",
+                            ]
+                              .filter(
+                                Boolean,
+                              )
+                              .join(
+                                " ",
+                              )}
+                          >
+                            <button
+                              type="button"
+                              className="education-learning__subject-toggle"
+                              onClick={() =>
+                                void toggleProgramSubject(
+                                  item,
+                                )
+                              }
+                              aria-expanded={
+                                expanded
+                              }
+                            >
+                              <strong>
+                                {
+                                  item.name
+                                    .replace(
+                                      /^JEE\s+/i,
+                                      "",
+                                    )
+                                    .replace(
+                                      /^NEET\s+/i,
+                                      "",
+                                    )
+                                }
+                              </strong>
+
+                              <span>
+                                {
+                                  expanded
+                                    ? "▴"
+                                    : "▾"
+                                }
+                              </span>
+                            </button>
+
+                            {
+                              expanded && (
+                                <div
+                                  className="education-learning__subject-topics"
+                                >
+                                  {
+                                    subjectTopicsLoading ? (
+                                      <div
+                                        className="education-learning__subject-topics-state"
+                                      >
+                                        Loading topics…
+                                      </div>
+                                    ) : topics.length >
+                                      0 ? (
+                                      <div
+                                        className="education-learning__topic-grid--compact"
+                                      >
+                                        {
+                                          topics.map(
+                                            (topicItem) => (
+                                              <button
+                                                key={
+                                                  topicItem.code
+                                                }
+                                                type="button"
+                                                disabled={
+                                                  topicItem.questionCount <
+                                                    5
+                                                }
+                                                onClick={() =>
+                                                  void selectTopic(
+                                                    topicItem,
+                                                  )
+                                                }
+                                              >
+                                                <strong>
+                                                  {
+                                                    topicItem.name
+                                                  }
+                                                </strong>
+
+                                                <small>
+                                                  {
+                                                    topicItem.questionCount
+                                                  }
+                                                  {" "}
+                                                  questions
+                                                </small>
+                                              </button>
+                                            ),
+                                          )
+                                        }
+                                      </div>
+                                    ) : (
+                                      <div
+                                        className="education-learning__subject-topics-state"
+                                      >
+                                        No topics configured yet.
+                                      </div>
+                                    )
+                                  }
+                                </div>
+                              )
+                            }
+                          </section>
                         );
-                      }}
-                    >
-                      <strong>
-                        {
-                          item.name
-                        }
-                      </strong>
-                    </button>
-                  ),
-                )
-              }
-            </div>
+                      },
+                    )
+                  }
+                </div>
+              ) : (
+                <div
+                  className="education-learning__cards"
+                >
+                  {
+                    subjects.map(
+                      (item) => (
+                        <button
+                          key={
+                            item.code
+                          }
+                          type="button"
+                          onClick={() => {
+                            if (
+                              !grade
+                            ) {
+                              return;
+                            }
+
+                            void loadTopicList(
+                              grade,
+                              item,
+                            );
+                          }}
+                        >
+                          <strong>
+                            {
+                              item.name
+                            }
+                          </strong>
+                        </button>
+                      ),
+                    )
+                  }
+                </div>
+              )
+            }
           </section>
         )
       }

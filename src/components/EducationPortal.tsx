@@ -29,6 +29,13 @@ interface EducationPortalProps {
         name: string;
       },
     ) => void;
+
+  onMockTests:
+    (
+      program:
+        | "JEE"
+        | "NEET",
+    ) => void;
 }
 
 const FOUNDATION_ROWS:
@@ -60,6 +67,24 @@ const FOUNDATION_ROWS:
       ["PREK", "Pre-K"],
     ],
   ];
+
+/*
+ * Temporary external demo board.
+ *
+ * Keep the URL in one place so GYAN is not coupled to Zoom throughout
+ * the component. This can later be replaced by a config/API value or a
+ * native GYAN demo/whiteboard route without changing the portal UI.
+ */
+const EDUCATION_DEMO_URL =
+  "https://us05whiteboard.zoom.us/wb/db/eWaLjYeCRrGwjTxytRnnQg/p/17502055956480";
+
+function openEducationDemo(): void {
+  window.open(
+    EDUCATION_DEMO_URL,
+    "_blank",
+    "noopener,noreferrer",
+  );
+}
 
 function normalizeProgramCode(
   value: string,
@@ -115,6 +140,7 @@ export default function EducationPortal({
   country,
   onBack,
   onSelect,
+  onMockTests,
 }: EducationPortalProps) {
   const [
     config,
@@ -305,7 +331,28 @@ export default function EducationPortal({
                           })
                         }
                       >
-                        Questions
+                        Topics
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onMockTests(
+                            "JEE",
+                          )
+                        }
+                      >
+                        Mock Tests
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={
+                          openEducationDemo
+                        }
+                        title="Open demo whiteboard"
+                      >
+                        Demo
                       </button>
 
                       <button
@@ -315,7 +362,7 @@ export default function EducationPortal({
                             "/class?category=iit-jee";
                         }}
                       >
-                        Classes
+                        Class
                       </button>
                     </div>
                   </div>
@@ -353,7 +400,28 @@ export default function EducationPortal({
                           })
                         }
                       >
-                        Questions
+                        Topics
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onMockTests(
+                            "NEET",
+                          )
+                        }
+                      >
+                        Mock Tests
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={
+                          openEducationDemo
+                        }
+                        title="Open demo whiteboard"
+                      >
+                        Demo
                       </button>
 
                       <button
@@ -363,7 +431,7 @@ export default function EducationPortal({
                             "/class?category=neet";
                         }}
                       >
-                        Classes
+                        Class
                       </button>
                     </div>
                   </div>

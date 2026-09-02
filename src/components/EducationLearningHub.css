@@ -715,3 +715,135 @@
   background: rgba(239, 248, 242, 0.9);
   color: #386347;
 }
+
+
+/* ------------------------------------------------------
+ * Program subject -> topic accordion (JEE / NEET)
+ * ------------------------------------------------------ */
+
+.education-learning__subject-accordion {
+  display: grid;
+  gap: 6px;
+}
+
+.education-learning__subject-block {
+  border: 1px solid #dbe4f0;
+  border-radius: 11px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.education-learning__subject-block--expanded {
+  border-color: #b8cbe1;
+}
+
+.education-learning__subject-toggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 0;
+  background: #fff;
+  color: #102a56;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.education-learning__subject-toggle strong {
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.education-learning__subject-toggle span {
+  font-size: 0.72rem;
+  color: #60758d;
+}
+
+.education-learning__subject-block--expanded
+  .education-learning__subject-toggle {
+  border-bottom: 1px solid #e5ebf2;
+  background: #f9fbfd;
+}
+
+.education-learning__subject-topics {
+  max-height: 310px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 7px;
+  scrollbar-gutter: stable;
+}
+
+.education-learning__topic-grid--compact {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.education-learning__topic-grid--compact button {
+  min-width: 0;
+  min-height: 45px;
+  padding: 6px 7px;
+  border: 1px solid #dfe7f1;
+  border-radius: 8px;
+  background: #fff;
+  color: #102a56;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.education-learning__topic-grid--compact button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.education-learning__topic-grid--compact strong,
+.education-learning__topic-grid--compact small {
+  display: block;
+}
+
+.education-learning__topic-grid--compact strong {
+  font-size: 0.65rem;
+  line-height: 1.2;
+}
+
+.education-learning__topic-grid--compact small {
+  margin-top: 2px;
+  font-size: 0.54rem;
+  color: #718096;
+}
+
+.education-learning__subject-topics-state {
+  padding: 12px 8px;
+  color: #6d7e91;
+  font-size: 0.65rem;
+  text-align: center;
+}
+
+@media (max-width: 420px) {
+  .education-learning__subject-topics {
+    max-height: 280px;
+    padding: 5px;
+  }
+
+  .education-learning__topic-grid--compact {
+    gap: 4px;
+  }
+
+  .education-learning__topic-grid--compact button {
+    min-height: 42px;
+    padding: 5px 6px;
+  }
+
+  .education-learning__topic-grid--compact strong {
+    font-size: 0.61rem;
+  }
+
+  .education-learning__topic-grid--compact small {
+    font-size: 0.51rem;
+  }
+}
