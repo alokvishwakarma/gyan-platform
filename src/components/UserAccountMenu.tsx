@@ -477,6 +477,12 @@ export default function UserAccountMenu({
     useState(false);
 
   const [
+    calendarDownloadRequested,
+    setCalendarDownloadRequested,
+  ] =
+    useState(false);
+
+  const [
     welcomeSaved,
     setWelcomeSaved,
   ] =
@@ -629,29 +635,6 @@ export default function UserAccountMenu({
     setCardDownloadRequested(
       true,
     );
-  }
-
-
-  function printCurrentCard(
-    identity:
-      GyanIdentity,
-  ): void {
-    window.localStorage.setItem(
-      "gyan_browser_code_v1",
-      identity.code,
-    );
-
-    window.open(
-      "/?calendar=print",
-      "_blank",
-      "noopener,noreferrer",
-    );
-
-    markWelcomeSeen(
-      identity,
-    );
-
-    closeWelcomeDialog();
   }
 
 
@@ -1767,7 +1750,12 @@ async function emailCurrentCard(
                   </strong>
                 ) : gyanIdentity ? (
                   <>
-                    <strong>
+                    <strong
+                      style={{
+                        color:
+                          "#e97825",
+                      }}
+                    >
                       {
                         gyanIdentity.displayName
                       } · {
@@ -1779,6 +1767,12 @@ async function emailCurrentCard(
                       href={
                         gyanIdentity.publicUrl
                       }
+                      style={{
+                        color:
+                          "#e97825",
+                        fontWeight:
+                          850,
+                      }}
                     >
                       {
                         gyanIdentity.publicUrl
@@ -1789,7 +1783,12 @@ async function emailCurrentCard(
                       gyanIdentity.accessCode && (
                         <span className="user-account-menu__access-code">
                           Access Code{" "}
-                          <b>
+                          <b
+                            style={{
+                              color:
+                                "#e97825",
+                            }}
+                          >
                             {
                               showAccessCode
                                 ? gyanIdentity.accessCode
@@ -2043,50 +2042,313 @@ async function emailCurrentCard(
                       );
                     })()}
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpen(
-                          false,
-                        );
+                    <div
 
-                        setWelcomeSaved(
-                          window.localStorage.getItem(
-                            welcomeSeenKey(
-                              gyanIdentity.code,
-                            ),
-                          ) === "1",
-                        );
 
-                        setNewCardWelcome(
-                          gyanIdentity,
-                        );
-                      }}
                       style={{
-                        width:
-                          "100%",
+
+
+                        display:
+
+
+                          "grid",
+
+
+                        gridTemplateColumns:
+
+
+                          "repeat(2, minmax(0, 1fr))",
+
+
+                        gap:
+
+
+                          "4px",
+
+
                         marginTop:
-                          "7px",
-                        padding:
-                          "7px 9px",
-                        border:
-                          "1px solid #cbd5e1",
-                        borderRadius:
-                          "8px",
-                        background:
-                          "#fff",
-                        font:
-                          "inherit",
-                        fontSize:
-                          "0.68rem",
-                        fontWeight:
-                          800,
-                        cursor:
-                          "pointer",
+
+
+                          "6px",
+
+
                       }}
+
+
                     >
-                      🎁 Show GYAN Card
-                    </button>
+
+
+                      <button
+
+
+                        type="button"
+
+
+                        className="user-account-menu__compact-download"
+                        onClick={() => {
+
+
+                          setOpen(
+
+
+                            false,
+
+
+                          );
+
+
+
+                          setNewCardWelcome(
+
+
+                            gyanIdentity,
+
+
+                          );
+
+
+                        }}
+
+
+                        title="Download GYAN Card"
+
+
+                        style={{
+
+
+                          width:
+
+
+                            "100%",
+
+
+                          minWidth:
+
+
+                            0,
+
+
+                          padding:
+
+
+                            "5px 4px",
+
+
+                          border:
+
+
+                            "1px solid #cbd5e1",
+
+
+                          borderRadius:
+
+
+                            "7px",
+
+
+                          background:
+
+
+                            "#fff",
+
+
+                          color:
+
+
+                            "#174a73",
+
+
+                          font:
+
+
+                            "inherit",
+
+
+                          fontSize:
+
+
+                            "0.6rem",
+
+
+                          fontWeight:
+
+
+                            800,
+
+
+                          lineHeight:
+
+
+                            1.05,
+
+
+                          textAlign:
+
+
+                            "center",
+
+
+                          whiteSpace:
+
+
+                            "nowrap",
+
+
+                          cursor:
+
+
+                            "pointer",
+
+
+                        }}
+
+
+                      >
+
+
+                        🎁 GYAN Card ↓
+
+
+                      </button>
+
+
+
+                      <button
+
+
+                        type="button"
+
+
+                        className="user-account-menu__compact-download"
+                        onClick={() => {
+
+
+                          setOpen(
+
+
+                            false,
+
+
+                          );
+
+
+
+                          window.localStorage.setItem(
+                            "gyan_browser_code_v1",
+                            gyanIdentity.code,
+                          );
+
+                          setCalendarDownloadRequested(
+                            true,
+                          );
+
+
+                        }}
+
+
+                        title="Download Calendar"
+
+
+                        style={{
+
+
+                          width:
+
+
+                            "100%",
+
+
+                          minWidth:
+
+
+                            0,
+
+
+                          padding:
+
+
+                            "5px 4px",
+
+
+                          border:
+
+
+                            "1px solid #cbd5e1",
+
+
+                          borderRadius:
+
+
+                            "7px",
+
+
+                          background:
+
+
+                            "#fff",
+
+
+                          color:
+
+
+                            "#174a73",
+
+
+                          font:
+
+
+                            "inherit",
+
+
+                          fontSize:
+
+
+                            "0.6rem",
+
+
+                          fontWeight:
+
+
+                            800,
+
+
+                          lineHeight:
+
+
+                            1.05,
+
+
+                          textAlign:
+
+
+                            "center",
+
+
+                          whiteSpace:
+
+
+                            "nowrap",
+
+
+                          cursor:
+
+
+                            "pointer",
+
+
+                        }}
+
+
+                      >
+
+
+                        📅 Calendar ↓
+
+
+                      </button>
+
+
+                    </div>
                   </>
                 ) : (
                   <strong>
@@ -2252,32 +2514,87 @@ async function emailCurrentCard(
             ) : (
               <>
                 <div
-                  className="user-account-menu__identity"
-                >
-                  <strong>
-                    GYAN Account
-                  </strong>
-
-                  <small>
-                    Sign in with email.
-                  </small>
-                </div>
-
-                <button
-                  type="button"
-                  className="user-account-menu__signin"
-                  onClick={() => {
-                    setOpen(
-                      false,
-                    );
-
-                    setAuthOpen(
-                      true,
-                    );
+                  style={{
+                    display:
+                      "grid",
+                    gridTemplateColumns:
+                      "minmax(0, 1fr) auto",
+                    alignItems:
+                      "center",
+                    gap:
+                      "6px",
+                    padding:
+                      "5px 4px",
+                    borderBottom:
+                      "1px solid #edf1f6",
+                    marginBottom:
+                      "3px",
                   }}
                 >
-                  ✉️ Sign in
-                </button>
+                  <div
+                    style={{
+                      minWidth:
+                        0,
+                      whiteSpace:
+                        "nowrap",
+                      overflow:
+                        "hidden",
+                      textOverflow:
+                        "ellipsis",
+                      lineHeight:
+                        1.05,
+                    }}
+                  >
+                    <strong
+                      style={{
+                        fontSize:
+                          "0.68rem",
+                      }}
+                    >
+                      GYAN Account
+                    </strong>
+                    <small
+                      style={{
+                        marginLeft:
+                          "4px",
+                        color:
+                          "#64748b",
+                        fontSize:
+                          "0.56rem",
+                      }}
+                    >
+                      Sign in with email.
+                    </small>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="user-account-menu__signin"
+                    onClick={() => {
+                      setOpen(
+                        false,
+                      );
+
+                      setAuthOpen(
+                        true,
+                      );
+                    }}
+                    style={{
+                      width:
+                        "auto",
+                      minWidth:
+                        "62px",
+                      padding:
+                        "6px 8px",
+                      textAlign:
+                        "center",
+                      whiteSpace:
+                        "nowrap",
+                    }}
+                  >
+                    ✉️ Sign in
+                  </button>
+                </div>
 
                 <button
                   type="button"
@@ -2931,7 +3248,7 @@ async function emailCurrentCard(
                   display:
                     "grid",
                   gridTemplateColumns:
-                    "repeat(4, minmax(0, 1fr))",
+                    "repeat(3, minmax(0, 1fr))",
                   gap:
                     "6px",
                 }}
@@ -2962,35 +3279,6 @@ async function emailCurrentCard(
                       ? "Preparing PDF…"
                       : "🖨️ Download"
                   }
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    printCurrentCard(
-                      newCardWelcome,
-                    )
-                  }
-                  style={{
-                    minHeight:
-                      "32px",
-                    border:
-                      "1px solid #b8c5d1",
-                    borderRadius:
-                      "9px",
-                    background:
-                      "#ffffff",
-                    font:
-                      "inherit",
-                    fontSize:
-                      "0.64rem",
-                    fontWeight:
-                      800,
-                    cursor:
-                      "pointer",
-                  }}
-                >
-                  🖨️ Print
                 </button>
 
                 <button
@@ -3259,6 +3547,47 @@ async function emailCurrentCard(
 
                 closeWelcomeDialog();
               }}
+            />
+          </div>
+        )}
+
+      {calendarDownloadRequested &&
+        gyanIdentity && (
+          <div
+            aria-hidden="true"
+            style={{
+              position:
+                "fixed",
+              left:
+                "-10000px",
+              top:
+                "0",
+              width:
+                "760px",
+              minHeight:
+                "1100px",
+              overflow:
+                "visible",
+              pointerEvents:
+                "none",
+              zIndex:
+                -1,
+            }}
+          >
+            <GyanCalendarPage
+              onClose={() =>
+                setCalendarDownloadRequested(
+                  false,
+                )
+              }
+              initialPrintOpen
+              useCurrentGyan
+              autoDownloadA5
+              onPdfDownloaded={() =>
+                setCalendarDownloadRequested(
+                  false,
+                )
+              }
             />
           </div>
         )}

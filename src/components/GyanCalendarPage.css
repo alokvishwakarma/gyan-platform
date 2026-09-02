@@ -7792,3 +7792,114 @@ span:nth-child(7n + 1) {
   white-space: nowrap;
 }
 
+/* =========================================================
+   A5 PDF — READABLE URL FALLBACK FOR LOW-QUALITY PRINTS
+   Keep this LAST so the short public URL remains a practical
+   fallback when a printed QR cannot be scanned reliably.
+   ========================================================= */
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main
+.gyan-account-screenlet__url {
+  font-size:
+    1.28rem !important;
+
+  font-weight:
+    900 !important;
+
+  line-height:
+    1.02 !important;
+
+  letter-spacing:
+    0.015em !important;
+
+  white-space:
+    nowrap !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main
+.gyan-account-screenlet__url > span {
+  color:
+    #425865 !important;
+
+  font:
+    inherit !important;
+
+  font-weight:
+    800 !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main
+.gyan-account-screenlet__url > strong {
+  color:
+    #174a73 !important;
+
+  font:
+    inherit !important;
+
+  font-weight:
+    950 !important;
+
+  letter-spacing:
+    0.035em !important;
+}
+
+/* Access code stays readable, but no longer competes with the public URL. */
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-a5-account__access {
+  font-size:
+    0.76rem !important;
+}
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-a5-account__access strong {
+  font-size:
+    1.02rem !important;
+
+  letter-spacing:
+    0.07em !important;
+}
+
+.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main
+.gyan-account-screenlet__name {
+  color: #e97825 !important;
+}
+
+.gyan-print-card-v2--a5
+.gyan-account-screenlet__url > strong {
+  color: #e97825 !important;
+}
+
+/* A5 unique account identity = brown-orange */
+.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main
+.gyan-account-screenlet__url,
+.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main
+.gyan-account-screenlet__url > span,
+.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main
+.gyan-account-screenlet__url > strong {
+  color: #e97825 !important;
+}
+
+/* =========================================================
+   A5 PDF — UNIQUE IDENTITY COLOR (FINAL OVERRIDE)
+   Match the specificity of the earlier --pdf URL rules.
+   ========================================================= */
+
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main
+.gyan-account-screenlet__url,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main
+.gyan-account-screenlet__url > span,
+.gyan-print-card-v2--pdf.gyan-print-card-v2--a5
+.gyan-print-card-v2__account--a5-main
+.gyan-account-screenlet__url > strong {
+  color: #e97825 !important;
+}
+
