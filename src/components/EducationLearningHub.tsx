@@ -162,6 +162,38 @@ type ProgramReportTopic = {
 };
 
 
+type EducationTeacher = {
+  id: number;
+  name: string;
+  email: string;
+  subjects: string;
+  location: string | null;
+  bio: string | null;
+  status: string;
+};
+
+
+type EducationTeacherAssignment = {
+  id: number;
+  status: string;
+  requestedAt: string;
+  assignedAt: string | null;
+  teacher: EducationTeacher | null;
+};
+
+
+type EducationTeacherRequest = {
+  id: number;
+  studentCode: string;
+  studentName: string;
+  displayName: string;
+  requestedAt: string;
+  email: string;
+  phone: string;
+  subjects: string;
+};
+
+
 interface EducationLearningHubProps {
   country:
     EducationCountry;
@@ -178,6 +210,9 @@ interface EducationLearningHubProps {
   activeGyanEmailKnown?:
     boolean;
 
+  adminAuthenticated?:
+    boolean;
+
   onBack:
     () => void;
 }
@@ -189,6 +224,8 @@ export default function EducationLearningHub({
   activeGyanName,
   activeGyanEmail,
   activeGyanEmailKnown,
+  adminAuthenticated =
+    false,
   onBack,
 }: EducationLearningHubProps) {
   const [
@@ -386,6 +423,135 @@ export default function EducationLearningHub({
     >(
       [],
     );
+
+  const [
+    teacherDialogOpen,
+    setTeacherDialogOpen,
+  ] =
+    useState(
+      false,
+    );
+
+  const [teacherRequestDialogOpen, setTeacherRequestDialogOpen] = useState(false);
+  const [teacherRequestEmail, setTeacherRequestEmail] = useState(activeGyanEmail ?? "");
+  const [teacherRequestPhone, setTeacherRequestPhone] = useState("");
+  const [teacherRequestSubjects, setTeacherRequestSubjects] = useState("");
+
+
+  const [
+    registrationDialog,
+    setRegistrationDialog,
+  ] =
+    useState<
+      {
+        title: string;
+        message: string;
+      } |
+      null
+    >(
+      null,
+    );
+
+
+  const [
+    teachers,
+    setTeachers,
+  ] =
+    useState<
+      EducationTeacher[]
+    >(
+      [],
+    );
+
+  const [
+    teacherAssignment,
+    setTeacherAssignment,
+  ] =
+    useState<
+      EducationTeacherAssignment |
+      null
+    >(
+      null,
+    );
+
+  const [
+    teacherRequests,
+    setTeacherRequests,
+  ] =
+    useState<
+      EducationTeacherRequest[]
+    >(
+      [],
+    );
+
+  const [
+    teacherBusy,
+    setTeacherBusy,
+  ] =
+    useState(
+      false,
+    );
+
+  const [
+    teacherMessage,
+    setTeacherMessage,
+  ] =
+    useState("");
+
+  const [
+    teacherRegisterOpen,
+    setTeacherRegisterOpen,
+  ] =
+    useState(
+      false,
+    );
+
+  const [
+    teacherName,
+    setTeacherName,
+  ] =
+    useState("");
+
+  const [
+    teacherEmail,
+    setTeacherEmail,
+  ] =
+    useState(
+      activeGyanEmail ??
+      "",
+    );
+
+  const [
+    teacherSubjects,
+    setTeacherSubjects,
+  ] =
+    useState("");
+
+  const [
+    teacherLocation,
+    setTeacherLocation,
+  ] =
+    useState("");
+
+  const [
+    teacherBio,
+    setTeacherBio,
+  ] =
+    useState("");
+
+  const [
+    teacherSelections,
+    setTeacherSelections,
+  ] =
+    useState<
+      Record<
+        number,
+        number
+      >
+    >(
+      {},
+    );
+
 
   const [
     selectedMockAttempt,
@@ -888,6 +1054,442 @@ export default function EducationLearningHub({
       normalizedActiveGyanCode,
     ],
   );
+
+
+  function showRegistrationMessage(
+    topicName:
+      string,
+    message?:
+      string,
+  ): void {
+    const cleanedMessage =
+      (
+        message ??
+        ""
+      )
+        .trim();
+
+    setError(
+      "",
+    );
+
+    setRegistrationDialog({
+      title:
+        topicName ||
+        "Class Registration",
+
+      message:
+        cleanedMessage ||
+        `To register for "${topicName}", contact admin@gyan.cc`,
+    });
+  }
+
+
+  function isRegistrationMessage(
+    message:
+      string,
+  ): boolean {
+    const normalized =
+      message
+        .trim()
+        .toLowerCase();
+
+    return (
+      normalized.includes(
+        "contact admin@gyan.cc",
+      ) ||
+      normalized.includes(
+        "to register for",
+      ) ||
+      normalized.includes(
+        "register for",
+      )
+    );
+  }
+
+
+  async function loadTeacherData():
+  Promise<void> {
+    setTeacherBusy(
+      true,
+    );
+
+    setTeacherMessage(
+      "",
+    );
+
+    try {
+      const teacherResponse =
+        await fetch(
+          "/api/education/teachers",
+          {
+            credentials:
+              "include",
+            cache:
+              "no-store",
+          },
+        );
+
+      const teacherBody =
+        await teacherResponse.json() as {
+          teachers?:
+            EducationTeacher[];
+          error?:
+            string;
+        };
+
+      if (
+        !teacherResponse.ok
+      ) {
+        throw new Error(
+          teacherBody.error ??
+          "Teachers could not be loaded.",
+        );
+      }
+
+      setTeachers(
+        teacherBody.teachers ??
+        [],
+      );
+
+      if (
+        normalizedActiveGyanCode
+      ) {
+        const assignmentResponse =
+          await fetch(
+            `/api/education/teacher-assignment?student=${encodeURIComponent(
+              normalizedActiveGyanCode,
+            )}`,
+            {
+              credentials:
+                "include",
+              cache:
+                "no-store",
+            },
+          );
+
+        if (
+          assignmentResponse.ok
+        ) {
+          const assignmentBody =
+            await assignmentResponse.json() as {
+              assignment?:
+                EducationTeacherAssignment |
+                null;
+            };
+
+          setTeacherAssignment(
+            assignmentBody.assignment ??
+            null,
+          );
+        }
+      }
+
+      if (
+        adminAuthenticated
+      ) {
+        const requestResponse =
+          await fetch(
+            "/api/education/teacher-assignment/requests",
+            {
+              credentials:
+                "include",
+              cache:
+                "no-store",
+            },
+          );
+
+        if (
+          requestResponse.ok
+        ) {
+          const requestBody =
+            await requestResponse.json() as {
+              requests?:
+                EducationTeacherRequest[];
+            };
+
+          setTeacherRequests(
+            requestBody.requests ??
+            [],
+          );
+        }
+      }
+    } catch (
+      caught
+    ) {
+      setTeacherMessage(
+        caught instanceof
+          Error
+          ? caught.message
+          : "Teacher information could not be loaded.",
+      );
+    } finally {
+      setTeacherBusy(
+        false,
+      );
+    }
+  }
+
+
+  async function openTeachers():
+  Promise<void> {
+    setTeacherDialogOpen(
+      true,
+    );
+
+    await loadTeacherData();
+  }
+
+
+  async function requestTeacher(): Promise<void> {
+    if (!normalizedActiveGyanCode) { setTeacherMessage("Open or create a GYAN first."); return; }
+    const email = teacherRequestEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setTeacherMessage("Enter a valid email address."); return; }
+    setTeacherBusy(true); setTeacherMessage("");
+    try {
+      const response = await fetch("/api/education/teacher-assignment/request", { method:"POST", credentials:"include", headers:{"content-type":"application/json"}, body:JSON.stringify({ studentCode:normalizedActiveGyanCode, email, phone:teacherRequestPhone.trim(), subjects:teacherRequestSubjects.trim() }) });
+      const body = await response.json() as { requested?: boolean; error?: string };
+      if (!response.ok || !body.requested) throw new Error(body.error ?? "Teacher request could not be sent.");
+      setTeacherRequestDialogOpen(false); setTeacherMessage("✓ Teacher request sent to GYAN Admin."); await loadTeacherData();
+    } catch (caught) { setTeacherMessage(caught instanceof Error ? caught.message : "Teacher request could not be sent."); }
+    finally { setTeacherBusy(false); }
+  }
+
+
+  async function registerTeacher():
+  Promise<void> {
+    setTeacherBusy(
+      true,
+    );
+
+    setTeacherMessage(
+      "",
+    );
+
+    try {
+      const response =
+        await fetch(
+          "/api/education/teachers/register",
+          {
+            method:
+              "POST",
+            credentials:
+              "include",
+            headers: {
+              "content-type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                name:
+                  teacherName,
+                email:
+                  teacherEmail,
+                subjects:
+                  teacherSubjects,
+                location:
+                  teacherLocation,
+                bio:
+                  teacherBio,
+              }),
+          },
+        );
+
+      const body =
+        await response.json() as {
+          saved?: boolean;
+          status?: string;
+          error?: string;
+        };
+
+      if (
+        !response.ok ||
+        !body.saved
+      ) {
+        throw new Error(
+          body.error ??
+          "Teacher registration could not be saved.",
+        );
+      }
+
+      setTeacherRegisterOpen(
+        false,
+      );
+
+      setTeacherMessage(
+        "✓ Registration submitted for admin approval.",
+      );
+
+      await loadTeacherData();
+    } catch (
+      caught
+    ) {
+      setTeacherMessage(
+        caught instanceof
+          Error
+          ? caught.message
+          : "Teacher registration could not be saved.",
+      );
+    } finally {
+      setTeacherBusy(
+        false,
+      );
+    }
+  }
+
+
+  async function approveTeacher(
+    teacherId:
+      number,
+  ): Promise<void> {
+    setTeacherBusy(
+      true,
+    );
+
+    setTeacherMessage(
+      "",
+    );
+
+    try {
+      const response =
+        await fetch(
+          "/api/education/teachers/approve",
+          {
+            method:
+              "POST",
+            credentials:
+              "include",
+            headers: {
+              "content-type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                teacherId,
+              }),
+          },
+        );
+
+      const body =
+        await response.json() as {
+          approved?: boolean;
+          error?: string;
+        };
+
+      if (
+        !response.ok ||
+        !body.approved
+      ) {
+        throw new Error(
+          body.error ??
+          "Teacher could not be approved.",
+        );
+      }
+
+      setTeacherMessage(
+        "✓ Teacher approved.",
+      );
+
+      await loadTeacherData();
+    } catch (
+      caught
+    ) {
+      setTeacherMessage(
+        caught instanceof
+          Error
+          ? caught.message
+          : "Teacher could not be approved.",
+      );
+    } finally {
+      setTeacherBusy(
+        false,
+      );
+    }
+  }
+
+
+  async function assignTeacherToRequest(
+    requestId:
+      number,
+  ): Promise<void> {
+    const teacherId =
+      teacherSelections[
+        requestId
+      ];
+
+    if (!teacherId) {
+      setTeacherMessage(
+        "Choose an approved teacher.",
+      );
+
+      return;
+    }
+
+    setTeacherBusy(
+      true,
+    );
+
+    setTeacherMessage(
+      "",
+    );
+
+    try {
+      const response =
+        await fetch(
+          "/api/education/teacher-assignment/assign",
+          {
+            method:
+              "POST",
+            credentials:
+              "include",
+            headers: {
+              "content-type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                requestId,
+                teacherId,
+              }),
+          },
+        );
+
+      const body =
+        await response.json() as {
+          assigned?: boolean;
+          error?: string;
+        };
+
+      if (
+        !response.ok ||
+        !body.assigned
+      ) {
+        throw new Error(
+          body.error ??
+          "Teacher could not be assigned.",
+        );
+      }
+
+      setTeacherMessage(
+        "✓ Teacher assigned.",
+      );
+
+      await loadTeacherData();
+    } catch (
+      caught
+    ) {
+      setTeacherMessage(
+        caught instanceof
+          Error
+          ? caught.message
+          : "Teacher could not be assigned.",
+      );
+    } finally {
+      setTeacherBusy(
+        false,
+      );
+    }
+  }
 
 
   function scoreState(
@@ -1850,12 +2452,26 @@ export default function EducationLearningHub({
     } catch (
       caught
     ) {
-      setError(
+      const message =
         caught instanceof
           Error
           ? caught.message
-          : "Questions unavailable.",
-      );
+          : "Questions unavailable.";
+
+      if (
+        isRegistrationMessage(
+          message,
+        )
+      ) {
+        showRegistrationMessage(
+          item.name,
+          message,
+        );
+      } else {
+        setError(
+          message,
+        );
+      }
     } finally {
       setLoading(
         false,
@@ -2698,6 +3314,95 @@ export default function EducationLearningHub({
           </small>
         </div>
       </header>
+
+
+      {
+        registrationDialog && (
+          <div
+            className="education-learning__registration-backdrop"
+            role="presentation"
+            onMouseDown={() =>
+              setRegistrationDialog(
+                null,
+              )
+            }
+          >
+            <section
+              className="education-learning__registration-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="education-registration-title"
+              onMouseDown={(
+                event,
+              ) =>
+                event.stopPropagation()
+              }
+            >
+              <button
+                type="button"
+                className="education-learning__registration-x"
+                aria-label="Close"
+                onClick={() =>
+                  setRegistrationDialog(
+                    null,
+                  )
+                }
+              >
+                ×
+              </button>
+
+              <small>
+                CLASS REGISTRATION
+              </small>
+
+              <h2
+                id="education-registration-title"
+              >
+                {
+                  registrationDialog.title
+                }
+              </h2>
+
+              <p>
+                {
+                  registrationDialog.message
+                }
+              </p>
+
+              <div
+                className="education-learning__registration-contact"
+              >
+                <span>
+                  Contact
+                </span>
+
+                <a
+                  href={`mailto:admin@gyan.cc?subject=${encodeURIComponent(
+                    `GYAN Class Registration · ${registrationDialog.title}`,
+                  )}`}
+                >
+                  admin@gyan.cc
+                </a>
+              </div>
+
+              <div
+                className="education-learning__registration-actions"
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setRegistrationDialog(
+                      null,
+                    )
+                  }
+                >
+                  Close
+                </button>
+              </div>
+            </section>
+          </div>
+        )
+      }
 
 
       {
@@ -3905,6 +4610,512 @@ export default function EducationLearningHub({
                       ),
                     )
                   }
+
+                  <section className="education-learning__teacher-footer" aria-label="Teacher help">
+                    <div className="education-learning__teacher-footer-copy"><strong>Need a teacher?</strong><small>Take your time. Request help whenever you are ready.</small></div>
+                    <div className="education-learning__teacher-footer-actions">
+                      <button type="button" disabled={teachers.filter((t) => t.status === "APPROVED").length < 5} onClick={() => void openTeachers()}>
+                        {teachers.filter((t) => t.status === "APPROVED").length < 5 ? "🔒 View Teachers" : "👩‍🏫 View Teachers"}
+                      </button>
+                      <button type="button" className="education-learning__teacher-assign-button" disabled={teacherAssignment?.status === "ASSIGNED"} onClick={() => { setTeacherMessage(""); setTeacherRequestEmail(activeGyanEmail ?? teacherRequestEmail); setTeacherRequestDialogOpen(true); }}>
+                        {teacherAssignment?.status === "ASSIGNED" ? `✓ ${teacherAssignment.teacher?.name ?? "Teacher"}` : teacherAssignment?.status === "REQUESTED" ? "Update Teacher Request" : "Assign Teacher"}
+                      </button>
+                    </div>
+                  </section>
+
+                  {teacherRequestDialogOpen && (
+                    <div className="education-learning__teacher-request-backdrop" onMouseDown={() => setTeacherRequestDialogOpen(false)}>
+                      <section className="education-learning__teacher-request-dialog" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
+                        <button type="button" className="education-learning__teacher-request-x" onClick={() => setTeacherRequestDialogOpen(false)}>×</button>
+                        <small>TEACHER REQUEST</small><h2>Assign Teacher</h2>
+                        <p>Tell GYAN how to contact you and what you would like help with. Email is required.</p>
+                        <label><span>Email *</span><input type="email" value={teacherRequestEmail} onChange={(e) => setTeacherRequestEmail(e.target.value)} /></label>
+                        <label><span>Phone</span><input type="tel" value={teacherRequestPhone} onChange={(e) => setTeacherRequestPhone(e.target.value)} /></label>
+                        <label><span>Subjects</span><input type="text" value={teacherRequestSubjects} placeholder="Physics, Maths, Kinematics…" onChange={(e) => setTeacherRequestSubjects(e.target.value)} /></label>
+                        {teacherMessage && <div className="education-learning__teacher-request-message">{teacherMessage}</div>}
+                        <div className="education-learning__teacher-request-actions"><button type="button" onClick={() => setTeacherRequestDialogOpen(false)}>Cancel</button><button type="button" className="education-learning__teacher-request-submit" disabled={teacherBusy || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(teacherRequestEmail.trim())} onClick={() => void requestTeacher()}>{teacherBusy ? "Sending…" : "Send Request"}</button></div>
+                      </section>
+                    </div>
+                  )}
+
+                  {
+                    teacherDialogOpen && (
+                      <div
+                        className="education-learning__teacher-backdrop"
+                        role="presentation"
+                        onMouseDown={() =>
+                          setTeacherDialogOpen(
+                            false,
+                          )
+                        }
+                      >
+                        <section
+                          className="education-learning__teacher-dialog"
+                          role="dialog"
+                          aria-modal="true"
+                          aria-label="GYAN Teachers"
+                          onMouseDown={(
+                            event,
+                          ) =>
+                            event.stopPropagation()
+                          }
+                        >
+                          <button
+                            type="button"
+                            className="education-learning__teacher-x"
+                            onClick={() =>
+                              setTeacherDialogOpen(
+                                false,
+                              )
+                            }
+                            aria-label="Close"
+                          >
+                            ×
+                          </button>
+
+                          <h2>
+                            GYAN Teachers
+                          </h2>
+
+                          {
+                            teacherAssignment
+                              ?.status ===
+                              "ASSIGNED" &&
+                            teacherAssignment.teacher && (
+                              <div
+                                className="education-learning__teacher-assigned"
+                              >
+                                <strong>
+                                  Your Teacher
+                                </strong>
+
+                                <span>
+                                  {
+                                    teacherAssignment.teacher.name
+                                  }
+                                </span>
+
+                                <small>
+                                  {
+                                    teacherAssignment.teacher.subjects
+                                  }
+                                </small>
+                              </div>
+                            )
+                          }
+
+                          <div
+                            className="education-learning__teacher-list"
+                          >
+                            {
+                              teachers
+                                .filter(
+                                  (
+                                    teacher,
+                                  ) =>
+                                    teacher.status ===
+                                    "APPROVED",
+                                )
+                                .map(
+                                  (
+                                    teacher,
+                                  ) => (
+                                    <article
+                                      key={
+                                        teacher.id
+                                      }
+                                    >
+                                      <strong>
+                                        {
+                                          teacher.name
+                                        }
+                                      </strong>
+
+                                      <span>
+                                        {
+                                          teacher.subjects
+                                        }
+                                      </span>
+
+                                      {
+                                        teacher.location && (
+                                          <small>
+                                            {
+                                              teacher.location
+                                            }
+                                          </small>
+                                        )
+                                      }
+
+                                      {
+                                        teacher.bio && (
+                                          <p>
+                                            {
+                                              teacher.bio
+                                            }
+                                          </p>
+                                        )
+                                      }
+                                    </article>
+                                  ),
+                                )
+                            }
+
+                            {
+                              teachers.filter(
+                                (
+                                  teacher,
+                                ) =>
+                                  teacher.status ===
+                                  "APPROVED",
+                              ).length ===
+                                0 && (
+                                <small>
+                                  No approved teachers are listed yet.
+                                </small>
+                              )
+                            }
+                          </div>
+
+                          <button
+                            type="button"
+                            className="education-learning__teacher-register-button"
+                            onClick={() =>
+                              setTeacherRegisterOpen(
+                                (
+                                  current,
+                                ) =>
+                                  !current,
+                              )
+                            }
+                          >
+                            Register as Teacher
+                          </button>
+
+                          {
+                            teacherRegisterOpen && (
+                              <div
+                                className="education-learning__teacher-register"
+                              >
+                                <input
+                                  value={
+                                    teacherName
+                                  }
+                                  placeholder="Name"
+                                  onChange={(
+                                    event,
+                                  ) =>
+                                    setTeacherName(
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+
+                                <input
+                                  type="email"
+                                  value={
+                                    teacherEmail
+                                  }
+                                  placeholder="Email"
+                                  onChange={(
+                                    event,
+                                  ) =>
+                                    setTeacherEmail(
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+
+                                <input
+                                  value={
+                                    teacherSubjects
+                                  }
+                                  placeholder="Subjects e.g. Physics, Maths"
+                                  onChange={(
+                                    event,
+                                  ) =>
+                                    setTeacherSubjects(
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+
+                                <input
+                                  value={
+                                    teacherLocation
+                                  }
+                                  placeholder="Location (optional)"
+                                  onChange={(
+                                    event,
+                                  ) =>
+                                    setTeacherLocation(
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+
+                                <textarea
+                                  value={
+                                    teacherBio
+                                  }
+                                  placeholder="Short introduction (optional)"
+                                  onChange={(
+                                    event,
+                                  ) =>
+                                    setTeacherBio(
+                                      event.target.value,
+                                    )
+                                  }
+                                />
+
+                                <button
+                                  type="button"
+                                  disabled={
+                                    teacherBusy
+                                  }
+                                  onClick={() =>
+                                    void registerTeacher()
+                                  }
+                                >
+                                  Submit Registration
+                                </button>
+                              </div>
+                            )
+                          }
+
+                          {
+                            adminAuthenticated && (
+                              <section
+                                className="education-learning__teacher-admin"
+                              >
+                                <h3>
+                                  Pending Teacher Registrations
+                                </h3>
+
+                                <div
+                                  className="education-learning__teacher-pending-list"
+                                >
+                                  {
+                                    teachers
+                                      .filter(
+                                        (
+                                          teacher,
+                                        ) =>
+                                          teacher.status ===
+                                          "PENDING",
+                                      )
+                                      .map(
+                                        (
+                                          teacher,
+                                        ) => (
+                                          <div
+                                            key={
+                                              teacher.id
+                                            }
+                                            className="education-learning__teacher-pending-row"
+                                          >
+                                            <span>
+                                              <b>
+                                                {
+                                                  teacher.name
+                                                }
+                                              </b>
+                                              {" · "}
+                                              {
+                                                teacher.subjects
+                                              }
+                                              {" · "}
+                                              {
+                                                teacher.email
+                                              }
+                                            </span>
+
+                                            <button
+                                              type="button"
+                                              disabled={
+                                                teacherBusy
+                                              }
+                                              onClick={() =>
+                                                void approveTeacher(
+                                                  teacher.id,
+                                                )
+                                              }
+                                            >
+                                              Approve
+                                            </button>
+                                          </div>
+                                        ),
+                                      )
+                                  }
+
+                                  {
+                                    teachers.filter(
+                                      (
+                                        teacher,
+                                      ) =>
+                                        teacher.status ===
+                                        "PENDING",
+                                    ).length ===
+                                      0 && (
+                                      <small>
+                                        No pending teacher registrations.
+                                      </small>
+                                    )
+                                  }
+                                </div>
+
+                                <h3>
+                                  Pending Assignment Requests
+                                </h3>
+
+                                {
+                                  teacherRequests.map(
+                                    (
+                                      request,
+                                    ) => (
+                                      <div
+                                        key={
+                                          request.id
+                                        }
+                                        className="education-learning__teacher-request-row"
+                                      >
+                                        <span>
+                                          <b>
+                                            {
+                                              request.studentCode
+                                            }
+                                          </b>{" "}
+                                          { request.displayName }
+                                          <small>{request.email}{request.phone ? ` · ${request.phone}` : ""}{request.subjects ? ` · ${request.subjects}` : ""}</small>
+                                        </span>
+
+                                        <select
+                                          value={
+                                            teacherSelections[
+                                              request.id
+                                            ] ??
+                                            ""
+                                          }
+                                          onChange={(
+                                            event,
+                                          ) =>
+                                            setTeacherSelections(
+                                              (
+                                                current,
+                                              ) => ({
+                                                ...current,
+                                                [
+                                                  request.id
+                                                ]:
+                                                  Number(
+                                                    event.target.value,
+                                                  ),
+                                              }),
+                                            )
+                                          }
+                                        >
+                                          <option
+                                            value=""
+                                          >
+                                            Choose teacher
+                                          </option>
+
+                                          {
+                                            teachers
+                                              .filter(
+                                                (
+                                                  teacher,
+                                                ) =>
+                                                  teacher.status ===
+                                                  "APPROVED",
+                                              )
+                                              .map(
+                                                (
+                                                  teacher,
+                                                ) => (
+                                                  <option
+                                                    key={
+                                                      teacher.id
+                                                    }
+                                                    value={
+                                                      teacher.id
+                                                    }
+                                                  >
+                                                    {
+                                                      teacher.name
+                                                    } · {
+                                                      teacher.subjects
+                                                    }
+                                                  </option>
+                                                ),
+                                              )
+                                          }
+                                        </select>
+
+                                        <button
+                                          type="button"
+                                          disabled={
+                                            teacherBusy ||
+                                            !teacherSelections[
+                                              request.id
+                                            ]
+                                          }
+                                          onClick={() =>
+                                            void assignTeacherToRequest(
+                                              request.id,
+                                            )
+                                          }
+                                        >
+                                          Assign
+                                        </button>
+                                      </div>
+                                    ),
+                                  )
+                                }
+
+                                {
+                                  teacherRequests.length ===
+                                    0 && (
+                                    <small>
+                                      No pending teacher requests.
+                                    </small>
+                                  )
+                                }
+                              </section>
+                            )
+                          }
+
+                          {
+                            teacherMessage && (
+                              <div
+                                className="education-learning__teacher-message"
+                              >
+                                {
+                                  teacherMessage
+                                }
+                              </div>
+                            )
+                          }
+
+                          <div
+                            className="education-learning__teacher-actions"
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setTeacherDialogOpen(
+                                  false,
+                                )
+                              }
+                            >
+                              Close
+                            </button>
+                          </div>
+                        </section>
+                      </div>
+                    )
+                  }
+
 
                   {
                     selectedMockAttempt && (

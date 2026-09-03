@@ -2979,11 +2979,1119 @@ async function getAttemptDetail(
 }
 
 
+type EducationTeacherRow = {
+  id: number;
+  teacher_name: string;
+  email: string;
+  subjects: string;
+  location: string | null;
+  bio: string | null;
+  status: string;
+};
+
+
+function envResendApiKey(
+  env: Env,
+): string {
+  return (
+    env as Env & {
+      RESEND_API_KEY?: string;
+    }
+  ).RESEND_API_KEY ?? "";
+}
+
+
+async function sendEducationAdminEmail(
+  env: Env,
+  subject: string,
+  text: string,
+): Promise<void> {
+  const apiKey =
+    envResendApiKey(
+      env,
+    );
+
+  if (!apiKey) {
+    throw new Error(
+      "Email is not configured.",
+    );
+  }
+
+  const response =
+    await fetch(
+      "https://api.resend.com/emails",
+      {
+        method:
+          "POST",
+        headers: {
+          Authorization:
+            `Bearer ${apiKey}`,
+          "Content-Type":
+            "application/json",
+        },
+        body:
+          JSON.stringify({
+            from:
+              "GYAN Education <admin@gyan.cc>",
+            to: [
+              "admin@gyan.cc",
+            ],
+            subject,
+            text,
+          }),
+      },
+    );
+
+  if (!response.ok) {
+    const details =
+      await response.text();
+
+    console.error(
+      "Education admin email failed:",
+      response.status,
+      details,
+    );
+
+    throw new Error(
+      "Admin email could not be sent.",
+    );
+  }
+}
+
+
+async function educationAdminUser(
+  request: Request,
+  env: Env,
+): Promise<
+  {
+    email: string;
+  } |
+  null
+> {
+  const user =
+    await currentUser(
+      request,
+      env,
+    );
+
+  const email =
+    normalizeEmail(
+      (
+        user as {
+          email?: unknown;
+        } |
+        null
+      )?.email,
+    );
+
+  if (
+    email !==
+      "admin@gyan.cc"
+  ) {
+    return null;
+  }
+
+  return {
+    email,
+  };
+}
+
+
+async function listEducationTeachers(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const admin =
+    await educationAdminUser(
+      request,
+      env,
+    );
+
+  const rows =
+    await env.gyan_registry
+      .prepare(
+        admin
+          ? `
+            SELECT
+              id,
+              teacher_name,
+              email,
+              subjects,
+              location,
+              bio,
+              status
+            FROM education_teachers
+            WHERE status <> 'INACTIVE'
+            ORDER BY
+              CASE status
+                WHEN 'APPROVED' THEN 0
+                ELSE 1
+              END,
+              teacher_name
+            `
+          : `
+            SELECT
+              id,
+              teacher_name,
+              email,
+              subjects,
+              location,
+              bio,
+              status
+            FROM education_teachers
+            WHERE status = 'APPROVED'
+            ORDER BY teacher_name
+            `,
+      )
+      .all<EducationTeacherRow>();
+
+  return jsonResponse({
+    teachers:
+      rows.results.map(
+        (
+          row,
+        ) => ({
+          id:
+            Number(
+              row.id,
+            ),
+          name:
+            row.teacher_name,
+          email:
+            row.email,
+          subjects:
+            row.subjects,
+          location:
+            row.location,
+          bio:
+            row.bio,
+          status:
+            row.status,
+        }),
+      ),
+  });
+}
+
+
+async function registerEducationTeacher(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  let body:
+    {
+      name?: unknown;
+      email?: unknown;
+      subjects?: unknown;
+      location?: unknown;
+      bio?: unknown;
+    };
+
+  try {
+    body =
+      await request.json() as
+        typeof body;
+  } catch {
+    return jsonResponse(
+      {
+        error:
+          "Invalid JSON body.",
+      },
+      400,
+    );
+  }
+
+  const name =
+    normalizeName(
+      body.name,
+    );
+
+  const email =
+    normalizeEmail(
+      body.email,
+    );
+
+  const subjects =
+    normalizeName(
+      body.subjects,
+    );
+
+  const location =
+    normalizeName(
+      body.location,
+    );
+
+  const bio =
+    normalizeName(
+      body.bio,
+    );
+
+  if (
+    name.length < 2
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "Enter your name.",
+      },
+      400,
+    );
+  }
+
+  if (
+    !validEmail(
+      email,
+    )
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "Enter a valid email.",
+      },
+      400,
+    );
+  }
+
+  if (
+    !subjects
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "Enter at least one subject.",
+      },
+      400,
+    );
+  }
+
+  const guest =
+    await currentEducationGuest(
+      request,
+      env,
+    );
+
+  await env.gyan_registry
+    .prepare(
+      `
+        INSERT INTO education_teachers (
+          gyan_account_id,
+          teacher_name,
+          email,
+          subjects,
+          location,
+          bio,
+          status,
+          updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, 'PENDING', CURRENT_TIMESTAMP)
+
+        ON CONFLICT(email)
+        DO UPDATE SET
+          gyan_account_id =
+            COALESCE(
+              excluded.gyan_account_id,
+              education_teachers.gyan_account_id
+            ),
+          teacher_name =
+            excluded.teacher_name,
+          subjects =
+            excluded.subjects,
+          location =
+            excluded.location,
+          bio =
+            excluded.bio,
+          updated_at =
+            CURRENT_TIMESTAMP
+      `,
+    )
+    .bind(
+      guest?.id ??
+        null,
+      name,
+      email,
+      subjects,
+      location ||
+        null,
+      bio ||
+        null,
+    )
+    .run();
+
+  try {
+    await sendEducationAdminEmail(
+      env,
+      `Teacher registration · ${name}`,
+      [
+        "A teacher registration was submitted.",
+        "",
+        `Name: ${name}`,
+        `Email: ${email}`,
+        `Subjects: ${subjects}`,
+        `Location: ${location || "—"}`,
+        `GYAN: ${guest?.slug ?? "—"}`,
+        "",
+        "Status: PENDING",
+      ].join(
+        "\n",
+      ),
+    );
+  } catch (
+    error
+  ) {
+    console.error(
+      "Teacher registration email:",
+      error,
+    );
+  }
+
+  return jsonResponse({
+    saved:
+      true,
+    status:
+      "PENDING",
+  });
+}
+
+
+async function teacherAssignmentForStudent(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
+  const studentCode =
+    normalizeCode(
+      url.searchParams.get(
+        "student",
+      ),
+    );
+
+  if (!studentCode) {
+    return jsonResponse(
+      {
+        error:
+          "student is required.",
+      },
+      400,
+    );
+  }
+
+  const student =
+    await resolveActiveEducationStudent(
+      request,
+      env,
+      studentCode,
+    );
+
+  if (!student) {
+    return jsonResponse(
+      {
+        error:
+          "This GYAN is not active in this browser.",
+      },
+      403,
+    );
+  }
+
+  const assignment =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            a.id,
+            a.status,
+            a.requested_at,
+            a.assigned_at,
+            t.id AS teacher_id,
+            t.teacher_name,
+            t.email,
+            t.subjects,
+            t.location
+          FROM education_teacher_assignments a
+          LEFT JOIN education_teachers t
+            ON t.id = a.teacher_id
+          WHERE
+            a.student_id = ?
+            AND a.status IN ('REQUESTED','ASSIGNED')
+          ORDER BY
+            CASE a.status
+              WHEN 'ASSIGNED' THEN 0
+              ELSE 1
+            END,
+            a.updated_at DESC
+          LIMIT 1
+        `,
+      )
+      .bind(
+        student.id,
+      )
+      .first<{
+        id: number;
+        status: string;
+        requested_at: string;
+        assigned_at: string | null;
+        teacher_id: number | null;
+        teacher_name: string | null;
+        email: string | null;
+        subjects: string | null;
+        location: string | null;
+      }>();
+
+  return jsonResponse({
+    assignment:
+      assignment
+        ? {
+            id:
+              Number(
+                assignment.id,
+              ),
+            status:
+              assignment.status,
+            requestedAt:
+              assignment.requested_at,
+            assignedAt:
+              assignment.assigned_at,
+            teacher:
+              assignment.teacher_id
+                ? {
+                    id:
+                      Number(
+                        assignment.teacher_id,
+                      ),
+                    name:
+                      assignment.teacher_name ??
+                      "",
+                    email:
+                      assignment.email ??
+                      "",
+                    subjects:
+                      assignment.subjects ??
+                      "",
+                    location:
+                      assignment.location,
+                  }
+                : null,
+          }
+        : null,
+  });
+}
+
+
+async function requestTeacherAssignment(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  let body:
+    {
+      studentCode?: unknown;
+      email?: unknown;
+      phone?: unknown;
+      subjects?: unknown;
+    };
+
+  try {
+    body =
+      await request.json() as
+        typeof body;
+  } catch {
+    return jsonResponse(
+      {
+        error:
+          "Invalid JSON body.",
+      },
+      400,
+    );
+  }
+
+  const studentCode =
+    normalizeCode(
+      body.studentCode,
+    );
+
+  const requestEmail = normalizeEmail(body.email);
+  const requestPhone = typeof body.phone === "string" ? body.phone.trim().slice(0, 40) : "";
+  const requestSubjects = normalizeName(body.subjects).slice(0, 300);
+
+  if (!validEmail(requestEmail)) {
+    return jsonResponse({ error: "Enter a valid email address." }, 400);
+  }
+
+  const student =
+    await resolveActiveEducationStudent(
+      request,
+      env,
+      studentCode,
+    );
+
+  if (!student) {
+    return jsonResponse(
+      {
+        error:
+          "This GYAN is not active in this browser.",
+      },
+      403,
+    );
+  }
+
+  const studentRow =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            es.student_name,
+            ga.code AS gyan_code,
+            ga.display_name
+          FROM education_students es
+          INNER JOIN gyan_accounts ga
+            ON ga.id =
+               es.gyan_account_id
+          WHERE es.id = ?
+          LIMIT 1
+        `,
+      )
+      .bind(
+        student.id,
+      )
+      .first<{
+        student_name: string;
+        gyan_code: string;
+        display_name: string;
+      }>();
+
+  const existing =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT id
+          FROM education_teacher_assignments
+          WHERE
+            student_id = ?
+            AND status IN ('REQUESTED','ASSIGNED')
+          ORDER BY updated_at DESC
+          LIMIT 1
+        `,
+      )
+      .bind(
+        student.id,
+      )
+      .first<{
+        id: number;
+      }>();
+
+  if (!existing) {
+    await env.gyan_registry
+      .prepare(
+        `
+          INSERT INTO education_teacher_assignments (
+            student_id, status, request_email, request_phone, request_subjects
+          )
+          VALUES (?, 'REQUESTED', ?, ?, ?)
+        `,
+      )
+      .bind(
+        student.id,
+        requestEmail,
+        requestPhone ||
+          null,
+        requestSubjects ||
+          null,
+      )
+      .run();
+  } else {
+    await env.gyan_registry.prepare(`
+      UPDATE education_teacher_assignments
+      SET request_email = ?, request_phone = ?, request_subjects = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(requestEmail, requestPhone || null, requestSubjects || null, existing.id).run();
+  }
+
+  try {
+    await sendEducationAdminEmail(
+      env,
+      `Assign Teacher request · ${studentRow?.gyan_code ?? studentCode}`,
+      [
+        "A GYAN learner requested a teacher.",
+        "",
+        `GYAN: ${studentRow?.gyan_code ?? studentCode}`,
+        `Display name: ${studentRow?.display_name ?? "—"}`,
+        `Education name: ${studentRow?.student_name ?? "—"}`,
+        `Email: ${requestEmail}`,
+        `Phone: ${requestPhone || "—"}`,
+        `Subjects: ${requestSubjects || "—"}`,
+        "",
+        "Open GYAN Education as admin and use Teachers → Pending Requests.",
+      ].join(
+        "\n",
+      ),
+    );
+  } catch (
+    error
+  ) {
+    return jsonResponse(
+      {
+        error:
+          error instanceof
+            Error
+            ? error.message
+            : "Teacher request could not be emailed.",
+      },
+      500,
+    );
+  }
+
+  return jsonResponse({
+    requested:
+      true,
+  });
+}
+
+
+async function listTeacherAssignmentRequests(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const admin =
+    await educationAdminUser(
+      request,
+      env,
+    );
+
+  if (!admin) {
+    return jsonResponse(
+      {
+        error:
+          "Admin authentication required.",
+      },
+      403,
+    );
+  }
+
+  const rows =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            a.id,
+            a.requested_at,
+            a.request_email,
+            a.request_phone,
+            a.request_subjects,
+            es.student_name,
+            ga.code AS gyan_code,
+            ga.display_name
+          FROM education_teacher_assignments a
+          INNER JOIN education_students es
+            ON es.id = a.student_id
+          INNER JOIN gyan_accounts ga
+            ON ga.id =
+               es.gyan_account_id
+          WHERE a.status = 'REQUESTED'
+          ORDER BY a.requested_at ASC
+        `,
+      )
+      .all<{
+        id: number;
+        requested_at: string;
+        request_email: string | null;
+        request_phone: string | null;
+        request_subjects: string | null;
+        student_name: string;
+        gyan_code: string;
+        display_name: string;
+      }>();
+
+  return jsonResponse({
+    requests:
+      rows.results.map(
+        (
+          row,
+        ) => ({
+          id:
+            Number(
+              row.id,
+            ),
+          studentCode:
+            row.gyan_code,
+          studentName:
+            row.student_name,
+          displayName:
+            row.display_name,
+          requestedAt:
+            row.requested_at,
+          email: row.request_email ?? "",
+          phone: row.request_phone ?? "",
+          subjects: row.request_subjects ?? "",
+        }),
+      ),
+  });
+}
+
+
+async function approveEducationTeacher(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const admin =
+    await educationAdminUser(
+      request,
+      env,
+    );
+
+  if (!admin) {
+    return jsonResponse(
+      {
+        error:
+          "Admin authentication required.",
+      },
+      403,
+    );
+  }
+
+  let body:
+    {
+      teacherId?: unknown;
+    };
+
+  try {
+    body =
+      await request.json() as
+        typeof body;
+  } catch {
+    return jsonResponse(
+      {
+        error:
+          "Invalid JSON body.",
+      },
+      400,
+    );
+  }
+
+  const teacherId =
+    Number(
+      body.teacherId,
+    );
+
+  if (
+    !Number.isInteger(
+      teacherId,
+    )
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "Valid teacher is required.",
+      },
+      400,
+    );
+  }
+
+  const teacher =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            id,
+            teacher_name,
+            email
+          FROM education_teachers
+          WHERE
+            id = ?
+            AND status = 'PENDING'
+          LIMIT 1
+        `,
+      )
+      .bind(
+        teacherId,
+      )
+      .first<{
+        id: number;
+        teacher_name: string;
+        email: string;
+      }>();
+
+  if (!teacher) {
+    return jsonResponse(
+      {
+        error:
+          "Pending teacher not found.",
+      },
+      404,
+    );
+  }
+
+  await env.gyan_registry
+    .prepare(
+      `
+        UPDATE education_teachers
+        SET
+          status = 'APPROVED',
+          updated_at =
+            CURRENT_TIMESTAMP
+        WHERE id = ?
+      `,
+    )
+    .bind(
+      teacherId,
+    )
+    .run();
+
+  return jsonResponse({
+    approved:
+      true,
+    teacher: {
+      id:
+        Number(
+          teacher.id,
+        ),
+      name:
+        teacher.teacher_name,
+      email:
+        teacher.email,
+    },
+  });
+}
+
+
+async function assignEducationTeacher(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const admin =
+    await educationAdminUser(
+      request,
+      env,
+    );
+
+  if (!admin) {
+    return jsonResponse(
+      {
+        error:
+          "Admin authentication required.",
+      },
+      403,
+    );
+  }
+
+  let body:
+    {
+      requestId?: unknown;
+      teacherId?: unknown;
+    };
+
+  try {
+    body =
+      await request.json() as
+        typeof body;
+  } catch {
+    return jsonResponse(
+      {
+        error:
+          "Invalid JSON body.",
+      },
+      400,
+    );
+  }
+
+  const requestId =
+    Number(
+      body.requestId,
+    );
+
+  const teacherId =
+    Number(
+      body.teacherId,
+    );
+
+  if (
+    !Number.isInteger(
+      requestId,
+    ) ||
+    !Number.isInteger(
+      teacherId,
+    )
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "Valid request and teacher are required.",
+      },
+      400,
+    );
+  }
+
+  const teacher =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            id,
+            teacher_name,
+            email
+          FROM education_teachers
+          WHERE
+            id = ?
+            AND status = 'APPROVED'
+          LIMIT 1
+        `,
+      )
+      .bind(
+        teacherId,
+      )
+      .first<{
+        id: number;
+        teacher_name: string;
+        email: string;
+      }>();
+
+  if (!teacher) {
+    return jsonResponse(
+      {
+        error:
+          "Approved teacher not found.",
+      },
+      404,
+    );
+  }
+
+  const assignment =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT id
+          FROM education_teacher_assignments
+          WHERE
+            id = ?
+            AND status = 'REQUESTED'
+          LIMIT 1
+        `,
+      )
+      .bind(
+        requestId,
+      )
+      .first<{
+        id: number;
+      }>();
+
+  if (!assignment) {
+    return jsonResponse(
+      {
+        error:
+          "Pending request not found.",
+      },
+      404,
+    );
+  }
+
+  await env.gyan_registry
+    .prepare(
+      `
+        UPDATE education_teacher_assignments
+        SET
+          teacher_id = ?,
+          status = 'ASSIGNED',
+          assigned_at = CURRENT_TIMESTAMP,
+          assigned_by_email = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `,
+    )
+    .bind(
+      teacherId,
+      admin.email,
+      requestId,
+    )
+    .run();
+
+  return jsonResponse({
+    assigned:
+      true,
+    teacher: {
+      id:
+        Number(
+          teacher.id,
+        ),
+      name:
+        teacher.teacher_name,
+      email:
+        teacher.email,
+    },
+  });
+}
+
+
 export async function handleEducationProgressRoute(
   request: Request,
   env: Env,
   url: URL,
 ): Promise<Response | null> {
+  if (
+    request.method === "GET" &&
+    url.pathname === "/api/education/teachers"
+  ) {
+    return listEducationTeachers(
+      request,
+      env,
+    );
+  }
+
+  if (
+    request.method === "POST" &&
+    url.pathname === "/api/education/teachers/register"
+  ) {
+    return registerEducationTeacher(
+      request,
+      env,
+    );
+  }
+
+  if (
+    request.method === "GET" &&
+    url.pathname === "/api/education/teacher-assignment"
+  ) {
+    return teacherAssignmentForStudent(
+      request,
+      env,
+      url,
+    );
+  }
+
+  if (
+    request.method === "POST" &&
+    url.pathname === "/api/education/teacher-assignment/request"
+  ) {
+    return requestTeacherAssignment(
+      request,
+      env,
+    );
+  }
+
+  if (
+    request.method === "GET" &&
+    url.pathname === "/api/education/teacher-assignment/requests"
+  ) {
+    return listTeacherAssignmentRequests(
+      request,
+      env,
+    );
+  }
+
+  if (
+    request.method === "POST" &&
+    url.pathname === "/api/education/teachers/approve"
+  ) {
+    return approveEducationTeacher(
+      request,
+      env,
+    );
+  }
+
+  if (
+    request.method === "POST" &&
+    url.pathname === "/api/education/teacher-assignment/assign"
+  ) {
+    return assignEducationTeacher(
+      request,
+      env,
+    );
+  }
   if (
     request.method ===
       "POST" &&

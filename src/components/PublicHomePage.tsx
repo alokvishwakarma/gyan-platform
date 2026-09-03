@@ -3605,6 +3605,10 @@ export default function PublicHomePage({
                       : undefined
                   }
 
+                  adminAuthenticated={
+                    adminAuthenticated
+                  }
+
                   onBack={() => {
                     setActiveView(
                       "home",

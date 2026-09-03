@@ -2894,3 +2894,601 @@ article.education-learning__question-card--cbt {
     font-size: 0.54rem;
   }
 }
+
+
+/* ======================================================
+ * GYAN Teachers
+ * ====================================================== */
+
+.education-learning__teacher-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147482600;
+  display: grid;
+  place-items: start center;
+  box-sizing: border-box;
+  padding: clamp(62px, 9vh, 88px) 8px 14px;
+  overflow-y: auto;
+  background: rgba(18, 29, 40, 0.34);
+}
+
+.education-learning__teacher-dialog {
+  position: relative;
+  width: min(96vw, 620px);
+  box-sizing: border-box;
+  padding: 9px;
+  border: 1px solid #d6dfe6;
+  border-radius: 10px;
+  background: #fff;
+  color: #17345c;
+  box-shadow: 0 14px 36px rgba(13, 31, 48, 0.22);
+}
+
+.education-learning__teacher-dialog > h2 {
+  margin: 0 25px 7px;
+  text-align: center;
+  font-size: 0.78rem;
+}
+
+.education-learning__teacher-x {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  color: #657888;
+  cursor: pointer;
+}
+
+.education-learning__teacher-assigned {
+  display: grid;
+  gap: 1px;
+  margin-bottom: 6px;
+  padding: 6px 7px;
+  border: 1px solid #9fc8a7;
+  border-radius: 7px;
+  background: #f0f9f2;
+  font-size: 0.58rem;
+}
+
+.education-learning__teacher-list {
+  display: grid;
+  gap: 4px;
+  max-height: 190px;
+  overflow-y: auto;
+}
+
+.education-learning__teacher-list article {
+  display: grid;
+  gap: 1px;
+  padding: 5px 6px;
+  border: 1px solid #e1e7ec;
+  border-radius: 6px;
+  background: #fbfcfd;
+  font-size: 0.54rem;
+}
+
+.education-learning__teacher-list article strong {
+  font-size: 0.61rem;
+}
+
+.education-learning__teacher-list article p {
+  margin: 2px 0 0;
+  color: #607486;
+}
+
+.education-learning__teacher-register-button {
+  width: 100%;
+  min-height: 28px;
+  margin-top: 6px;
+  border: 1px solid #9eb2c2;
+  border-radius: 6px;
+  background: #f7fafc;
+  color: #234966;
+  font: inherit;
+  font-size: 0.55rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.education-learning__teacher-register {
+  display: grid;
+  gap: 4px;
+  margin-top: 5px;
+  padding: 6px;
+  border: 1px solid #dce4ea;
+  border-radius: 7px;
+  background: #fafcfd;
+}
+
+.education-learning__teacher-register input,
+.education-learning__teacher-register textarea,
+.education-learning__teacher-request-row select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #cbd7df;
+  border-radius: 5px;
+  padding: 5px 6px;
+  background: #fff;
+  color: #263b4d;
+  font: inherit;
+  font-size: 0.54rem;
+}
+
+.education-learning__teacher-register textarea {
+  min-height: 52px;
+  resize: vertical;
+}
+
+.education-learning__teacher-register button,
+.education-learning__teacher-request-row button {
+  min-height: 27px;
+  border: 1px solid #174a73;
+  border-radius: 5px;
+  padding: 3px 7px;
+  background: #174a73;
+  color: #fff;
+  font: inherit;
+  font-size: 0.53rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.education-learning__teacher-admin {
+  margin-top: 7px;
+  padding-top: 6px;
+  border-top: 1px solid #e4e9ed;
+}
+
+.education-learning__teacher-admin h3 {
+  margin: 0 0 4px;
+  text-align: center;
+  font-size: 0.64rem;
+}
+
+.education-learning__teacher-request-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) minmax(130px, 1.4fr) auto;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  font-size: 0.52rem;
+}
+
+.education-learning__teacher-message {
+  margin-top: 6px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  background: #f4f7f9;
+  color: #4d6172;
+  font-size: 0.52rem;
+  text-align: center;
+}
+
+.education-learning__teacher-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 7px;
+}
+
+.education-learning__teacher-actions button {
+  min-width: 90px;
+  min-height: 27px;
+  border: 1px solid #bdc9d2;
+  border-radius: 6px;
+  background: #fff;
+  color: #29485f;
+  font: inherit;
+  font-size: 0.53rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@media (max-width: 520px) {
+  .education-learning__teacher-backdrop {
+    padding: 56px 5px 10px;
+  }
+
+  .education-learning__teacher-dialog {
+    width: 100%;
+    padding: 7px;
+  }
+
+  .education-learning__teacher-request-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+.education-learning__teacher-pending-list {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 7px;
+}
+
+.education-learning__teacher-pending-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+
+  padding: 4px 5px;
+
+  border: 1px solid #ead9ad;
+  border-radius: 5px;
+
+  background: #fffaf0;
+
+  font-size: 0.51rem;
+}
+
+.education-learning__teacher-pending-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.education-learning__teacher-pending-row button {
+  min-height: 25px;
+
+  border: 1px solid #8b6b21;
+  border-radius: 5px;
+
+  padding: 2px 7px;
+
+  background: #fff;
+  color: #765817;
+
+  font: inherit;
+  font-size: 0.51rem;
+  font-weight: 850;
+
+  cursor: pointer;
+}
+
+@media (max-width: 520px) {
+  .education-learning__teacher-pending-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ======================================================
+ * Education header — persistent Teacher controls
+ * ====================================================== */
+
+.education-learning__header {
+  position: relative;
+}
+
+.education-learning__teacher-header-actions {
+  margin-left: auto;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 4px;
+}
+
+.education-learning__teacher-header-actions > button {
+  min-height: 28px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 3px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #c7d4df;
+  border-radius: 6px;
+
+  padding: 3px 7px;
+
+  background: #ffffff;
+  color: #174a73;
+
+  font: inherit;
+  font-size: 0.55rem;
+  font-weight: 850;
+
+  white-space: nowrap;
+
+  cursor: pointer;
+}
+
+.education-learning__teacher-header-actions
+> button:hover:not(:disabled) {
+  background: #f3f8fc;
+}
+
+.education-learning__teacher-header-actions
+> button:disabled {
+  cursor: default;
+  opacity: 0.78;
+}
+
+.education-learning__teacher-header-assign {
+  border-color: #9ab9cf !important;
+  background: #eef7fd !important;
+}
+
+
+/* ======================================================
+ * Registration dialog — starts below application header
+ * ====================================================== */
+
+.education-learning__registration-backdrop {
+  position: fixed;
+
+  top:
+    calc(
+      var(
+        --gyan-header-height,
+        64px
+      ) +
+      4px
+    );
+
+  right: 0;
+  bottom: 0;
+  left: 0;
+
+  z-index: 2147482500;
+
+  box-sizing: border-box;
+
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+
+  padding: 6px 8px 14px;
+
+  overflow-y: auto;
+
+  background:
+    rgb(
+      15 23 42 /
+      34%
+    );
+
+  -webkit-overflow-scrolling:
+    touch;
+}
+
+.education-learning__registration-dialog {
+  position: relative;
+
+  width:
+    min(
+      calc(100vw - 16px),
+      480px
+    );
+
+  box-sizing: border-box;
+
+  margin: 0;
+
+  border:
+    1px solid
+    #d8e1e8;
+
+  border-radius:
+    10px;
+
+  padding:
+    10px 11px;
+
+  background:
+    #ffffff;
+
+  color:
+    #243c50;
+
+  box-shadow:
+    0 14px 34px
+    rgb(
+      15 23 42 /
+      20%
+    );
+}
+
+.education-learning__registration-dialog
+> small {
+  display: block;
+
+  margin-bottom: 3px;
+
+  color: #8a6b2a;
+
+  font-size: 0.51rem;
+  font-weight: 900;
+
+  letter-spacing: 0.055em;
+}
+
+.education-learning__registration-dialog
+> h2 {
+  margin:
+    0 26px 6px
+    0;
+
+  color: #173e63;
+
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.education-learning__registration-dialog
+> p {
+  margin:
+    0 0 7px;
+
+  color:
+    #536b7d;
+
+  font-size:
+    0.59rem;
+
+  line-height:
+    1.35;
+}
+
+.education-learning__registration-x {
+  position: absolute;
+
+  top: 4px;
+  right: 5px;
+
+  width: 23px;
+  height: 23px;
+
+  display: grid;
+  place-items: center;
+
+  border: 0;
+  border-radius: 50%;
+
+  padding: 0;
+
+  background: transparent;
+  color: #6a7e8e;
+
+  font: inherit;
+  font-size: 0.9rem;
+
+  cursor: pointer;
+}
+
+.education-learning__registration-contact {
+  display: flex;
+  align-items: center;
+
+  gap: 5px;
+
+  padding:
+    5px 6px;
+
+  border:
+    1px solid
+    #d7e3ec;
+
+  border-radius:
+    6px;
+
+  background:
+    #f5faff;
+
+  font-size:
+    0.56rem;
+}
+
+.education-learning__registration-contact
+span {
+  color:
+    #667b8b;
+
+  font-weight:
+    750;
+}
+
+.education-learning__registration-contact
+a {
+  color:
+    #145d91;
+
+  font-weight:
+    900;
+
+  text-decoration:
+    none;
+}
+
+.education-learning__registration-actions {
+  display: flex;
+  justify-content: center;
+
+  margin-top:
+    8px;
+}
+
+.education-learning__registration-actions
+button {
+  min-width:
+    90px;
+
+  min-height:
+    27px;
+
+  border:
+    1px solid
+    #afbdc8;
+
+  border-radius:
+    6px;
+
+  background:
+    #ffffff;
+
+  color:
+    #29495f;
+
+  font: inherit;
+  font-size:
+    0.54rem;
+
+  font-weight:
+    850;
+
+  cursor:
+    pointer;
+}
+
+@media (
+  max-width:
+  620px
+) {
+  .education-learning__teacher-header-actions {
+    gap: 2px;
+  }
+
+  .education-learning__teacher-header-actions
+  > button {
+    min-width: 29px;
+
+    padding:
+      3px 5px;
+
+    font-size:
+      0.53rem;
+  }
+
+  .education-learning__teacher-header-actions
+  > button
+  span {
+    display:
+      none;
+  }
+
+  .education-learning__registration-backdrop {
+    right: 5px;
+    left: 5px;
+
+    padding:
+      4px 0 10px;
+  }
+
+  .education-learning__registration-dialog {
+    width:
+      100%;
+  }
+}
+
+.education-learning__teacher-header-actions{display:none!important}.education-learning__teacher-footer{margin-top:12px;padding:8px;display:flex;justify-content:space-between;gap:8px;border-top:1px solid #e2e8ed;background:#fbfcfd}.education-learning__teacher-footer-copy{display:grid;gap:2px}.education-learning__teacher-footer-copy strong{font-size:.6rem}.education-learning__teacher-footer-copy small{font-size:.5rem}.education-learning__teacher-footer-actions{display:flex;gap:5px;flex-wrap:wrap}.education-learning__teacher-footer-actions button{min-height:29px;border:1px solid #c7d3dc;border-radius:6px;padding:3px 8px;background:#fff;color:#29485f;font:inherit;font-size:.54rem;font-weight:850}.education-learning__teacher-assign-button{background:#f2f8fc!important}.education-learning__teacher-request-backdrop{position:fixed;top:calc(var(--gyan-header-height,64px) + 4px);inset-inline:0;bottom:0;z-index:2147482550;display:flex;align-items:flex-start;justify-content:center;padding:6px 8px;background:rgb(15 23 42 / 34%)}.education-learning__teacher-request-dialog{position:relative;width:min(calc(100vw - 16px),480px);padding:10px 11px;border:1px solid #d7e0e7;border-radius:10px;background:#fff}.education-learning__teacher-request-dialog>small{font-size:.51rem;font-weight:900;color:#8a6b2a}.education-learning__teacher-request-dialog h2{margin:3px 0 5px;font-size:.78rem}.education-learning__teacher-request-dialog p{font-size:.55rem;color:#607486}.education-learning__teacher-request-dialog label{display:grid;gap:2px;margin-top:5px;font-size:.52rem;font-weight:800}.education-learning__teacher-request-dialog input{min-height:32px;border:1px solid #cbd7df;border-radius:6px;padding:5px 7px;font:inherit}.education-learning__teacher-request-x{position:absolute;right:5px;top:4px;border:0;background:transparent;font-size:.9rem}.education-learning__teacher-request-actions{display:flex;justify-content:flex-end;gap:5px;margin-top:8px}.education-learning__teacher-request-actions button{min-height:29px;border:1px solid #b8c5ce;border-radius:6px;background:#fff;padding:3px 8px}.education-learning__teacher-request-submit{background:#174a73!important;color:#fff!important}.education-learning__teacher-request-message{margin-top:6px;font-size:.52rem;text-align:center}.education-learning__teacher-request-row span{display:grid}.education-learning__teacher-request-row span small{font-size:.47rem;color:#6d7f8d}@media(max-width:620px){.education-learning__teacher-footer{flex-direction:column}.education-learning__teacher-footer-actions button{flex:1 1 140px}}
