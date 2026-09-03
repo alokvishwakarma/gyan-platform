@@ -500,8 +500,6 @@ export default function PublicHomePage({
 
   shopAddress,
 
-  educationCode,
-
   onStartOnlineService,
 
   onOpenOnlineServices,
@@ -918,6 +916,107 @@ export default function PublicHomePage({
     useState<ActiveEducationGyan | null>(
       null,
     );
+
+
+  /*
+   * Public/user-facing ABCD must always be the unified
+   * gyan_accounts.code. education_students.student_code is
+   * a legacy/internal Education identifier and must never
+   * be used as the visible GYAN code.
+   */
+  const [
+    canonicalGyanCode,
+    setCanonicalGyanCode,
+  ] =
+    useState("");
+
+
+  useEffect(
+    () => {
+      const controller =
+        new AbortController();
+
+      void fetch(
+        "/api/gyan-identity",
+        {
+          method:
+            "GET",
+
+          credentials:
+            "include",
+
+          cache:
+            "no-store",
+
+          signal:
+            controller.signal,
+        },
+      )
+        .then(
+          async (
+            response,
+          ) => {
+            if (
+              !response.ok
+            ) {
+              return null;
+            }
+
+            return await response.json() as {
+              identity?: {
+                code?: string;
+              } | null;
+            };
+          },
+        )
+        .then(
+          (
+            body,
+          ) => {
+            if (
+              controller.signal.aborted
+            ) {
+              return;
+            }
+
+            setCanonicalGyanCode(
+              body?.identity
+                ?.code
+                ?.trim()
+                .toUpperCase() ??
+              "",
+            );
+          },
+        )
+        .catch(
+          (
+            caught,
+          ) => {
+            if (
+              caught instanceof
+                DOMException &&
+              caught.name ===
+                "AbortError"
+            ) {
+              return;
+            }
+
+            /*
+             * Keep the calendar/session identity fallback.
+             * Never fall back to Education student_code.
+             */
+            setCanonicalGyanCode(
+              "",
+            );
+          },
+        );
+
+      return () => {
+        controller.abort();
+      };
+    },
+    [],
+  );
 
 
   const [
@@ -2021,20 +2120,25 @@ export default function PublicHomePage({
       0;
 
 
+  /*
+   * Canonical public ABCD.
+   *
+   * First choice: /api/gyan-identity -> gyan_accounts.code.
+   * Temporary fallback while that request is loading:
+   * /api/calendar-access/me, which is also linked to the
+   * unified GYAN account.
+   *
+   * Deliberately DO NOT use:
+   *   - educationCode prop (legacy education student_code)
+   *   - gyan_browser_code_v1 (browser recovery/internal value)
+   */
   const educationHeaderCode =
+    canonicalGyanCode ||
     activeEducationGyan
-      ?.code ||
-    educationCode
+      ?.code
       ?.trim()
       .toUpperCase() ||
-    (
-      window.localStorage.getItem(
-        "gyan_browser_code_v1",
-      ) ??
-      ""
-    )
-      .trim()
-      .toUpperCase();
+    "";
 
   const activityGyanName =
     activeEducationGyan

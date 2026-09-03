@@ -1390,3 +1390,1507 @@ button.education-learning__topic-status--none {
     font-size: 0.76rem;
   }
 }
+
+
+/* Mock Test Attempts */
+.education-learning__mock-attempts {
+  margin: 10px 0 4px;
+  padding: 6px 7px;
+  border: 1px solid #dce4eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.education-learning__mock-attempts > h2 {
+  margin: 0 0 5px;
+  font-size: 0.78rem;
+  line-height: 1.1;
+  font-weight: 900;
+  text-align: center;
+}
+
+.education-learning__mock-attempts-empty {
+  padding: 4px 0;
+  color: #73808d;
+  font-size: 0.55rem;
+  text-align: center;
+}
+
+.education-learning__mock-attempt-list {
+  display: grid;
+  gap: 4px;
+}
+
+.education-learning__mock-attempt-row {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 3px 0;
+}
+
+.education-learning__mock-attempt-row +
+.education-learning__mock-attempt-row {
+  border-top: 1px solid #eef1f3;
+}
+
+.education-learning__mock-attempt-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.education-learning__mock-attempt-label strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #17345c;
+  font-size: 0.59rem;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.education-learning__mock-attempt-label small {
+  flex: 0 0 auto;
+  color: #68798a;
+  font-size: 0.5rem;
+  font-weight: 800;
+}
+
+.education-learning__mock-attempt-result-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 12px;
+  align-items: center;
+  gap: 5px;
+}
+
+.education-learning__mock-attempt-strip {
+  display: flex;
+  gap: 1px;
+  width: 100%;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: #edf0f2;
+}
+
+.education-learning__mock-attempt-segment {
+  flex: 1 1 0;
+  min-width: 1px;
+  height: 100%;
+  border-radius: 1px;
+}
+
+.education-learning__mock-attempt-segment--correct {
+  background: #4f9660;
+}
+
+.education-learning__mock-attempt-segment--wrong {
+  background: #cf6262;
+}
+
+.education-learning__mock-attempt-segment--unanswered {
+  background: #cfd5da;
+}
+
+.education-learning__mock-attempt-overall {
+  width: 9px;
+  height: 9px;
+  justify-self: center;
+  border: 1px solid rgba(23, 52, 92, 0.14);
+  border-radius: 50%;
+}
+
+.education-learning__mock-attempt-overall--none {
+  background: #d5dbe1;
+}
+.education-learning__mock-attempt-overall--red {
+  background: #d86464;
+}
+.education-learning__mock-attempt-overall--orange {
+  background: #e99a52;
+}
+.education-learning__mock-attempt-overall--yellow {
+  background: #d7bd45;
+}
+.education-learning__mock-attempt-overall--light-green {
+  background: #8dbc78;
+}
+.education-learning__mock-attempt-overall--green {
+  background: #4f9660;
+}
+
+@media (max-width: 430px) {
+  .education-learning__mock-attempts {
+    margin-top: 8px;
+    padding: 5px 6px;
+  }
+
+  .education-learning__mock-attempts > h2 {
+    margin-bottom: 4px;
+    font-size: 0.72rem;
+  }
+
+  .education-learning__mock-attempt-label strong {
+    font-size: 0.56rem;
+  }
+
+  .education-learning__mock-attempt-strip {
+    height: 6px;
+  }
+
+  .education-learning__mock-attempt-overall {
+    width: 8px;
+    height: 8px;
+  }
+}
+
+
+/* ======================================================
+ * Mock Test Results v2
+ * Top report card + attempted-width/score-color bar + popup
+ * ====================================================== */
+
+.education-learning__mock-results-card {
+  margin: 0 0 10px;
+  padding: 6px 7px;
+  border: 1px solid #d8e1e8;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 2px 7px rgba(27, 58, 88, 0.05);
+}
+
+.education-learning__mock-results-card > h2 {
+  margin: 0 0 5px;
+  color: #17345c;
+  font-size: 0.78rem;
+  line-height: 1.05;
+  font-weight: 900;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.education-learning__mock-results-empty {
+  padding: 4px 0;
+  color: #73808d;
+  font-size: 0.55rem;
+  text-align: center;
+}
+
+.education-learning__mock-results-list {
+  display: grid;
+  gap: 2px;
+}
+
+.education-learning__mock-result-row {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 40fr)
+    minmax(52px, 15fr)
+    minmax(72px, 30fr)
+    24px;
+  align-items: center;
+  gap: 4px;
+
+  width: 100%;
+  min-height: 27px;
+
+  margin: 0;
+  padding: 2px 3px;
+
+  border: 0;
+  border-top: 1px solid #edf1f4;
+  border-radius: 0;
+
+  background: transparent;
+  color: #17345c;
+
+  font: inherit;
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.education-learning__mock-result-row:first-child {
+  border-top: 0;
+}
+
+.education-learning__mock-result-row:hover {
+  background: #f8fbfd;
+}
+
+.education-learning__mock-result-test {
+  min-width: 0;
+  overflow: hidden;
+
+  font-size: 0.59rem;
+  font-weight: 850;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.education-learning__mock-result-attempt {
+  min-width: 0;
+  overflow: hidden;
+
+  color: #617488;
+  font-size: 0.53rem;
+  font-weight: 750;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.education-learning__mock-result-progress {
+  position: relative;
+
+  display: block;
+
+  width: 100%;
+  height: 9px;
+
+  overflow: hidden;
+
+  border: 1px solid #d8dde2;
+  border-radius: 3px;
+
+  background: #edf0f2;
+}
+
+.education-learning__mock-result-progress-fill {
+  display: block;
+  height: 100%;
+}
+
+.education-learning__mock-result-progress-fill--red {
+  background: #d95b59;
+}
+
+.education-learning__mock-result-progress-fill--orange {
+  background: #e99139;
+}
+
+.education-learning__mock-result-progress-fill--yellow {
+  background: #d9b931;
+}
+
+.education-learning__mock-result-progress-fill--light-green {
+  background: #8fbd69;
+}
+
+.education-learning__mock-result-progress-fill--green {
+  background: #4b9860;
+}
+
+.education-learning__mock-result-percentile {
+  display: grid;
+  place-items: center;
+
+  width: 20px;
+  height: 20px;
+
+  justify-self: end;
+
+  box-sizing: border-box;
+
+  border: 1px solid #b9c8d3;
+  border-radius: 50%;
+
+  background: #fff;
+  color: #41566d;
+
+  font-size: 0.52rem;
+  font-weight: 900;
+}
+
+/* ---------------- popup ---------------- */
+
+.education-learning__mock-result-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147482000;
+
+  display: grid;
+  place-items: start center;
+
+  box-sizing: border-box;
+  padding: clamp(62px, 9vh, 88px) 10px 14px;
+
+  overflow-y: auto;
+
+  background: rgba(18, 29, 40, 0.32);
+}
+
+.education-learning__mock-result-dialog {
+  position: relative;
+
+  width: min(94vw, 540px);
+
+  box-sizing: border-box;
+
+  padding: 8px 9px 7px;
+
+  border: 1px solid #ccd8e1;
+  border-radius: 9px;
+
+  background: #fff;
+  color: #17345c;
+
+  box-shadow: 0 12px 32px rgba(13, 31, 48, 0.22);
+}
+
+.education-learning__mock-result-dialog > h2 {
+  margin: 0 25px 4px;
+  font-size: 0.72rem;
+  line-height: 1.1;
+  font-weight: 900;
+  text-align: center;
+}
+
+.education-learning__mock-result-dialog-x {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+
+  width: 22px;
+  height: 22px;
+
+  display: grid;
+  place-items: center;
+
+  border: 0;
+  border-radius: 50%;
+
+  padding: 0;
+
+  background: transparent;
+  color: #64788a;
+
+  font-size: 0.9rem;
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+.education-learning__mock-result-dialog-x:hover {
+  background: #eef3f6;
+}
+
+.education-learning__mock-result-dialog-summary {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 9px;
+
+  margin: 0 0 5px;
+
+  color: #667b8e;
+  font-size: 0.49rem;
+  font-weight: 750;
+}
+
+.education-learning__mock-result-subjects {
+  display: grid;
+  gap: 4px;
+}
+
+.education-learning__mock-result-subject {
+  display: grid;
+  grid-template-columns: minmax(92px, 30%) minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+
+  min-height: 35px;
+
+  padding: 3px 0;
+
+  border-top: 1px solid #edf1f3;
+}
+
+.education-learning__mock-result-subject strong {
+  font-size: 0.56rem;
+  line-height: 1.05;
+}
+
+.education-learning__mock-result-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+
+  width: min(100%, 180px);
+
+  justify-self: start;
+}
+
+.education-learning__mock-result-cell {
+  display: block;
+
+  height: 9px;
+  min-width: 0;
+
+  border: 1px solid transparent;
+  border-radius: 2px;
+}
+
+.education-learning__mock-result-cell--correct {
+  border-color: #4c9a60;
+  background: #58a96a;
+}
+
+.education-learning__mock-result-cell--wrong {
+  border-color: #cf5755;
+  background: #db6260;
+}
+
+.education-learning__mock-result-cell--unanswered {
+  border-color: #d1d7dc;
+  background: #e5e8eb;
+}
+
+.education-learning__mock-result-dialog-actions {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+
+  margin-top: 6px;
+}
+
+.education-learning__mock-result-dialog-actions button {
+  min-width: 86px;
+  min-height: 25px;
+
+  border: 1px solid #b9c7d2;
+  border-radius: 6px;
+
+  padding: 2px 8px;
+
+  background: #fff;
+  color: #17345c;
+
+  font: inherit;
+  font-size: 0.53rem;
+  font-weight: 850;
+
+  cursor: pointer;
+}
+
+.education-learning__mock-result-dialog-actions button:disabled {
+  border-color: #d7dce1;
+  background: #f2f4f6;
+  color: #8a969f;
+
+  cursor: not-allowed;
+}
+
+@media (max-width: 430px) {
+  .education-learning__mock-results-card {
+    margin-bottom: 7px;
+    padding: 5px;
+  }
+
+  .education-learning__mock-results-card > h2 {
+    margin-bottom: 3px;
+    font-size: 0.7rem;
+  }
+
+  .education-learning__mock-result-row {
+    grid-template-columns:
+      minmax(0, 40fr)
+      minmax(45px, 15fr)
+      minmax(65px, 30fr)
+      21px;
+
+    gap: 3px;
+
+    min-height: 24px;
+
+    padding-block: 1px;
+  }
+
+  .education-learning__mock-result-test {
+    font-size: 0.55rem;
+  }
+
+  .education-learning__mock-result-attempt {
+    font-size: 0.49rem;
+  }
+
+  .education-learning__mock-result-progress {
+    height: 8px;
+  }
+
+  .education-learning__mock-result-percentile {
+    width: 18px;
+    height: 18px;
+
+    font-size: 0.48rem;
+  }
+
+  .education-learning__mock-result-dialog-backdrop {
+    padding: 54px 6px 10px;
+  }
+
+  .education-learning__mock-result-dialog {
+    width: 100%;
+    padding: 7px 7px 6px;
+  }
+
+  .education-learning__mock-result-dialog > h2 {
+    margin-bottom: 3px;
+    font-size: 0.66rem;
+  }
+
+  .education-learning__mock-result-dialog-summary {
+    gap: 3px 7px;
+    margin-bottom: 3px;
+    font-size: 0.46rem;
+  }
+
+  .education-learning__mock-result-subject {
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 4px;
+
+    min-height: 31px;
+
+    padding: 2px 0;
+  }
+
+  .education-learning__mock-result-subject strong {
+    font-size: 0.52rem;
+  }
+
+  .education-learning__mock-result-grid {
+    width: min(100%, 155px);
+    gap: 2px;
+  }
+
+  .education-learning__mock-result-cell {
+    height: 8px;
+  }
+
+  .education-learning__mock-result-dialog-actions {
+    margin-top: 4px;
+  }
+
+  .education-learning__mock-result-dialog-actions button {
+    min-height: 23px;
+    padding-block: 1px;
+    font-size: 0.5rem;
+  }
+}
+
+
+/* CBT report proportions requested: 40% test / 15% attempt / 30% bar / 15% percentile. */
+.education-learning__mock-result-row {
+  grid-template-columns: 40% 15% 30% 15% !important;
+}
+
+.education-learning__mock-result-percentile {
+  justify-self: center !important;
+}
+
+@media (max-width: 430px) {
+  .education-learning__mock-result-row {
+    grid-template-columns: 40% 15% 30% 15% !important;
+  }
+}
+
+
+/* ======================================================
+ * Account-wide Education progress protection
+ * ====================================================== */
+
+.education-learning__protect-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147482500;
+
+  display: grid;
+  place-items: start center;
+
+  box-sizing: border-box;
+  padding: clamp(62px, 9vh, 88px) 10px 14px;
+
+  overflow-y: auto;
+
+  background: rgba(18, 29, 40, 0.32);
+}
+
+.education-learning__protect-dialog {
+  position: relative;
+
+  width: min(94vw, 520px);
+
+  box-sizing: border-box;
+
+  padding: 9px 10px 8px;
+
+  border: 1px solid #d2b292;
+  border-left: 4px solid #a76431;
+  border-radius: 9px;
+
+  background: linear-gradient(180deg, #fffdf9, #fffaf3);
+  color: #3f3026;
+
+  box-shadow: 0 10px 28px rgba(75, 46, 24, 0.18);
+}
+
+.education-learning__protect-x {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+
+  width: 22px;
+  height: 22px;
+
+  display: grid;
+  place-items: center;
+
+  border: 0;
+  border-radius: 50%;
+
+  padding: 0;
+
+  background: transparent;
+  color: #765b45;
+
+  font-size: 0.86rem;
+
+  cursor: pointer;
+}
+
+.education-learning__protect-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  padding-right: 26px;
+}
+
+.education-learning__protect-heading > span {
+  width: 27px;
+  height: 27px;
+
+  display: grid;
+  place-items: center;
+
+  flex: 0 0 auto;
+
+  border-radius: 50%;
+
+  background: #f2dfcd;
+
+  font-size: 0.75rem;
+}
+
+.education-learning__protect-heading > div {
+  display: grid;
+  gap: 1px;
+}
+
+.education-learning__protect-heading strong {
+  font-size: 0.7rem;
+  line-height: 1.1;
+}
+
+.education-learning__protect-heading small,
+.education-learning__protect-note {
+  color: #856d59;
+  font-size: 0.5rem;
+  line-height: 1.2;
+}
+
+.education-learning__protect-dialog p {
+  margin: 7px 0 5px;
+
+  font-size: 0.59rem;
+  line-height: 1.32;
+}
+
+.education-learning__protect-email {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px;
+
+  margin: 7px 0 5px;
+}
+
+.education-learning__protect-email input {
+  min-width: 0;
+  height: 29px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #cdb9a8;
+  border-radius: 6px;
+
+  padding: 3px 7px;
+
+  background: #fff;
+
+  font: inherit;
+  font-size: 0.58rem;
+}
+
+.education-learning__protect-email button {
+  min-height: 29px;
+
+  border: 1px solid #945526;
+  border-radius: 6px;
+
+  padding: 3px 8px;
+
+  background: #a76431;
+  color: #fff;
+
+  font: inherit;
+  font-size: 0.54rem;
+  font-weight: 900;
+
+  cursor: pointer;
+}
+
+.education-learning__protect-error {
+  margin: 3px 0 4px;
+
+  color: #a13f35;
+
+  font-size: 0.51rem;
+  font-weight: 800;
+}
+
+.education-learning__protect-actions {
+  display: flex;
+  justify-content: flex-end;
+
+  margin-top: 7px;
+}
+
+.education-learning__protect-actions button {
+  min-height: 27px;
+
+  border: 1px solid #cdb9a8;
+  border-radius: 6px;
+
+  padding: 3px 8px;
+
+  background: #fff;
+  color: #604b3a;
+
+  font: inherit;
+  font-size: 0.53rem;
+  font-weight: 850;
+
+  cursor: pointer;
+}
+
+@media (max-width: 430px) {
+  .education-learning__protect-backdrop {
+    padding: 56px 7px 12px;
+  }
+
+  .education-learning__protect-dialog {
+    width: 100%;
+    padding: 7px 8px;
+  }
+
+  .education-learning__protect-email {
+    gap: 4px;
+    margin: 5px 0 4px;
+  }
+
+  .education-learning__protect-email input,
+  .education-learning__protect-email button {
+    min-height: 27px;
+    height: 27px;
+
+    font-size: 0.52rem;
+  }
+}
+
+
+/* ======================================================
+ * Practice CBT — same interaction language as JEE CBT
+ * ====================================================== */
+
+.education-learning__practice-cbt-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 168px;
+  gap: 8px;
+  align-items: start;
+}
+
+.education-learning__practice-cbt-main {
+  min-width: 0;
+}
+
+.education-learning__practice-cbt-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  margin-bottom: 4px;
+  padding: 3px 5px;
+
+  border: 1px solid #dbe3e8;
+  border-radius: 6px;
+
+  background: #f7fafb;
+  color: #456072;
+
+  font-size: 0.55rem;
+}
+
+.education-learning__question-card--cbt {
+  min-height: 170px;
+  height: 170px;
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.education-learning__practice-cbt-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+
+  margin-top: 4px;
+}
+
+.education-learning__practice-cbt-nav button {
+  min-height: 27px;
+  padding: 2px 5px;
+
+  border: 1px solid #cbd7df;
+  border-radius: 5px;
+
+  background: #fff;
+  color: #29485f;
+
+  font: inherit;
+  font-size: 0.53rem;
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.education-learning__practice-cbt-nav button:disabled {
+  opacity: 0.48;
+  cursor: default;
+}
+
+.education-learning__practice-review--active {
+  background: #f5ebcf !important;
+  border-color: #c8a756 !important;
+}
+
+.education-learning__practice-palette {
+  padding: 5px;
+
+  border: 1px solid #d7e0e6;
+  border-radius: 7px;
+
+  background: #fff;
+}
+
+.education-learning__practice-palette-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 4px;
+
+  color: #355066;
+  font-size: 0.54rem;
+}
+
+.education-learning__practice-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.education-learning__practice-palette-number {
+  min-width: 0;
+  height: 26px;
+
+  border: 1px solid #cbd5dc;
+  border-radius: 4px;
+
+  padding: 0;
+
+  background: #edf1f3;
+  color: #344d5e;
+
+  font: inherit;
+  font-size: 0.54rem;
+  font-weight: 850;
+
+  cursor: pointer;
+}
+
+.education-learning__practice-palette-number--answered {
+  background: #dcefdc;
+  border-color: #8ebb91;
+}
+
+.education-learning__practice-palette-number--correct {
+  background: #63a96b;
+  border-color: #4d9257;
+  color: #fff;
+}
+
+.education-learning__practice-palette-number--wrong {
+  background: #d96561;
+  border-color: #c65350;
+  color: #fff;
+}
+
+.education-learning__practice-palette-number--review {
+  box-shadow: inset 0 0 0 2px #c7a24c;
+}
+
+.education-learning__practice-palette-number--current {
+  outline: 2px solid #58748a;
+  outline-offset: 1px;
+}
+
+.education-learning__practice-palette-submit {
+  width: 100%;
+  min-height: 27px;
+
+  margin-top: 5px;
+  padding: 2px 5px;
+
+  border: 1px solid #81522f;
+  border-radius: 5px;
+
+  background: #96613a;
+  color: #fff;
+
+  font: inherit;
+  font-size: 0.54rem;
+  font-weight: 900;
+
+  cursor: pointer;
+}
+
+.education-learning__practice-palette-submit:disabled {
+  opacity: 0.48;
+  cursor: default;
+}
+
+@media (max-width: 720px) {
+  .education-learning__practice-cbt-layout {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+
+  .education-learning__practice-palette {
+    order: 2;
+    padding: 4px;
+  }
+
+  .education-learning__practice-palette-title {
+    margin-bottom: 3px;
+  }
+
+  .education-learning__practice-palette-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .education-learning__practice-palette-number {
+    height: 25px;
+  }
+
+  .education-learning__question-card--cbt {
+    min-height: 170px;
+    height: 170px;
+  }
+
+  .education-learning__practice-cbt-nav {
+    gap: 3px;
+  }
+
+  .education-learning__practice-cbt-nav button {
+    min-height: 25px;
+    padding-inline: 3px;
+    font-size: 0.49rem;
+  }
+}
+
+
+/* Practice CBT card normalization: match mini/full mock visual rhythm.
+   Difficulty remains available via the question-number tooltip. */
+.education-learning__question-card--cbt
+.education-learning__question-number {
+  min-height: 0;
+  margin-bottom: 2px;
+}
+
+.education-learning__question-card--cbt
+.education-learning__question-number small {
+  display: none;
+}
+
+
+/* ======================================================
+ * Practice CBT — exact visual match to final Mock CBT v8
+ * ====================================================== */
+
+.education-learning
+.education-learning__practice-cbt-layout
+.education-learning__practice-cbt-main
+article.education-learning__question-card--cbt {
+  height: 174px !important;
+  min-height: 174px !important;
+  max-height: 174px !important;
+
+  margin: 0 !important;
+  padding: 5px 6px !important;
+
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+
+  border: 1px solid #dfe7ee !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+}
+
+/*
+ * Question number consumes almost no vertical height.
+ * Difficulty remains tooltip-only.
+ */
+.education-learning
+.education-learning__question-card--cbt
+.education-learning__question-number {
+  min-height: 0 !important;
+  height: auto !important;
+
+  margin: 0 0 1px !important;
+  padding: 0 !important;
+
+  line-height: 1 !important;
+}
+
+.education-learning
+.education-learning__question-card--cbt
+.education-learning__question-number strong {
+  font-size: 0.52rem !important;
+  line-height: 1 !important;
+}
+
+/*
+ * Same mock-test question typography.
+ * Reserve exactly two text lines even for a short question,
+ * preventing navigation/button movement between questions.
+ */
+.education-learning
+.education-learning__question-card--cbt
+.education-learning__practice-question-heading {
+  display: block !important;
+
+  min-height: calc(2 * 0.68rem * 1.22) !important;
+  max-height: calc(2 * 0.68rem * 1.22) !important;
+
+  margin: 0 0 3px !important;
+  padding: 0 !important;
+
+  overflow: hidden !important;
+}
+
+.education-learning
+.education-learning__question-card--cbt
+.education-learning__practice-question-heading strong {
+  display: -webkit-box !important;
+  margin: 0 !important;
+
+  overflow: hidden !important;
+
+  font-size: 0.68rem !important;
+  font-weight: 400 !important;
+  line-height: 1.22 !important;
+
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+/*
+ * Match Mock CBT answer density:
+ * 2px gaps, 22px minimum rows, 0.58rem text.
+ */
+.education-learning
+.education-learning__question-card--cbt
+.education-learning__choices {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+
+  gap: 2px !important;
+
+  min-height: 0 !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  align-content: start !important;
+}
+
+.education-learning
+.education-learning__question-card--cbt
+.education-learning__choices button {
+  min-height: 22px !important;
+
+  box-sizing: border-box !important;
+
+  margin: 0 !important;
+  padding: 2px 5px !important;
+
+  border: 1px solid #dfe7ee !important;
+  border-radius: 7px !important;
+
+  background: #fbfdff;
+  color: inherit;
+
+  font: inherit;
+  font-size: 0.58rem !important;
+  font-weight: 400 !important;
+  line-height: 1.15 !important;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.education-learning
+.education-learning__question-card--cbt
+.education-learning__choices button.selected {
+  border-color: #8fb1cc !important;
+  background: #f1f7fb !important;
+
+  outline: none !important;
+  box-shadow: inset 0 0 0 1px #8fb1cc;
+}
+
+.education-learning
+.education-learning__question-card--cbt
+.education-learning__choices button.correct {
+  border-color: #88bd94 !important;
+  background: #eef9f1 !important;
+}
+
+.education-learning
+.education-learning__question-card--cbt
+.education-learning__choices button.wrong {
+  border-color: #e0aaaa !important;
+  background: #fff7f7 !important;
+}
+
+/*
+ * Result explanation stays compact. It may scroll only after submission
+ * when an unusually long explanation is present.
+ */
+.education-learning
+.education-learning__question-card--cbt
+.education-learning__answer {
+  margin: 3px 0 0 !important;
+  padding: 3px 5px !important;
+
+  border-radius: 5px !important;
+
+  font-size: 0.54rem !important;
+  line-height: 1.15 !important;
+}
+
+/* Keep the exact same card size on mobile too. */
+@media (max-width: 700px) {
+  .education-learning
+  .education-learning__practice-cbt-layout
+  .education-learning__practice-cbt-main
+  article.education-learning__question-card--cbt {
+    height: 174px !important;
+    min-height: 174px !important;
+    max-height: 174px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .education-learning
+  .education-learning__practice-cbt-layout
+  .education-learning__practice-cbt-main
+  article.education-learning__question-card--cbt {
+    height: 174px !important;
+    min-height: 174px !important;
+    max-height: 174px !important;
+
+    padding: 5px 6px !important;
+  }
+
+  .education-learning
+  .education-learning__question-card--cbt
+  .education-learning__practice-question-heading strong {
+    font-size: 0.63rem !important;
+    line-height: 1.16 !important;
+  }
+
+  .education-learning
+  .education-learning__question-card--cbt
+  .education-learning__practice-question-heading {
+    min-height: calc(2 * 0.63rem * 1.16) !important;
+    max-height: calc(2 * 0.63rem * 1.16) !important;
+  }
+
+  .education-learning
+  .education-learning__question-card--cbt
+  .education-learning__choices {
+    gap: 2px !important;
+  }
+
+  .education-learning
+  .education-learning__question-card--cbt
+  .education-learning__choices button {
+    min-height: 22px !important;
+    padding: 2px 5px !important;
+
+    font-size: 0.55rem !important;
+  }
+}
+
+
+/* ======================================================
+ * Practice CBT final alignment with Mock CBT typography
+ * Number is inline with the question, not a separate row.
+ * ====================================================== */
+
+.education-learning
+.education-learning__practice-cbt-layout
+.education-learning__practice-cbt-main
+article.education-learning__question-card--cbt {
+  height: 170px !important;
+  min-height: 170px !important;
+  max-height: 170px !important;
+
+  padding: 5px 6px !important;
+  overflow-y: auto !important;
+}
+
+/*
+ * The production mock CBT's final effective question size is
+ * 0.90rem / 1.275 with regular weight. Reserve two lines.
+ */
+.education-learning
+.education-learning__question-card--cbt
+.education-learning__practice-question-heading {
+  display: block !important;
+
+  min-height: 2.55em !important;
+  max-height: 2.55em !important;
+
+  margin: 0 0 3px !important;
+  padding: 0 !important;
+
+  overflow: hidden !important;
+}
+
+.education-learning
+.education-learning__question-card--cbt
+.education-learning__practice-question-heading strong {
+  display: -webkit-box !important;
+
+  min-height: 2.55em !important;
+  max-height: 2.55em !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  overflow: hidden !important;
+
+  font-size: 0.9rem !important;
+  line-height: 1.275 !important;
+  font-weight: 400 !important;
+
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+.education-learning
+.education-learning__practice-question-number-inline {
+  display: inline !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  font: inherit !important;
+  font-weight: inherit !important;
+  line-height: inherit !important;
+}
+
+/*
+ * Match the final Mock CBT answer typography too.
+ */
+.education-learning
+.education-learning__question-card--cbt
+.education-learning__choices {
+  gap: 2px !important;
+  margin: 0 !important;
+}
+
+.education-learning
+.education-learning__question-card--cbt
+.education-learning__choices button {
+  min-height: 22px !important;
+
+  margin: 0 !important;
+  padding: 1px 5px !important;
+
+  font-size: 0.77rem !important;
+  line-height: 1.08 !important;
+  font-weight: 400 !important;
+}
+
+/*
+ * Mock CBT uses slightly smaller question text on narrow phones
+ * while preserving answer readability.
+ */
+@media (max-width: 430px) {
+  .education-learning
+  .education-learning__question-card--cbt
+  .education-learning__practice-question-heading,
+  .education-learning
+  .education-learning__question-card--cbt
+  .education-learning__practice-question-heading strong {
+    min-height: 2.5em !important;
+    max-height: 2.5em !important;
+  }
+
+  .education-learning
+  .education-learning__question-card--cbt
+  .education-learning__practice-question-heading strong {
+    font-size: 0.86rem !important;
+    line-height: 1.25 !important;
+    font-weight: 400 !important;
+  }
+
+  .education-learning
+  .education-learning__question-card--cbt
+  .education-learning__choices button {
+    font-size: 0.74rem !important;
+  }
+}
+
+
+/* Mock result question drill-down */
+.education-learning__mock-result-cell {
+  appearance: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.education-learning__mock-result-cell--selected {
+  outline: 2px solid #355e7a;
+  outline-offset: 1px;
+}
+
+.education-learning__mock-question-detail {
+  margin-top: 6px;
+  padding: 6px 7px;
+  border: 1px solid #dbe2e8;
+  border-radius: 7px;
+  background: #fbfcfd;
+}
+
+.education-learning__mock-question-detail-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.education-learning__mock-question-detail-heading strong {
+  color: #17345c;
+  font-size: 0.58rem;
+}
+
+.education-learning__mock-question-detail-heading button {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  color: #657888;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.education-learning__mock-question-text {
+  margin: 0 0 5px;
+  color: #1d3042;
+  font-size: 0.68rem;
+  line-height: 1.25;
+}
+
+.education-learning__mock-question-options {
+  display: grid;
+  gap: 2px;
+}
+
+.education-learning__mock-question-option {
+  padding: 3px 5px;
+  border: 1px solid #e0e5e9;
+  border-radius: 4px;
+  background: #fff;
+  color: #314657;
+  font-size: 0.58rem;
+  line-height: 1.2;
+}
+
+.education-learning__mock-question-option--correct {
+  border-color: #89bd94;
+  background: #edf8ef;
+}
+
+.education-learning__mock-question-option--wrong {
+  border-color: #df9b98;
+  background: #fff1f0;
+}
+
+.education-learning__mock-question-answer-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+  margin-top: 5px;
+  color: #53697a;
+  font-size: 0.52rem;
+}
+
+.education-learning__mock-question-explanation {
+  display: grid;
+  gap: 2px;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px dashed #d8e0e5;
+  color: #4c6171;
+  font-size: 0.54rem;
+  line-height: 1.25;
+}
+
+@media (max-width: 430px) {
+  .education-learning__mock-question-detail {
+    margin-top: 4px;
+    padding: 5px;
+  }
+
+  .education-learning__mock-question-text {
+    font-size: 0.64rem;
+  }
+
+  .education-learning__mock-question-option {
+    padding: 2px 4px;
+    font-size: 0.54rem;
+  }
+}

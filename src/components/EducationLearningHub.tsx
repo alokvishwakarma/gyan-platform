@@ -95,9 +95,59 @@ type EducationTopicProgress = {
 };
 
 
+type EducationMockAttemptReport = {
+  id: number;
+  testId: number;
+  testCode: string;
+  testName: string;
+  testKind: string;
+  examLevel: string;
+  attemptNumber: number;
+  questionCount: number;
+  score: number;
+  maximumMarks: number;
+  scorePercent: number;
+  correctCount: number;
+  incorrectCount: number;
+  unansweredCount: number;
+  elapsedSeconds: number;
+  saveCount: number;
+  submittedAt: string;
+  questionResults: Array<{
+    questionId: number;
+    sectionCode: string;
+    questionOrder: number;
+    status:
+      | "correct"
+      | "wrong"
+      | "unanswered";
+    selectedAnswer: string;
+    questionText: string;
+    choices: {
+      A: string;
+      B: string;
+      C: string;
+      D: string;
+    };
+    correctAnswer: string;
+    explanation: string | null;
+  }>;
+  percentile?: number | null;
+};
+
+type EducationProtectionStatus = {
+  answeredCount: number;
+  emailProtected: boolean;
+  milestone25Shown: boolean;
+  milestone50Shown: boolean;
+};
+
+
 type EducationProgressReport = {
   attemptSummary: EducationAttemptSummary;
   topicProgress: EducationTopicProgress[];
+  mockAttempts: EducationMockAttemptReport[];
+  protection: EducationProtectionStatus;
 };
 
 
@@ -268,6 +318,24 @@ export default function EducationLearningHub({
     );
 
   const [
+    practiceQuestionIndex,
+    setPracticeQuestionIndex,
+  ] =
+    useState(
+      0,
+    );
+
+  const [
+    practiceReviewIds,
+    setPracticeReviewIds,
+  ] =
+    useState<
+      number[]
+    >(
+      [],
+    );
+
+  const [
     reportTopics,
     setReportTopics,
   ] =
@@ -307,6 +375,90 @@ export default function EducationLearningHub({
       ProgramReportTopic[]
     >(
       [],
+    );
+
+  const [
+    programMockAttempts,
+    setProgramMockAttempts,
+  ] =
+    useState<
+      EducationMockAttemptReport[]
+    >(
+      [],
+    );
+
+  const [
+    selectedMockAttempt,
+    setSelectedMockAttempt,
+  ] =
+    useState<
+      EducationMockAttemptReport |
+      null
+    >(
+      null,
+    );
+
+  const [
+    selectedMockQuestion,
+    setSelectedMockQuestion,
+  ] =
+    useState<
+      EducationMockAttemptReport[
+        "questionResults"
+      ][number] |
+      null
+    >(
+      null,
+    );
+
+  const [
+    protectionStatus,
+    setProtectionStatus,
+  ] =
+    useState<
+      EducationProtectionStatus
+    >({
+      answeredCount:
+        0,
+      emailProtected:
+        activeGyanEmailKnown ===
+          true,
+      milestone25Shown:
+        false,
+      milestone50Shown:
+        false,
+    });
+
+  const [
+    practiceProtectionStage,
+    setPracticeProtectionStage,
+  ] =
+    useState<
+      25 |
+      50 |
+      null
+    >(
+      null,
+    );
+
+  const [
+    practiceRecoveryEmail,
+    setPracticeRecoveryEmail,
+  ] =
+    useState("");
+
+  const [
+    practiceRecoveryEmailError,
+    setPracticeRecoveryEmailError,
+  ] =
+    useState("");
+
+  const [
+    practiceRecoverySending,
+    setPracticeRecoverySending,
+  ] =
+    useState(
+      false,
     );
 
   const [
@@ -400,6 +552,344 @@ export default function EducationLearningHub({
       : "";
 
 
+  async function loadProtectionStatus():
+  Promise<EducationProtectionStatus | null> {
+    if (
+      !normalizedActiveGyanCode
+    ) {
+      return null;
+    }
+
+    try {
+      const response =
+        await fetch(
+          `/api/education/protection-status?student=${encodeURIComponent(
+            normalizedActiveGyanCode,
+          )}`,
+          {
+            credentials:
+              "include",
+            cache:
+              "no-store",
+          },
+        );
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const body =
+        await response.json() as {
+          protection?:
+            EducationProtectionStatus;
+        };
+
+      if (
+        !body.protection
+      ) {
+        return null;
+      }
+
+      setProtectionStatus(
+        body.protection,
+      );
+
+      return body.protection;
+    } catch {
+      return null;
+    }
+  }
+
+
+  async function markPracticeProtectionShown(
+    milestone:
+      25 |
+      50,
+  ): Promise<void> {
+    if (
+      !normalizedActiveGyanCode
+    ) {
+      return;
+    }
+
+    try {
+      await fetch(
+        "/api/education/protection-milestone",
+        {
+          method:
+            "POST",
+          credentials:
+            "include",
+          headers: {
+            "content-type":
+              "application/json",
+          },
+          body:
+            JSON.stringify({
+              studentCode:
+                normalizedActiveGyanCode,
+              milestone,
+            }),
+        },
+      );
+    } catch {
+      // Reminders must never block practice.
+    }
+  }
+
+
+  async function maybeShowPracticeProtection(
+    status:
+      EducationProtectionStatus,
+  ): Promise<void> {
+    /*
+     * Trust the server-owned protection state here.
+     *
+     * The parent may temporarily report emailKnown=true while
+     * the GYAN identity is still loading. Using that transient
+     * prop can suppress a legitimate 25/50 warning permanently
+     * for this mount.
+     */
+    if (
+      status.emailProtected
+    ) {
+      return;
+    }
+
+    if (
+      status.answeredCount >=
+        50 &&
+      !status.milestone50Shown
+    ) {
+      setPracticeProtectionStage(
+        50,
+      );
+
+      return;
+    }
+
+    if (
+      status.answeredCount >=
+        25 &&
+      !status.milestone25Shown &&
+      !status.milestone50Shown
+    ) {
+      setPracticeProtectionStage(
+        25,
+      );
+    }
+  }
+
+
+  async function acknowledgePracticeProtection():
+  Promise<void> {
+    const milestone =
+      practiceProtectionStage;
+
+    if (
+      milestone !== 25 &&
+      milestone !== 50
+    ) {
+      setPracticeProtectionStage(
+        null,
+      );
+
+      return;
+    }
+
+    setPracticeProtectionStage(
+      null,
+    );
+
+    setProtectionStatus(
+      (
+        current,
+      ) => ({
+        ...current,
+        milestone25Shown:
+          milestone === 50
+            ? true
+            : current.milestone25Shown ||
+              milestone === 25,
+        milestone50Shown:
+          current.milestone50Shown ||
+          milestone === 50,
+      }),
+    );
+
+    await markPracticeProtectionShown(
+      milestone,
+    );
+  }
+
+
+  async function protectPracticeGyan():
+  Promise<void> {
+    const email =
+      practiceRecoveryEmail
+        .trim()
+        .toLowerCase();
+
+    if (
+      !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(
+        email,
+      )
+    ) {
+      setPracticeRecoveryEmailError(
+        "Enter a valid email address.",
+      );
+
+      return;
+    }
+
+    setPracticeRecoverySending(
+      true,
+    );
+
+    setPracticeRecoveryEmailError(
+      "",
+    );
+
+    try {
+      const response =
+        await fetch(
+          "/api/gyan-identity/email",
+          {
+            method:
+              "POST",
+            credentials:
+              "include",
+            headers: {
+              "content-type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                email,
+              }),
+          },
+        );
+
+      const body =
+        await response
+          .json()
+          .catch(
+            () => ({}),
+          ) as {
+            error?: string;
+          };
+
+      if (!response.ok) {
+        throw new Error(
+          body.error ??
+          "Recovery email could not be added.",
+        );
+      }
+
+      setProtectionStatus(
+        (
+          current,
+        ) => ({
+          ...current,
+          emailProtected:
+            true,
+        }),
+      );
+
+      setPracticeProtectionStage(
+        null,
+      );
+    } catch (
+      caught
+    ) {
+      setPracticeRecoveryEmailError(
+        caught instanceof
+          Error
+          ? caught.message
+          : "Recovery email could not be added.",
+      );
+    } finally {
+      setPracticeRecoverySending(
+        false,
+      );
+    }
+  }
+
+
+  useEffect(
+    () => {
+      if (
+        !normalizedActiveGyanCode
+      ) {
+        return;
+      }
+
+      let cancelled =
+        false;
+
+      void (
+        async () => {
+          try {
+            const response =
+              await fetch(
+                `/api/education/protection-status?student=${encodeURIComponent(
+                  normalizedActiveGyanCode,
+                )}`,
+                {
+                  credentials:
+                    "include",
+                  cache:
+                    "no-store",
+                },
+              );
+
+            if (
+              !response.ok ||
+              cancelled
+            ) {
+              return;
+            }
+
+            const body =
+              await response.json() as {
+                protection?:
+                  EducationProtectionStatus;
+              };
+
+            if (
+              !body.protection ||
+              cancelled
+            ) {
+              return;
+            }
+
+            setProtectionStatus(
+              body.protection,
+            );
+
+            await maybeShowPracticeProtection(
+              body.protection,
+            );
+          } catch {
+            /*
+             * Protection status is helpful but must never
+             * interrupt ordinary Education navigation.
+             */
+          }
+        }
+      )();
+
+      return () => {
+        cancelled =
+          true;
+      };
+    },
+    [
+      normalizedActiveGyanCode,
+    ],
+  );
+
+
   function scoreState(
     scorePercent:
       number |
@@ -451,6 +941,103 @@ export default function EducationLearningHub({
   }
 
 
+  function mockScoreState(
+    scorePercent:
+      number,
+  ):
+    "green" |
+    "light-green" |
+    "yellow" |
+    "orange" |
+    "red" {
+    if (
+      scorePercent <
+      0
+    ) {
+      return "red";
+    }
+
+    if (
+      scorePercent <
+      30
+    ) {
+      return "orange";
+    }
+
+    if (
+      scorePercent <
+      60
+    ) {
+      return "yellow";
+    }
+
+    if (
+      scorePercent <
+      80
+    ) {
+      return "light-green";
+    }
+
+    return "green";
+  }
+
+
+  function mockSubjectLabel(
+    sectionCode:
+      string,
+  ): string {
+    const normalized =
+      sectionCode
+        .trim()
+        .toUpperCase();
+
+    if (
+      normalized ===
+      "MATH"
+    ) {
+      return "Mathematics";
+    }
+
+    if (
+      normalized ===
+      "PHYSICS"
+    ) {
+      return "Physics";
+    }
+
+    if (
+      normalized ===
+      "CHEMISTRY"
+    ) {
+      return "Chemistry";
+    }
+
+    return sectionCode;
+  }
+
+
+  function mockLevelLabel(
+    examLevel:
+      string,
+  ): string {
+    if (
+      examLevel ===
+      "MAIN"
+    ) {
+      return "Main";
+    }
+
+    if (
+      examLevel ===
+      "ADVANCED"
+    ) {
+      return "Advanced";
+    }
+
+    return examLevel;
+  }
+
+
   function latestTopicAttempt(
     subjectCode: string,
     topicCode: string,
@@ -485,6 +1072,19 @@ export default function EducationLearningHub({
       },
       topicProgress:
         [],
+      mockAttempts:
+        [],
+      protection: {
+        answeredCount:
+          0,
+        emailProtected:
+          activeGyanEmailKnown ===
+            true,
+        milestone25Shown:
+          false,
+        milestone50Shown:
+          false,
+      },
     };
 
     if (
@@ -527,6 +1127,10 @@ export default function EducationLearningHub({
           EducationAttemptSummary;
         topicProgress?:
           EducationTopicProgress[];
+        mockAttempts?:
+          EducationMockAttemptReport[];
+        protection?:
+          EducationProtectionStatus;
       };
 
     const result:
@@ -540,6 +1144,15 @@ export default function EducationLearningHub({
         )
           ? body.topicProgress
           : [],
+      mockAttempts:
+        Array.isArray(
+          body.mockAttempts,
+        )
+          ? body.mockAttempts
+          : [],
+      protection:
+        body.protection ??
+        empty.protection,
     };
 
     setAttemptSummary(
@@ -547,6 +1160,10 @@ export default function EducationLearningHub({
     );
     setTopicProgress(
       result.topicProgress,
+    );
+
+    setProtectionStatus(
+      result.protection,
     );
 
     return result;
@@ -573,6 +1190,10 @@ export default function EducationLearningHub({
     try {
       const progressReport =
         await loadEducationProgressReport();
+
+      setProgramMockAttempts(
+        progressReport.mockAttempts,
+      );
 
       const reportSubjects =
         await loadSubjects(
@@ -786,6 +1407,12 @@ export default function EducationLearningHub({
       );
       setSubmitted(
         false,
+      );
+      setPracticeQuestionIndex(
+        0,
+      );
+      setPracticeReviewIds(
+        [],
       );
       setStep(
         "questions",
@@ -1209,6 +1836,14 @@ export default function EducationLearningHub({
         false,
       );
 
+      setPracticeQuestionIndex(
+        0,
+      );
+
+      setPracticeReviewIds(
+        [],
+      );
+
       setStep(
         "questions",
       );
@@ -1266,6 +1901,14 @@ export default function EducationLearningHub({
 
       setSubmitted(
         false,
+      );
+
+      setPracticeQuestionIndex(
+        0,
+      );
+
+      setPracticeReviewIds(
+        [],
       );
     } catch (
       caught
@@ -1464,6 +2107,17 @@ export default function EducationLearningHub({
           setAutoSaveMessage(
             `✓ Saved to [${activeGyanCodeLabel}]`,
           );
+
+          const nextProtection =
+            await loadProtectionStatus();
+
+          if (
+            nextProtection
+          ) {
+            await maybeShowPracticeProtection(
+              nextProtection,
+            );
+          }
         } catch (
           saveCaught
         ) {
@@ -1524,6 +2178,85 @@ export default function EducationLearningHub({
     questions.length === 5 &&
     answeredCount === 5 &&
     !submitted;
+
+
+  const currentPracticeQuestion =
+    questions[
+      Math.min(
+        Math.max(
+          practiceQuestionIndex,
+          0,
+        ),
+        Math.max(
+          0,
+          questions.length -
+          1,
+        ),
+      )
+    ] ??
+    null;
+
+  const currentPracticeState =
+    currentPracticeQuestion
+      ? answers[
+          currentPracticeQuestion.id
+        ]
+      : undefined;
+
+
+  function goToPracticeQuestion(
+    index:
+      number,
+  ): void {
+    if (
+      questions.length ===
+        0
+    ) {
+      return;
+    }
+
+    setPracticeQuestionIndex(
+      Math.min(
+        Math.max(
+          index,
+          0,
+        ),
+        questions.length -
+          1,
+      ),
+    );
+  }
+
+
+  function togglePracticeReview():
+  void {
+    if (
+      !currentPracticeQuestion ||
+      submitted
+    ) {
+      return;
+    }
+
+    setPracticeReviewIds(
+      (
+        current,
+      ) =>
+        current.includes(
+          currentPracticeQuestion.id,
+        )
+          ? current.filter(
+              (
+                questionId,
+              ) =>
+                questionId !==
+                currentPracticeQuestion.id,
+            )
+          : [
+              ...current,
+              currentPracticeQuestion.id,
+            ],
+    );
+  }
 
 
 
@@ -1791,6 +2524,15 @@ export default function EducationLearningHub({
             mockProgram
           }
 
+          activeGyanCode={
+            normalizedActiveGyanCode
+          }
+
+          activeGyanEmailKnown={
+            activeGyanEmailKnown ||
+            protectionStatus.emailProtected
+          }
+
           onBack={() => {
             setStep(
               "portal",
@@ -1977,6 +2719,149 @@ export default function EducationLearningHub({
             className="education-learning__state"
           >
             Loading…
+          </div>
+        )
+      }
+
+
+      {
+        practiceProtectionStage && (
+          <div
+            className="education-learning__protect-backdrop"
+            role="presentation"
+            onMouseDown={() =>
+              void acknowledgePracticeProtection()
+            }
+          >
+            <section
+              className="education-learning__protect-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Protect your GYAN"
+              onMouseDown={(
+                event,
+              ) =>
+                event.stopPropagation()
+              }
+            >
+              <button
+                type="button"
+                className="education-learning__protect-x"
+                aria-label="Close"
+                onClick={() =>
+                  void acknowledgePracticeProtection()
+                }
+              >
+                ×
+              </button>
+
+              <div
+                className="education-learning__protect-heading"
+              >
+                <span
+                  aria-hidden="true"
+                >
+                  🛡
+                </span>
+
+                <div>
+                  <strong>
+                    Protect your GYAN
+                  </strong>
+
+                  <small>
+                    {
+                      protectionStatus.answeredCount
+                    } cumulative questions answered
+                  </small>
+                </div>
+              </div>
+
+              <p>
+                {
+                  practiceProtectionStage ===
+                    25
+                    ? "You have already built meaningful learning progress. Add a recovery email so this GYAN can be restored if this browser or device is lost or reset."
+                    : "You have answered 50 or more questions. Your learning history is still tied to this browser unless you add a recovery email."
+                }
+              </p>
+
+              <div
+                className="education-learning__protect-email"
+              >
+                <input
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="Recovery email"
+                  value={
+                    practiceRecoveryEmail
+                  }
+                  disabled={
+                    practiceRecoverySending
+                  }
+                  onChange={(
+                    event,
+                  ) => {
+                    setPracticeRecoveryEmail(
+                      event.target.value,
+                    );
+
+                    setPracticeRecoveryEmailError(
+                      "",
+                    );
+                  }}
+                />
+
+                <button
+                  type="button"
+                  disabled={
+                    practiceRecoverySending
+                  }
+                  onClick={() =>
+                    void protectPracticeGyan()
+                  }
+                >
+                  {
+                    practiceRecoverySending
+                      ? "Sending…"
+                      : "Protect my GYAN"
+                  }
+                </button>
+              </div>
+
+              {
+                practiceRecoveryEmailError && (
+                  <div
+                    className="education-learning__protect-error"
+                    role="alert"
+                  >
+                    {
+                      practiceRecoveryEmailError
+                    }
+                  </div>
+                )
+              }
+
+              <small
+                className="education-learning__protect-note"
+              >
+                Recovery email is for restoring your GYAN and learning progress. You can continue without adding one.
+              </small>
+
+              <div
+                className="education-learning__protect-actions"
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    void acknowledgePracticeProtection()
+                  }
+                >
+                  Continue for now
+                </button>
+              </div>
+            </section>
           </div>
         )
       }
@@ -2301,51 +3186,61 @@ export default function EducationLearningHub({
 
 
             {
-              questions.map(
-                (
-                  question,
-                  questionIndex,
-                ) => {
-                  const state =
-                    answers[
-                      question.id
-                    ];
+              currentPracticeQuestion && (
+                <div
+                  className="education-learning__practice-cbt-layout"
+                >
+                  <div
+                    className="education-learning__practice-cbt-main"
+                  >
+                    <div
+                      className="education-learning__practice-cbt-status"
+                    >
+                      <strong>
+                        Question {
+                          practiceQuestionIndex +
+                          1
+                        } of {
+                          questions.length
+                        }
+                      </strong>
 
-                  return (
+                      <span>
+                        {
+                          answeredCount
+                        }/{questions.length} answered
+                      </span>
+                    </div>
+
                     <article
-                      className="education-learning__question-card"
-                      key={
-                        question.id
-                      }
+                      className="education-learning__question-card education-learning__question-card--cbt"
                     >
                       <div
-                        className="education-learning__question-number"
+                        className="education-learning__practice-question-heading"
+                        title={`Difficulty: ${
+                          currentPracticeQuestion.difficulty
+                        }`}
                       >
                         <strong>
+                          <span
+                            className="education-learning__practice-question-number-inline"
+                          >
+                            {
+                              practiceQuestionIndex +
+                              1
+                            }.
+                          </span>{" "}
                           {
-                            questionIndex +
-                            1
-                          }.
-                        </strong>
-
-                        <small>
-                          {
-                            question.difficulty
+                            currentPracticeQuestion.text
                           }
-                        </small>
+                        </strong>
                       </div>
-
-                      <h2>
-                        {
-                          question.text
-                        }
-                      </h2>
 
                       <div
                         className="education-learning__choices"
                       >
                         {
-                          question.choices.map(
+                          currentPracticeQuestion.choices.map(
                             (
                               choice,
                               choiceIndex,
@@ -2361,13 +3256,13 @@ export default function EducationLearningHub({
                                 ];
 
                               const selected =
-                                state
+                                currentPracticeState
                                   ?.selectedChoice ===
                                 key;
 
                               const correct =
                                 submitted &&
-                                state
+                                currentPracticeState
                                   ?.result
                                   ?.correctChoice ===
                                 key;
@@ -2375,7 +3270,7 @@ export default function EducationLearningHub({
                               const wrongSelected =
                                 submitted &&
                                 selected &&
-                                !state
+                                !currentPracticeState
                                   ?.result
                                   ?.correct;
 
@@ -2409,7 +3304,7 @@ export default function EducationLearningHub({
                                     )}
                                   onClick={() =>
                                     selectChoice(
-                                      question.id,
+                                      currentPracticeQuestion.id,
                                       key,
                                     )
                                   }
@@ -2429,15 +3324,15 @@ export default function EducationLearningHub({
                         }
                       </div>
 
-
                       {
                         submitted &&
-                        state
+                        currentPracticeState
                           ?.result && (
                           <div
                             className={[
                               "education-learning__answer",
-                              state.result
+
+                              currentPracticeState.result
                                 .correct
                                 ? "correct"
                                 : "wrong",
@@ -2447,19 +3342,19 @@ export default function EducationLearningHub({
                           >
                             <strong>
                               {
-                                state.result
+                                currentPracticeState.result
                                   .correct
                                   ? "✓ Correct"
-                                  : `Correct answer: ${state.result.correctChoice}`
+                                  : `Correct answer: ${currentPracticeState.result.correctChoice}`
                               }
                             </strong>
 
                             {
-                              state.result
+                              currentPracticeState.result
                                 .explanation && (
                                 <span>
                                   {
-                                    state.result
+                                    currentPracticeState.result
                                       .explanation
                                   }
                                 </span>
@@ -2469,8 +3364,186 @@ export default function EducationLearningHub({
                         )
                       }
                     </article>
-                  );
-                },
+
+                    <nav
+                      className="education-learning__practice-cbt-nav"
+                      aria-label="Practice question navigation"
+                    >
+                      <button
+                        type="button"
+                        disabled={
+                          practiceQuestionIndex <=
+                          0
+                        }
+                        onClick={() =>
+                          goToPracticeQuestion(
+                            practiceQuestionIndex -
+                            1,
+                          )
+                        }
+                      >
+                        ← Previous
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={
+                          submitted
+                        }
+                        className={
+                          practiceReviewIds.includes(
+                            currentPracticeQuestion.id,
+                          )
+                            ? "education-learning__practice-review education-learning__practice-review--active"
+                            : "education-learning__practice-review"
+                        }
+                        onClick={
+                          togglePracticeReview
+                        }
+                      >
+                        {
+                          practiceReviewIds.includes(
+                            currentPracticeQuestion.id,
+                          )
+                            ? "★ Reviewed"
+                            : "☆ Mark Review"
+                        }
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={
+                          practiceQuestionIndex >=
+                          questions.length -
+                            1
+                        }
+                        onClick={() =>
+                          goToPracticeQuestion(
+                            practiceQuestionIndex +
+                            1,
+                          )
+                        }
+                      >
+                        Save & Next →
+                      </button>
+                    </nav>
+                  </div>
+
+                  <aside
+                    className="education-learning__practice-palette"
+                    aria-label="Question palette"
+                  >
+                    <div
+                      className="education-learning__practice-palette-title"
+                    >
+                      <strong>
+                        Questions
+                      </strong>
+
+                      <small>
+                        {
+                          answeredCount
+                        }/{questions.length}
+                      </small>
+                    </div>
+
+                    <div
+                      className="education-learning__practice-palette-grid"
+                    >
+                      {
+                        questions.map(
+                          (
+                            question,
+                            index,
+                          ) => {
+                            const answered =
+                              Boolean(
+                                answers[
+                                  question.id
+                                ]?.selectedChoice,
+                              );
+
+                            const result =
+                              answers[
+                                question.id
+                              ]?.result;
+
+                            return (
+                              <button
+                                type="button"
+                                key={
+                                  question.id
+                                }
+                                className={[
+                                  "education-learning__practice-palette-number",
+
+                                  submitted &&
+                                  result
+                                    ? result.correct
+                                      ? "education-learning__practice-palette-number--correct"
+                                      : "education-learning__practice-palette-number--wrong"
+                                    : answered
+                                      ? "education-learning__practice-palette-number--answered"
+                                      : "education-learning__practice-palette-number--blank",
+
+                                  practiceReviewIds.includes(
+                                    question.id,
+                                  )
+                                    ? "education-learning__practice-palette-number--review"
+                                    : "",
+
+                                  index ===
+                                    practiceQuestionIndex
+                                    ? "education-learning__practice-palette-number--current"
+                                    : "",
+                                ]
+                                  .filter(
+                                    Boolean,
+                                  )
+                                  .join(
+                                    " ",
+                                  )}
+                                onClick={() =>
+                                  goToPracticeQuestion(
+                                    index,
+                                  )
+                                }
+                                aria-label={`Question ${index + 1}${
+                                  answered
+                                    ? ", answered"
+                                    : ", unanswered"
+                                }`}
+                              >
+                                {
+                                  index +
+                                  1
+                                }
+                              </button>
+                            );
+                          },
+                        )
+                      }
+                    </div>
+
+                    <button
+                      type="button"
+                      className="education-learning__practice-palette-submit"
+                      disabled={
+                        !canSubmit
+                      }
+                      onClick={() =>
+                        void submitAnswers()
+                      }
+                      title={
+                        canSubmit
+                          ? "Submit 5 answers"
+                          : "Answer all 5 questions first"
+                      }
+                    >
+                      ✓ Submit
+                    </button>
+                  </aside>
+                </div>
               )
             }
 
@@ -2558,6 +3631,143 @@ export default function EducationLearningHub({
           <section
             className="education-learning__program-report"
           >
+            {
+              !programReportLoading && (
+                <section
+                    className="education-learning__mock-results-card"
+                  >
+                    <h2>
+                      MOCK TEST RESULTS
+                    </h2>
+
+                    {
+                      programMockAttempts.length ===
+                        0 ? (
+                        <div
+                          className="education-learning__mock-results-empty"
+                        >
+                          No submitted mock tests yet.
+                        </div>
+                      ) : (
+                        <div
+                          className="education-learning__mock-results-list"
+                        >
+                          {
+                            programMockAttempts.map(
+                              (
+                                attempt,
+                              ) => {
+                                const attemptedCount =
+                                  attempt.correctCount +
+                                  attempt.incorrectCount;
+
+                                const attemptedPercent =
+                                  attempt.questionCount >
+                                    0
+                                    ? Math.max(
+                                        0,
+                                        Math.min(
+                                          100,
+                                          Math.round(
+                                            attemptedCount *
+                                              100 /
+                                              attempt.questionCount,
+                                          ),
+                                        ),
+                                      )
+                                    : 0;
+
+                                const scoreBand =
+                                  mockScoreState(
+                                    attempt.scorePercent,
+                                  );
+
+                                return (
+                                  <button
+                                    type="button"
+                                    key={
+                                      attempt.id
+                                    }
+                                    className="education-learning__mock-result-row"
+                                    onClick={() => {
+                                      setSelectedMockQuestion(
+                                        null,
+                                      );
+
+                                      setSelectedMockAttempt(
+                                        attempt,
+                                      );
+                                    }}
+                                    title={`${attempt.testName} · ${mockLevelLabel(
+                                      attempt.examLevel,
+                                    )} · Attempt ${attempt.attemptNumber} · ${attemptedPercent}% attempted · ${attempt.scorePercent}% score`}
+                                  >
+                                    <span
+                                      className="education-learning__mock-result-test"
+                                    >
+                                      JEE {
+                                        attempt.testName
+                                      } {
+                                        mockLevelLabel(
+                                          attempt.examLevel,
+                                        )
+                                      }
+                                    </span>
+
+                                    <span
+                                      className="education-learning__mock-result-attempt"
+                                    >
+                                      Attempt {
+                                        attempt.attemptNumber
+                                      }
+                                    </span>
+
+                                    <span
+                                      className="education-learning__mock-result-progress"
+                                      aria-label={`${attemptedPercent}% questions attempted`}
+                                    >
+                                      <span
+                                        className={`education-learning__mock-result-progress-fill education-learning__mock-result-progress-fill--${scoreBand}`}
+                                        style={{
+                                          width:
+                                            `${attemptedPercent}%`,
+                                        }}
+                                      />
+                                    </span>
+
+                                    <span
+                                      className="education-learning__mock-result-percentile"
+                                      title={
+                                        attempt.percentile ==
+                                          null
+                                          ? "Percentile will be available when enough comparable attempts exist."
+                                          : `${attempt.percentile} percentile`
+                                      }
+                                      aria-label={
+                                        attempt.percentile ==
+                                          null
+                                          ? "Percentile not available yet"
+                                          : `${attempt.percentile} percentile`
+                                      }
+                                    >
+                                      {
+                                        attempt.percentile ??
+                                        "?"
+                                      }
+                                    </span>
+                                  </button>
+                                );
+                              },
+                            )
+                          }
+                        </div>
+                      )
+                    }
+                  </section>
+
+              )
+            }
+
             <div
               className="education-learning__report-title"
             >
@@ -2693,6 +3903,392 @@ export default function EducationLearningHub({
                           </div>
                         </section>
                       ),
+                    )
+                  }
+
+                  {
+                    selectedMockAttempt && (
+                      <div
+                        className="education-learning__mock-result-dialog-backdrop"
+                        role="presentation"
+                        onMouseDown={() =>
+                          setSelectedMockAttempt(
+                            null,
+                          )
+                        }
+                      >
+                        <section
+                          className="education-learning__mock-result-dialog"
+                          role="dialog"
+                          aria-modal="true"
+                          aria-label="Mock test attempt results"
+                          onMouseDown={(
+                            event,
+                          ) =>
+                            event.stopPropagation()
+                          }
+                        >
+                          <button
+                            type="button"
+                            className="education-learning__mock-result-dialog-x"
+                            onClick={() =>
+                              setSelectedMockAttempt(
+                                null,
+                              )
+                            }
+                            aria-label="Close results"
+                          >
+                            ×
+                          </button>
+
+                          <h2>
+                            JEE {
+                              selectedMockAttempt.testName
+                            } {
+                              mockLevelLabel(
+                                selectedMockAttempt.examLevel,
+                              )
+                            } · Attempt {
+                              selectedMockAttempt.attemptNumber
+                            }
+                          </h2>
+
+                          <div
+                            className="education-learning__mock-result-dialog-summary"
+                          >
+                            <span>
+                              {
+                                selectedMockAttempt.score
+                              } / {
+                                selectedMockAttempt.maximumMarks
+                              }
+                            </span>
+
+                            <span>
+                              {
+                                selectedMockAttempt.correctCount +
+                                selectedMockAttempt.incorrectCount
+                              } / {
+                                selectedMockAttempt.questionCount
+                              } attempted
+                            </span>
+
+                            <span>
+                              Percentile {
+                                selectedMockAttempt.percentile ??
+                                "?"
+                              }
+                            </span>
+                          </div>
+
+                          <div
+                            className="education-learning__mock-result-subjects"
+                          >
+                            {
+                              [
+                                "MATH",
+                                "PHYSICS",
+                                "CHEMISTRY",
+                              ].map(
+                                (
+                                  sectionCode,
+                                ) => {
+                                  const sectionResults =
+                                    selectedMockAttempt.questionResults
+                                      .filter(
+                                        (
+                                          item,
+                                        ) =>
+                                          item.sectionCode ===
+                                          sectionCode,
+                                      )
+                                      .sort(
+                                        (
+                                          left,
+                                          right,
+                                        ) =>
+                                          left.questionOrder -
+                                          right.questionOrder,
+                                      );
+
+                                  if (
+                                    sectionResults.length ===
+                                    0
+                                  ) {
+                                    return null;
+                                  }
+
+                                  return (
+                                    <div
+                                      key={
+                                        sectionCode
+                                      }
+                                      className="education-learning__mock-result-subject"
+                                    >
+                                      <strong>
+                                        {
+                                          mockSubjectLabel(
+                                            sectionCode,
+                                          )
+                                        } ({
+                                          sectionResults.length
+                                        })
+                                      </strong>
+
+                                      <span
+                                        className="education-learning__mock-result-grid"
+                                      >
+                                        {
+                                          sectionResults.map(
+                                            (
+                                              item,
+                                              index,
+                                            ) => (
+                                              <button
+                                                type="button"
+                                                key={`${item.questionId}:${index}`}
+                                                className={[
+                                                  "education-learning__mock-result-cell",
+                                                  `education-learning__mock-result-cell--${item.status}`,
+                                                  selectedMockQuestion
+                                                    ?.questionId ===
+                                                    item.questionId
+                                                    ? "education-learning__mock-result-cell--selected"
+                                                    : "",
+                                                ]
+                                                  .filter(
+                                                    Boolean,
+                                                  )
+                                                  .join(
+                                                    " ",
+                                                  )}
+                                                title={`Question ${index + 1} · ${
+                                                  item.status ===
+                                                    "correct"
+                                                    ? "Correct"
+                                                    : item.status ===
+                                                        "wrong"
+                                                      ? "Incorrect"
+                                                      : "Unanswered"
+                                                }`}
+                                                aria-label={`Open question ${index + 1}`}
+                                                onClick={() =>
+                                                  setSelectedMockQuestion(
+                                                    item,
+                                                  )
+                                                }
+                                              />
+                                            ),
+                                          )
+                                        }
+                                      </span>
+                                    </div>
+                                  );
+                                },
+                              )
+                            }
+                          </div>
+
+                          {
+                            selectedMockQuestion && (
+                              <section
+                                className="education-learning__mock-question-detail"
+                              >
+                                <div
+                                  className="education-learning__mock-question-detail-heading"
+                                >
+                                  <strong>
+                                    {
+                                      mockSubjectLabel(
+                                        selectedMockQuestion.sectionCode,
+                                      )
+                                    } · Question {
+                                      selectedMockQuestion.questionOrder
+                                    }
+                                  </strong>
+
+                                  <button
+                                    type="button"
+                                    aria-label="Close question detail"
+                                    onClick={() =>
+                                      setSelectedMockQuestion(
+                                        null,
+                                      )
+                                    }
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+
+                                <p
+                                  className="education-learning__mock-question-text"
+                                >
+                                  {
+                                    selectedMockQuestion.questionText
+                                  }
+                                </p>
+
+                                <div
+                                  className="education-learning__mock-question-options"
+                                >
+                                  {
+                                    (
+                                      [
+                                        "A",
+                                        "B",
+                                        "C",
+                                        "D",
+                                      ] as const
+                                    ).map(
+                                      (
+                                        choice,
+                                      ) => {
+                                        const optionText =
+                                          selectedMockQuestion
+                                            .choices[
+                                              choice
+                                            ];
+
+                                        if (
+                                          !optionText
+                                        ) {
+                                          return null;
+                                        }
+
+                                        const selected =
+                                          selectedMockQuestion.selectedAnswer
+                                            .includes(
+                                              choice,
+                                            );
+
+                                        const correct =
+                                          selectedMockQuestion.correctAnswer
+                                            .includes(
+                                              choice,
+                                            );
+
+                                        return (
+                                          <div
+                                            key={
+                                              choice
+                                            }
+                                            className={[
+                                              "education-learning__mock-question-option",
+                                              correct
+                                                ? "education-learning__mock-question-option--correct"
+                                                : "",
+                                              selected &&
+                                              !correct
+                                                ? "education-learning__mock-question-option--wrong"
+                                                : "",
+                                            ]
+                                              .filter(
+                                                Boolean,
+                                              )
+                                              .join(
+                                                " ",
+                                              )}
+                                          >
+                                            <b>
+                                              {
+                                                choice
+                                              }.
+                                            </b>{" "}
+                                            {
+                                              optionText
+                                            }
+
+                                            {
+                                              selected && (
+                                                <span>
+                                                  {" "}← your answer
+                                                </span>
+                                              )
+                                            }
+
+                                            {
+                                              correct && (
+                                                <span>
+                                                  {" "}✓
+                                                </span>
+                                              )
+                                            }
+                                          </div>
+                                        );
+                                      },
+                                    )
+                                  }
+                                </div>
+
+                                <div
+                                  className="education-learning__mock-question-answer-summary"
+                                >
+                                  <span>
+                                    Your answer:{" "}
+                                    <b>
+                                      {
+                                        selectedMockQuestion.selectedAnswer ||
+                                        "Not answered"
+                                      }
+                                    </b>
+                                  </span>
+
+                                  <span>
+                                    Correct answer:{" "}
+                                    <b>
+                                      {
+                                        selectedMockQuestion.correctAnswer ||
+                                        "—"
+                                      }
+                                    </b>
+                                  </span>
+                                </div>
+
+                                {
+                                  selectedMockQuestion.explanation && (
+                                    <div
+                                      className="education-learning__mock-question-explanation"
+                                    >
+                                      <strong>
+                                        Explanation
+                                      </strong>
+
+                                      <span>
+                                        {
+                                          selectedMockQuestion.explanation
+                                        }
+                                      </span>
+                                    </div>
+                                  )
+                                }
+                              </section>
+                            )
+                          }
+
+                          <div
+                            className="education-learning__mock-result-dialog-actions"
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedMockAttempt(
+                                  null,
+                                )
+                              }
+                            >
+                              Close
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled
+                              title="Detailed AI analysis will be enabled later."
+                            >
+                              🔒 Analyze
+                            </button>
+                          </div>
+                        </section>
+                      </div>
                     )
                   }
 

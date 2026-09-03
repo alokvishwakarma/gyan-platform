@@ -63,6 +63,12 @@ export type FixedMockScore = {
     incorrect: number;
     unanswered: number;
   }>;
+  attempt?:
+    {
+      id: number;
+      attemptNumber: number;
+    } | null;
+
   questions: Array<{
     questionId: number;
     order: number;
@@ -159,6 +165,10 @@ export async function scoreFixedMockTest(
         number,
         string
       >;
+    studentCode?: string;
+    elapsedSeconds?: number;
+    saveCount?: number;
+    reviewQuestionIds?: number[];
   },
 ): Promise<FixedMockScore> {
   const response =
@@ -208,6 +218,22 @@ export async function scoreFixedMockTest(
                   ],
                 ),
               ),
+
+            studentCode:
+              options.studentCode ??
+              "",
+
+            elapsedSeconds:
+              options.elapsedSeconds ??
+              0,
+
+            saveCount:
+              options.saveCount ??
+              0,
+
+            reviewQuestionIds:
+              options.reviewQuestionIds ??
+              [],
           }),
       },
     );

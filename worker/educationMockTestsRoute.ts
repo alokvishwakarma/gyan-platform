@@ -2,6 +2,146 @@ type Env = {
   gyan_registry: D1Database;
 };
 
+const GUEST_COOKIE =
+  "gyan_anon";
+
+function cookieValue(
+  request: Request,
+  name: string,
+): string {
+  const cookie =
+    request.headers.get(
+      "cookie",
+    ) ?? "";
+
+  for (const part of cookie.split(";")) {
+    const [key, ...rest] =
+      part.trim().split("=");
+
+    if (key === name) {
+      return decodeURIComponent(
+        rest.join("="),
+      );
+    }
+  }
+
+  return "";
+}
+
+async function sha256Hex(
+  value: string,
+): Promise<string> {
+  const bytes =
+    new TextEncoder().encode(
+      value,
+    );
+
+  const digest =
+    await crypto.subtle.digest(
+      "SHA-256",
+      bytes,
+    );
+
+  return Array.from(
+    new Uint8Array(
+      digest,
+    ),
+  )
+    .map(
+      (byte) =>
+        byte
+          .toString(16)
+          .padStart(2, "0"),
+    )
+    .join("");
+}
+
+async function currentGyanAccountId(
+  request: Request,
+  env: Env,
+): Promise<number | null> {
+  const token =
+    cookieValue(
+      request,
+      GUEST_COOKIE,
+    );
+
+  if (!token) {
+    return null;
+  }
+
+  const secretHash =
+    await sha256Hex(
+      token,
+    );
+
+  const row =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT account_id
+        FROM gyan_browser_sessions
+        WHERE secret_hash = ?
+        LIMIT 1
+        `,
+      )
+      .bind(
+        secretHash,
+      )
+      .first<{
+        account_id: number;
+      }>();
+
+  return row
+    ? Number(
+        row.account_id,
+      )
+    : null;
+}
+
+async function resolveOwnedStudentId(
+  request: Request,
+  env: Env,
+  studentCode: string,
+): Promise<number | null> {
+  if (!studentCode) {
+    return null;
+  }
+
+  const accountId =
+    await currentGyanAccountId(
+      request,
+      env,
+    );
+
+  if (!accountId) {
+    return null;
+  }
+
+  const row =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT id
+        FROM education_students
+        WHERE gyan_account_id = ?
+        LIMIT 1
+        `,
+      )
+      .bind(
+        accountId,
+      )
+      .first<{
+        id: number;
+      }>();
+
+  return row
+    ? Number(
+        row.id,
+      )
+    : null;
+}
+
 type MockLevel =
   | "MAIN"
   | "ADVANCED"
@@ -321,6 +461,10 @@ async function scoreFixedTest(
     level?: unknown;
     version?: unknown;
     answers?: unknown;
+    studentCode?: unknown;
+    elapsedSeconds?: unknown;
+    saveCount?: unknown;
+    reviewQuestionIds?: unknown;
   };
 
   try {
@@ -380,6 +524,54 @@ async function scoreFixedTest(
       ? body.answers as
           Record<string, unknown>
       : {};
+
+  const studentCode =
+    normalizeCode(
+      typeof body.studentCode ===
+        "string"
+        ? body.studentCode
+        : "",
+    );
+
+  const elapsedSeconds =
+    Math.max(
+      0,
+      Math.floor(
+        Number(
+          body.elapsedSeconds ??
+          0,
+        ) || 0,
+      ),
+    );
+
+  const saveCount =
+    Math.max(
+      0,
+      Math.min(
+        5,
+        Math.floor(
+          Number(
+            body.saveCount ??
+            0,
+          ) || 0,
+        ),
+      ),
+    );
+
+  const reviewQuestionIds =
+    new Set(
+      Array.isArray(
+        body.reviewQuestionIds,
+      )
+        ? body.reviewQuestionIds
+            .map(
+              Number,
+            )
+            .filter(
+              Number.isFinite,
+            )
+        : [],
+    );
 
   if (
     !program ||
@@ -474,6 +666,8 @@ async function scoreFixedTest(
           ON q.id = mtq.question_id
         LEFT JOIN education_question_metadata qm
           ON qm.question_id = q.id
+        LEFT JOIN education_mock_question_answers mqa
+          ON mqa.question_id = q.id
         WHERE mtq.mock_test_id = ?
           AND q.active = 1
         ORDER BY mtq.question_order
@@ -694,6 +888,142 @@ async function scoreFixedTest(
       },
     );
 
+
+  let savedAttempt:
+    {
+      id: number;
+      attemptNumber: number;
+    } | null =
+      null;
+
+  if (studentCode) {
+    const studentId =
+      await resolveOwnedStudentId(
+        request,
+        env,
+        studentCode,
+      );
+
+    if (studentId) {
+      const previous =
+        await env.gyan_registry
+          .prepare(
+            `
+            SELECT
+              COALESCE(
+                MAX(attempt_number),
+                0
+              ) AS max_attempt
+            FROM education_mock_attempts
+            WHERE student_id = ?
+              AND mock_test_id = ?
+            `,
+          )
+          .bind(
+            studentId,
+            test.id,
+          )
+          .first<{
+            max_attempt: number;
+          }>();
+
+      const attemptNumber =
+        Number(
+          previous?.max_attempt ??
+          0,
+        ) + 1;
+
+      const inserted =
+        await env.gyan_registry
+          .prepare(
+            `
+            INSERT INTO education_mock_attempts (
+              student_id,
+              mock_test_id,
+              attempt_number,
+              elapsed_seconds,
+              save_count,
+              score,
+              max_score,
+              correct_count,
+              incorrect_count,
+              unanswered_count,
+              submitted_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            RETURNING id
+            `,
+          )
+          .bind(
+            studentId,
+            test.id,
+            attemptNumber,
+            elapsedSeconds,
+            saveCount,
+            score,
+            maximumMarks,
+            correctCount,
+            incorrectCount,
+            unansweredCount,
+          )
+          .first<{
+            id: number;
+          }>();
+
+      if (inserted) {
+        const attemptId =
+          Number(
+            inserted.id,
+          );
+
+        const statements =
+          questions.map(
+            (question) =>
+              env.gyan_registry
+                .prepare(
+                  `
+                  INSERT INTO education_mock_attempt_answers (
+                    attempt_id,
+                    question_id,
+                    selected_answer,
+                    marked_for_review,
+                    correct,
+                    marks_awarded
+                  )
+                  VALUES (?, ?, ?, ?, ?, ?)
+                  `,
+                )
+                .bind(
+                  attemptId,
+                  question.questionId,
+                  question.selectedChoice,
+                  reviewQuestionIds.has(
+                    question.questionId,
+                  )
+                    ? 1
+                    : 0,
+                  question.correct
+                    ? 1
+                    : 0,
+                  question.marksAwarded,
+                ),
+          );
+
+        if (statements.length) {
+          await env.gyan_registry.batch(
+            statements,
+          );
+        }
+
+        savedAttempt = {
+          id:
+            attemptId,
+          attemptNumber,
+        };
+      }
+    }
+  }
+
   return jsonResponse({
     result: {
       testId:
@@ -718,6 +1048,8 @@ async function scoreFixedTest(
           }),
         ),
       questions,
+      attempt:
+        savedAttempt,
     },
   });
 }

@@ -657,3 +657,1765 @@
     min-height: 29px;
   }
 }
+
+
+/* ======================================================
+ * Full mock CBT palette
+ * Desktop: question left, palette right.
+ * Mobile: question first, palette below.
+ * ====================================================== */
+
+.mock-tests__cbt-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 3px 0 7px;
+  padding: 5px 7px;
+  border: 1px solid #dce5ec;
+  border-radius: 7px;
+  background: #f8fbfd;
+  font-size: 0.61rem;
+}
+
+.mock-tests__cbt-status strong {
+  font-size: 0.65rem;
+}
+
+.mock-tests__cbt-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 188px;
+  gap: 10px;
+  align-items: start;
+}
+
+.mock-tests__cbt-main {
+  min-width: 0;
+}
+
+.mock-tests__cbt-layout .mock-tests__runner {
+  display: block;
+}
+
+.mock-tests__cbt-layout .mock-tests__question {
+  margin: 0;
+}
+
+.mock-tests__cbt-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.mock-tests__cbt-nav button {
+  min-height: 32px;
+  border: 1px solid #bfd0dd;
+  border-radius: 7px;
+  padding: 5px 8px;
+  background: #fff;
+  color: #17345c;
+  font: inherit;
+  font-size: 0.6rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.mock-tests__cbt-nav button:last-child {
+  border-color: #174a73;
+  background: #174a73;
+  color: #fff;
+}
+
+.mock-tests__cbt-nav button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.mock-tests__palette {
+  position: sticky;
+  top: 8px;
+  box-sizing: border-box;
+  padding: 7px;
+  border: 1px solid #dce5ec;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(23, 74, 115, 0.055);
+}
+
+.mock-tests__palette-tabs {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 6px;
+}
+
+.mock-tests__palette-tabs button {
+  min-height: 25px;
+  border: 1px solid #d6e0e8;
+  border-radius: 6px;
+  padding: 3px 5px;
+  background: #f7fafc;
+  color: #17345c;
+  font: inherit;
+  font-size: 0.53rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.mock-tests__palette-tabs button.mock-tests__palette-tab--active {
+  border-color: #174a73;
+  background: #edf5fa;
+}
+
+.mock-tests__palette-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.mock-tests__palette-number {
+  aspect-ratio: 1;
+  min-width: 0;
+  border: 1px solid #ccd7df;
+  border-radius: 6px;
+  padding: 0;
+  background: #f1f3f5;
+  color: #425466;
+  font: inherit;
+  font-size: 0.55rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.mock-tests__palette-number--answered {
+  border-color: #79ad86;
+  background: #e8f5eb;
+  color: #235d31;
+}
+
+.mock-tests__palette-number--current {
+  outline: 2px solid #174a73;
+  outline-offset: 1px;
+}
+
+.mock-tests__palette-number--correct {
+  border-color: #56a56b;
+  background: #dff3e4;
+}
+
+.mock-tests__palette-number--wrong {
+  border-color: #cc7777;
+  background: #fde7e7;
+  color: #8d2929;
+}
+
+.mock-tests__palette-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 8px;
+  margin-top: 7px;
+  color: #65778a;
+  font-size: 0.48rem;
+}
+
+.mock-tests__palette-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.mock-tests__palette-key {
+  width: 8px;
+  height: 8px;
+  box-sizing: border-box;
+  border: 1px solid #ccd7df;
+  border-radius: 2px;
+  background: #f1f3f5;
+}
+
+.mock-tests__palette-key--answered {
+  border-color: #79ad86;
+  background: #e8f5eb;
+}
+
+@media (max-width: 700px) {
+  .mock-tests__cbt-layout {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .mock-tests__palette {
+    position: static;
+    order: 2;
+    padding: 6px;
+  }
+
+  .mock-tests__cbt-main {
+    order: 1;
+  }
+
+  .mock-tests__palette-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 5px;
+  }
+
+  .mock-tests__palette-tabs button {
+    min-height: 24px;
+    padding-inline: 3px;
+    font-size: 0.5rem;
+  }
+
+  .mock-tests__palette-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 3px;
+  }
+
+  .mock-tests__palette-number {
+    aspect-ratio: auto;
+    min-height: 27px;
+    font-size: 0.52rem;
+  }
+
+  .mock-tests__palette-legend {
+    margin-top: 5px;
+  }
+}
+
+@media (max-width: 430px) {
+  .mock-tests--runner {
+    padding-bottom: 36px;
+  }
+
+  .mock-tests__cbt-status {
+    margin-bottom: 5px;
+    padding: 4px 5px;
+    font-size: 0.54rem;
+  }
+
+  .mock-tests__cbt-status strong {
+    font-size: 0.58rem;
+  }
+
+  .mock-tests__cbt-nav {
+    gap: 4px;
+    margin-top: 5px;
+  }
+
+  .mock-tests__cbt-nav button {
+    min-height: 29px;
+    padding: 4px 5px;
+    font-size: 0.54rem;
+  }
+
+  .mock-tests__palette {
+    border-radius: 7px;
+  }
+
+  .mock-tests__palette-number {
+    min-height: 25px;
+  }
+}
+
+
+/* ======================================================
+ * CBT v2 — header submit, timer, review, resumable draft
+ * ====================================================== */
+
+.mock-tests__header-main {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
+}
+
+.mock-tests__header-copy {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.mock-tests__header-copy strong,
+.mock-tests__header-copy small {
+  min-width: 0;
+}
+
+.mock-tests__header-submit {
+  flex: 0 0 auto;
+  min-height: 27px;
+  border: 1px solid #174a73;
+  border-radius: 6px;
+  padding: 3px 8px;
+  background: #174a73;
+  color: #fff;
+  font: inherit;
+  font-size: 0.55rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.mock-tests__header-submit:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.mock-tests__cbt-timer {
+  flex: 0 0 auto;
+  min-width: 72px;
+  border: 1px solid #cbd9e4;
+  border-radius: 6px;
+  padding: 4px 6px;
+  background: #f7fafc;
+  color: #17345c;
+  font-size: 0.57rem;
+  font-weight: 900;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.mock-tests__cbt-timer--warning {
+  border-color: #d98872;
+  background: #fff0ec;
+  color: #9a3428;
+}
+
+.mock-tests__cbt-nav {
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr)
+    minmax(0, 1fr);
+}
+
+.mock-tests__cbt-nav .mock-tests__review-button {
+  border-color: #c5a963;
+  background: #fffaf0;
+  color: #745512;
+}
+
+.mock-tests__cbt-nav .mock-tests__review-button--active {
+  border-color: #7d63aa;
+  background: #f0e9fb;
+  color: #563984;
+}
+
+.mock-tests__palette-number--review {
+  border-color: #8b6cb8;
+  background: #efe7fa;
+  color: #54347f;
+}
+
+.mock-tests__palette-number--answered.mock-tests__palette-number--review {
+  border-color: #7d63aa;
+  background:
+    linear-gradient(
+      135deg,
+      #e8f5eb 0 50%,
+      #efe7fa 50% 100%
+    );
+  color: #3f3558;
+}
+
+.mock-tests__palette-key--review {
+  border-color: #8b6cb8;
+  background: #efe7fa;
+}
+
+@media (max-width: 700px) {
+  .mock-tests__header-main {
+    gap: 4px;
+  }
+
+  .mock-tests__cbt-timer {
+    min-width: 66px;
+    padding-inline: 4px;
+    font-size: 0.52rem;
+  }
+
+  .mock-tests__header-submit {
+    min-height: 25px;
+    padding-inline: 6px;
+    font-size: 0.51rem;
+  }
+}
+
+@media (max-width: 430px) {
+  .mock-tests__header-main {
+    display: grid;
+    grid-template-columns:
+      minmax(0, 1fr)
+      auto
+      auto;
+    gap: 3px;
+  }
+
+  .mock-tests__header-copy strong {
+    font-size: 0.58rem;
+  }
+
+  .mock-tests__header-copy small {
+    font-size: 0.46rem;
+  }
+
+  .mock-tests__cbt-timer {
+    min-width: 58px;
+    padding: 3px;
+    font-size: 0.48rem;
+  }
+
+  .mock-tests__header-submit {
+    min-height: 23px;
+    padding: 2px 5px;
+    font-size: 0.48rem;
+  }
+
+  .mock-tests__cbt-nav button {
+    min-width: 0;
+    padding-inline: 3px;
+    font-size: 0.48rem;
+  }
+}
+
+
+/* ======================================================
+ * CBT v3 — compact Save/Submit header icons
+ * ====================================================== */
+
+.mock-tests__header-save,
+.mock-tests__header-submit {
+  flex: 0 0 auto;
+  width: 28px;
+  min-width: 28px;
+  height: 27px;
+  min-height: 27px;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  padding: 0;
+  font: inherit;
+  font-size: 0.58rem;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.mock-tests__header-save {
+  border: 1px solid #9ab6c9;
+  background: #f4f9fc;
+  color: #174a73;
+}
+
+.mock-tests__header-submit {
+  border: 1px solid #174a73;
+  background: #174a73;
+  color: #fff;
+}
+
+.mock-tests__header-save:disabled,
+.mock-tests__header-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mock-tests__cbt-timer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.mock-tests__cbt-timer small {
+  padding-left: 4px;
+  border-left: 1px solid #d5e0e8;
+  font-size: 0.43rem;
+  font-weight: 850;
+  opacity: 0.72;
+}
+
+@media (max-width: 430px) {
+  .mock-tests__header-main {
+    grid-template-columns:
+      minmax(0, 1fr)
+      auto
+      24px
+      24px;
+  }
+
+  .mock-tests__header-save,
+  .mock-tests__header-submit {
+    width: 24px;
+    min-width: 24px;
+    height: 23px;
+    min-height: 23px;
+    border-radius: 5px;
+    font-size: 0.5rem;
+  }
+
+  .mock-tests__cbt-timer small {
+    display: none;
+  }
+}
+
+
+/* ======================================================
+ * CBT v4 — brown action icons + in-page confirmation dialog
+ * ====================================================== */
+
+.mock-tests__header-save,
+.mock-tests__header-submit {
+  border-color: #9a5b2c;
+  background: #a76431;
+  color: #fff;
+  box-shadow:
+    0 1px 2px
+    rgba(
+      89,
+      47,
+      18,
+      0.16
+    );
+}
+
+.mock-tests__header-save:hover,
+.mock-tests__header-submit:hover {
+  border-color: #82481f;
+  background: #915324;
+}
+
+.mock-tests__header-save:focus-visible,
+.mock-tests__header-submit:focus-visible {
+  outline: 2px solid rgba(167, 100, 49, 0.28);
+  outline-offset: 2px;
+}
+
+.mock-tests__cbt-dialog-slot {
+  position: relative;
+  z-index: 12;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 3px 0 6px;
+}
+
+.mock-tests__cbt-action-dialog {
+  position: relative;
+  box-sizing: border-box;
+  width: min(100%, 560px);
+  border: 1px solid #d2b292;
+  border-left: 4px solid #a76431;
+  border-radius: 9px;
+  padding: 9px 10px 8px;
+  background:
+    linear-gradient(
+      180deg,
+      #fffdf9,
+      #fffaf3
+    );
+  box-shadow:
+    0 8px 22px
+    rgba(
+      75,
+      46,
+      24,
+      0.14
+    );
+  color: #3f3026;
+}
+
+.mock-tests__cbt-action-dialog--submit {
+  border-left-color: #98512a;
+}
+
+.mock-tests__cbt-action-dialog--info {
+  border-left-color: #8b6e50;
+}
+
+.mock-tests__cbt-dialog-x {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  color: #765b45;
+  font-size: 0.86rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mock-tests__cbt-dialog-x:hover {
+  background: #f3e7db;
+}
+
+.mock-tests__cbt-dialog-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-right: 26px;
+}
+
+.mock-tests__cbt-dialog-heading > span {
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #f2dfcd;
+  color: #8d4c20;
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.mock-tests__cbt-dialog-heading > div {
+  display: grid;
+  gap: 1px;
+}
+
+.mock-tests__cbt-dialog-heading strong {
+  font-size: 0.7rem;
+  line-height: 1.1;
+}
+
+.mock-tests__cbt-dialog-heading small {
+  color: #856d59;
+  font-size: 0.5rem;
+  font-weight: 750;
+}
+
+.mock-tests__cbt-action-dialog p {
+  margin: 7px 0 5px;
+  font-size: 0.59rem;
+  line-height: 1.32;
+}
+
+.mock-tests__cbt-dialog-warning,
+.mock-tests__cbt-dialog-danger {
+  margin: 6px 0;
+  border-radius: 6px;
+  padding: 6px 7px;
+  font-size: 0.56rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.mock-tests__cbt-dialog-warning {
+  border: 1px solid #e0c18d;
+  background: #fff5df;
+  color: #6f521e;
+}
+
+.mock-tests__cbt-dialog-danger {
+  border: 1px solid #daa091;
+  background: #fff0ec;
+  color: #8d392e;
+}
+
+.mock-tests__cbt-dialog-note {
+  display: block;
+  color: #786657;
+  font-size: 0.51rem;
+  line-height: 1.25;
+}
+
+.mock-tests__cbt-submit-summary {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(0, 1fr)
+    );
+  gap: 5px;
+  margin: 7px 0 6px;
+}
+
+.mock-tests__cbt-submit-summary span {
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  min-width: 0;
+  border: 1px solid #ead8c8;
+  border-radius: 6px;
+  padding: 5px 3px;
+  background: #fff;
+  color: #705b48;
+  font-size: 0.48rem;
+}
+
+.mock-tests__cbt-submit-summary b {
+  color: #70411f;
+  font-size: 0.68rem;
+}
+
+.mock-tests__cbt-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.mock-tests__cbt-dialog-actions--single {
+  justify-content: center;
+}
+
+.mock-tests__cbt-dialog-actions button {
+  min-height: 28px;
+  border-radius: 6px;
+  padding: 4px 9px;
+  font: inherit;
+  font-size: 0.54rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.mock-tests__cbt-dialog-secondary {
+  border: 1px solid #cdb9a8;
+  background: #fff;
+  color: #604b3a;
+}
+
+.mock-tests__cbt-dialog-primary {
+  border: 1px solid #945526;
+  background: #a76431;
+  color: #fff;
+}
+
+.mock-tests__cbt-dialog-primary:hover {
+  background: #915324;
+}
+
+@media (max-width: 430px) {
+  .mock-tests__cbt-dialog-slot {
+    margin-top: 2px;
+    margin-bottom: 4px;
+  }
+
+  .mock-tests__cbt-action-dialog {
+    width: 100%;
+    border-radius: 7px;
+    padding: 7px 8px;
+  }
+
+  .mock-tests__cbt-dialog-heading > span {
+    width: 24px;
+    height: 24px;
+    font-size: 0.66rem;
+  }
+
+  .mock-tests__cbt-dialog-heading strong {
+    font-size: 0.63rem;
+  }
+
+  .mock-tests__cbt-action-dialog p {
+    margin: 5px 0;
+    font-size: 0.54rem;
+  }
+
+  .mock-tests__cbt-dialog-warning,
+  .mock-tests__cbt-dialog-danger {
+    margin: 5px 0;
+    padding: 5px 6px;
+    font-size: 0.52rem;
+  }
+
+  .mock-tests__cbt-submit-summary {
+    gap: 3px;
+    margin: 5px 0;
+  }
+
+  .mock-tests__cbt-dialog-actions {
+    margin-top: 6px;
+  }
+
+  .mock-tests__cbt-dialog-actions button {
+    min-height: 26px;
+    padding: 3px 7px;
+    font-size: 0.51rem;
+  }
+}
+
+
+/* ======================================================
+ * CBT v5 — 5 explicit saves + popup dialogs + stable card
+ * ====================================================== */
+
+.mock-tests__cbt-dialog-slot {
+  display: none;
+}
+
+.mock-tests__cbt-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147481000;
+  display: grid;
+  place-items: start center;
+  box-sizing: border-box;
+  padding: clamp(64px, 10vh, 92px) 10px 18px;
+  background: rgba(23, 31, 39, 0.28);
+  overflow-y: auto;
+}
+
+.mock-tests__cbt-dialog-backdrop
+.mock-tests__cbt-action-dialog {
+  width: min(94vw, 560px);
+  margin: 0;
+  animation: mock-tests-cbt-dialog-in 120ms ease-out;
+}
+
+@keyframes mock-tests-cbt-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Stable full-CBT question viewport: MCQ and numerical use same card height. */
+.mock-tests__cbt-main
+.mock-tests__question {
+  box-sizing: border-box;
+  height: clamp(330px, 49vh, 450px);
+  min-height: clamp(330px, 49vh, 450px);
+  max-height: clamp(330px, 49vh, 450px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.mock-tests__cbt-main
+.mock-tests__choices,
+.mock-tests__cbt-main
+.mock-tests__numerical {
+  min-height: 156px;
+  align-content: start;
+}
+
+.mock-tests__cbt-main
+.mock-tests__numerical {
+  display: grid;
+  align-items: start;
+}
+
+@media (max-width: 700px) {
+  .mock-tests__cbt-dialog-backdrop {
+    padding-top: clamp(58px, 9vh, 78px);
+  }
+
+  .mock-tests__cbt-main
+  .mock-tests__question {
+    height: clamp(300px, 47dvh, 410px);
+    min-height: clamp(300px, 47dvh, 410px);
+    max-height: clamp(300px, 47dvh, 410px);
+  }
+
+  .mock-tests__cbt-main
+  .mock-tests__choices,
+  .mock-tests__cbt-main
+  .mock-tests__numerical {
+    min-height: 170px;
+  }
+}
+
+@media (max-width: 430px) {
+  .mock-tests__cbt-dialog-backdrop {
+    padding: 56px 7px 12px;
+  }
+
+  .mock-tests__cbt-dialog-backdrop
+  .mock-tests__cbt-action-dialog {
+    width: 100%;
+  }
+
+  .mock-tests__cbt-main
+  .mock-tests__question {
+    height: clamp(310px, 49dvh, 400px);
+    min-height: clamp(310px, 49dvh, 400px);
+    max-height: clamp(310px, 49dvh, 400px);
+  }
+}
+
+
+/* ======================================================
+ * CBT v6 — compact fixed-height question card
+ * Goal: one-line question + 4 answers fits tightly so
+ * palette and submit controls remain visible on mobile.
+ * Long questions wrap/scroll inside the same card height.
+ * ====================================================== */
+
+.mock-tests__cbt-main
+.mock-tests__question {
+  height: clamp(220px, 34vh, 270px);
+  min-height: clamp(220px, 34vh, 270px);
+  max-height: clamp(220px, 34vh, 270px);
+
+  padding: 7px 8px;
+  overflow-y: auto;
+}
+
+.mock-tests__cbt-main
+.mock-tests__question-heading {
+  margin-bottom: 5px;
+}
+
+.mock-tests__cbt-main
+.mock-tests__question-heading strong {
+  display: block;
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.22;
+}
+
+.mock-tests__cbt-main
+.mock-tests__question-heading small {
+  margin-top: 2px;
+  font-size: 0.46rem;
+  line-height: 1;
+}
+
+.mock-tests__cbt-main
+.mock-tests__choices {
+  display: grid;
+  gap: 4px;
+  min-height: 0;
+  align-content: start;
+}
+
+.mock-tests__cbt-main
+.mock-tests__choices label {
+  min-height: 27px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 4px 6px;
+}
+
+.mock-tests__cbt-main
+.mock-tests__choices label span,
+.mock-tests__cbt-main
+.mock-tests__choices label {
+  font-size: 0.58rem;
+  line-height: 1.15;
+}
+
+.mock-tests__cbt-main
+.mock-tests__numerical {
+  min-height: 0;
+  margin-top: 4px;
+  align-content: start;
+}
+
+.mock-tests__cbt-main
+.mock-tests__numerical label {
+  display: grid;
+  gap: 4px;
+}
+
+.mock-tests__cbt-main
+.mock-tests__numerical input {
+  min-height: 30px;
+}
+
+/*
+ * Keep navigation immediately below the stable-height card.
+ */
+.mock-tests__cbt-nav {
+  margin-top: 5px;
+}
+
+/*
+ * Mobile is the main target: substantially shorter card.
+ */
+@media (max-width: 700px) {
+  .mock-tests__cbt-main
+  .mock-tests__question {
+    height: clamp(210px, 32dvh, 250px);
+    min-height: clamp(210px, 32dvh, 250px);
+    max-height: clamp(210px, 32dvh, 250px);
+  }
+}
+
+@media (max-width: 430px) {
+  .mock-tests__cbt-main
+  .mock-tests__question {
+    height: clamp(205px, 30dvh, 235px);
+    min-height: clamp(205px, 30dvh, 235px);
+    max-height: clamp(205px, 30dvh, 235px);
+
+    padding: 6px;
+  }
+
+  .mock-tests__cbt-main
+  .mock-tests__question-heading {
+    margin-bottom: 4px;
+  }
+
+  .mock-tests__cbt-main
+  .mock-tests__question-heading strong {
+    font-size: 0.64rem;
+    line-height: 1.18;
+  }
+
+  .mock-tests__cbt-main
+  .mock-tests__choices {
+    gap: 3px;
+  }
+
+  .mock-tests__cbt-main
+  .mock-tests__choices label {
+    min-height: 25px;
+    padding: 3px 5px;
+  }
+
+  .mock-tests__cbt-main
+  .mock-tests__choices label span,
+  .mock-tests__cbt-main
+  .mock-tests__choices label {
+    font-size: 0.55rem;
+  }
+
+  .mock-tests__cbt-main
+  .mock-tests__numerical input {
+    min-height: 28px;
+  }
+}
+
+
+/* ======================================================
+ * CBT v7 — fixed compact "green-box" question height
+ * Remove reserved blank area while keeping navigation stable.
+ * ====================================================== */
+
+/* Desktop / tablet */
+.mock-tests__cbt-main
+.mock-tests__question {
+  height: 188px;
+  min-height: 188px;
+  max-height: 188px;
+
+  padding: 6px 7px;
+  overflow-y: auto;
+}
+
+/* Do not reserve artificial answer-area depth. */
+.mock-tests__cbt-main
+.mock-tests__choices,
+.mock-tests__cbt-main
+.mock-tests__numerical {
+  min-height: 0;
+  height: auto;
+}
+
+/* Keep normal four-option questions tight. */
+.mock-tests__cbt-main
+.mock-tests__choices {
+  gap: 3px;
+}
+
+.mock-tests__cbt-main
+.mock-tests__choices label {
+  min-height: 24px;
+  padding: 3px 5px;
+}
+
+/* Mobile: match roughly the visible content box in the screenshot. */
+@media (max-width: 700px) {
+  .mock-tests__cbt-main
+  .mock-tests__question {
+    height: 174px;
+    min-height: 174px;
+    max-height: 174px;
+  }
+}
+
+@media (max-width: 430px) {
+  .mock-tests__cbt-main
+  .mock-tests__question {
+    height: 168px;
+    min-height: 168px;
+    max-height: 168px;
+
+    padding: 5px 6px;
+  }
+
+  .mock-tests__cbt-main
+  .mock-tests__question-heading {
+    margin-bottom: 3px;
+  }
+
+  .mock-tests__cbt-main
+  .mock-tests__question-heading strong {
+    font-size: 0.63rem;
+    line-height: 1.16;
+  }
+
+  .mock-tests__cbt-main
+  .mock-tests__choices {
+    gap: 3px;
+  }
+
+  .mock-tests__cbt-main
+  .mock-tests__choices label {
+    min-height: 23px;
+    padding: 3px 5px;
+  }
+
+  .mock-tests__cbt-main
+  .mock-tests__numerical input {
+    min-height: 27px;
+  }
+}
+
+
+/* ======================================================
+ * CBT v8 — force 174px question card + very tight palette
+ * Higher specificity + !important intentionally overrides
+ * older .mock-tests__runner / .mock-tests__question rules.
+ * ====================================================== */
+
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-layout
+.mock-tests__cbt-main
+section.mock-tests__runner
+article.mock-tests__question {
+  height: 174px !important;
+  min-height: 174px !important;
+  max-height: 174px !important;
+
+  margin: 0 !important;
+  padding: 5px 6px !important;
+
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+}
+
+/* Keep four answers compact inside the 174px card. */
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__choices {
+  gap: 2px !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__choices label {
+  min-height: 22px !important;
+  margin: 0 !important;
+  padding: 2px 5px !important;
+}
+
+/* Palette card itself: remove unnecessary vertical space. */
+main.mock-tests.mock-tests--runner
+.mock-tests__palette {
+  padding: 4px 5px !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__palette-tabs {
+  gap: 2px !important;
+  margin: 0 0 3px !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__palette-tabs button {
+  min-height: 20px !important;
+  height: 20px !important;
+  padding: 1px 3px !important;
+  line-height: 1 !important;
+}
+
+/*
+ * 1–25 palette:
+ * five rows should consume very little vertical space.
+ */
+main.mock-tests.mock-tests--runner
+.mock-tests__palette-grid {
+  grid-template-columns:
+    repeat(
+      5,
+      minmax(0, 1fr)
+    ) !important;
+
+  gap: 2px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__palette-number {
+  aspect-ratio: auto !important;
+
+  height: 20px !important;
+  min-height: 20px !important;
+  max-height: 20px !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  border-radius: 4px !important;
+
+  font-size: 0.48rem !important;
+  line-height: 1 !important;
+}
+
+/* Legend is useful but should not cost another row of whitespace. */
+main.mock-tests.mock-tests--runner
+.mock-tests__palette-legend {
+  gap: 2px 6px !important;
+  margin: 3px 0 0 !important;
+  padding: 0 !important;
+  font-size: 0.43rem !important;
+  line-height: 1 !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__palette-key {
+  width: 6px !important;
+  height: 6px !important;
+}
+
+/* Keep question navigation tight too. */
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-nav {
+  gap: 4px !important;
+  margin: 4px 0 0 !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-nav button {
+  min-height: 27px !important;
+  height: 27px !important;
+  padding-block: 2px !important;
+}
+
+@media (max-width: 430px) {
+  main.mock-tests.mock-tests--runner
+  .mock-tests__cbt-layout
+  .mock-tests__cbt-main
+  section.mock-tests__runner
+  article.mock-tests__question {
+    height: 174px !important;
+    min-height: 174px !important;
+    max-height: 174px !important;
+  }
+
+  main.mock-tests.mock-tests--runner
+  .mock-tests__palette-number {
+    height: 19px !important;
+    min-height: 19px !important;
+    max-height: 19px !important;
+  }
+}
+
+
+/* ======================================================
+ * CBT v9 — 170px card, larger text, ultra-thin nav,
+ * tighter palette-to-submit spacing
+ * ====================================================== */
+
+/* Force the full CBT question card to exactly 170px. */
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-layout
+.mock-tests__cbt-main
+section.mock-tests__runner
+article.mock-tests__question {
+  height: 170px !important;
+  min-height: 170px !important;
+  max-height: 170px !important;
+}
+
+/* Bigger, easier-to-read question text. */
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__question-heading strong {
+  font-size: 0.72rem !important;
+  line-height: 1.18 !important;
+}
+
+/* Slightly larger section / marking text. */
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__question-heading small {
+  font-size: 0.49rem !important;
+}
+
+/* Bigger answer text without increasing row height much. */
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__choices label,
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__choices label span {
+  font-size: 0.62rem !important;
+  line-height: 1.08 !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__choices label {
+  min-height: 21px !important;
+  padding: 1px 5px !important;
+}
+
+/* Numerical answer text/input should visually match MCQ density. */
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__numerical {
+  margin-top: 2px !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__numerical label span {
+  font-size: 0.62rem !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__numerical input {
+  min-height: 25px !important;
+  height: 25px !important;
+  padding-block: 1px !important;
+  font-size: 0.66rem !important;
+}
+
+/* Previous / Review / Next: deliberately very thin vertically. */
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-nav {
+  gap: 3px !important;
+  margin: 3px 0 0 !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-nav button {
+  height: 23px !important;
+  min-height: 23px !important;
+  max-height: 23px !important;
+
+  margin: 0 !important;
+  padding: 0 4px !important;
+
+  border-radius: 5px !important;
+
+  font-size: 0.49rem !important;
+  line-height: 1 !important;
+}
+
+/* Minimize space between navigation and palette. */
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-layout {
+  row-gap: 4px !important;
+}
+
+/* Keep the palette itself very dense. */
+main.mock-tests.mock-tests--runner
+.mock-tests__palette {
+  margin: 0 !important;
+  padding: 3px 4px !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__palette-tabs {
+  margin-bottom: 2px !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__palette-number {
+  height: 18px !important;
+  min-height: 18px !important;
+  max-height: 18px !important;
+}
+
+/*
+ * Bottom Submit area: pull it close to the palette.
+ * Existing runner-actions may carry larger margins/padding
+ * from the older scrolling mock layout.
+ */
+main.mock-tests.mock-tests--runner
+.mock-tests__runner-actions {
+  margin: 3px 0 0 !important;
+  padding: 0 !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__runner-actions button {
+  min-height: 24px !important;
+  height: 24px !important;
+
+  margin: 0 !important;
+  padding: 1px 8px !important;
+
+  font-size: 0.52rem !important;
+  line-height: 1 !important;
+}
+
+/* Remove old bottom spacer from consuming useful CBT screen area. */
+main.mock-tests.mock-tests--runner
+.mock-tests__bottom-spacer {
+  height: 4px !important;
+  min-height: 4px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+@media (max-width: 430px) {
+  main.mock-tests.mock-tests--runner
+  .mock-tests__cbt-layout
+  .mock-tests__cbt-main
+  section.mock-tests__runner
+  article.mock-tests__question {
+    height: 170px !important;
+    min-height: 170px !important;
+    max-height: 170px !important;
+  }
+
+  main.mock-tests.mock-tests--runner
+  .mock-tests__cbt-main
+  .mock-tests__question-heading strong {
+    font-size: 0.7rem !important;
+  }
+
+  main.mock-tests.mock-tests--runner
+  .mock-tests__cbt-main
+  .mock-tests__choices label,
+  main.mock-tests.mock-tests--runner
+  .mock-tests__cbt-main
+  .mock-tests__choices label span {
+    font-size: 0.6rem !important;
+  }
+
+  main.mock-tests.mock-tests--runner
+  .mock-tests__palette-number {
+    height: 18px !important;
+    min-height: 18px !important;
+    max-height: 18px !important;
+  }
+
+  main.mock-tests.mock-tests--runner
+  .mock-tests__runner-actions {
+    margin-top: 2px !important;
+  }
+}
+
+
+/* ======================================================
+ * CBT v10 — eye-friendly question typography
+ * Keep the 170px card; increase reading size instead.
+ * ====================================================== */
+
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__question-heading strong {
+  font-size: 0.82rem !important;
+  line-height: 1.22 !important;
+  font-weight: 850 !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__question-heading small {
+  font-size: 0.54rem !important;
+  line-height: 1.1 !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__choices label,
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__choices label span {
+  font-size: 0.72rem !important;
+  line-height: 1.12 !important;
+}
+
+/* Give radio/checkbox a little more visual presence too. */
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__choices input[type="radio"],
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__choices input[type="checkbox"] {
+  width: 14px !important;
+  height: 14px !important;
+  flex: 0 0 14px !important;
+}
+
+/* Numerical questions should use the same comfortable scale. */
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__numerical label span {
+  font-size: 0.72rem !important;
+  line-height: 1.15 !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__numerical input {
+  font-size: 0.78rem !important;
+}
+
+/* Mobile should remain readable for a long 75-question session. */
+@media (max-width: 430px) {
+  main.mock-tests.mock-tests--runner
+  .mock-tests__cbt-main
+  .mock-tests__question-heading strong {
+    font-size: 0.78rem !important;
+    line-height: 1.2 !important;
+  }
+
+  main.mock-tests.mock-tests--runner
+  .mock-tests__cbt-main
+  .mock-tests__choices label,
+  main.mock-tests.mock-tests--runner
+  .mock-tests__cbt-main
+  .mock-tests__choices label span {
+    font-size: 0.69rem !important;
+  }
+
+  main.mock-tests.mock-tests--runner
+  .mock-tests__cbt-main
+  .mock-tests__numerical label span {
+    font-size: 0.69rem !important;
+  }
+
+  main.mock-tests.mock-tests--runner
+  .mock-tests__cbt-main
+  .mock-tests__numerical input {
+    font-size: 0.76rem !important;
+  }
+}
+
+
+/* ======================================================
+ * CBT v11 — larger text + reserved two-line question area
+ * Overall card stays fixed at 170px.
+ * ====================================================== */
+
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__question-heading {
+  margin-bottom: 4px !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__question-heading strong {
+  display: -webkit-box !important;
+
+  min-height: 2.55em !important;
+  max-height: 2.55em !important;
+
+  overflow: hidden !important;
+
+  font-size: 0.9rem !important;
+  line-height: 1.275 !important;
+  font-weight: 850 !important;
+
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__question-heading small {
+  margin-top: 2px !important;
+
+  font-size: 0.57rem !important;
+  line-height: 1 !important;
+}
+
+/* Larger answer text while preserving compact rows. */
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__choices label,
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__choices label span {
+  font-size: 0.77rem !important;
+  line-height: 1.08 !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__choices label {
+  min-height: 22px !important;
+  padding: 1px 5px !important;
+}
+
+/* Numerical questions use the same visual scale. */
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__numerical label span {
+  font-size: 0.77rem !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__numerical input {
+  font-size: 0.82rem !important;
+}
+
+@media (max-width: 430px) {
+  main.mock-tests.mock-tests--runner
+  .mock-tests__cbt-main
+  .mock-tests__question-heading strong {
+    min-height: 2.5em !important;
+    max-height: 2.5em !important;
+
+    font-size: 0.86rem !important;
+    line-height: 1.25 !important;
+  }
+
+  main.mock-tests.mock-tests--runner
+  .mock-tests__cbt-main
+  .mock-tests__question-heading small {
+    font-size: 0.54rem !important;
+  }
+
+  main.mock-tests.mock-tests--runner
+  .mock-tests__cbt-main
+  .mock-tests__choices label,
+  main.mock-tests.mock-tests--runner
+  .mock-tests__cbt-main
+  .mock-tests__choices label span {
+    font-size: 0.74rem !important;
+  }
+
+  main.mock-tests.mock-tests--runner
+  .mock-tests__cbt-main
+  .mock-tests__numerical label span {
+    font-size: 0.74rem !important;
+  }
+
+  main.mock-tests.mock-tests--runner
+  .mock-tests__cbt-main
+  .mock-tests__numerical input {
+    font-size: 0.8rem !important;
+  }
+}
+
+
+/* CBT v12 — question is large enough; use normal weight. */
+main.mock-tests.mock-tests--runner
+.mock-tests__cbt-main
+.mock-tests__question-heading strong {
+  font-weight: 400 !important;
+}
+
+
+/* ======================================================
+ * GYAN progress protection dialogs
+ * 25 answered = soft warning
+ * 50 answered = stronger warning
+ * submit = final recovery warning
+ * ====================================================== */
+
+.mock-tests__cbt-action-dialog--protect {
+  border-left-color: #a76431;
+}
+
+.mock-tests__cbt-protect-email {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    auto;
+  align-items: center;
+  gap: 5px;
+
+  margin: 7px 0 5px;
+}
+
+.mock-tests__cbt-protect-email input {
+  width: 100%;
+  min-width: 0;
+  height: 29px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #cdb9a8;
+  border-radius: 6px;
+
+  padding: 3px 7px;
+
+  background: #fff;
+  color: #3f3026;
+
+  font: inherit;
+  font-size: 0.58rem;
+}
+
+.mock-tests__cbt-protect-email input:focus {
+  border-color: #a76431;
+  outline: 2px solid rgba(167, 100, 49, 0.14);
+  outline-offset: 1px;
+}
+
+.mock-tests__cbt-protect-email button {
+  min-height: 29px;
+  white-space: nowrap;
+
+  border-radius: 6px;
+
+  padding: 3px 8px;
+
+  font: inherit;
+  font-size: 0.54rem;
+  font-weight: 900;
+
+  cursor: pointer;
+}
+
+.mock-tests__cbt-protect-error {
+  margin: 3px 0 4px;
+
+  color: #a13f35;
+
+  font-size: 0.51rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+@media (max-width: 430px) {
+  .mock-tests__cbt-protect-email {
+    grid-template-columns:
+      minmax(0, 1fr)
+      auto;
+
+    gap: 4px;
+
+    margin: 5px 0 4px;
+  }
+
+  .mock-tests__cbt-protect-email input {
+    height: 27px;
+    padding-inline: 6px;
+    font-size: 0.54rem;
+  }
+
+  .mock-tests__cbt-protect-email button {
+    min-height: 27px;
+    padding-inline: 6px;
+    font-size: 0.5rem;
+  }
+}
+
+
+/* MINI tests intentionally reuse the exact CBT runner.
+   Keep a 15-question palette compact on desktop/mobile. */
+.mock-tests__palette-grid {
+  align-content: start;
+}
+
+@media (max-width: 720px) {
+  .mock-tests__palette-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}

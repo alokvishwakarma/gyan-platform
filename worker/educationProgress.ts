@@ -1059,6 +1059,18 @@ async function saveProgress(
     },
 
     report,
+
+    protection:
+      await educationProtectionStatus(
+        env,
+        Number(
+          student.id,
+        ),
+        activeGuest
+          ?.email ??
+        effectiveEmail ??
+        null,
+      ),
   });
 }
 
@@ -1183,6 +1195,329 @@ async function loadReport(
     }),
   );
 }
+
+type EducationProtectionStatus = {
+  answeredCount: number;
+  emailProtected: boolean;
+  milestone25Shown: boolean;
+  milestone50Shown: boolean;
+};
+
+
+async function educationProtectionStatus(
+  env: Env,
+  studentId: number,
+  accountEmail:
+    string |
+    null |
+    undefined,
+): Promise<EducationProtectionStatus> {
+  const counts =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          (
+            SELECT COUNT(*)
+            FROM education_attempt_answers aa
+            INNER JOIN education_attempts a
+              ON a.id = aa.attempt_id
+            WHERE a.student_id = ?
+              AND aa.selected_choice IS NOT NULL
+              AND TRIM(aa.selected_choice) <> ''
+          )
+          +
+          (
+            SELECT COUNT(*)
+            FROM education_mock_attempt_answers maa
+            INNER JOIN education_mock_attempts ma
+              ON ma.id = maa.attempt_id
+            WHERE ma.student_id = ?
+              AND maa.selected_answer IS NOT NULL
+              AND TRIM(maa.selected_answer) <> ''
+          ) AS answered_count
+        `,
+      )
+      .bind(
+        studentId,
+        studentId,
+      )
+      .first<{
+        answered_count: number;
+      }>();
+
+  const milestones =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          milestone_25_shown,
+          milestone_50_shown
+        FROM education_protection_milestones
+        WHERE student_id = ?
+        LIMIT 1
+        `,
+      )
+      .bind(
+        studentId,
+      )
+      .first<{
+        milestone_25_shown: number;
+        milestone_50_shown: number;
+      }>();
+
+  return {
+    answeredCount:
+      Math.max(
+        0,
+        Number(
+          counts?.answered_count ??
+          0,
+        ),
+      ),
+
+    emailProtected:
+      Boolean(
+        accountEmail
+          ?.trim(),
+      ),
+
+    milestone25Shown:
+      Number(
+        milestones
+          ?.milestone_25_shown ??
+        0,
+      ) === 1,
+
+    milestone50Shown:
+      Number(
+        milestones
+          ?.milestone_50_shown ??
+        0,
+      ) === 1,
+  };
+}
+
+
+async function resolveActiveEducationStudent(
+  request: Request,
+  env: Env,
+  studentCode: string,
+): Promise<
+  {
+    id: number;
+    accountEmail: string | null;
+  } |
+  null
+> {
+  const activeGuest =
+    await currentEducationGuest(
+      request,
+      env,
+    );
+
+  if (
+    !activeGuest ||
+    normalizeCode(
+      activeGuest.slug,
+    ) !==
+      normalizeCode(
+        studentCode,
+      )
+  ) {
+    return null;
+  }
+
+  const student =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT id
+        FROM education_students
+        WHERE gyan_account_id = ?
+        LIMIT 1
+        `,
+      )
+      .bind(
+        activeGuest.id,
+      )
+      .first<{
+        id: number;
+      }>();
+
+  if (!student) {
+    return null;
+  }
+
+  return {
+    id:
+      Number(
+        student.id,
+      ),
+    accountEmail:
+      activeGuest.email,
+  };
+}
+
+
+async function getProtectionStatus(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
+  const studentCode =
+    normalizeCode(
+      url.searchParams.get(
+        "student",
+      ),
+    );
+
+  if (!studentCode) {
+    return jsonResponse(
+      {
+        error:
+          "student is required.",
+      },
+      400,
+    );
+  }
+
+  const student =
+    await resolveActiveEducationStudent(
+      request,
+      env,
+      studentCode,
+    );
+
+  if (!student) {
+    return jsonResponse(
+      {
+        error:
+          "This GYAN is not active in this browser.",
+      },
+      403,
+    );
+  }
+
+  return jsonResponse({
+    protection:
+      await educationProtectionStatus(
+        env,
+        student.id,
+        student.accountEmail,
+      ),
+  });
+}
+
+
+async function markProtectionMilestone(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  let body:
+    {
+      studentCode?: unknown;
+      milestone?: unknown;
+    };
+
+  try {
+    body =
+      await request.json() as {
+        studentCode?: unknown;
+        milestone?: unknown;
+      };
+  } catch {
+    return jsonResponse(
+      {
+        error:
+          "Invalid JSON body.",
+      },
+      400,
+    );
+  }
+
+  const studentCode =
+    normalizeCode(
+      body.studentCode,
+    );
+
+  const milestone =
+    Number(
+      body.milestone,
+    );
+
+  if (
+    milestone !== 25 &&
+    milestone !== 50
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "milestone must be 25 or 50.",
+      },
+      400,
+    );
+  }
+
+  const student =
+    await resolveActiveEducationStudent(
+      request,
+      env,
+      studentCode,
+    );
+
+  if (!student) {
+    return jsonResponse(
+      {
+        error:
+          "This GYAN is not active in this browser.",
+      },
+      403,
+    );
+  }
+
+  await env.gyan_registry
+    .prepare(
+      milestone === 25
+        ? `
+          INSERT INTO education_protection_milestones (
+            student_id,
+            milestone_25_shown,
+            updated_at
+          )
+          VALUES (?, 1, CURRENT_TIMESTAMP)
+          ON CONFLICT(student_id)
+          DO UPDATE SET
+            milestone_25_shown = 1,
+            updated_at = CURRENT_TIMESTAMP
+          `
+        : `
+          INSERT INTO education_protection_milestones (
+            student_id,
+            milestone_25_shown,
+            milestone_50_shown,
+            updated_at
+          )
+          VALUES (?, 1, 1, CURRENT_TIMESTAMP)
+          ON CONFLICT(student_id)
+          DO UPDATE SET
+            milestone_25_shown = 1,
+            milestone_50_shown = 1,
+            updated_at = CURRENT_TIMESTAMP
+          `,
+    )
+    .bind(
+      student.id,
+    )
+    .run();
+
+  return jsonResponse({
+    saved:
+      true,
+    milestone,
+  });
+}
+
 
 async function getReport(
   request: Request,
@@ -1444,7 +1779,338 @@ async function getReport(
         scorePercent: number | null;
       }>();
 
+
+  const mockAttemptsResult =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          ma.id,
+          ma.attempt_number,
+          ma.elapsed_seconds,
+          ma.save_count,
+          ma.score,
+          ma.max_score AS maximum_marks,
+          ma.correct_count,
+          ma.incorrect_count,
+          ma.unanswered_count,
+          ma.submitted_at,
+          mt.id AS test_id,
+          mt.test_code,
+          mt.test_name,
+          mt.test_kind,
+          mt.exam_level,
+          (
+            SELECT COUNT(*)
+            FROM education_mock_attempt_answers maa
+            WHERE maa.attempt_id = ma.id
+          ) AS question_count
+        FROM education_mock_attempts ma
+        INNER JOIN education_mock_tests mt
+          ON mt.id = ma.mock_test_id
+        WHERE ma.student_id = ?
+        ORDER BY ma.submitted_at DESC, ma.id DESC
+        `,
+      )
+      .bind(
+        student.id,
+      )
+      .all<{
+        id: number;
+        attempt_number: number;
+        elapsed_seconds: number;
+        save_count: number;
+        score: number;
+        maximum_marks: number;
+        correct_count: number;
+        incorrect_count: number;
+        unanswered_count: number;
+        submitted_at: string;
+        test_id: number;
+        test_code: string;
+        test_name: string;
+        test_kind: string;
+        exam_level: string;
+        question_count: number;
+      }>();
+
+  const mockAttemptIds =
+    mockAttemptsResult.results.map(
+      (row) =>
+        Number(
+          row.id,
+        ),
+    );
+
+  const mockQuestionResults =
+    mockAttemptIds.length
+      ? await env.gyan_registry
+          .prepare(
+            `
+            SELECT
+              maa.attempt_id,
+              maa.question_id,
+              maa.selected_answer,
+              maa.correct,
+              mtq.question_order,
+              mtq.section_code,
+              q.question_text,
+              q.choice_a,
+              q.choice_b,
+              q.choice_c,
+              q.choice_d,
+              q.correct_choice,
+              q.explanation
+            FROM education_mock_attempt_answers maa
+            INNER JOIN education_mock_attempts ma
+              ON ma.id = maa.attempt_id
+            INNER JOIN education_mock_test_questions mtq
+              ON mtq.mock_test_id = ma.mock_test_id
+             AND mtq.question_id = maa.question_id
+            INNER JOIN education_questions q
+              ON q.id = maa.question_id
+            WHERE maa.attempt_id IN (
+              ${mockAttemptIds
+                .map(() => "?")
+                .join(",")}
+            )
+            ORDER BY maa.attempt_id, mtq.question_order
+            `,
+          )
+          .bind(
+            ...mockAttemptIds,
+          )
+          .all<{
+            attempt_id: number;
+            question_id: number;
+            selected_answer: string | null;
+            correct: number;
+            question_order: number;
+            section_code: string | null;
+            question_text: string;
+            choice_a: string | null;
+            choice_b: string | null;
+            choice_c: string | null;
+            choice_d: string | null;
+            correct_choice: string | null;
+            explanation: string | null;
+          }>()
+      : {
+          results:
+            [] as Array<{
+              attempt_id: number;
+              question_id: number;
+              selected_answer: string | null;
+              correct: number;
+              question_order: number;
+              section_code: string | null;
+              question_text: string;
+              choice_a: string | null;
+              choice_b: string | null;
+              choice_c: string | null;
+              choice_d: string | null;
+              correct_choice: string | null;
+              explanation: string | null;
+            }>,
+        };
+
+  const mockResultsByAttempt =
+    new Map<
+      number,
+      Array<{
+        questionId: number;
+        sectionCode: string;
+        questionOrder: number;
+        status:
+          | "correct"
+          | "wrong"
+          | "unanswered";
+        selectedAnswer: string;
+        questionText: string;
+        choices: {
+          A: string;
+          B: string;
+          C: string;
+          D: string;
+        };
+        correctAnswer: string;
+        explanation: string | null;
+      }>
+    >();
+
+  for (
+    const row of
+      mockQuestionResults.results
+  ) {
+    const attemptId =
+      Number(
+        row.attempt_id,
+      );
+
+    const current =
+      mockResultsByAttempt.get(
+        attemptId,
+      ) ?? [];
+
+    current.push({
+      questionId:
+        Number(
+          row.question_id,
+        ),
+
+      sectionCode:
+        row.section_code ??
+        "GENERAL",
+
+      questionOrder:
+        Number(
+          row.question_order,
+        ),
+
+      status:
+        !row.selected_answer
+          ? "unanswered"
+          : Number(
+              row.correct,
+            ) === 1
+            ? "correct"
+            : "wrong",
+
+      selectedAnswer:
+        row.selected_answer ??
+        "",
+
+      questionText:
+        row.question_text,
+
+      choices: {
+        A:
+          row.choice_a ??
+          "",
+        B:
+          row.choice_b ??
+          "",
+        C:
+          row.choice_c ??
+          "",
+        D:
+          row.choice_d ??
+          "",
+      },
+
+      correctAnswer:
+        row.correct_choice ??
+        "",
+
+      explanation:
+        row.explanation,
+    });
+
+    mockResultsByAttempt.set(
+      attemptId,
+      current,
+    );
+  }
+
+  const mockAttempts =
+    mockAttemptsResult.results.map(
+      (row) => {
+        const maximumMarks =
+          Number(
+            row.maximum_marks,
+          );
+
+        return {
+          id:
+            Number(
+              row.id,
+            ),
+          testId:
+            Number(
+              row.test_id,
+            ),
+          testCode:
+            row.test_code,
+          testName:
+            row.test_name,
+          testKind:
+            row.test_kind,
+          examLevel:
+            row.exam_level,
+          attemptNumber:
+            Number(
+              row.attempt_number,
+            ),
+          questionCount:
+            Number(
+              row.question_count,
+            ),
+          score:
+            Number(
+              row.score,
+            ),
+          maximumMarks,
+          scorePercent:
+            maximumMarks > 0
+              ? Math.min(
+                  100,
+                  Math.round(
+                    Number(
+                      row.score,
+                    ) *
+                      100 /
+                      maximumMarks,
+                  ),
+                )
+              : 0,
+          correctCount:
+            Number(
+              row.correct_count,
+            ),
+          incorrectCount:
+            Number(
+              row.incorrect_count,
+            ),
+          unansweredCount:
+            Number(
+              row.unanswered_count,
+            ),
+          elapsedSeconds:
+            Number(
+              row.elapsed_seconds,
+            ),
+          saveCount:
+            Number(
+              row.save_count,
+            ),
+          submittedAt:
+            row.submitted_at,
+          questionResults:
+            mockResultsByAttempt.get(
+              Number(
+                row.id,
+              ),
+            ) ?? [],
+        };
+      },
+    );
+
+  const protection =
+    await educationProtectionStatus(
+      env,
+      Number(
+        student.id,
+      ),
+      activeGuest
+        ?.email ??
+      user
+        ?.email ??
+      null,
+    );
+
   return jsonResponse({
+    protection,
+    mockAttempts,
     student: {
       code:
         activeGuest
@@ -2328,6 +2994,31 @@ export async function handleEducationProgressRoute(
       request,
       env,
       url,
+    );
+  }
+
+  if (
+    request.method ===
+      "GET" &&
+    url.pathname ===
+      "/api/education/protection-status"
+  ) {
+    return getProtectionStatus(
+      request,
+      env,
+      url,
+    );
+  }
+
+  if (
+    request.method ===
+      "POST" &&
+    url.pathname ===
+      "/api/education/protection-milestone"
+  ) {
+    return markProtectionMilestone(
+      request,
+      env,
     );
   }
 
