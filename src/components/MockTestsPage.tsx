@@ -858,15 +858,6 @@ export default function MockTestsPage({
 
 
 
-  function chooseAvailable(
-    label: string,
-    variant?: string,
-  ): void {
-    setSelected({
-      label,
-      variant,
-    });
-  }
 
   async function openFixedTest(
     options: {
@@ -877,7 +868,8 @@ export default function MockTestsPage({
         string;
       level:
         "MAIN" |
-        "ADVANCED";
+        "ADVANCED" |
+        "NEET";
     },
   ): Promise<void> {
     setRunnerLoading(
@@ -892,8 +884,7 @@ export default function MockTestsPage({
     try {
       const test =
         await loadFixedMockTest({
-          program:
-            "JEE",
+          program,
 
           kind:
             options.kind,
@@ -921,14 +912,15 @@ export default function MockTestsPage({
         (
           sectionCode:
             string |
-            null |
-            undefined,
+            null,
         ): number => {
           const normalized =
-            sectionCode
-              ?.trim()
-              .toUpperCase() ??
-            "";
+            (
+              sectionCode ??
+              ""
+            )
+              .trim()
+              .toUpperCase();
 
           if (
             normalized ===
@@ -951,6 +943,13 @@ export default function MockTestsPage({
             "CHEMISTRY"
           ) {
             return 2;
+          }
+
+          if (
+            normalized ===
+            "BIOLOGY"
+          ) {
+            return 3;
           }
 
           return 99;
@@ -1832,7 +1831,10 @@ export default function MockTestsPage({
                     : activeFixedTest.level ===
                         "ADVANCED"
                       ? "JEE Advanced"
-                      : activeFixedTest.level
+                      : activeFixedTest.level ===
+                          "NEET"
+                        ? "NEET"
+                        : activeFixedTest.level
                 }
               </strong>
 
@@ -2964,13 +2966,23 @@ export default function MockTestsPage({
                 </div>
 
                 <div
-                  className="mock-tests__palette-grid"
+                  className={[
+                    "mock-tests__palette-grid",
+                    program === "NEET"
+                      ? "mock-tests__palette-grid--neet"
+                      : "",
+                  ]
+                    .filter(
+                      Boolean,
+                    )
+                    .join(
+                      " ",
+                    )}
                 >
                   {
                     currentSectionQuestions.map(
                       (
                         question,
-                        localIndex,
                       ) => {
                         const answered =
                           Boolean(
@@ -3030,13 +3042,11 @@ export default function MockTestsPage({
                               )
                             }
                             aria-label={`Question ${
-                              localIndex +
-                              1
+                              question.order
                             }`}
                           >
                             {
-                              localIndex +
-                              1
+                              question.order
                             }
                           </button>
                         );
@@ -3338,9 +3348,6 @@ export default function MockTestsPage({
               (
                 testNumber,
               ) => {
-                const available =
-                  testNumber ===
-                  1;
 
                 const restricted =
                   testNumber >=
@@ -3464,19 +3471,42 @@ export default function MockTestsPage({
                         ) : (
                           <button
                             type="button"
-                            onClick={() =>
-                              available
-                                ? chooseAvailable(
-                                    label,
-                                    "NEET",
-                                  )
-                                : requestAccess(
-                                    label,
-                                    "NEET",
-                                  )
+                            disabled={
+                              runnerLoading
                             }
+                            onClick={() => {
+                              if (
+                                testNumber ===
+                                  1
+                              ) {
+                                void openFixedTest({
+                                  kind:
+                                    "FULL",
+                                  testCode:
+                                    "TEST_1",
+                                  level:
+                                    "NEET",
+                                });
+
+                                return;
+                              }
+
+                              requestAccess(
+                                label,
+                                "NEET",
+                              );
+                            }}
                           >
-                            Open
+                            {
+                              testNumber ===
+                                1 &&
+                              runnerLoading
+                                ? "Opening…"
+                                : testNumber ===
+                                    1
+                                  ? "Open"
+                                  : "🔒 Open"
+                            }
                           </button>
                         )
                       }
@@ -3505,9 +3535,6 @@ export default function MockTestsPage({
                 letter,
                 index,
               ) => {
-                const available =
-                  index <=
-                  1;
 
                 const restricted =
                   index >=
@@ -3629,19 +3656,42 @@ export default function MockTestsPage({
                         ) : (
                           <button
                             type="button"
-                            onClick={() =>
-                              available
-                                ? chooseAvailable(
-                                    label,
-                                    "NEET",
-                                  )
-                                : requestAccess(
-                                    label,
-                                    "NEET",
-                                  )
+                            disabled={
+                              runnerLoading
                             }
+                            onClick={() => {
+                              if (
+                                letter ===
+                                  "A"
+                              ) {
+                                void openFixedTest({
+                                  kind:
+                                    "MINI",
+                                  testCode:
+                                    "MINI_A",
+                                  level:
+                                    "NEET",
+                                });
+
+                                return;
+                              }
+
+                              requestAccess(
+                                label,
+                                "NEET",
+                              );
+                            }}
                           >
-                            Open
+                            {
+                              letter ===
+                                "A" &&
+                              runnerLoading
+                                ? "Opening…"
+                                : letter ===
+                                    "A"
+                                  ? "Open"
+                                  : "🔒 Open"
+                            }
                           </button>
                         )
                       }

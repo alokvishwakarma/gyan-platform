@@ -10,6 +10,7 @@ interface PlatformDashboardPageProps {
   onOpenRequests?: () => void;
   onOpenAnalytics?: () => void;
   onChangeLocation: () => void;
+  onOpenEducation: () => void;
 }
 
 interface AdminTile {
@@ -29,6 +30,7 @@ export default function PlatformDashboardPage({
   onOpenRequests,
   onOpenAnalytics,
   onChangeLocation,
+  onOpenEducation,
 }: PlatformDashboardPageProps) {
   const tiles: AdminTile[] = [
     {
@@ -87,6 +89,14 @@ export default function PlatformDashboardPage({
       onClick:
         onChangeLocation,
     },
+    {
+  icon: "🎓",
+  title: "Education",
+  description:
+    "Programs, countries and exams",
+  onClick:
+    onOpenEducation,
+},
     {
       icon: "➕",
       title: "Add shop",

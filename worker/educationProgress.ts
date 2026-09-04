@@ -1,6 +1,9 @@
 import {
   currentUser,
 } from "./auth";
+import {
+  getAdminSession,
+} from "./adminAuth";
 
 const STUDENT_CODE_ALPHABET =
   "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -1549,6 +1552,30 @@ async function getReport(
       ),
     );
 
+  const requestedProgram =
+    normalizeCode(
+      url.searchParams.get(
+        "program",
+      ),
+    );
+
+  const reportProgram =
+    requestedProgram ===
+      "JEE" ||
+    requestedProgram ===
+      "NEET"
+      ? requestedProgram
+      : "";
+
+  const reportGradeCode =
+    reportProgram ===
+      "NEET"
+      ? "PROGRAM_NEET"
+      : reportProgram ===
+          "JEE"
+        ? "PROGRAM_JEE"
+        : "";
+
   if (!studentCode) {
     return jsonResponse(
       {
@@ -1647,6 +1674,70 @@ async function getReport(
       }>();
 
   if (!student) {
+    /*
+     * A newly allocated browser GYAN may not have an
+     * education_students row yet. Reports should still open
+     * successfully and show an empty state rather than 404.
+     *
+     * The education_students row will be created normally when
+     * the learner first saves a 5-question practice attempt.
+     */
+    if (
+      activeGuest &&
+      guestCode
+    ) {
+      return jsonResponse({
+        protection: {
+          answeredCount:
+            0,
+          emailProtected:
+            Boolean(
+              normalizeEmail(
+                activeGuest.email,
+              ),
+            ),
+          milestone25Shown:
+            false,
+          milestone50Shown:
+            false,
+        },
+
+        mockAttempts:
+          [],
+
+        student: {
+          code:
+            guestCode,
+          name:
+            normalizeName(
+              activeGuest.gyan_name,
+            ) ||
+            "GYAN Learner",
+          email:
+            normalizeEmail(
+              activeGuest.email,
+            ),
+          country:
+            "",
+          grade:
+            "",
+        },
+
+        report:
+          [],
+
+        topicProgress:
+          [],
+
+        attemptSummary: {
+          totalAttempts:
+            0,
+          recentAttempts:
+            [],
+        },
+      });
+    }
+
     return jsonResponse(
       {
         error:
@@ -1754,6 +1845,10 @@ async function getReport(
         WHERE
           h.student_id = ?
           AND q.active = 1
+          AND (
+            ? = ''
+            OR s.grade_code = ?
+          )
 
         GROUP BY
           s.subject_code,
@@ -1769,6 +1864,8 @@ async function getReport(
       )
       .bind(
         student.id,
+        reportGradeCode,
+        reportGradeCode,
       )
       .all<{
         subjectCode: string;
@@ -1800,6 +1897,7 @@ async function getReport(
           mt.test_name,
           mt.test_kind,
           mt.exam_level,
+          mt.program_code,
           (
             SELECT COUNT(*)
             FROM education_mock_attempt_answers maa
@@ -1808,12 +1906,19 @@ async function getReport(
         FROM education_mock_attempts ma
         INNER JOIN education_mock_tests mt
           ON mt.id = ma.mock_test_id
-        WHERE ma.student_id = ?
+        WHERE
+          ma.student_id = ?
+          AND (
+            ? = ''
+            OR mt.program_code = ?
+          )
         ORDER BY ma.submitted_at DESC, ma.id DESC
         `,
       )
       .bind(
         student.id,
+        reportProgram,
+        reportProgram,
       )
       .all<{
         id: number;
@@ -1831,6 +1936,7 @@ async function getReport(
         test_name: string;
         test_kind: string;
         exam_level: string;
+        program_code: string;
         question_count: number;
       }>();
 
@@ -2037,6 +2143,8 @@ async function getReport(
             row.test_kind,
           examLevel:
             row.exam_level,
+          programCode:
+            row.program_code,
           attemptNumber:
             Number(
               row.attempt_number,
@@ -3068,6 +3176,32 @@ async function educationAdminUser(
   } |
   null
 > {
+  /*
+   * Primary path: GYAN platform-admin session.
+   *
+   * This is the same server-side admin session used by the
+   * existing Admin dashboard, Students, Shops, etc.
+   */
+  const adminSession =
+    await getAdminSession(
+      request,
+      env,
+    );
+
+  if (
+    adminSession
+  ) {
+    return {
+      email:
+        "admin@gyan.cc",
+    };
+  }
+
+  /*
+   * Secondary path: signed-in GYAN account using the
+   * administrator email. Keep this for the Education
+   * teacher-management workflow.
+   */
   const user =
     await currentUser(
       request,
@@ -4017,11 +4151,632 @@ async function assignEducationTeacher(
 }
 
 
+async function getEducationCatalog(
+  env: Env,
+  url: URL,
+): Promise<Response> {
+  const requestedCountry =
+    normalizeCode(
+      url.searchParams.get(
+        "country",
+      ),
+    );
+
+  const countries =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            country_code,
+            country_name,
+            flag_emoji,
+            sort_order
+          FROM education_countries
+          WHERE enabled = 1
+          ORDER BY
+            sort_order,
+            country_name
+        `,
+      )
+      .all<{
+        country_code: string;
+        country_name: string;
+        flag_emoji: string | null;
+        sort_order: number;
+      }>();
+
+  const selectedCountry =
+    requestedCountry &&
+    countries.results.some(
+      (
+        item,
+      ) =>
+        item.country_code ===
+        requestedCountry,
+    )
+      ? requestedCountry
+      : countries.results[0]
+          ?.country_code ??
+        "US";
+
+  const programs =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            ep.program_code,
+            ep.program_name AS display_name,
+            catalog.canonical_name,
+            catalog.grade_code,
+            catalog.experience_type,
+            catalog.show_questions,
+            catalog.show_mock_tests,
+            catalog.show_reports,
+            catalog.show_demo,
+            catalog.show_classes,
+            catalog.duration_minutes,
+            catalog.question_count,
+            catalog.correct_marks,
+            catalog.incorrect_marks,
+            ep.sort_order
+          FROM education_programs ep
+          INNER JOIN education_program_catalog catalog
+            ON catalog.program_code =
+               ep.program_code
+          WHERE
+            ep.country_code = ?
+            AND ep.enabled = 1
+            AND catalog.enabled = 1
+          ORDER BY
+            ep.sort_order,
+            ep.program_name
+        `,
+      )
+      .bind(
+        selectedCountry,
+      )
+      .all<{
+        program_code: string;
+        display_name: string;
+        canonical_name: string;
+        grade_code: string;
+        experience_type: string;
+        show_questions: number;
+        show_mock_tests: number;
+        show_reports: number;
+        show_demo: number;
+        show_classes: number;
+        duration_minutes: number | null;
+        question_count: number | null;
+        correct_marks: number | null;
+        incorrect_marks: number | null;
+        sort_order: number;
+      }>();
+
+  return jsonResponse({
+    selectedCountry,
+
+    countries:
+      countries.results.map(
+        (
+          item,
+        ) => ({
+          code:
+            item.country_code,
+          name:
+            item.country_name,
+          flag:
+            item.flag_emoji ??
+            "",
+          sortOrder:
+            Number(
+              item.sort_order,
+            ),
+        }),
+      ),
+
+    programs:
+      programs.results.map(
+        (
+          item,
+        ) => ({
+          code:
+            item.program_code,
+          name:
+            item.display_name,
+          canonicalName:
+            item.canonical_name,
+          gradeCode:
+            item.grade_code,
+          countryCode:
+            selectedCountry,
+          experienceType:
+            item.experience_type,
+          showQuestions:
+            Boolean(
+              item.show_questions,
+            ),
+          showMockTests:
+            Boolean(
+              item.show_mock_tests,
+            ),
+          showReports:
+            Boolean(
+              item.show_reports,
+            ),
+          showDemo:
+            Boolean(
+              item.show_demo,
+            ),
+          showClasses:
+            Boolean(
+              item.show_classes,
+            ),
+          durationMinutes:
+            item.duration_minutes,
+          questionCount:
+            item.question_count,
+          correctMarks:
+            item.correct_marks,
+          incorrectMarks:
+            item.incorrect_marks,
+          sortOrder:
+            Number(
+              item.sort_order,
+            ),
+        }),
+      ),
+  });
+}
+
+
+async function getAdminEducationPrograms(
+  env: Env,
+  url: URL,
+): Promise<Response> {
+  const requestedCountry =
+    normalizeCode(
+      url.searchParams.get(
+        "country",
+      ),
+    ) ||
+    "IN";
+
+  const countries =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            country_code,
+            country_name,
+            flag_emoji,
+            sort_order
+          FROM education_countries
+          WHERE enabled = 1
+          ORDER BY
+            sort_order,
+            country_name
+        `,
+      )
+      .all<{
+        country_code: string;
+        country_name: string;
+        flag_emoji: string | null;
+        sort_order: number;
+      }>();
+
+  const selectedCountry =
+    countries.results.some(
+      (
+        item,
+      ) =>
+        item.country_code ===
+        requestedCountry,
+    )
+      ? requestedCountry
+      : countries.results[0]
+          ?.country_code ??
+        "IN";
+
+  /*
+   * Start from the shared master catalog, then LEFT JOIN the
+   * country row. This lets Admin enable a program for a country
+   * even when that country/program row does not exist yet.
+   */
+  const programs =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            catalog.program_code,
+            COALESCE(
+              ep.program_name,
+              catalog.canonical_name
+            ) AS program_name,
+            COALESCE(
+              ep.enabled,
+              0
+            ) AS enabled,
+            COALESCE(
+              ep.sort_order,
+              100
+            ) AS sort_order
+          FROM education_program_catalog catalog
+          LEFT JOIN education_programs ep
+            ON ep.program_code =
+                 catalog.program_code
+            AND ep.country_code = ?
+          WHERE catalog.enabled = 1
+          ORDER BY
+            COALESCE(
+              ep.sort_order,
+              100
+            ),
+            catalog.canonical_name
+        `,
+      )
+      .bind(
+        selectedCountry,
+      )
+      .all<{
+        program_code: string;
+        program_name: string;
+        enabled: number;
+        sort_order: number;
+      }>();
+
+  return jsonResponse({
+    selectedCountry,
+
+    countries:
+      countries.results.map(
+        (
+          item,
+        ) => ({
+          code:
+            item.country_code,
+          name:
+            item.country_name,
+          flag:
+            item.flag_emoji ??
+            "",
+          sortOrder:
+            Number(
+              item.sort_order,
+            ),
+        }),
+      ),
+
+    programs:
+      programs.results.map(
+        (
+          item,
+        ) => ({
+          code:
+            item.program_code,
+          name:
+            item.program_name,
+          enabled:
+            Boolean(
+              item.enabled,
+            ),
+          sortOrder:
+            Number(
+              item.sort_order,
+            ),
+        }),
+      ),
+  });
+}
+
+
+async function saveAdminEducationPrograms(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const admin =
+    await educationAdminUser(
+      request,
+      env,
+    );
+
+  if (!admin) {
+    return jsonResponse(
+      {
+        error:
+          "Admin authentication required.",
+      },
+      403,
+    );
+  }
+
+  let body:
+    {
+      countryCode?: unknown;
+      programs?: unknown;
+    };
+
+  try {
+    body =
+      await request.json() as
+        typeof body;
+  } catch {
+    return jsonResponse(
+      {
+        error:
+          "Invalid JSON body.",
+      },
+      400,
+    );
+  }
+
+  const countryCode =
+    normalizeCode(
+      body.countryCode,
+    );
+
+  const country =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT country_code
+          FROM education_countries
+          WHERE
+            country_code = ?
+            AND enabled = 1
+          LIMIT 1
+        `,
+      )
+      .bind(
+        countryCode,
+      )
+      .first<{
+        country_code: string;
+      }>();
+
+  if (!country) {
+    return jsonResponse(
+      {
+        error:
+          "Valid country is required.",
+      },
+      400,
+    );
+  }
+
+  if (
+    !Array.isArray(
+      body.programs,
+    )
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "Programs are required.",
+      },
+      400,
+    );
+  }
+
+  const updates:
+    {
+      code: string;
+      name: string;
+      enabled: boolean;
+      sortOrder: number;
+    }[] =
+      [];
+
+  for (
+    const raw of
+      body.programs
+  ) {
+    if (
+      !raw ||
+      typeof raw !==
+        "object"
+    ) {
+      continue;
+    }
+
+    const value =
+      raw as {
+        code?: unknown;
+        name?: unknown;
+        enabled?: unknown;
+        sortOrder?: unknown;
+      };
+
+    const code =
+      normalizeCode(
+        value.code,
+      );
+
+    const name =
+      normalizeName(
+        value.name,
+      )
+        .slice(
+          0,
+          100,
+        );
+
+    const sortOrder =
+      Math.max(
+        1,
+        Math.min(
+          9999,
+          Number(
+            value.sortOrder,
+          ) ||
+          100,
+        ),
+      );
+
+    if (
+      !code ||
+      !name
+    ) {
+      continue;
+    }
+
+    const catalog =
+      await env.gyan_registry
+        .prepare(
+          `
+            SELECT program_code
+            FROM education_program_catalog
+            WHERE
+              program_code = ?
+              AND enabled = 1
+            LIMIT 1
+          `,
+        )
+        .bind(
+          code,
+        )
+        .first<{
+          program_code: string;
+        }>();
+
+    if (!catalog) {
+      continue;
+    }
+
+    updates.push({
+      code,
+      name,
+      enabled:
+        value.enabled ===
+        true,
+      sortOrder,
+    });
+  }
+
+  for (
+    const item of
+      updates
+  ) {
+    const existing =
+      await env.gyan_registry
+        .prepare(
+          `
+            SELECT id
+            FROM education_programs
+            WHERE
+              country_code = ?
+              AND program_code = ?
+            LIMIT 1
+          `,
+        )
+        .bind(
+          countryCode,
+          item.code,
+        )
+        .first<{
+          id: number;
+        }>();
+
+    if (existing) {
+      await env.gyan_registry
+        .prepare(
+          `
+            UPDATE education_programs
+            SET
+              program_name = ?,
+              enabled = ?,
+              sort_order = ?,
+              updated_at =
+                CURRENT_TIMESTAMP
+            WHERE id = ?
+          `,
+        )
+        .bind(
+          item.name,
+          item.enabled
+            ? 1
+            : 0,
+          item.sortOrder,
+          existing.id,
+        )
+        .run();
+    } else {
+      await env.gyan_registry
+        .prepare(
+          `
+            INSERT INTO education_programs (
+              country_code,
+              program_code,
+              program_name,
+              enabled,
+              is_custom,
+              sort_order
+            )
+            VALUES (?, ?, ?, ?, 0, ?)
+          `,
+        )
+        .bind(
+          countryCode,
+          item.code,
+          item.name,
+          item.enabled
+            ? 1
+            : 0,
+          item.sortOrder,
+        )
+        .run();
+    }
+  }
+
+  return jsonResponse({
+    saved:
+      true,
+    countryCode,
+    updated:
+      updates.length,
+  });
+}
+
+
 export async function handleEducationProgressRoute(
   request: Request,
   env: Env,
   url: URL,
 ): Promise<Response | null> {
+  if (
+    url.pathname ===
+      "/api/education/admin/programs" &&
+    request.method ===
+      "GET"
+  ) {
+    return getAdminEducationPrograms(
+      env,
+      url,
+    );
+  }
+
+  if (
+    url.pathname ===
+      "/api/education/admin/programs" &&
+    request.method ===
+      "POST"
+  ) {
+    return saveAdminEducationPrograms(
+      request,
+      env,
+    );
+  }
+
+  if (
+    request.method === "GET" &&
+    url.pathname === "/api/education/catalog"
+  ) {
+    return getEducationCatalog(
+      env,
+      url,
+    );
+  }
+
   if (
     request.method === "GET" &&
     url.pathname === "/api/education/teachers"

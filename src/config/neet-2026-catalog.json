@@ -1,0 +1,227 @@
+{
+  "program": {
+    "countryCode": "IN",
+    "gradeCode": "PROGRAM_NEET",
+    "name": "NEET"
+  },
+  "subjects": [
+    {
+      "code": "PHYSICS",
+      "name": "Physics",
+      "topics": [
+        {
+          "code": "PHYSICS_MEASUREMENT",
+          "name": "Physics and Measurement"
+        },
+        {
+          "code": "KINEMATICS",
+          "name": "Kinematics"
+        },
+        {
+          "code": "LAWS_OF_MOTION",
+          "name": "Laws of Motion"
+        },
+        {
+          "code": "WORK_ENERGY_POWER",
+          "name": "Work, Energy and Power"
+        },
+        {
+          "code": "ROTATIONAL_MOTION",
+          "name": "Rotational Motion"
+        },
+        {
+          "code": "GRAVITATION",
+          "name": "Gravitation"
+        },
+        {
+          "code": "PROPERTIES_OF_SOLIDS_LIQUIDS",
+          "name": "Properties of Solids and Liquids"
+        },
+        {
+          "code": "THERMODYNAMICS",
+          "name": "Thermodynamics"
+        },
+        {
+          "code": "KINETIC_THEORY_GASES",
+          "name": "Kinetic Theory of Gases"
+        },
+        {
+          "code": "OSCILLATIONS_WAVES",
+          "name": "Oscillations and Waves"
+        },
+        {
+          "code": "ELECTROSTATICS",
+          "name": "Electrostatics"
+        },
+        {
+          "code": "CURRENT_ELECTRICITY",
+          "name": "Current Electricity"
+        },
+        {
+          "code": "MAGNETIC_EFFECTS",
+          "name": "Magnetic Effects of Current and Magnetism"
+        },
+        {
+          "code": "EM_INDUCTION_AC",
+          "name": "Electromagnetic Induction and Alternating Currents"
+        },
+        {
+          "code": "ELECTROMAGNETIC_WAVES",
+          "name": "Electromagnetic Waves"
+        },
+        {
+          "code": "OPTICS",
+          "name": "Optics"
+        },
+        {
+          "code": "DUAL_NATURE",
+          "name": "Dual Nature of Matter and Radiation"
+        },
+        {
+          "code": "ATOMS_NUCLEI",
+          "name": "Atoms and Nuclei"
+        },
+        {
+          "code": "ELECTRONIC_DEVICES",
+          "name": "Electronic Devices"
+        },
+        {
+          "code": "EXPERIMENTAL_SKILLS",
+          "name": "Experimental Skills"
+        }
+      ]
+    },
+    {
+      "code": "CHEMISTRY",
+      "name": "Chemistry",
+      "topics": [
+        {
+          "code": "BASIC_CONCEPTS_CHEMISTRY",
+          "name": "Some Basic Concepts in Chemistry"
+        },
+        {
+          "code": "ATOMIC_STRUCTURE",
+          "name": "Atomic Structure"
+        },
+        {
+          "code": "CHEMICAL_BONDING",
+          "name": "Chemical Bonding and Molecular Structure"
+        },
+        {
+          "code": "CHEMICAL_THERMODYNAMICS",
+          "name": "Chemical Thermodynamics"
+        },
+        {
+          "code": "SOLUTIONS",
+          "name": "Solutions"
+        },
+        {
+          "code": "EQUILIBRIUM",
+          "name": "Equilibrium"
+        },
+        {
+          "code": "REDOX_ELECTROCHEMISTRY",
+          "name": "Redox Reactions and Electrochemistry"
+        },
+        {
+          "code": "CHEMICAL_KINETICS",
+          "name": "Chemical Kinetics"
+        },
+        {
+          "code": "CLASSIFICATION_PERIODICITY",
+          "name": "Classification of Elements and Periodicity"
+        },
+        {
+          "code": "P_BLOCK",
+          "name": "P-Block Elements"
+        },
+        {
+          "code": "D_F_BLOCK",
+          "name": "d- and f-Block Elements"
+        },
+        {
+          "code": "COORDINATION_COMPOUNDS",
+          "name": "Coordination Compounds"
+        },
+        {
+          "code": "PURIFICATION_ORGANIC",
+          "name": "Purification and Characterisation of Organic Compounds"
+        },
+        {
+          "code": "BASIC_PRINCIPLES_ORGANIC",
+          "name": "Some Basic Principles of Organic Chemistry"
+        },
+        {
+          "code": "HYDROCARBONS",
+          "name": "Hydrocarbons"
+        },
+        {
+          "code": "ORGANIC_HALOGENS",
+          "name": "Organic Compounds Containing Halogens"
+        },
+        {
+          "code": "ORGANIC_OXYGEN",
+          "name": "Organic Compounds Containing Oxygen"
+        },
+        {
+          "code": "ORGANIC_NITROGEN",
+          "name": "Organic Compounds Containing Nitrogen"
+        },
+        {
+          "code": "BIOMOLECULES",
+          "name": "Biomolecules"
+        },
+        {
+          "code": "PRACTICAL_CHEMISTRY",
+          "name": "Principles Related to Practical Chemistry"
+        }
+      ]
+    },
+    {
+      "code": "BIOLOGY",
+      "name": "Biology",
+      "topics": [
+        {
+          "code": "DIVERSITY_LIVING_WORLD",
+          "name": "Diversity in Living World"
+        },
+        {
+          "code": "STRUCTURAL_ORGANISATION",
+          "name": "Structural Organisation in Animals and Plants"
+        },
+        {
+          "code": "CELL_STRUCTURE_FUNCTION",
+          "name": "Cell Structure and Function"
+        },
+        {
+          "code": "PLANT_PHYSIOLOGY",
+          "name": "Plant Physiology"
+        },
+        {
+          "code": "HUMAN_PHYSIOLOGY",
+          "name": "Human Physiology"
+        },
+        {
+          "code": "REPRODUCTION",
+          "name": "Reproduction"
+        },
+        {
+          "code": "GENETICS_EVOLUTION",
+          "name": "Genetics and Evolution"
+        },
+        {
+          "code": "BIOLOGY_HUMAN_WELFARE",
+          "name": "Biology and Human Welfare"
+        },
+        {
+          "code": "BIOTECHNOLOGY",
+          "name": "Biotechnology and Its Applications"
+        },
+        {
+          "code": "ECOLOGY_ENVIRONMENT",
+          "name": "Ecology and Environment"
+        }
+      ]
+    }
+  ]
+}

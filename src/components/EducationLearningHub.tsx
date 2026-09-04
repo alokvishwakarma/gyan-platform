@@ -43,6 +43,9 @@ type PortalSelection = {
 
   code: string;
   name: string;
+  countryCode?: string;
+  programCode?: string;
+  experienceType?: string;
 };
 
 
@@ -102,6 +105,7 @@ type EducationMockAttemptReport = {
   testName: string;
   testKind: string;
   examLevel: string;
+  programCode?: string;
   attemptNumber: number;
   questionCount: number;
   score: number;
@@ -1662,7 +1666,11 @@ export default function EducationLearningHub({
   }
 
 
-  async function loadEducationProgressReport():
+  async function loadEducationProgressReport(
+    program?:
+      "JEE" |
+      "NEET",
+  ):
     Promise<EducationProgressReport> {
     const empty:
       EducationProgressReport = {
@@ -1706,7 +1714,7 @@ export default function EducationLearningHub({
       await fetch(
         `/api/education/report?student=${encodeURIComponent(
           normalizedActiveGyanCode,
-        )}`,
+        )}${program ? `&program=${encodeURIComponent(program)}` : ""}`,
         {
           credentials:
             "include",
@@ -1777,12 +1785,17 @@ export default function EducationLearningHub({
       "JEE" |
       "NEET",
   ): Promise<void> {
-    if (
-      program !==
-        "JEE"
-    ) {
-      return;
-    }
+    const programGradeCode =
+      program ===
+        "NEET"
+        ? "PROGRAM_NEET"
+        : "PROGRAM_JEE";
+
+    const programName =
+      program ===
+        "NEET"
+        ? "NEET"
+        : "IIT-JEE";
 
     setProgramReportLoading(
       true,
@@ -1791,7 +1804,9 @@ export default function EducationLearningHub({
 
     try {
       const progressReport =
-        await loadEducationProgressReport();
+        await loadEducationProgressReport(
+          program,
+        );
 
       setProgramMockAttempts(
         progressReport.mockAttempts,
@@ -1800,7 +1815,7 @@ export default function EducationLearningHub({
       const reportSubjects =
         await loadSubjects(
           "IN",
-          "PROGRAM_JEE",
+          programGradeCode,
         );
 
       const progressByTopic =
@@ -1827,7 +1842,7 @@ export default function EducationLearningHub({
         const reportSubjectTopics =
           await loadTopics(
             "IN",
-            "PROGRAM_JEE",
+            programGradeCode,
             reportSubject.code,
           );
 
@@ -1888,9 +1903,9 @@ export default function EducationLearningHub({
         type:
           "program",
         code:
-          "PROGRAM_JEE",
+          programGradeCode,
         name:
-          "IIT-JEE",
+          programName,
       });
       setSubjects(
         reportSubjects,
@@ -1933,7 +1948,9 @@ export default function EducationLearningHub({
           ? subjects
           : await loadSubjects(
               "IN",
-              "PROGRAM_JEE",
+              grade?.code ??
+              grade?.code ??
+        "PROGRAM_JEE",
             );
 
       const nextSubject =
@@ -1954,7 +1971,8 @@ export default function EducationLearningHub({
       const nextTopics =
         await loadTopics(
           "IN",
-          "PROGRAM_JEE",
+          grade?.code ??
+        "PROGRAM_JEE",
           nextSubject.code,
         );
 
@@ -1976,7 +1994,8 @@ export default function EducationLearningHub({
       const nextQuestions =
         await loadPracticeQuestions(
           "IN",
-          "PROGRAM_JEE",
+          grade?.code ??
+        "PROGRAM_JEE",
           nextSubject.code,
           nextTopic.code,
         );
@@ -1985,7 +2004,8 @@ export default function EducationLearningHub({
         type:
           "program",
         code:
-          "PROGRAM_JEE",
+          grade?.code ??
+        "PROGRAM_JEE",
         name:
           "IIT-JEE",
       });
@@ -2041,22 +2061,17 @@ export default function EducationLearningHub({
       PortalSelection |
       null,
   ): EducationCountry {
-    /*
-     * IIT-JEE and NEET catalogs are India programs.
-     * They must continue to use IN even if the portal's
-     * general country selection is currently US.
-     */
+    const selectedCountry =
+      selection
+        ?.countryCode
+        ?.trim()
+        .toUpperCase();
+
     if (
-      selection?.type ===
-        "program" &&
-      (
-        selection.code ===
-          "PROGRAM_JEE" ||
-        selection.code ===
-          "PROGRAM_NEET"
-      )
+      selectedCountry
     ) {
-      return "IN";
+      return selectedCountry as
+        EducationCountry;
     }
 
     return country;
@@ -2224,28 +2239,8 @@ export default function EducationLearningHub({
       selection.type ===
         "program"
     ) {
-      const normalizedProgramCode =
-        selection.code
-          .trim()
-          .replace(/[^A-Z0-9]+/gi, "_")
-          .toUpperCase();
-
-      /*
-       * Keep IIT-JEE UI aliases mapped to the existing
-       * PROGRAM_IIT catalog key used by GYAN data.
-       *
-       * Config may call the program IIT-JEE / IIT_JEE / JEE,
-       * but those labels must not create a new empty
-       * PROGRAM_IIT_JEE grade bucket.
-       */
       const programGradeCode =
-        normalizedProgramCode === "IIT" ||
-        normalizedProgramCode === "IIT_JEE" ||
-        normalizedProgramCode === "JEE"
-          ? "PROGRAM_JEE"
-          : normalizedProgramCode.startsWith("PROGRAM_")
-            ? normalizedProgramCode
-            : `PROGRAM_${normalizedProgramCode}`;
+        selection.code;
 
       const programSelection:
         PortalSelection = {
@@ -2257,6 +2252,15 @@ export default function EducationLearningHub({
 
         name:
           selection.name,
+
+        countryCode:
+          selection.countryCode,
+
+        programCode:
+          selection.programCode,
+
+        experienceType:
+          selection.experienceType,
       };
 
       setGrade(programSelection);
@@ -2268,7 +2272,9 @@ export default function EducationLearningHub({
 
       if (
         programGradeCode ===
-          "PROGRAM_JEE"
+          "PROGRAM_JEE" ||
+        programGradeCode ===
+          "PROGRAM_NEET"
       ) {
         void loadEducationProgressReport()
           .catch(
@@ -3180,6 +3186,19 @@ export default function EducationLearningHub({
           onMockTests={(
             program,
           ) => {
+            if (
+              program !==
+                "JEE" &&
+              program !==
+                "NEET"
+            ) {
+              setError(
+                `${program} mock tests are not configured yet.`,
+              );
+
+              return;
+            }
+
             setMockProgram(
               program,
             );
@@ -3192,6 +3211,19 @@ export default function EducationLearningHub({
           onReport={(
             program,
           ) => {
+            if (
+              program !==
+                "JEE" &&
+              program !==
+                "NEET"
+            ) {
+              setError(
+                `${program} report is not configured yet.`,
+              );
+
+              return;
+            }
+
             void openProgramReport(
               program,
             );
@@ -4410,12 +4442,13 @@ export default function EducationLearningHub({
                                     <span
                                       className="education-learning__mock-result-test"
                                     >
-                                      JEE {
-                                        attempt.testName
-                                      } {
-                                        mockLevelLabel(
-                                          attempt.examLevel,
-                                        )
+                                      {
+                                        grade?.code ===
+                                          "PROGRAM_NEET"
+                                          ? `NEET ${attempt.testName}`
+                                          : `JEE ${attempt.testName} ${mockLevelLabel(
+                                              attempt.examLevel,
+                                            )}`
                                       }
                                     </span>
 
@@ -4477,7 +4510,12 @@ export default function EducationLearningHub({
               className="education-learning__report-title"
             >
               <h1>
-                📊 IIT-JEE Progress
+                📊 {
+                  grade?.code ===
+                    "PROGRAM_NEET"
+                    ? "NEET Progress"
+                    : "IIT-JEE Progress"
+                }
               </h1>
 
               <small>

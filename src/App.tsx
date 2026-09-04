@@ -86,6 +86,8 @@ import {
 } from "./location/adminLocation";
 
 import ClassPage from "./components/ClassPage";
+import AdminEducationProgramsPage
+  from "./components/AdminEducationProgramsPage";
 
 interface ShopProfile {
   code: string;
@@ -758,6 +760,15 @@ export default function App() {
   );
 
   const [
+    adminEducationOpen,
+    setAdminEducationOpen,
+  ] = useState(
+    () =>
+      window.location.pathname ===
+      "/admin/education",
+  );
+
+  const [
     adminStorageOpen,
     setAdminStorageOpen,
   ] = useState(false);
@@ -889,6 +900,10 @@ export default function App() {
 
         setDashboardView(
           null,
+        );
+
+        setAdminEducationOpen(
+          false,
         );
 
         setAdminStudentsOpen(
@@ -1315,6 +1330,10 @@ export default function App() {
       false,
     );
 
+    setAdminEducationOpen(
+      false,
+    );
+
     setAdminStorageOpen(
       false,
     );
@@ -1426,6 +1445,10 @@ export default function App() {
       );
 
       setAdminStudentsOpen(
+        false,
+      );
+
+      setAdminEducationOpen(
         false,
       );
 
@@ -1674,6 +1697,28 @@ if (
     );
   }
 
+  if (adminEducationOpen) {
+    return (
+      <AdminEducationProgramsPage
+        onBack={() => {
+          setAdminEducationOpen(
+            false,
+          );
+
+          setDashboardView(
+            "platform",
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            "/admin",
+          );
+        }}
+      />
+    );
+  }
+
   if (adminStudentsOpen) {
     return (
       <AdminStudentsPage
@@ -1865,9 +1910,49 @@ if (
           )
         }
 
+        onOpenEducation={() => {
+          setDashboardView(
+            null,
+          );
+
+          setAdminStudentsOpen(
+            false,
+          );
+
+          setAdminServicesOpen(
+            false,
+          );
+
+          setAdminShopsOpen(
+            false,
+          );
+
+          setAdminStorageOpen(
+            false,
+          );
+
+          setAdminAnalyticsOpen(
+            false,
+          );
+
+          setAdminEducationOpen(
+            true,
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            "/admin/education",
+          );
+        }}
+
         onOpenStudents={() => {
           setDashboardView(
             null,
+          );
+
+          setAdminEducationOpen(
+            false,
           );
 
           setAdminStudentsOpen(
@@ -1884,6 +1969,10 @@ if (
         onOpenShops={() => {
           setDashboardView(
             null,
+          );
+
+          setAdminEducationOpen(
+            false,
           );
 
           setAdminShopsOpen(
@@ -1906,6 +1995,10 @@ if (
             false,
           );
 
+          setAdminEducationOpen(
+            false,
+          );
+
           openAdminServices();
         }}
 
@@ -1915,6 +2008,10 @@ if (
           );
 
           setAdminStudentsOpen(
+            false,
+          );
+
+          setAdminEducationOpen(
             false,
           );
 
@@ -1929,6 +2026,10 @@ if (
           );
 
           setAdminStudentsOpen(
+            false,
+          );
+
+          setAdminEducationOpen(
             false,
           );
 
@@ -2767,6 +2868,10 @@ if (
               "platformDashboard"
             ) {
               setAdminStudentsOpen(
+                false,
+              );
+
+              setAdminEducationOpen(
                 false,
               );
 

@@ -4,10 +4,14 @@ import {
 } from "react";
 
 import {
-  loadPublicEducationConfig,
   type EducationCountry,
-  type EducationCountryConfig,
 } from "../config/education";
+
+import {
+  loadEducationCatalog,
+  type EducationCatalog,
+  type EducationCatalogProgram,
+} from "../config/educationCatalog";
 
 import "./EducationPortal.css";
 
@@ -18,6 +22,14 @@ interface EducationPortalProps {
   onBack:
     () => void;
 
+  onMockTests?: (
+    programCode: string,
+  ) => void;
+
+  onReport?: (
+    programCode: string,
+  ) => void;
+
   onSelect:
     (
       selection: {
@@ -27,21 +39,10 @@ interface EducationPortalProps {
 
         code: string;
         name: string;
+        countryCode?: string;
+        programCode?: string;
+        experienceType?: string;
       },
-    ) => void;
-
-  onMockTests:
-    (
-      program:
-        | "JEE"
-        | "NEET",
-    ) => void;
-
-  onReport:
-    (
-      program:
-        | "JEE"
-        | "NEET",
     ) => void;
 }
 
@@ -75,87 +76,19 @@ const FOUNDATION_ROWS:
     ],
   ];
 
-/*
- * Temporary external demo board.
- *
- * Keep the URL in one place so GYAN is not coupled to Zoom throughout
- * the component. This can later be replaced by a config/API value or a
- * native GYAN demo/whiteboard route without changing the portal UI.
- */
-const EDUCATION_DEMO_URL =
-  "https://us05whiteboard.zoom.us/wb/db/eWaLjYeCRrGwjTxytRnnQg/p/17502055956480";
-
-function openEducationDemo(): void {
-  window.open(
-    EDUCATION_DEMO_URL,
-    "_blank",
-    "noopener,noreferrer",
-  );
-}
-
-function normalizeProgramCode(
-  value: string,
-): string {
-  return value
-    .trim()
-    .toUpperCase()
-    .replace(
-      /[^A-Z0-9]+/g,
-      "_",
-    )
-    .replace(
-      /^_+|_+$/g,
-      "",
-    );
-}
-
-function findProgram(
-  config:
-    EducationCountryConfig |
-    null,
-  candidates:
-    string[],
-) {
-  if (
-    !config
-  ) {
-    return undefined;
-  }
-
-  const normalizedCandidates =
-    candidates.map(
-      normalizeProgramCode,
-    );
-
-  return (
-    config.programs ??
-    []
-  ).find(
-    (
-      program,
-    ) =>
-      program.enabled &&
-      normalizedCandidates.includes(
-        normalizeProgramCode(
-          program.code,
-        ),
-      ),
-  );
-}
-
 export default function EducationPortal({
   country,
   onBack,
-  onSelect,
   onMockTests,
   onReport,
+  onSelect,
 }: EducationPortalProps) {
   const [
-    config,
-    setConfig,
+    catalog,
+    setCatalog,
   ] =
     useState<
-      EducationCountryConfig |
+      EducationCatalog |
       null
     >(
       null,
@@ -181,7 +114,7 @@ export default function EducationPortal({
       let active =
         true;
 
-      void loadPublicEducationConfig(
+      void loadEducationCatalog(
         country,
       )
         .then(
@@ -189,7 +122,7 @@ export default function EducationPortal({
             if (
               active
             ) {
-              setConfig(
+              setCatalog(
                 next,
               );
 
@@ -204,7 +137,7 @@ export default function EducationPortal({
             if (
               active
             ) {
-              setConfig(
+              setCatalog(
                 null,
               );
 
@@ -224,37 +157,6 @@ export default function EducationPortal({
       country,
     ],
   );
-
-  /*
-   * Advanced v1 is intentionally focused on IIT-JEE and NEET.
-   *
-   * If older config uses IIT / JEE / IIT_JEE variants,
-   * treat them as the same IIT-JEE program.
-   */
-  const iitJeeProgram =
-    findProgram(
-      config,
-      [
-        "IIT_JEE",
-        "IIT-JEE",
-        "IIT",
-        "JEE",
-      ],
-    );
-
-  const neetProgram =
-    findProgram(
-      config,
-      [
-        "NEET",
-      ],
-    );
-
-  const iitJeeEnabled =
-    !loading;
-
-  const neetEnabled =
-    !loading;
 
   return (
     <main
@@ -303,158 +205,118 @@ export default function EducationPortal({
               className="education-portal__advanced-list"
             >
               {
-                iitJeeEnabled && (
-                  <div
-                    className="education-portal__advanced-row"
-                  >
-                    <strong>
-                      IIT-JEE
-                    </strong>
-
+                (
+                  catalog
+                    ?.programs ??
+                  []
+                ).map(
+                  (
+                    program:
+                      EducationCatalogProgram,
+                  ) => (
                     <div
-                      className="education-portal__advanced-actions"
+                      key={
+                        `${program.countryCode}:${program.code}`
+                      }
+                      className="education-portal__advanced-row"
                     >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onSelect({
-                            type:
-                              "program",
-
-                            /*
-                             * Use the EXISTING configured program code.
-                             * The topic/subject flow keys off this exact
-                             * value. Older GYAN data commonly uses IIT,
-                             * while the UI label can still say IIT-JEE.
-                             */
-                            code:
-                              iitJeeProgram
-                                ?.code ??
-                              "IIT",
-
-                            name:
-                              iitJeeProgram
-                                ?.name ??
-                              "IIT-JEE",
-                          })
+                      <strong>
+                        {
+                          program.name
                         }
-                      >
-                        Topics
-                      </button>
+                      </strong>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onMockTests(
-                            "JEE",
+                      <div
+                        className="education-portal__advanced-actions"
+                      >
+                        {
+                          program.showQuestions && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onSelect({
+                                  type:
+                                    "program",
+                                  code:
+                                    program.gradeCode,
+                                  name:
+                                    program.name,
+                                  countryCode:
+                                    program.countryCode,
+                                  programCode:
+                                    program.code,
+                                  experienceType:
+                                    program.experienceType,
+                                })
+                              }
+                            >
+                              Questions
+                            </button>
                           )
                         }
-                      >
-                        Mock Tests
-                      </button>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onReport(
-                            "JEE",
+                        {
+                          program.showMockTests &&
+                          onMockTests && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onMockTests(
+                                  program.code,
+                                )
+                              }
+                            >
+                              Mock Tests
+                            </button>
                           )
                         }
-                        title="IIT-JEE progress report"
-                      >
-                        📊 Report
-                      </button>
 
-                      <button
-                        type="button"
-                        onClick={
-                          openEducationDemo
+                        {
+                          program.showReports &&
+                          onReport && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onReport(
+                                  program.code,
+                                )
+                              }
+                            >
+                              Report
+                            </button>
+                          )
                         }
-                        title="Open demo whiteboard"
-                      >
-                        Demo
-                      </button>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          window.location.href =
-                            "/class?category=iit-jee";
-                        }}
-                      >
-                        Class
-                      </button>
+                        {
+                          program.showDemo && (
+                            <button
+                              type="button"
+                              disabled
+                              title="Demo Class · Coming Soon"
+                            >
+                              Demo · Soon
+                            </button>
+                          )
+                        }
+
+                        {
+                          program.showClasses && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                window.location.href =
+                                  `/class?category=${encodeURIComponent(
+                                    program.code.toLowerCase(),
+                                  )}`;
+                              }}
+                            >
+                              Class
+                            </button>
+                          )
+                        }
+                      </div>
                     </div>
-                  </div>
-                )
-              }
-
-              {
-                neetEnabled && (
-                  <div
-                    className="education-portal__advanced-row"
-                  >
-                    <strong>
-                      NEET
-                    </strong>
-
-                    <div
-                      className="education-portal__advanced-actions"
-                    >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onSelect({
-                            type:
-                              "program",
-
-                            code:
-                              neetProgram
-                                ?.code ??
-                              "NEET",
-
-                            name:
-                              neetProgram
-                                ?.name ??
-                              "NEET",
-                          })
-                        }
-                      >
-                        Topics
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onMockTests(
-                            "NEET",
-                          )
-                        }
-                      >
-                        Mock Tests
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={
-                          openEducationDemo
-                        }
-                        title="Open demo whiteboard"
-                      >
-                        Demo
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          window.location.href =
-                            "/class?category=neet";
-                        }}
-                      >
-                        Class
-                      </button>
-                    </div>
-                  </div>
+                  ),
                 )
               }
             </div>
@@ -462,10 +324,15 @@ export default function EducationPortal({
         )
       }
 
+
       {
         !loading &&
-        config
-          ?.preK12Enabled && (
+        (
+          catalog?.selectedCountry ===
+            "US" ||
+          catalog?.selectedCountry ===
+            "IN"
+        ) && (
           <section
             className="education-portal__section education-portal__section--grades"
           >

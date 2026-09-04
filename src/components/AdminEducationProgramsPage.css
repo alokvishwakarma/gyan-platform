@@ -1,0 +1,252 @@
+.admin-education-programs {
+  min-height: 100dvh;
+  background: #f7f9fb;
+  color: #20384d;
+}
+
+.admin-education-programs__header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+
+  min-height: 52px;
+  padding: 6px 10px;
+
+  border-bottom: 1px solid #dbe3e9;
+  background: #fff;
+}
+
+.admin-education-programs__header > button {
+  min-width: 34px;
+  min-height: 32px;
+
+  border: 1px solid #ccd7df;
+  border-radius: 7px;
+
+  background: #fff;
+  color: #244761;
+
+  font: inherit;
+  font-weight: 850;
+
+  cursor: pointer;
+}
+
+.admin-education-programs__header > div {
+  display: grid;
+  gap: 1px;
+}
+
+.admin-education-programs__header strong {
+  font-size: 0.76rem;
+}
+
+.admin-education-programs__header small {
+  color: #718291;
+  font-size: 0.52rem;
+}
+
+.admin-education-programs__save {
+  padding-inline: 12px !important;
+  border-color: #1d5e8d !important;
+  background: #1d5e8d !important;
+  color: #fff !important;
+}
+
+.admin-education-programs__content {
+  width: min(760px, calc(100% - 16px));
+  margin: 10px auto 24px;
+}
+
+.admin-education-programs__countries {
+  display: flex;
+  gap: 5px;
+
+  margin-bottom: 9px;
+}
+
+.admin-education-programs__countries button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  min-height: 32px;
+
+  border: 1px solid #ced9e1;
+  border-radius: 7px;
+
+  padding: 4px 9px;
+
+  background: #fff;
+  color: #3b5569;
+
+  font: inherit;
+  font-size: 0.57rem;
+
+  cursor: pointer;
+}
+
+.admin-education-programs__countries button.active {
+  border-color: #7399b7;
+  background: #eaf4fb;
+  color: #174a73;
+}
+
+.admin-education-programs__list {
+  display: grid;
+  gap: 5px;
+}
+
+.admin-education-programs__row {
+  display: grid;
+  grid-template-columns: minmax(125px, 0.7fr) minmax(160px, 1.4fr) 78px;
+  align-items: end;
+  gap: 8px;
+
+  padding: 7px;
+
+  border: 1px solid #dce4e9;
+  border-radius: 8px;
+
+  background: #fff;
+}
+
+.admin-education-programs__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  min-height: 31px;
+
+  cursor: pointer;
+}
+
+.admin-education-programs__toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.admin-education-programs__toggle > span {
+  position: relative;
+
+  width: 31px;
+  height: 18px;
+
+  flex: 0 0 auto;
+
+  border-radius: 999px;
+
+  background: #bdc8d0;
+}
+
+.admin-education-programs__toggle > span::after {
+  content: "";
+
+  position: absolute;
+  top: 3px;
+  left: 3px;
+
+  width: 12px;
+  height: 12px;
+
+  border-radius: 50%;
+
+  background: #fff;
+
+  transition: transform 120ms ease;
+}
+
+.admin-education-programs__toggle input:checked + span {
+  background: #2d8050;
+}
+
+.admin-education-programs__toggle input:checked + span::after {
+  transform: translateX(13px);
+}
+
+.admin-education-programs__toggle strong {
+  font-size: 0.59rem;
+}
+
+.admin-education-programs__name,
+.admin-education-programs__order {
+  display: grid;
+  gap: 2px;
+}
+
+.admin-education-programs__name small,
+.admin-education-programs__order small {
+  color: #718291;
+  font-size: 0.48rem;
+  font-weight: 750;
+}
+
+.admin-education-programs__name input,
+.admin-education-programs__order input {
+  width: 100%;
+  min-height: 31px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #ccd8e0;
+  border-radius: 6px;
+
+  padding: 4px 6px;
+
+  background: #fff;
+  color: #263e51;
+
+  font: inherit;
+  font-size: 0.56rem;
+}
+
+.admin-education-programs__error,
+.admin-education-programs__success,
+.admin-education-programs__state {
+  margin-bottom: 7px;
+  padding: 7px;
+
+  border-radius: 7px;
+
+  font-size: 0.55rem;
+}
+
+.admin-education-programs__error {
+  background: #fff0f0;
+  color: #9a3232;
+}
+
+.admin-education-programs__success {
+  background: #eff9f1;
+  color: #2d7041;
+}
+
+.admin-education-programs__state {
+  background: #fff;
+  color: #697d8d;
+}
+
+.admin-education-programs__note {
+  margin: 9px 2px 0;
+
+  color: #758695;
+
+  font-size: 0.5rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 560px) {
+  .admin-education-programs__row {
+    grid-template-columns: 1fr 72px;
+  }
+
+  .admin-education-programs__toggle {
+    grid-column: 1 / -1;
+  }
+}

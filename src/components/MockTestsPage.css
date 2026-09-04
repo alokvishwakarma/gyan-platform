@@ -1837,7 +1837,9 @@ main.mock-tests.mock-tests--runner
  * five rows should consume very little vertical space.
  */
 main.mock-tests.mock-tests--runner
-.mock-tests__palette-grid {
+.mock-tests__palette-grid:not(
+  .mock-tests__palette-grid--neet
+) {
   grid-template-columns:
     repeat(
       5,
@@ -2418,4 +2420,125 @@ main.mock-tests.mock-tests--runner
   .mock-tests__palette-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
+}
+
+
+/* =========================================================
+   NEET QUESTION PALETTE
+   JEE remains on the existing compact 5-column layout.
+   NEET uses 15 columns on desktop so 45-question sections
+   occupy 3 rows and 90-question Biology occupies 6 rows.
+   ========================================================= */
+
+main.mock-tests.mock-tests--runner
+.mock-tests__palette-grid--neet {
+  grid-template-columns:
+    repeat(
+      15,
+      minmax(0, 1fr)
+    ) !important;
+
+  gap:
+    2px !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__palette-grid--neet
+.mock-tests__palette-number {
+  aspect-ratio:
+    auto !important;
+
+  min-width:
+    0 !important;
+
+  height:
+    18px !important;
+
+  min-height:
+    18px !important;
+
+  max-height:
+    18px !important;
+
+  padding:
+    0 1px !important;
+
+  border-radius:
+    3px !important;
+
+  font-size:
+    0.43rem !important;
+
+  line-height:
+    1 !important;
+
+  letter-spacing:
+    -0.015em;
+}
+
+
+/*
+ * NEET fixed-test palette.
+ * Keep every NEET subject section at 15 columns:
+ *   Physics   45 -> 3 rows
+ *   Chemistry 45 -> 3 rows
+ *   Biology   90 -> 6 rows
+ *
+ * This intentionally overrides the legacy JEE 5-column runner grid.
+ */
+main.mock-tests.mock-tests--runner
+.mock-tests__palette-grid.mock-tests__palette-grid--neet {
+  display: grid !important;
+
+  grid-template-columns:
+    repeat(
+      15,
+      minmax(0, 1fr)
+    ) !important;
+
+  gap:
+    2px !important;
+
+  margin:
+    0 !important;
+
+  padding:
+    0 !important;
+}
+
+main.mock-tests.mock-tests--runner
+.mock-tests__palette-grid.mock-tests__palette-grid--neet
+.mock-tests__palette-number {
+  aspect-ratio:
+    auto !important;
+
+  min-width:
+    0 !important;
+
+  width:
+    auto !important;
+
+  height:
+    18px !important;
+
+  min-height:
+    18px !important;
+
+  max-height:
+    18px !important;
+
+  padding:
+    0 !important;
+
+  border-radius:
+    3px !important;
+
+  font-size:
+    0.42rem !important;
+
+  line-height:
+    1 !important;
+
+  letter-spacing:
+    -0.02em !important;
 }
