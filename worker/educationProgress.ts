@@ -1560,21 +1560,12 @@ async function getReport(
     );
 
   const reportProgram =
-    requestedProgram ===
-      "JEE" ||
-    requestedProgram ===
-      "NEET"
-      ? requestedProgram
-      : "";
+    requestedProgram;
 
   const reportGradeCode =
-    reportProgram ===
-      "NEET"
-      ? "PROGRAM_NEET"
-      : reportProgram ===
-          "JEE"
-        ? "PROGRAM_JEE"
-        : "";
+    reportProgram
+      ? `PROGRAM_${reportProgram}`
+      : "";
 
   if (!studentCode) {
     return jsonResponse(
@@ -1966,7 +1957,13 @@ async function getReport(
               q.choice_c,
               q.choice_d,
               q.correct_choice,
-              q.explanation
+              q.explanation,
+              s.subject_code,
+              s.subject_name,
+              t.topic_code,
+              t.topic_name,
+              st.subtopic_code,
+              st.subtopic_name
             FROM education_mock_attempt_answers maa
             INNER JOIN education_mock_attempts ma
               ON ma.id = maa.attempt_id
@@ -1975,6 +1972,12 @@ async function getReport(
              AND mtq.question_id = maa.question_id
             INNER JOIN education_questions q
               ON q.id = maa.question_id
+            INNER JOIN education_subtopics st
+              ON st.id = q.subtopic_id
+            INNER JOIN education_topics t
+              ON t.id = st.topic_id
+            INNER JOIN education_subjects s
+              ON s.id = t.subject_id
             WHERE maa.attempt_id IN (
               ${mockAttemptIds
                 .map(() => "?")
@@ -2000,6 +2003,12 @@ async function getReport(
             choice_d: string | null;
             correct_choice: string | null;
             explanation: string | null;
+            subject_code: string;
+            subject_name: string;
+            topic_code: string;
+            topic_name: string;
+            subtopic_code: string;
+            subtopic_name: string;
           }>()
       : {
           results:
@@ -2017,6 +2026,12 @@ async function getReport(
               choice_d: string | null;
               correct_choice: string | null;
               explanation: string | null;
+              subject_code: string;
+              subject_name: string;
+              topic_code: string;
+              topic_name: string;
+              subtopic_code: string;
+              subtopic_name: string;
             }>,
         };
 
@@ -2041,6 +2056,12 @@ async function getReport(
         };
         correctAnswer: string;
         explanation: string | null;
+        subjectCode: string;
+        subjectName: string;
+        topicCode: string;
+        topicName: string;
+        subtopicCode: string;
+        subtopicName: string;
       }>
     >();
 
@@ -2110,6 +2131,24 @@ async function getReport(
 
       explanation:
         row.explanation,
+
+      subjectCode:
+        row.subject_code,
+
+      subjectName:
+        row.subject_name,
+
+      topicCode:
+        row.topic_code,
+
+      topicName:
+        row.topic_name,
+
+      subtopicCode:
+        row.subtopic_code,
+
+      subtopicName:
+        row.subtopic_name,
     });
 
     mockResultsByAttempt.set(

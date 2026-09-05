@@ -155,6 +155,12 @@ type EducationMockAttemptReport = {
     };
     correctAnswer: string;
     explanation: string | null;
+    subjectCode: string;
+    subjectName: string;
+    topicCode: string;
+    topicName: string;
+    subtopicCode: string;
+    subtopicName: string;
   }>;
   percentile?: number | null;
 };
@@ -1666,6 +1672,34 @@ export default function EducationLearningHub({
       return "Chemistry";
     }
 
+    if (
+      normalized ===
+      "RW_M1"
+    ) {
+      return "Reading & Writing · Module 1";
+    }
+
+    if (
+      normalized ===
+      "RW_M2"
+    ) {
+      return "Reading & Writing · Module 2";
+    }
+
+    if (
+      normalized ===
+      "MATH_M1"
+    ) {
+      return "Math · Module 1";
+    }
+
+    if (
+      normalized ===
+      "MATH_M2"
+    ) {
+      return "Math · Module 2";
+    }
+
     return sectionCode;
   }
 
@@ -1716,8 +1750,7 @@ export default function EducationLearningHub({
 
   async function loadEducationProgressReport(
     program?:
-      "JEE" |
-      "NEET",
+      string,
   ):
     Promise<EducationProgressReport> {
     const empty:
@@ -1830,20 +1863,21 @@ export default function EducationLearningHub({
 
   async function openProgramReport(
     program:
-      "JEE" |
-      "NEET",
+      string,
   ): Promise<void> {
+    const normalizedProgram =
+      program
+        .trim()
+        .toUpperCase();
+
     const programGradeCode =
-      program ===
-        "NEET"
-        ? "PROGRAM_NEET"
-        : "PROGRAM_JEE";
+      `PROGRAM_${normalizedProgram}`;
 
     const programName =
-      program ===
-        "NEET"
-        ? "NEET"
-        : "IIT-JEE";
+      normalizedProgram ===
+        "JEE"
+        ? "IIT-JEE"
+        : normalizedProgram;
 
     setProgramReportLoading(
       true,
@@ -1862,7 +1896,7 @@ export default function EducationLearningHub({
 
       const reportSubjects =
         await loadSubjects(
-          "IN",
+          country,
           programGradeCode,
         );
 
@@ -3615,19 +3649,6 @@ export default function EducationLearningHub({
           onReport={(
             program,
           ) => {
-            if (
-              program !==
-                "JEE" &&
-              program !==
-                "NEET"
-            ) {
-              setError(
-                `${program} report is not configured yet.`,
-              );
-
-              return;
-            }
-
             void openProgramReport(
               program,
             );
@@ -5038,12 +5059,12 @@ export default function EducationLearningHub({
                                       className="education-learning__mock-result-test"
                                     >
                                       {
-                                        grade?.code ===
-                                          "PROGRAM_NEET"
-                                          ? `NEET ${attempt.testName}`
-                                          : `JEE ${attempt.testName} ${mockLevelLabel(
+                                        attempt.programCode ===
+                                          "JEE"
+                                          ? `JEE ${attempt.testName} ${mockLevelLabel(
                                               attempt.examLevel,
                                             )}`
+                                          : `${attempt.programCode ?? grade?.name ?? "Program"} ${attempt.testName}`
                                       }
                                     </span>
 
@@ -5106,10 +5127,10 @@ export default function EducationLearningHub({
             >
               <h1>
                 📊 {
-                  grade?.code ===
-                    "PROGRAM_NEET"
-                    ? "NEET Progress"
-                    : "IIT-JEE Progress"
+                  `${
+                    grade?.name ??
+                    "Program"
+                  } Progress`
                 }
               </h1>
 
@@ -5786,12 +5807,12 @@ export default function EducationLearningHub({
                           </button>
 
                           <h2>
-                            JEE {
-                              selectedMockAttempt.testName
+                            {
+                              selectedMockAttempt.programCode ??
+                              grade?.name ??
+                              "Program"
                             } {
-                              mockLevelLabel(
-                                selectedMockAttempt.examLevel,
-                              )
+                              selectedMockAttempt.testName
                             } · Attempt {
                               selectedMockAttempt.attemptNumber
                             }
@@ -5829,11 +5850,16 @@ export default function EducationLearningHub({
                             className="education-learning__mock-result-subjects"
                           >
                             {
-                              [
-                                "MATH",
-                                "PHYSICS",
-                                "CHEMISTRY",
-                              ].map(
+                              Array.from(
+                                new Set(
+                                  selectedMockAttempt.questionResults.map(
+                                    (
+                                      item,
+                                    ) =>
+                                      item.sectionCode,
+                                  ),
+                                ),
+                              ).map(
                                 (
                                   sectionCode,
                                 ) => {
@@ -5879,9 +5905,18 @@ export default function EducationLearningHub({
                                         })
                                       </strong>
 
-                                      <span
-                                        className="education-learning__mock-result-grid"
-                                      >
+<span
+  className={[
+    "education-learning__mock-result-grid",
+    ["SAT", "NEET"].includes(
+      selectedMockAttempt.programCode ?? "",
+    )
+      ? "education-learning__mock-result-grid--seven"
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ")}
+>
                                         {
                                           sectionResults.map(
                                             (
@@ -5962,6 +5997,25 @@ export default function EducationLearningHub({
                                   >
                                     ×
                                   </button>
+                                </div>
+
+                                <div
+                                  style={{
+                                    marginBottom:
+                                      "0.6rem",
+                                    fontSize:
+                                      "0.9rem",
+                                    opacity:
+                                      0.8,
+                                  }}
+                                >
+                                  {
+                                    selectedMockQuestion.subjectName
+                                  } · {
+                                    selectedMockQuestion.topicName
+                                  } · {
+                                    selectedMockQuestion.subtopicName
+                                  }
                                 </div>
 
                                 <p
