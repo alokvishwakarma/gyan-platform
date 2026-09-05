@@ -13,8 +13,26 @@ import {
 import "./MockTestsPage.css";
 
 type MockProgram =
-  | "JEE"
-  | "NEET";
+  string;
+
+type MockCatalogTest = {
+  id: number;
+  kind: string;
+  testCode: string;
+  testName: string;
+  examLevel: string;
+  version: number;
+  accessMode: string;
+  published: boolean;
+};
+
+type MockCatalog = {
+  program: {
+    code: string;
+    name: string;
+  };
+  tests: MockCatalogTest[];
+};
 
 interface MockTestsPageProps {
   program:
@@ -39,28 +57,6 @@ type LockedTest = {
   label: string;
   variant?: string;
 };
-
-const FULL_TESTS =
-  Array.from(
-    {
-      length: 8,
-    },
-    (
-      _,
-      index,
-    ) => index + 1,
-  );
-
-const MINI_TESTS =
-  [
-    "A",
-    "B",
-    "C",
-    "D",
-    "E",
-    "F",
-  ];
-
 
 type CbtActionDialog =
   | {
@@ -470,8 +466,204 @@ export default function MockTestsPage({
     ).length;
 
 
-  const isJee =
-    program === "JEE";
+  const [
+    mockCatalog,
+    setMockCatalog,
+  ] =
+    useState<MockCatalog | null>(
+      null,
+    );
+
+  const [
+    mockCatalogLoading,
+    setMockCatalogLoading,
+  ] =
+    useState(false);
+
+  const [
+    mockCatalogError,
+    setMockCatalogError,
+  ] =
+    useState("");
+
+  useEffect(
+    () => {
+      const controller =
+        new AbortController();
+
+      void Promise.resolve()
+        .then(
+          () => {
+            if (
+              controller.signal
+                .aborted
+            ) {
+              return;
+            }
+
+            setMockCatalogLoading(
+              true,
+            );
+
+            setMockCatalogError(
+              "",
+            );
+          },
+        );
+
+      void fetch(
+        `/api/education/mock-catalog?program=${encodeURIComponent(
+          program,
+        )}`,
+        {
+          credentials:
+            "same-origin",
+          cache:
+            "no-store",
+          signal:
+            controller.signal,
+        },
+      )
+        .then(
+          async (
+            response,
+          ) => {
+            const body =
+              await response.json() as
+                MockCatalog & {
+                  error?: string;
+                };
+
+            if (!response.ok) {
+              throw new Error(
+                body.error ??
+                "Mock-test catalog could not be loaded.",
+              );
+            }
+
+            return body;
+          },
+        )
+        .then(
+          (
+            body,
+          ) => {
+            if (
+              !controller.signal.aborted
+            ) {
+              setMockCatalog(
+                body,
+              );
+            }
+          },
+        )
+        .catch(
+          (
+            caught,
+          ) => {
+            if (
+              !controller.signal.aborted
+            ) {
+              setMockCatalogError(
+                caught instanceof Error
+                  ? caught.message
+                  : "Mock-test catalog could not be loaded.",
+              );
+            }
+          },
+        )
+        .finally(
+          () => {
+            if (
+              !controller.signal.aborted
+            ) {
+              setMockCatalogLoading(
+                false,
+              );
+            }
+          },
+        );
+
+      return () => {
+        controller.abort();
+      };
+    },
+    [
+      program,
+    ],
+  );
+
+  const programLabel =
+    mockCatalog
+      ?.program
+      .name ??
+    program;
+
+  const catalogLevels =
+    Array.from(
+      new Set(
+        (
+          mockCatalog
+            ?.tests ??
+          []
+        ).map(
+          (
+            item,
+          ) =>
+            item.examLevel,
+        ),
+      ),
+    );
+
+  function examLevelLabel(
+    examLevel:
+      string,
+  ): string {
+    const normalized =
+      examLevel
+        .trim()
+        .toUpperCase();
+
+    if (
+      catalogLevels.length <=
+      1
+    ) {
+      return "Open";
+    }
+
+    if (
+      normalized ===
+      "MAIN"
+    ) {
+      return "Main";
+    }
+
+    if (
+      normalized ===
+      "ADVANCED"
+    ) {
+      return "Advanced";
+    }
+
+    return examLevel;
+  }
+
+  function runnerProgramLabel(
+    examLevel:
+      string,
+  ): string {
+    if (
+      catalogLevels.length <=
+      1
+    ) {
+      return programLabel;
+    }
+
+    return `${programLabel} ${examLevelLabel(
+      examLevel,
+    )}`;
+  }
+
 
   const cbtTimeLimitSeconds =
     fixedTest?.kind ===
@@ -867,9 +1059,7 @@ export default function MockTestsPage({
       testCode:
         string;
       level:
-        "MAIN" |
-        "ADVANCED" |
-        "NEET";
+        string;
     },
   ): Promise<void> {
     setRunnerLoading(
@@ -884,7 +1074,8 @@ export default function MockTestsPage({
     try {
       const test =
         await loadFixedMockTest({
-          program,
+          program:
+            program as never,
 
           kind:
             options.kind,
@@ -893,7 +1084,7 @@ export default function MockTestsPage({
             options.testCode,
 
           level:
-            options.level,
+            options.level as never,
 
           version:
             1,
@@ -921,6 +1112,30 @@ export default function MockTestsPage({
             )
               .trim()
               .toUpperCase();
+
+          if (
+            normalized === "RW_M1"
+          ) {
+            return 0;
+          }
+
+          if (
+            normalized === "RW_M2"
+          ) {
+            return 1;
+          }
+
+          if (
+            normalized === "MATH_M1"
+          ) {
+            return 2;
+          }
+
+          if (
+            normalized === "MATH_M2"
+          ) {
+            return 3;
+          }
 
           if (
             normalized ===
@@ -1544,11 +1759,6 @@ export default function MockTestsPage({
       return;
     }
 
-    const programLabel =
-      isJee
-        ? "IIT-JEE"
-        : "NEET";
-
     const subject =
       `GYAN Access Code Request - ${programLabel} - ${lockedTest.label}${lockedTest.variant ? ` - ${lockedTest.variant}` : ""}`;
 
@@ -1587,6 +1797,175 @@ export default function MockTestsPage({
     setRequestEmail("");
     setDialogMessage("");
   }
+
+  function renderCatalogSection(
+    kind:
+      "FULL" |
+      "MINI",
+
+    title:
+      string,
+  ) {
+    const rows =
+      (
+        mockCatalog
+          ?.tests ??
+        []
+      ).filter(
+        (
+          item,
+        ) =>
+          item.kind ===
+          kind,
+      );
+
+    const groups =
+      Array.from(
+        rows.reduce(
+          (
+            result,
+            item,
+          ) => {
+            const key =
+              `${item.testCode}::${item.testName}`;
+
+            const current =
+              result.get(
+                key,
+              ) ??
+              [];
+
+            current.push(
+              item,
+            );
+
+            result.set(
+              key,
+              current,
+            );
+
+            return result;
+          },
+          new Map<
+            string,
+            MockCatalogTest[]
+          >(),
+        ).values(),
+      );
+
+    if (
+      groups.length ===
+      0
+    ) {
+      return null;
+    }
+
+    return (
+      <section
+        className="mock-tests__section"
+      >
+        <h1>
+          {title}
+        </h1>
+
+        <div
+          className="mock-tests__list"
+        >
+          {
+            groups.map(
+              (
+                variants,
+              ) => {
+                const first =
+                  variants[0];
+
+                return (
+                  <div
+                    key={
+                      `${kind}:${first.testCode}`
+                    }
+                    className="mock-tests__row"
+                  >
+                    <strong>
+                      {
+                        first.testName
+                      }
+                    </strong>
+
+                    <div
+                      className="mock-tests__row-actions"
+                    >
+                      {
+                        variants.map(
+                          (
+                            variant,
+                          ) => {
+                            const open =
+                              variant.published &&
+                              variant.accessMode ===
+                                "OPEN";
+
+                            const levelLabel =
+                              examLevelLabel(
+                                variant.examLevel,
+                              );
+
+                            return (
+                              <button
+                                type="button"
+                                key={
+                                  `${variant.testCode}:${variant.examLevel}:${variant.version}`
+                                }
+                                disabled={
+                                  runnerLoading
+                                }
+                                onClick={() => {
+                                  if (open) {
+                                    void openFixedTest({
+                                      kind:
+                                        variant.kind ===
+                                          "FULL"
+                                          ? "FULL"
+                                          : "MINI",
+                                      testCode:
+                                        variant.testCode,
+                                      level:
+                                        variant.examLevel,
+                                    });
+
+                                    return;
+                                  }
+
+                                  requestAccess(
+                                    variant.testName,
+                                    levelLabel ===
+                                      "Open"
+                                      ? programLabel
+                                      : `${programLabel} ${levelLabel}`,
+                                  );
+                                }}
+                              >
+                                {
+                                  open
+                                    ? levelLabel
+                                    : `🔒 ${levelLabel}`
+                                }
+                              </button>
+                            );
+                          },
+                        )
+                      }
+                    </div>
+                  </div>
+                );
+              },
+            )
+          }
+        </div>
+      </section>
+    );
+  }
+
 
   if (
     fixedTest
@@ -1766,6 +2145,34 @@ export default function MockTestsPage({
       ): string => {
         if (
           sectionCode ===
+            "RW_M1"
+        ) {
+          return "Reading & Writing · Module 1";
+        }
+
+        if (
+          sectionCode ===
+            "RW_M2"
+        ) {
+          return "Reading & Writing · Module 2";
+        }
+
+        if (
+          sectionCode ===
+            "MATH_M1"
+        ) {
+          return "Math · Module 1";
+        }
+
+        if (
+          sectionCode ===
+            "MATH_M2"
+        ) {
+          return "Math · Module 2";
+        }
+
+        if (
+          sectionCode ===
             "MATH"
         ) {
           return "Math";
@@ -1825,16 +2232,9 @@ export default function MockTestsPage({
                 📝 {
                   activeFixedTest.name
                 } · {
-                  activeFixedTest.level ===
-                    "MAIN"
-                    ? "JEE Main"
-                    : activeFixedTest.level ===
-                        "ADVANCED"
-                      ? "JEE Advanced"
-                      : activeFixedTest.level ===
-                          "NEET"
-                        ? "NEET"
-                        : activeFixedTest.level
+                  runnerProgramLabel(
+                    activeFixedTest.level,
+                  )
                 }
               </strong>
 
@@ -2966,23 +3366,13 @@ export default function MockTestsPage({
                 </div>
 
                 <div
-                  className={[
-                    "mock-tests__palette-grid",
-                    program === "NEET"
-                      ? "mock-tests__palette-grid--neet"
-                      : "",
-                  ]
-                    .filter(
-                      Boolean,
-                    )
-                    .join(
-                      " ",
-                    )}
+                  className="mock-tests__palette-grid"
                 >
                   {
                     currentSectionQuestions.map(
                       (
                         question,
+                        localIndex,
                       ) => {
                         const answered =
                           Boolean(
@@ -3042,11 +3432,13 @@ export default function MockTestsPage({
                               )
                             }
                             aria-label={`Question ${
-                              question.order
+                              localIndex +
+                              1
                             }`}
                           >
                             {
-                              question.order
+                              localIndex +
+                              1
                             }
                           </button>
                         );
@@ -3137,9 +3529,7 @@ export default function MockTestsPage({
         <div>
           <strong>
             📝 {
-              isJee
-                ? "IIT-JEE"
-                : "NEET"
+              programLabel
             } Mock Tests
           </strong>
 
@@ -3333,376 +3723,46 @@ export default function MockTestsPage({
         )
       }
 
-      <section
-        className="mock-tests__section"
-      >
-        <h1>
-          Mock Tests
-        </h1>
+      {
+        mockCatalogLoading && (
+          <div
+            className="mock-tests__selected"
+          >
+            Loading mock tests…
+          </div>
+        )
+      }
 
-        <div
-          className="mock-tests__list"
-        >
-          {
-            FULL_TESTS.map(
-              (
-                testNumber,
-              ) => {
+      {
+        mockCatalogError && (
+          <div
+            className="mock-tests__runner-error"
+            role="alert"
+          >
+            {
+              mockCatalogError
+            }
+          </div>
+        )
+      }
 
-                const restricted =
-                  testNumber >=
-                    2 &&
-                  testNumber <=
-                    8;
+      {
+        !mockCatalogLoading &&
+        !mockCatalogError &&
+        renderCatalogSection(
+          "FULL",
+          "Mock Tests",
+        )
+      }
 
-                const label =
-                  `Test ${testNumber}`;
-
-                return (
-                  <div
-                    className={[
-                      "mock-tests__row",
-                      restricted
-                        ? "mock-tests__row--restricted"
-                        : "",
-                    ]
-                      .filter(
-                        Boolean,
-                      )
-                      .join(
-                        " ",
-                      )}
-                    key={
-                      testNumber
-                    }
-                  >
-                    <strong>
-                      {
-                        label
-                      }
-                    </strong>
-
-                    <div
-                      className="mock-tests__row-actions"
-                    >
-                      {
-                        isJee ? (
-                          <>
-                            <button
-                              type="button"
-                              disabled={
-                                runnerLoading
-                              }
-                              onClick={() => {
-                                if (
-                                  testNumber ===
-                                    1
-                                ) {
-                                  void openFixedTest({
-                                    kind:
-                                      "FULL",
-                                    testCode:
-                                      "TEST_1",
-                                    level:
-                                      "MAIN",
-                                  });
-
-                                  return;
-                                }
-
-                                requestAccess(
-                                  label,
-                                  "JEE Main",
-                                );
-                              }}
-                            >
-                              {
-                                testNumber ===
-                                  1 &&
-                                runnerLoading
-                                  ? "Opening…"
-                                  : testNumber ===
-                                      1
-                                    ? "Main"
-                                    : "🔒 Main"
-                              }
-                            </button>
-
-                            <button
-                              type="button"
-                              disabled={
-                                runnerLoading
-                              }
-                              onClick={() => {
-                                if (
-                                  testNumber ===
-                                    1
-                                ) {
-                                  void openFixedTest({
-                                    kind:
-                                      "FULL",
-                                    testCode:
-                                      "TEST_1",
-                                    level:
-                                      "ADVANCED",
-                                  });
-
-                                  return;
-                                }
-
-                                requestAccess(
-                                  label,
-                                  "JEE Advanced",
-                                );
-                              }}
-                            >
-                              {
-                                testNumber ===
-                                  1 &&
-                                runnerLoading
-                                  ? "Opening…"
-                                  : testNumber ===
-                                      1
-                                    ? "Advanced"
-                                    : "🔒 Advanced"
-                              }
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={
-                              runnerLoading
-                            }
-                            onClick={() => {
-                              if (
-                                testNumber ===
-                                  1
-                              ) {
-                                void openFixedTest({
-                                  kind:
-                                    "FULL",
-                                  testCode:
-                                    "TEST_1",
-                                  level:
-                                    "NEET",
-                                });
-
-                                return;
-                              }
-
-                              requestAccess(
-                                label,
-                                "NEET",
-                              );
-                            }}
-                          >
-                            {
-                              testNumber ===
-                                1 &&
-                              runnerLoading
-                                ? "Opening…"
-                                : testNumber ===
-                                    1
-                                  ? "Open"
-                                  : "🔒 Open"
-                            }
-                          </button>
-                        )
-                      }
-                    </div>
-                  </div>
-                );
-              },
-            )
-          }
-        </div>
-      </section>
-
-      <section
-        className="mock-tests__section"
-      >
-        <h1>
-          Mini Tests
-        </h1>
-
-        <div
-          className="mock-tests__list"
-        >
-          {
-            MINI_TESTS.map(
-              (
-                letter,
-                index,
-              ) => {
-
-                const restricted =
-                  index >=
-                  1;
-
-                const label =
-                  `Mini ${letter}`;
-
-                return (
-                  <div
-                    className={[
-                      "mock-tests__row",
-                      restricted
-                        ? "mock-tests__row--restricted"
-                        : "",
-                    ]
-                      .filter(
-                        Boolean,
-                      )
-                      .join(
-                        " ",
-                      )}
-                    key={
-                      letter
-                    }
-                  >
-                    <strong>
-                      {
-                        label
-                      }
-                    </strong>
-
-                    <div
-                      className="mock-tests__row-actions"
-                    >
-                      {
-                        isJee ? (
-                          <>
-                            <button
-                              type="button"
-                              disabled={
-                                runnerLoading
-                              }
-                              onClick={() => {
-                                if (
-                                  letter ===
-                                    "A"
-                                ) {
-                                  void openFixedTest({
-                                    kind:
-                                      "MINI",
-                                    testCode:
-                                      "MINI_A",
-                                    level:
-                                      "MAIN",
-                                  });
-
-                                  return;
-                                }
-
-                                requestAccess(
-                                  label,
-                                  "JEE Main",
-                                );
-                              }}
-                            >
-                              {
-                                letter ===
-                                  "A" &&
-                                runnerLoading
-                                  ? "Opening…"
-                                  : letter ===
-                                      "A"
-                                    ? "Main"
-                                    : "🔒 Main"
-                              }
-                            </button>
-
-                            <button
-                              type="button"
-                              disabled={
-                                runnerLoading
-                              }
-                              onClick={() => {
-                                if (
-                                  letter ===
-                                    "A"
-                                ) {
-                                  void openFixedTest({
-                                    kind:
-                                      "MINI",
-                                    testCode:
-                                      "MINI_A",
-                                    level:
-                                      "ADVANCED",
-                                  });
-
-                                  return;
-                                }
-
-                                requestAccess(
-                                  label,
-                                  "JEE Advanced",
-                                );
-                              }}
-                            >
-                              {
-                                letter ===
-                                  "A" &&
-                                runnerLoading
-                                  ? "Opening…"
-                                  : letter ===
-                                      "A"
-                                    ? "Advanced"
-                                    : "🔒 Advanced"
-                              }
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={
-                              runnerLoading
-                            }
-                            onClick={() => {
-                              if (
-                                letter ===
-                                  "A"
-                              ) {
-                                void openFixedTest({
-                                  kind:
-                                    "MINI",
-                                  testCode:
-                                    "MINI_A",
-                                  level:
-                                    "NEET",
-                                });
-
-                                return;
-                              }
-
-                              requestAccess(
-                                label,
-                                "NEET",
-                              );
-                            }}
-                          >
-                            {
-                              letter ===
-                                "A" &&
-                              runnerLoading
-                                ? "Opening…"
-                                : letter ===
-                                    "A"
-                                  ? "Open"
-                                  : "🔒 Open"
-                            }
-                          </button>
-                        )
-                      }
-                    </div>
-                  </div>
-                );
-              },
-            )
-          }
-        </div>
-      </section>
+      {
+        !mockCatalogLoading &&
+        !mockCatalogError &&
+        renderCatalogSection(
+          "MINI",
+          "Mini Tests",
+        )
+      }
     </main>
   );
 }

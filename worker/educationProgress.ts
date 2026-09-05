@@ -4738,6 +4738,152 @@ async function saveAdminEducationPrograms(
 }
 
 
+
+async function getEducationMockCatalog(
+  env: Env,
+  url: URL,
+): Promise<Response> {
+  const programCode =
+    normalizeCode(
+      url.searchParams.get(
+        "program",
+      ),
+    );
+
+  if (!programCode) {
+    return jsonResponse(
+      {
+        error:
+          "program is required.",
+      },
+      400,
+    );
+  }
+
+  const program =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            catalog.program_code,
+            COALESCE(
+              (
+                SELECT ep.program_name
+                FROM education_programs ep
+                WHERE
+                  ep.program_code = catalog.program_code
+                  AND ep.enabled = 1
+                ORDER BY ep.sort_order, ep.id
+                LIMIT 1
+              ),
+              catalog.canonical_name
+            ) AS program_name
+          FROM education_program_catalog catalog
+          WHERE
+            catalog.program_code = ?
+            AND catalog.enabled = 1
+          LIMIT 1
+        `,
+      )
+      .bind(
+        programCode,
+      )
+      .first<{
+        program_code: string;
+        program_name: string;
+      }>();
+
+  if (!program) {
+    return jsonResponse(
+      {
+        error:
+          "Program not found.",
+      },
+      404,
+    );
+  }
+
+  const tests =
+    await env.gyan_registry
+      .prepare(
+        `
+          SELECT
+            id,
+            test_kind,
+            test_code,
+            test_name,
+            exam_level,
+            version,
+            access_mode,
+            published
+          FROM education_mock_tests
+          WHERE program_code = ?
+          ORDER BY
+            CASE test_kind
+              WHEN 'FULL' THEN 10
+              WHEN 'MINI' THEN 20
+              ELSE 90
+            END,
+            test_code,
+            exam_level,
+            version DESC
+        `,
+      )
+      .bind(
+        programCode,
+      )
+      .all<{
+        id: number;
+        test_kind: string;
+        test_code: string;
+        test_name: string;
+        exam_level: string;
+        version: number;
+        access_mode: string;
+        published: number;
+      }>();
+
+  return jsonResponse({
+    program: {
+      code:
+        program.program_code,
+      name:
+        program.program_name,
+    },
+
+    tests:
+      tests.results.map(
+        (
+          item,
+        ) => ({
+          id:
+            Number(
+              item.id,
+            ),
+          kind:
+            item.test_kind,
+          testCode:
+            item.test_code,
+          testName:
+            item.test_name,
+          examLevel:
+            item.exam_level,
+          version:
+            Number(
+              item.version,
+            ),
+          accessMode:
+            item.access_mode,
+          published:
+            Boolean(
+              item.published,
+            ),
+        }),
+      ),
+  });
+}
+
+
 export async function handleEducationProgressRoute(
   request: Request,
   env: Env,
@@ -4772,6 +4918,16 @@ export async function handleEducationProgressRoute(
     url.pathname === "/api/education/catalog"
   ) {
     return getEducationCatalog(
+      env,
+      url,
+    );
+  }
+
+  if (
+    request.method === "GET" &&
+    url.pathname === "/api/education/mock-catalog"
+  ) {
+    return getEducationMockCatalog(
       env,
       url,
     );

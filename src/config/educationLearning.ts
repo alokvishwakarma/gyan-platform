@@ -161,6 +161,8 @@ export async function loadPracticeQuestions(
     string,
   subtopic?:
     string,
+  advance =
+    false,
 ): Promise<PracticeQuestion[]> {
   const values:
     Record<
@@ -178,6 +180,13 @@ export async function loadPracticeQuestions(
   ) {
     values.subtopic =
       subtopic;
+  }
+
+  if (
+    advance
+  ) {
+    values.advance =
+      "1";
   }
 
   const result =
@@ -211,7 +220,6 @@ export async function checkPracticeAnswer(
       {
         method:
           "POST",
-
         credentials:
           "same-origin",
 

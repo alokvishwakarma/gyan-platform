@@ -53,6 +53,7 @@ type Step =
   | "portal"
   | "subjects"
   | "topics"
+  | "skills"
   | "questions"
   | "report"
   | "program-report"
@@ -70,6 +71,25 @@ type AnswerState = {
     correctChoice: string;
     explanation: string;
   };
+};
+
+
+type SatSkillItem = {
+  code: string;
+  name: string;
+  questionCount: number;
+};
+
+
+type PracticeSequence = {
+  mode: "sequential";
+  advanced: boolean;
+  wrapped: boolean;
+  completedCycles: number;
+  start: number;
+  end: number;
+  total: number;
+  hasMore: boolean;
 };
 
 
@@ -259,9 +279,8 @@ export default function EducationLearningHub({
     setMockProgram,
   ] =
     useState<
-      | "JEE"
-      | "NEET"
-      | null
+      string |
+      null
     >(
       null,
     );
@@ -327,6 +346,23 @@ export default function EducationLearningHub({
       null,
     );
 
+
+  const [
+    satSkills,
+    setSatSkills,
+  ] =
+    useState<SatSkillItem[]>(
+      [],
+    );
+
+  const [
+    satSkill,
+    setSatSkill,
+  ] =
+    useState<SatSkillItem | null>(
+      null,
+    );
+
   const [
     questions,
     setQuestions,
@@ -336,6 +372,18 @@ export default function EducationLearningHub({
     >(
       [],
     );
+
+  const [
+    practiceSequence,
+    setPracticeSequence,
+  ] =
+    useState<
+      PracticeSequence |
+      null
+    >(
+      null,
+    );
+
 
   const [
     answers,
@@ -2399,6 +2447,158 @@ export default function EducationLearningHub({
   }
 
 
+  async function loadPracticeBatch(
+    selectedGrade:
+      PortalSelection,
+    selectedSubject:
+      LearningItem,
+    selectedTopic:
+      TopicItem,
+    selectedSubtopicCode?:
+      string,
+    advance =
+      false,
+  ): Promise<{
+    questions:
+      PracticeQuestion[];
+    sequence:
+      PracticeSequence |
+      null;
+  }> {
+    const params =
+      new URLSearchParams({
+        country:
+          learningCountryFor(
+            selectedGrade,
+          ),
+        grade:
+          selectedGrade.code,
+        subject:
+          selectedSubject.code,
+        topic:
+          selectedTopic.code,
+      });
+
+    if (
+      selectedSubtopicCode
+    ) {
+      params.set(
+        "subtopic",
+        selectedSubtopicCode,
+      );
+    }
+
+    if (advance) {
+      params.set(
+        "advance",
+        "1",
+      );
+    }
+
+    const response =
+      await fetch(
+        `/api/education/practice?${params.toString()}`,
+        {
+          credentials:
+            "same-origin",
+          cache:
+            "no-store",
+        },
+      );
+
+    const body =
+      await response.json() as {
+        questions?:
+          PracticeQuestion[];
+        sequence?:
+          PracticeSequence;
+        error?:
+          string;
+      };
+
+    if (!response.ok) {
+      throw new Error(
+        body.error ??
+          "Questions unavailable.",
+      );
+    }
+
+    return {
+      questions:
+        body.questions ??
+        [],
+      sequence:
+        body.sequence ??
+        null,
+    };
+  }
+
+
+  async function completePracticeBatch(): Promise<void> {
+    if (
+      !grade ||
+      !subject ||
+      !topic
+    ) {
+      return;
+    }
+
+    const params =
+      new URLSearchParams({
+        country:
+          learningCountryFor(
+            grade,
+          ),
+        grade:
+          grade.code,
+        subject:
+          subject.code,
+        topic:
+          topic.code,
+      });
+
+    if (
+      grade.code ===
+        "PROGRAM_SAT" &&
+      satSkill
+    ) {
+      params.set(
+        "subtopic",
+        satSkill.code,
+      );
+    }
+
+    const response =
+      await fetch(
+        `/api/education/practice/complete?${params.toString()}`,
+        {
+          method:
+            "POST",
+          credentials:
+            "same-origin",
+          cache:
+            "no-store",
+        },
+      );
+
+    if (!response.ok) {
+      const body =
+        await response
+          .json()
+          .catch(
+            () => ({}),
+          ) as {
+            error?: string;
+          };
+
+      throw new Error(
+        body.error ??
+          "Practice progress could not be advanced.",
+      );
+    }
+  }
+
+
   async function selectTopic(
     item:
       TopicItem,
@@ -2414,6 +2614,10 @@ export default function EducationLearningHub({
       item,
     );
 
+    setSatSkill(
+      null,
+    );
+
     setLoading(
       true,
     );
@@ -2422,18 +2626,77 @@ export default function EducationLearningHub({
     setAutoSaveMessage("");
 
     try {
-      const next =
-        await loadPracticeQuestions(
-          learningCountryFor(
-            grade,
-          ),
-          grade.code,
-          subject.code,
-          item.code,
+      /*
+       * SAT has one extra academic level:
+       * Section -> Domain -> Skill -> Practice.
+       *
+       * JEE / NEET / school flows remain unchanged.
+       */
+      if (
+        grade.code ===
+          "PROGRAM_SAT"
+      ) {
+        const params =
+          new URLSearchParams({
+            country:
+              learningCountryFor(
+                grade,
+              ),
+            grade:
+              grade.code,
+            subject:
+              subject.code,
+            topic:
+              item.code,
+          });
+
+        const response =
+          await fetch(
+            `/api/education/subtopics?${params.toString()}`,
+            {
+              cache:
+                "no-store",
+            },
+          );
+
+        const body =
+          await response.json() as {
+            subtopics?: SatSkillItem[];
+            error?: string;
+          };
+
+        if (!response.ok) {
+          throw new Error(
+            body.error ??
+              "SAT skills unavailable.",
+          );
+        }
+
+        setSatSkills(
+          body.subtopics ??
+            [],
+        );
+
+        setStep(
+          "skills",
+        );
+
+        return;
+      }
+
+      const batch =
+        await loadPracticeBatch(
+          grade,
+          subject,
+          item,
         );
 
       setQuestions(
-        next,
+        batch.questions,
+      );
+
+      setPracticeSequence(
+        batch.sequence,
       );
 
       setAnswers(
@@ -2460,7 +2723,7 @@ export default function EducationLearningHub({
     ) {
       const message =
         caught instanceof
-          Error
+        Error
           ? caught.message
           : "Questions unavailable.";
 
@@ -2486,12 +2749,135 @@ export default function EducationLearningHub({
   }
 
 
+  async function selectSatSkill(
+    item:
+      SatSkillItem,
+  ): Promise<void> {
+    if (
+      !grade ||
+      !subject ||
+      !topic
+    ) {
+      return;
+    }
+
+    setSatSkill(
+      item,
+    );
+
+    setLoading(
+      true,
+    );
+
+    setError("");
+    setAutoSaveMessage("");
+
+    try {
+      const params =
+        new URLSearchParams({
+          country:
+            learningCountryFor(
+              grade,
+            ),
+          grade:
+            grade.code,
+          subject:
+            subject.code,
+          topic:
+            topic.code,
+          subtopic:
+            item.code,
+        });
+
+      const response =
+        await fetch(
+          `/api/education/practice?${params.toString()}`,
+          {
+            cache:
+              "no-store",
+          },
+        );
+
+      const body =
+        await response.json() as {
+          questions?: PracticeQuestion[];
+          sequence?: PracticeSequence;
+          error?: string;
+        };
+
+      if (!response.ok) {
+        throw new Error(
+          body.error ??
+            "SAT practice questions unavailable.",
+        );
+      }
+
+      const next =
+        body.questions ??
+          [];
+
+      if (
+        next.length <
+          5
+      ) {
+        throw new Error(
+          "This SAT skill does not yet have 5 practice questions.",
+        );
+      }
+
+      setQuestions(
+        next,
+      );
+
+      setPracticeSequence(
+        body.sequence ??
+        null,
+      );
+
+      setAnswers(
+        {},
+      );
+
+      setSubmitted(
+        false,
+      );
+
+      setPracticeQuestionIndex(
+        0,
+      );
+
+      setPracticeReviewIds(
+        [],
+      );
+
+      setStep(
+        "questions",
+      );
+    } catch (
+      caught
+    ) {
+      setError(
+        caught instanceof
+        Error
+          ? caught.message
+          : "SAT practice questions unavailable.",
+      );
+    } finally {
+      setLoading(
+        false,
+      );
+    }
+  }
+
   async function newFive():
     Promise<void> {
     if (
       !grade ||
       !subject ||
-      !topic
+      !topic ||
+      loading ||
+      practiceSequence?.hasMore ===
+        false
     ) {
       return;
     }
@@ -2503,18 +2889,25 @@ export default function EducationLearningHub({
     setError("");
 
     try {
-      const next =
-        await loadPracticeQuestions(
-          learningCountryFor(
-            grade,
-          ),
-          grade.code,
-          subject.code,
-          topic.code,
+      const batch =
+        await loadPracticeBatch(
+          grade,
+          subject,
+          topic,
+          grade.code ===
+              "PROGRAM_SAT" &&
+            satSkill
+            ? satSkill.code
+            : undefined,
+          false,
         );
 
       setQuestions(
-        next,
+        batch.questions,
+      );
+
+      setPracticeSequence(
+        batch.sequence,
       );
 
       setAnswers(
@@ -2648,6 +3041,8 @@ export default function EducationLearningHub({
       setSubmitted(
         true,
       );
+
+      await completePracticeBatch();
 
       if (
         normalizedActiveGyanCode &&
@@ -2818,12 +3213,30 @@ export default function EducationLearningHub({
     ] ??
     null;
 
+  const currentSatPracticeQuestion =
+    currentPracticeQuestion as
+      | (
+          PracticeQuestion & {
+            stimulusType?: string;
+            stimulusText?: string;
+            stimulusSecondaryText?: string;
+          }
+        )
+      | null;
+
   const currentPracticeState =
     currentPracticeQuestion
       ? answers[
           currentPracticeQuestion.id
         ]
       : undefined;
+
+  const absolutePracticeQuestionNumber =
+    practiceSequence
+      ? practiceSequence.start +
+        practiceQuestionIndex
+      : practiceQuestionIndex +
+        1;
 
 
   function goToPracticeQuestion(
@@ -3186,19 +3599,10 @@ export default function EducationLearningHub({
           onMockTests={(
             program,
           ) => {
-            if (
-              program !==
-                "JEE" &&
-              program !==
-                "NEET"
-            ) {
-              setError(
-                `${program} mock tests are not configured yet.`,
-              );
-
-              return;
-            }
-
+            /*
+             * Mock tests are catalog driven. Do not whitelist
+             * JEE / NEET / SAT / GRE / OLSAT here.
+             */
             setMockProgram(
               program,
             );
@@ -3283,6 +3687,13 @@ export default function EducationLearningHub({
                 "questions"
             ) {
               if (
+                grade?.code ===
+                  "PROGRAM_SAT"
+              ) {
+                setStep(
+                  "skills",
+                );
+              } else if (
                 grade?.type ===
                   "program"
               ) {
@@ -3299,6 +3710,22 @@ export default function EducationLearningHub({
                   "topics",
                 );
               }
+
+              return;
+            }
+
+            if (
+              step ===
+                "skills"
+            ) {
+              setStep(
+                "subjects",
+              );
+
+              setExpandedSubjectCode(
+                subject?.code ??
+                  null,
+              );
 
               return;
             }
@@ -3813,6 +4240,66 @@ export default function EducationLearningHub({
       {
         !loading &&
         step ===
+          "skills" && (
+          <section>
+            <h1>
+              {
+                topic?.name
+              }
+            </h1>
+
+            <p>
+              Choose a skill
+            </p>
+
+            <div
+              className="education-learning__cards"
+            >
+              {
+                satSkills.map(
+                  (
+                    item,
+                  ) => (
+                    <button
+                      key={
+                        item.code
+                      }
+                      type="button"
+                      disabled={
+                        item.questionCount <
+                          5
+                      }
+                      onClick={() =>
+                        void selectSatSkill(
+                          item,
+                        )
+                      }
+                    >
+                      <strong>
+                        {
+                          item.name
+                        }
+                      </strong>
+
+                      <small>
+                        {
+                          item.questionCount
+                        }{" "}
+                        questions
+                      </small>
+                    </button>
+                  ),
+                )
+              }
+            </div>
+          </section>
+        )
+      }
+
+
+      {
+        !loading &&
+        step ===
           "topics" && (
           <section>
             <h1>
@@ -3881,13 +4368,27 @@ export default function EducationLearningHub({
               <div>
                 <h1>
                   {
-                    topic?.name
+                    grade?.code ===
+                      "PROGRAM_SAT" &&
+                    satSkill
+                      ? satSkill.name
+                      : topic?.name
                   }
                 </h1>
 
-                <small>
-                  5 random questions
-                </small>
+                {practiceSequence &&
+                  practiceSequence.total >
+                    0 && (
+                    <small>
+                      Questions {
+                        practiceSequence.start
+                      }–{
+                        practiceSequence.end
+                      } of {
+                        practiceSequence.total
+                      }
+                    </small>
+                  )}
               </div>
 
               <div
@@ -3895,6 +4396,20 @@ export default function EducationLearningHub({
               >
                 <button
                   type="button"
+                  disabled={
+                    loading ||
+                    !submitted ||
+                    !grade ||
+                    !subject ||
+                    !topic ||
+                    practiceSequence?.hasMore ===
+                      false ||
+                    (
+                      grade.code ===
+                        "PROGRAM_SAT" &&
+                      !satSkill
+                    )
+                  }
                   onClick={() =>
                     void newFive()
                   }
@@ -3935,9 +4450,9 @@ export default function EducationLearningHub({
                     >
                       <strong>
                         Question {
-                          practiceQuestionIndex +
-                          1
+                          absolutePracticeQuestionNumber
                         } of {
+                          practiceSequence?.total ??
                           questions.length
                         }
                       </strong>
@@ -3952,6 +4467,56 @@ export default function EducationLearningHub({
                     <article
                       className="education-learning__question-card education-learning__question-card--cbt"
                     >
+                      {
+                        grade?.code ===
+                          "PROGRAM_SAT" &&
+                        currentSatPracticeQuestion
+                          ?.stimulusText && (
+                          <div
+                            className="education-learning__sat-stimulus"
+                            style={{
+                              marginBottom:
+                                "1rem",
+                              padding:
+                                "1rem",
+                              border:
+                                "1px solid var(--education-border, #d8dee8)",
+                              borderRadius:
+                                "0.75rem",
+                              background:
+                                "rgba(127, 127, 127, 0.06)",
+                              whiteSpace:
+                                "pre-wrap",
+                              lineHeight:
+                                1.55,
+                            }}
+                          >
+                            {
+                              currentSatPracticeQuestion
+                                .stimulusText
+                            }
+
+                            {
+                              currentSatPracticeQuestion
+                                .stimulusSecondaryText && (
+                                <>
+                                  <hr
+                                    style={{
+                                      margin:
+                                        "0.9rem 0",
+                                    }}
+                                  />
+                                  {
+                                    currentSatPracticeQuestion
+                                      .stimulusSecondaryText
+                                  }
+                                </>
+                              )
+                            }
+                          </div>
+                        )
+                      }
+
                       <div
                         className="education-learning__practice-question-heading"
                         title={`Difficulty: ${
@@ -3963,8 +4528,7 @@ export default function EducationLearningHub({
                             className="education-learning__practice-question-number-inline"
                           >
                             {
-                              practiceQuestionIndex +
-                              1
+                              absolutePracticeQuestionNumber
                             }.
                           </span>{" "}
                           {
@@ -4245,15 +4809,24 @@ export default function EducationLearningHub({
                                     index,
                                   )
                                 }
-                                aria-label={`Question ${index + 1}${
+                                aria-label={`Question ${
+                                  practiceSequence
+                                    ? practiceSequence.start +
+                                      index
+                                    : index +
+                                      1
+                                }${
                                   answered
                                     ? ", answered"
                                     : ", unanswered"
                                 }`}
                               >
                                 {
-                                  index +
-                                  1
+                                  practiceSequence
+                                    ? practiceSequence.start +
+                                      index
+                                    : index +
+                                      1
                                 }
                               </button>
                             );
@@ -4336,6 +4909,20 @@ export default function EducationLearningHub({
                   <button
                     type="button"
                     className="education-learning__secondary"
+                    disabled={
+                      loading ||
+                      !submitted ||
+                      !grade ||
+                      !subject ||
+                      !topic ||
+                      practiceSequence?.hasMore ===
+                        false ||
+                      (
+                        grade.code ===
+                          "PROGRAM_SAT" &&
+                        !satSkill
+                      )
+                    }
                     onClick={() =>
                       void newFive()
                     }
@@ -4348,11 +4935,19 @@ export default function EducationLearningHub({
                     className="education-learning__secondary"
                     onClick={() =>
                       setStep(
-                        "topics",
+                        grade?.code ===
+                          "PROGRAM_SAT"
+                          ? "skills"
+                          : "topics",
                       )
                     }
                   >
-                    Choose Another Topic
+                    {
+                      grade?.code ===
+                        "PROGRAM_SAT"
+                        ? "Choose Another Skill"
+                        : "Choose Another Topic"
+                    }
                   </button>
                 </div>
               )
