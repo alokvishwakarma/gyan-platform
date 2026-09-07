@@ -3582,16 +3582,7 @@ export default function EducationLearningHub({
   if (
     step ===
       "mock-tests" &&
-    (
-      mockProgram ===
-        "JEE" ||
-      mockProgram ===
-        "NEET" ||
-      mockProgram ===
-        "SAT" ||
-      mockProgram ===
-        "GRE"
-    )
+    mockProgram
   ) {
     return (
       <>

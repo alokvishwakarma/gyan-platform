@@ -303,6 +303,7 @@ export default function EducationPortal({
                           program.showClasses && (
                             <button
                               type="button"
+                              className="education-portal__class-action"
                               onClick={() => {
                                 window.location.href =
                                   `/class?category=${encodeURIComponent(

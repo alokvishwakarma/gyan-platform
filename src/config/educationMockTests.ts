@@ -16,18 +16,46 @@ export type FixedMockQuestion = {
   difficulty: string;
   text: string;
   questionFormat:
+    string;
+
+  responseType:
+    string;
+
+  answerMode:
     | "SINGLE_CHOICE"
-    | "NUMERICAL"
     | "MULTI_SELECT"
-    | "INTEGER"
-    | "MATCHING"
-    | "COMPREHENSION";
-  choices: {
-    A: string;
-    B: string;
-    C: string;
-    D: string;
+    | "NUMERIC"
+    | "MULTI_BLANK";
+
+  stimulus: {
+    type: string;
+    text:
+      string | null;
   };
+
+  directionsText:
+    string | null;
+
+  choices:
+    Array<{
+      key: string;
+      text: string;
+    }>;
+
+  choiceGroups:
+    Array<{
+      key: string;
+      label: string;
+      choices:
+        Array<{
+          key: string;
+          text: string;
+        }>;
+    }>;
+
+  blankCount: number;
+  calculatorAllowed: boolean;
+
   marksCorrect: number;
   marksIncorrect: number;
   marksUnanswered: number;
@@ -43,6 +71,15 @@ export type FixedMockTest = {
   version: number;
   questionCount: number;
   maximumMarks: number;
+
+  config: {
+    programName: string;
+    durationMinutes:
+      number | null;
+    questionPaletteColumns: number;
+    resultPaletteColumns: number;
+  };
+
   questions:
     FixedMockQuestion[];
 };

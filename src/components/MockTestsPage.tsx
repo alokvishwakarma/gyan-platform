@@ -13,10 +13,7 @@ import {
 import "./MockTestsPage.css";
 
 type MockProgram =
-  | "JEE"
-  | "NEET"
-  | "SAT"
-  | "GRE";
+  string;
 
 interface MockTestsPageProps {
   program:
@@ -481,15 +478,19 @@ export default function MockTestsPage({
   const isGre =
     program === "GRE";
 
+  const isOlsat =
+    program === "OLSAT";
+
   const cbtTimeLimitSeconds =
     fixedTest?.kind ===
       "FULL"
-      ? fixedTest.programCode ===
-          "GRE"
-        ? 118 *
-          60
-        : 180 *
-          60
+      ? Math.max(
+          0,
+          fixedTest.config
+            .durationMinutes ??
+            0,
+        ) *
+        60
       : 0;
 
   const cbtRemainingSeconds =
@@ -1059,12 +1060,13 @@ export default function MockTestsPage({
         Math.min(
           orderedTest.kind ===
             "FULL"
-            ? orderedTest.programCode ===
-                "GRE"
-              ? 118 *
-                60
-              : 180 *
-                60
+            ? Math.max(
+                0,
+                orderedTest.config
+                  .durationMinutes ??
+                  0,
+              ) *
+              60
             : 0,
           (
             savedDraft
@@ -1644,7 +1646,7 @@ export default function MockTestsPage({
 
     /*
      * Every fixed test uses the CBT runner UI.
-     * FULL still owns the 180-minute timer/save-session rules,
+     * FULL owns the database-configured timer/save-session rules,
      * while MINI simply uses the same one-question/palette layout.
      */
     const isPagedCbt =
@@ -1900,22 +1902,15 @@ export default function MockTestsPage({
                 📝 {
                   activeFixedTest.name
                 } · {
-                  activeFixedTest.programCode ===
-                    "GRE"
-                    ? "GRE"
-                    : activeFixedTest.programCode ===
-                        "SAT"
-                      ? "SAT"
-                      : activeFixedTest.level ===
-                          "MAIN"
-                        ? "JEE Main"
-                        : activeFixedTest.level ===
-                            "ADVANCED"
-                          ? "JEE Advanced"
-                          : activeFixedTest.level ===
-                              "NEET"
-                            ? "NEET"
-                            : activeFixedTest.level
+                  activeFixedTest.level ===
+                    "ADVANCED"
+                    ? `${activeFixedTest.config.programName} Advanced`
+                    : activeFixedTest.level ===
+                        "MAIN" &&
+                      activeFixedTest.programCode ===
+                        "JEE"
+                      ? `${activeFixedTest.config.programName} Main`
+                      : activeFixedTest.config.programName
                 }
               </strong>
 
@@ -2631,10 +2626,32 @@ export default function MockTestsPage({
                     </div>
 
                     {
-                      question.questionFormat ===
-                        "NUMERICAL" ||
-                      question.questionFormat ===
-                        "INTEGER" ? (
+                      question.stimulus.text && (
+                        <div
+                          className="mock-tests__stimulus"
+                        >
+                          {
+                            question.stimulus.text
+                          }
+                        </div>
+                      )
+                    }
+
+                    {
+                      question.directionsText && (
+                        <div
+                          className="mock-tests__directions"
+                        >
+                          {
+                            question.directionsText
+                          }
+                        </div>
+                      )
+                    }
+
+                    {
+                      question.answerMode ===
+                        "NUMERIC" ? (
                         <div
                           className="mock-tests__numerical"
                         >
@@ -2694,205 +2711,303 @@ export default function MockTestsPage({
                             />
                           </label>
                         </div>
-                      ) : (
-                    <div
-                      className="mock-tests__choices"
-                    >
-                      {
-                        (
-                          [
-                            "A",
-                            "B",
-                            "C",
-                            "D",
-                          ] as const
-                        ).map(
-                          (
-                            choice,
-                          ) => {
-                            const isMultiSelect =
-                              question.questionFormat ===
-                              "MULTI_SELECT";
+                      ) : question.answerMode ===
+                          "MULTI_BLANK" ? (
+                        <div
+                          className="mock-tests__choice-groups"
+                        >
+                          {
+                            question.choiceGroups.map(
+                              (
+                                group,
+                              ) => {
+                                let selectedGroup:
+                                  Record<
+                                    string,
+                                    string
+                                  > =
+                                  {};
 
-                            const selectedValue =
-                              fixedAnswers[
-                                question.id
-                              ] ?? "";
-
-                            const isSelected =
-                              isMultiSelect
-                                ? selectedValue.includes(
-                                    choice,
-                                  )
-                                : selectedValue ===
-                                  choice;
-
-                            const isCorrectAfterSubmit =
-                              review
-                                ?.correctChoice
-                                .includes(
-                                  choice,
-                                ) ??
-                              false;
-
-                            return (
-                              <label
-                                key={
-                                  choice
-                                }
-                                className={[
-                                  isSelected
-                                    ? "mock-tests__choice--selected"
-                                    : "",
-                                  fixedScore &&
-                                  isCorrectAfterSubmit
-                                    ? "mock-tests__choice--answer"
-                                    : "",
-                                ]
-                                  .filter(
-                                    Boolean,
-                                  )
-                                  .join(
-                                    " ",
-                                  )}
-                              >
-                                <input
-                                  type={
-                                    isMultiSelect
-                                      ? "checkbox"
-                                      : "radio"
-                                  }
-                                  name={
-                                    `mock-${question.id}`
-                                  }
-                                  value={
-                                    choice
-                                  }
-                                  checked={
-                                    isSelected
-                                  }
-                                  disabled={
-                                    Boolean(
-                                      fixedScore,
-                                    )
-                                  }
-                                  onChange={() =>
-                                    setFixedAnswers(
-                                      (
-                                        current,
-                                      ) => {
-                                        if (
-                                          !isMultiSelect
-                                        ) {
-                                          const nextAnswers = {
-                                            ...current,
-                                            [question.id]:
-                                              choice,
-                                          };
-
-                                          queueMicrotask(
-                                            () =>
-                                              showProtectionMilestoneIfNeeded(
-                                                cumulativeAnsweredCount +
-                                                  Object.values(
-                                                    nextAnswers,
-                                                  ).filter(
-                                                    Boolean,
-                                                  ).length,
-
-                                                protection25Shown,
-                                                protection50Shown,
-                                                gyanRecoveryProtected,
-                                              ),
-                                          );
-
-                                          return nextAnswers;
-                                        }
-
-                                        const next =
-                                          new Set(
-                                            (
-                                              current[
-                                                question.id
-                                              ] ??
-                                              ""
-                                            )
-                                              .split(
-                                                "",
-                                              )
-                                              .filter(
-                                                Boolean,
-                                              ),
-                                          );
-
-                                        if (
-                                          next.has(
-                                            choice,
-                                          )
-                                        ) {
-                                          next.delete(
-                                            choice,
-                                          );
-                                        } else {
-                                          next.add(
-                                            choice,
-                                          );
-                                        }
-
-                                        const nextAnswers = {
-                                          ...current,
-                                          [question.id]:
-                                            Array.from(
-                                              next,
-                                            )
-                                              .sort()
-                                              .join(
-                                                "",
-                                              ),
-                                        };
-
-                                        queueMicrotask(
-                                          () =>
-                                            showProtectionMilestoneIfNeeded(
-                                              cumulativeAnsweredCount +
-                                                Object.values(
-                                                  nextAnswers,
-                                                ).filter(
-                                                  Boolean,
-                                                ).length,
-
-                                              protection25Shown,
-                                              protection50Shown,
-                                              gyanRecoveryProtected,
-                                            ),
-                                        );
-
-                                        return nextAnswers;
-                                      },
-                                    )
-                                  }
-                                />
-
-                                <span>
-                                  <b>
-                                    {
-                                      choice
-                                    }.
-                                  </b>{" "}
-                                  {
-                                    question.choices[
-                                      choice
+                                try {
+                                  selectedGroup =
+                                    fixedAnswers[
+                                      question.id
                                     ]
-                                  }
-                                </span>
-                              </label>
-                            );
-                          },
-                        )
-                      }
-                    </div>
+                                      ? JSON.parse(
+                                          fixedAnswers[
+                                            question.id
+                                          ],
+                                        )
+                                      : {};
+                                } catch {
+                                  selectedGroup =
+                                    {};
+                                }
+
+                                return (
+                                  <fieldset
+                                    key={
+                                      group.key
+                                    }
+                                    className="mock-tests__choice-group"
+                                  >
+                                    <legend>
+                                      {
+                                        group.label
+                                      }
+                                    </legend>
+
+                                    {
+                                      group.choices.map(
+                                        (
+                                          choice,
+                                        ) => (
+                                          <label
+                                            key={
+                                              choice.key
+                                            }
+                                            className={
+                                              selectedGroup[
+                                                group.key
+                                              ] ===
+                                              choice.key
+                                                ? "mock-tests__choice--selected"
+                                                : ""
+                                            }
+                                          >
+                                            <input
+                                              type="radio"
+                                              name={`mock-${question.id}-${group.key}`}
+                                              value={
+                                                choice.key
+                                              }
+                                              checked={
+                                                selectedGroup[
+                                                  group.key
+                                                ] ===
+                                                choice.key
+                                              }
+                                              disabled={
+                                                Boolean(
+                                                  fixedScore,
+                                                )
+                                              }
+                                              onChange={() =>
+                                                setFixedAnswers(
+                                                  (
+                                                    current,
+                                                  ) => {
+                                                    let currentGroup:
+                                                      Record<
+                                                        string,
+                                                        string
+                                                      >;
+
+                                                    try {
+                                                      currentGroup =
+                                                        current[
+                                                          question.id
+                                                        ]
+                                                          ? JSON.parse(
+                                                              current[
+                                                                question.id
+                                                              ],
+                                                            )
+                                                          : {};
+                                                    } catch {
+                                                      currentGroup =
+                                                        {};
+                                                    }
+
+                                                    return {
+                                                      ...current,
+                                                      [question.id]:
+                                                        JSON.stringify({
+                                                          ...currentGroup,
+                                                          [group.key]:
+                                                            choice.key,
+                                                        }),
+                                                    };
+                                                  },
+                                                )
+                                              }
+                                            />
+
+                                            <span>
+                                              <b>
+                                                {
+                                                  choice.key
+                                                }.
+                                              </b>{" "}
+                                              {
+                                                choice.text
+                                              }
+                                            </span>
+                                          </label>
+                                        ),
+                                      )
+                                    }
+                                  </fieldset>
+                                );
+                              },
+                            )
+                          }
+                        </div>
+                      ) : (
+                        <div
+                          className="mock-tests__choices"
+                        >
+                          {
+                            question.choices.map(
+                              (
+                                choice,
+                              ) => {
+                                const isMultiSelect =
+                                  question.answerMode ===
+                                  "MULTI_SELECT";
+
+                                const selectedValue =
+                                  fixedAnswers[
+                                    question.id
+                                  ] ?? "";
+
+                                const isSelected =
+                                  isMultiSelect
+                                    ? selectedValue.includes(
+                                        choice.key,
+                                      )
+                                    : selectedValue ===
+                                      choice.key;
+
+                                const isCorrectAfterSubmit =
+                                  review
+                                    ?.correctChoice
+                                    .includes(
+                                      choice.key,
+                                    ) ??
+                                  false;
+
+                                return (
+                                  <label
+                                    key={
+                                      choice.key
+                                    }
+                                    className={[
+                                      isSelected
+                                        ? "mock-tests__choice--selected"
+                                        : "",
+                                      fixedScore &&
+                                      isCorrectAfterSubmit
+                                        ? "mock-tests__choice--answer"
+                                        : "",
+                                    ]
+                                      .filter(
+                                        Boolean,
+                                      )
+                                      .join(
+                                        " ",
+                                      )}
+                                  >
+                                    <input
+                                      type={
+                                        isMultiSelect
+                                          ? "checkbox"
+                                          : "radio"
+                                      }
+                                      name={
+                                        `mock-${question.id}`
+                                      }
+                                      value={
+                                        choice.key
+                                      }
+                                      checked={
+                                        isSelected
+                                      }
+                                      disabled={
+                                        Boolean(
+                                          fixedScore,
+                                        )
+                                      }
+                                      onChange={() =>
+                                        setFixedAnswers(
+                                          (
+                                            current,
+                                          ) => {
+                                            if (
+                                              !isMultiSelect
+                                            ) {
+                                              return {
+                                                ...current,
+                                                [question.id]:
+                                                  choice.key,
+                                              };
+                                            }
+
+                                            const next =
+                                              new Set(
+                                                (
+                                                  current[
+                                                    question.id
+                                                  ] ??
+                                                  ""
+                                                )
+                                                  .split(
+                                                    "",
+                                                  )
+                                                  .filter(
+                                                    Boolean,
+                                                  ),
+                                              );
+
+                                            if (
+                                              next.has(
+                                                choice.key,
+                                              )
+                                            ) {
+                                              next.delete(
+                                                choice.key,
+                                              );
+                                            } else {
+                                              next.add(
+                                                choice.key,
+                                              );
+                                            }
+
+                                            return {
+                                              ...current,
+                                              [question.id]:
+                                                Array.from(
+                                                  next,
+                                                )
+                                                  .sort()
+                                                  .join(
+                                                    "",
+                                                  ),
+                                            };
+                                          },
+                                        )
+                                      }
+                                    />
+
+                                    <span>
+                                      <b>
+                                        {
+                                          choice.key
+                                        }.
+                                      </b>{" "}
+                                      {
+                                        choice.text
+                                      }
+                                    </span>
+                                  </label>
+                                );
+                              },
+                            )
+                          }
+                        </div>
                       )
                     }
+
 
                     {
                       review && (
@@ -3048,6 +3163,15 @@ export default function MockTestsPage({
 
                 <div
                   className="mock-tests__palette-grid"
+
+                  style={{
+                    gridTemplateColumns:
+                      `repeat(${Math.max(
+                        1,
+                        activeFixedTest.config
+                          .questionPaletteColumns,
+                      )}, minmax(0, 1fr))`,
+                  }}
                 >
                   {
                     currentSectionQuestions.map(
@@ -3216,7 +3340,9 @@ export default function MockTestsPage({
                   ? "SAT"
                   : isGre
                     ? "GRE"
-                    : "NEET"
+                    : isOlsat
+                      ? "OLSAT"
+                      : "NEET"
             } Mock Tests
           </strong>
 
@@ -3582,6 +3708,17 @@ export default function MockTestsPage({
                               }
 
                               if (
+                                isOlsat
+                              ) {
+                                requestAccess(
+                                  label,
+                                  "OLSAT",
+                                );
+
+                                return;
+                              }
+
+                              if (
                                 testNumber ===
                                   1
                               ) {
@@ -3604,23 +3741,25 @@ export default function MockTestsPage({
                             }}
                           >
                             {
-                              isGre
-                                ? testNumber ===
-                                      1 &&
-                                    runnerLoading
-                                  ? "Opening…"
+                              isOlsat
+                                ? "🔒 Open"
+                                : isGre
+                                  ? testNumber ===
+                                        1 &&
+                                      runnerLoading
+                                    ? "Opening…"
+                                    : testNumber ===
+                                        1
+                                      ? "Open"
+                                      : "🔒 Open"
                                   : testNumber ===
-                                      1
-                                    ? "Open"
-                                    : "🔒 Open"
-                                : testNumber ===
-                                      1 &&
-                                    runnerLoading
-                                  ? "Opening…"
-                                  : testNumber ===
-                                      1
-                                    ? "Open"
-                                    : "🔒 Open"
+                                        1 &&
+                                      runnerLoading
+                                    ? "Opening…"
+                                    : testNumber ===
+                                        1
+                                      ? "Open"
+                                      : "🔒 Open"
                             }
                           </button>
                         )
@@ -3689,13 +3828,25 @@ export default function MockTestsPage({
                     >
                       {
                         isSat ||
-                        isGre ? (
+                        isGre ||
+                        isOlsat ? (
                           <button
                             type="button"
                             disabled={
                               runnerLoading
                             }
                             onClick={() => {
+                              if (
+                                isOlsat
+                              ) {
+                                requestAccess(
+                                  label,
+                                  "OLSAT",
+                                );
+
+                                return;
+                              }
+
                               if (
                                 letter ===
                                   "A"
@@ -3707,7 +3858,7 @@ export default function MockTestsPage({
                                     "MINI_A",
                                   /*
                                    * Compatibility value only.
-                                   * program_code identifies SAT/GRE.
+                                   * program_code identifies SAT/GRE/OLSAT.
                                    */
                                   level:
                                     "MAIN",
@@ -3725,14 +3876,16 @@ export default function MockTestsPage({
                             }}
                           >
                             {
-                              letter ===
-                                "A" &&
-                              runnerLoading
-                                ? "Opening…"
+                              isOlsat
+                                ? "🔒 Open"
                                 : letter ===
-                                    "A"
-                                  ? "Open"
-                                  : "🔒 Open"
+                                      "A" &&
+                                    runnerLoading
+                                  ? "Opening…"
+                                  : letter ===
+                                      "A"
+                                    ? "Open"
+                                    : "🔒 Open"
                             }
                           </button>
                         ) : isJee ? (

@@ -269,21 +269,37 @@ async function loadFixedTest(
       .prepare(
         `
         SELECT
-          id,
-          program_code,
-          test_kind,
-          test_code,
-          test_name,
-          exam_level,
-          version,
-          access_mode,
-          published
-        FROM education_mock_tests
-        WHERE program_code = ?
-          AND test_kind = ?
-          AND test_code = ?
-          AND exam_level = ?
-          AND version = ?
+          mt.id,
+          mt.program_code,
+          mt.test_kind,
+          mt.test_code,
+          mt.test_name,
+          mt.exam_level,
+          mt.version,
+          mt.access_mode,
+          mt.published,
+          COALESCE(
+            pc.canonical_name,
+            mt.program_code
+          ) AS program_name,
+          pc.duration_minutes,
+          COALESCE(
+            pc.question_palette_columns,
+            5
+          ) AS question_palette_columns,
+          COALESCE(
+            pc.result_palette_columns,
+            5
+          ) AS result_palette_columns
+        FROM education_mock_tests mt
+        LEFT JOIN education_program_catalog pc
+          ON pc.program_code =
+            mt.program_code
+        WHERE mt.program_code = ?
+          AND mt.test_kind = ?
+          AND mt.test_code = ?
+          AND mt.exam_level = ?
+          AND mt.version = ?
         LIMIT 1
         `,
       )
@@ -304,6 +320,13 @@ async function loadFixedTest(
         version: number;
         access_mode: string;
         published: number;
+        program_name: string;
+        duration_minutes:
+          number | null;
+        question_palette_columns:
+          number | null;
+        result_palette_columns:
+          number | null;
       }>();
 
   if (
@@ -345,16 +368,35 @@ async function loadFixedTest(
           q.question_key,
           q.difficulty,
           q.question_text,
-          COALESCE(qm.question_format, 'SINGLE_CHOICE') AS question_format,
+          COALESCE(
+            rd.response_type,
+            qm.question_format,
+            'SINGLE_CHOICE'
+          ) AS response_type,
+          COALESCE(
+            qm.question_format,
+            rd.response_type,
+            'SINGLE_CHOICE'
+          ) AS question_format,
           q.choice_a,
           q.choice_b,
           q.choice_c,
-          q.choice_d
+          q.choice_d,
+          rd.stimulus_type,
+          rd.stimulus_text,
+          rd.directions_text,
+          rd.choices_json,
+          rd.correct_answers_json,
+          rd.blank_count,
+          rd.numeric_tolerance,
+          rd.calculator_allowed
         FROM education_mock_test_questions mtq
         JOIN education_questions q
           ON q.id = mtq.question_id
         LEFT JOIN education_question_metadata qm
           ON qm.question_id = q.id
+        LEFT JOIN education_question_response_details rd
+          ON rd.question_id = q.id
         LEFT JOIN education_mock_question_answers mqa
           ON mqa.question_id = q.id
         WHERE mtq.mock_test_id = ?
@@ -373,49 +415,290 @@ async function loadFixedTest(
         question_key: string;
         difficulty: string;
         question_text: string;
+        response_type: string;
         question_format: string;
         choice_a: string;
         choice_b: string;
         choice_c: string;
         choice_d: string;
+        stimulus_type:
+          string | null;
+        stimulus_text:
+          string | null;
+        directions_text:
+          string | null;
+        choices_json:
+          string | null;
+        correct_answers_json:
+          string | null;
+        blank_count:
+          number | null;
+        numeric_tolerance:
+          number | null;
+        calculator_allowed:
+          number | null;
       }>();
 
   const questions =
     result.results.map(
-      (row) => ({
-        order:
-          Number(row.question_order),
-        sectionCode:
-          row.section_code,
-        id:
-          Number(row.question_id),
-        key:
-          row.question_key,
-        difficulty:
-          row.difficulty,
-        text:
-          row.question_text,
-        questionFormat:
-          row.question_format,
-        choices: {
-          A: row.choice_a,
-          B: row.choice_b,
-          C: row.choice_c,
-          D: row.choice_d,
-        },
-        marksCorrect:
-          Number(
-            row.marks_correct ?? 0,
-          ),
-        marksIncorrect:
-          Number(
-            row.marks_incorrect ?? 0,
-          ),
-        marksUnanswered:
-          Number(
-            row.marks_unanswered ?? 0,
-          ),
-      }),
+      (row) => {
+        const letters =
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+        // eslint-disable-next-line no-useless-assignment
+        let parsedChoices:
+          unknown =
+          null;
+
+        // eslint-disable-next-line no-useless-assignment
+        let parsedCorrect:
+          unknown =
+          null;
+
+        try {
+          parsedChoices =
+            row.choices_json
+              ? JSON.parse(
+                  row.choices_json,
+                )
+              : null;
+        } catch {
+          parsedChoices =
+            null;
+        }
+
+        try {
+          parsedCorrect =
+            row.correct_answers_json
+              ? JSON.parse(
+                  row.correct_answers_json,
+                )
+              : null;
+        } catch {
+          parsedCorrect =
+            null;
+        }
+
+        const choices =
+          Array.isArray(
+            parsedChoices,
+          )
+            ? parsedChoices
+                .map(
+                  (
+                    value,
+                    index,
+                  ) => ({
+                    key:
+                      letters[
+                        index
+                      ] ??
+                      String(
+                        index +
+                        1,
+                      ),
+                    text:
+                      String(
+                        value ??
+                        "",
+                      ),
+                  }),
+                )
+                .filter(
+                  (item) =>
+                    item.text !==
+                    "",
+                )
+            : [
+                {
+                  key: "A",
+                  text:
+                    row.choice_a,
+                },
+                {
+                  key: "B",
+                  text:
+                    row.choice_b,
+                },
+                {
+                  key: "C",
+                  text:
+                    row.choice_c,
+                },
+                {
+                  key: "D",
+                  text:
+                    row.choice_d,
+                },
+              ].filter(
+                (item) =>
+                  item.text !==
+                  "",
+              );
+
+        const choiceGroups =
+          parsedChoices &&
+          typeof parsedChoices ===
+            "object" &&
+          !Array.isArray(
+            parsedChoices,
+          )
+            ? Object.entries(
+                parsedChoices as
+                  Record<
+                    string,
+                    unknown
+                  >,
+              ).map(
+                ([
+                  groupKey,
+                  rawValues,
+                ]) => ({
+                  key:
+                    groupKey,
+                  label:
+                    groupKey
+                      .replace(
+                        /_/g,
+                        " ",
+                      )
+                      .replace(
+                        /\b\w/g,
+                        (letter) =>
+                          letter.toUpperCase(),
+                      ),
+                  choices:
+                    Array.isArray(
+                      rawValues,
+                    )
+                      ? rawValues.map(
+                          (
+                            value,
+                            index,
+                          ) => ({
+                            key:
+                              letters[
+                                index
+                              ] ??
+                              String(
+                                index +
+                                1,
+                              ),
+                            text:
+                              String(
+                                value ??
+                                "",
+                              ),
+                          }),
+                        )
+                      : [],
+                }),
+              )
+            : [];
+
+        const responseType =
+          (
+            row.response_type ??
+            row.question_format ??
+            "SINGLE_CHOICE"
+          )
+            .trim()
+            .toUpperCase();
+
+        const correctArray =
+          Array.isArray(
+            parsedCorrect,
+          )
+            ? parsedCorrect
+            : [];
+
+        const answerMode =
+          responseType ===
+            "NUMERIC_ENTRY" ||
+          responseType ===
+            "NUMERICAL" ||
+          responseType ===
+            "INTEGER"
+            ? "NUMERIC"
+            : Number(
+                  row.blank_count ??
+                  0,
+                ) >
+                1 &&
+              responseType ===
+                "TEXT_COMPLETION"
+              ? "MULTI_BLANK"
+              : responseType ===
+                  "MULTI_SELECT" ||
+                responseType ===
+                  "SENTENCE_EQUIVALENCE" ||
+                correctArray.length >
+                  1
+                ? "MULTI_SELECT"
+                : "SINGLE_CHOICE";
+
+        return {
+          order:
+            Number(
+              row.question_order,
+            ),
+          sectionCode:
+            row.section_code,
+          id:
+            Number(
+              row.question_id,
+            ),
+          key:
+            row.question_key,
+          difficulty:
+            row.difficulty,
+          text:
+            row.question_text,
+          questionFormat:
+            row.question_format,
+          responseType,
+          answerMode,
+          stimulus: {
+            type:
+              row.stimulus_type ??
+              "NONE",
+            text:
+              row.stimulus_text ??
+              null,
+          },
+          directionsText:
+            row.directions_text ??
+            null,
+          choices,
+          choiceGroups,
+          blankCount:
+            Number(
+              row.blank_count ??
+              0,
+            ),
+          calculatorAllowed:
+            Number(
+              row.calculator_allowed ??
+              0,
+            ) ===
+            1,
+          marksCorrect:
+            Number(
+              row.marks_correct ??
+              0,
+            ),
+          marksIncorrect:
+            Number(
+              row.marks_incorrect ??
+              0,
+            ),
+          marksUnanswered:
+            Number(
+              row.marks_unanswered ??
+              0,
+            ),
+        };
+      },
     );
 
   const maximumMarks =
@@ -445,6 +728,38 @@ async function loadFixedTest(
       questionCount:
         questions.length,
       maximumMarks,
+
+      config: {
+        programName:
+          test.program_name,
+
+        durationMinutes:
+          test.duration_minutes ===
+            null
+            ? null
+            : Number(
+                test.duration_minutes,
+              ),
+
+        questionPaletteColumns:
+          Math.max(
+            1,
+            Number(
+              test.question_palette_columns ??
+              5,
+            ),
+          ),
+
+        resultPaletteColumns:
+          Math.max(
+            1,
+            Number(
+              test.result_palette_columns ??
+              5,
+            ),
+          ),
+      },
+
       questions,
     },
   });
@@ -659,13 +974,27 @@ async function scoreFixedTest(
           q.correct_choice,
           q.choice_a,
           mqa.answer_key,
-          COALESCE(qm.question_format, 'SINGLE_CHOICE') AS question_format,
+          COALESCE(
+            rd.response_type,
+            qm.question_format,
+            'SINGLE_CHOICE'
+          ) AS response_type,
+          COALESCE(
+            qm.question_format,
+            rd.response_type,
+            'SINGLE_CHOICE'
+          ) AS question_format,
+          rd.correct_answers_json,
+          rd.blank_count,
+          rd.numeric_tolerance,
           q.explanation
         FROM education_mock_test_questions mtq
         JOIN education_questions q
           ON q.id = mtq.question_id
         LEFT JOIN education_question_metadata qm
           ON qm.question_id = q.id
+        LEFT JOIN education_question_response_details rd
+          ON rd.question_id = q.id
         LEFT JOIN education_mock_question_answers mqa
           ON mqa.question_id = q.id
         WHERE mtq.mock_test_id = ?
@@ -684,7 +1013,14 @@ async function scoreFixedTest(
         correct_choice: string;
         choice_a: string;
         answer_key: string | null;
+        response_type: string;
         question_format: string;
+        correct_answers_json:
+          string | null;
+        blank_count:
+          number | null;
+        numeric_tolerance:
+          number | null;
         explanation: string;
       }>();
 
@@ -722,13 +1058,30 @@ async function scoreFixedTest(
             .trim()
             .toUpperCase();
 
-        const isNumerical =
-          questionFormat === "NUMERICAL" ||
-          questionFormat === "INTEGER";
+        const responseType =
+          (
+            row.response_type ??
+            questionFormat
+          )
+            .trim()
+            .toUpperCase();
 
-        const isMultiSelect =
-          questionFormat ===
-          "MULTI_SELECT";
+        // eslint-disable-next-line no-useless-assignment
+        let parsedCorrect:
+          unknown =
+          null;
+
+        try {
+          parsedCorrect =
+            row.correct_answers_json
+              ? JSON.parse(
+                  row.correct_answers_json,
+                )
+              : null;
+        } catch {
+          parsedCorrect =
+            null;
+        }
 
         const normalizeMultiSelect =
           (
@@ -740,7 +1093,7 @@ async function scoreFixedTest(
                   .trim()
                   .toUpperCase()
                   .replace(
-                    /[^ABCD]/g,
+                    /[^A-Z]/g,
                     "",
                   )
                   .split(
@@ -754,44 +1107,255 @@ async function scoreFixedTest(
               .sort()
               .join("");
 
+        const isNumeric =
+          responseType ===
+            "NUMERIC_ENTRY" ||
+          responseType ===
+            "NUMERICAL" ||
+          responseType ===
+            "INTEGER";
+
+        const isMultiBlank =
+          responseType ===
+            "TEXT_COMPLETION" &&
+          Number(
+            row.blank_count ??
+            0,
+          ) >
+            1;
+
+        const correctArray =
+          Array.isArray(
+            parsedCorrect,
+          )
+            ? parsedCorrect.map(
+                (value) =>
+                  String(
+                    value,
+                  ),
+              )
+            : [];
+
+        const isMultiSelect =
+          responseType ===
+            "MULTI_SELECT" ||
+          responseType ===
+            "SENTENCE_EQUIVALENCE" ||
+          (
+            !isNumeric &&
+            !isMultiBlank &&
+            correctArray.length >
+              1
+          );
+
         const selectedChoice =
-          typeof selectedRaw === "string"
-            ? isNumerical
-              ? selectedRaw.trim()
-              : isMultiSelect
-                ? normalizeMultiSelect(
-                    selectedRaw,
-                  )
-                : selectedRaw
-                    .trim()
-                    .toUpperCase()
+          typeof selectedRaw ===
+            "string"
+            ? selectedRaw.trim()
             : "";
 
-        const correctChoice =
-          isNumerical
-            ? row.choice_a.trim()
-            : isMultiSelect
-              ? normalizeMultiSelect(
-                  row.answer_key ??
-                    row.correct_choice,
-                )
-              : row.correct_choice
-                  .trim()
-                  .toUpperCase();
+        // eslint-disable-next-line no-useless-assignment
+        let correctChoice =
+          "";
 
-        const numericalCorrect =
-          isNumerical &&
-          selectedChoice !== "" &&
-          Number.isFinite(
-            Number(selectedChoice),
-          ) &&
-          Number.isFinite(
-            Number(correctChoice),
-          ) &&
-          Math.abs(
-            Number(selectedChoice) -
-            Number(correctChoice),
-          ) < 1e-9;
+        // eslint-disable-next-line no-useless-assignment
+        let responseCorrect =
+          false;
+
+        if (isNumeric) {
+          const accepted =
+            correctArray.length
+              ? correctArray
+              : [
+                  row.choice_a.trim(),
+                ];
+
+          const selectedNumber =
+            Number(
+              selectedChoice,
+            );
+
+          const tolerance =
+            Math.max(
+              0,
+              Number(
+                row.numeric_tolerance ??
+                1e-9,
+              ),
+            );
+
+          responseCorrect =
+            selectedChoice !==
+              "" &&
+            Number.isFinite(
+              selectedNumber,
+            ) &&
+            accepted.some(
+              (answer) => {
+                const answerNumber =
+                  Number(
+                    answer,
+                  );
+
+                return (
+                  Number.isFinite(
+                    answerNumber,
+                  ) &&
+                  Math.abs(
+                    selectedNumber -
+                    answerNumber,
+                  ) <=
+                    tolerance
+                );
+              },
+            );
+
+          correctChoice =
+            accepted.join(
+              " / ",
+            );
+        } else if (
+          isMultiBlank
+        ) {
+          let selectedObject:
+            Record<
+              string,
+              string
+            > =
+            {};
+
+          let correctObject:
+            Record<
+              string,
+              string
+            > =
+            {};
+
+          try {
+            selectedObject =
+              selectedChoice
+                ? JSON.parse(
+                    selectedChoice,
+                  )
+                : {};
+          } catch {
+            selectedObject =
+              {};
+          }
+
+          if (
+            parsedCorrect &&
+            typeof parsedCorrect ===
+              "object" &&
+            !Array.isArray(
+              parsedCorrect,
+            )
+          ) {
+            correctObject =
+              Object.fromEntries(
+                Object.entries(
+                  parsedCorrect as
+                    Record<
+                      string,
+                      unknown
+                    >,
+                ).map(
+                  ([
+                    key,
+                    value,
+                  ]) => [
+                    key,
+                    String(
+                      value,
+                    )
+                      .trim()
+                      .toUpperCase(),
+                  ],
+                ),
+              );
+          }
+
+          const correctKeys =
+            Object.keys(
+              correctObject,
+            );
+
+          responseCorrect =
+            selectedChoice !==
+              "" &&
+            correctKeys.length >
+              0 &&
+            correctKeys.every(
+              (key) =>
+                String(
+                  selectedObject[
+                    key
+                  ] ??
+                  "",
+                )
+                  .trim()
+                  .toUpperCase() ===
+                correctObject[
+                  key
+                ],
+            );
+
+          correctChoice =
+            JSON.stringify(
+              correctObject,
+            );
+        } else if (
+          isMultiSelect
+        ) {
+          const expected =
+            normalizeMultiSelect(
+              correctArray.length
+                ? correctArray.join(
+                    "",
+                  )
+                : (
+                    row.answer_key ??
+                    row.correct_choice
+                  ),
+            );
+
+          const selected =
+            normalizeMultiSelect(
+              selectedChoice,
+            );
+
+          responseCorrect =
+            selected !==
+              "" &&
+            selected ===
+              expected;
+
+          correctChoice =
+            expected;
+        } else {
+          const expected =
+            (
+              correctArray[0] ??
+              row.answer_key ??
+              row.correct_choice
+            )
+              .trim()
+              .toUpperCase();
+
+          const selected =
+            selectedChoice
+              .trim()
+              .toUpperCase();
+
+          responseCorrect =
+            selected !==
+              "" &&
+            selected ===
+              expected;
+
+          correctChoice =
+            expected;
+        }
 
         const marksCorrect =
           Number(
@@ -841,10 +1405,7 @@ async function scoreFixedTest(
           unansweredCount += 1;
           section.unanswered += 1;
         } else if (
-          isNumerical
-            ? numericalCorrect
-            : selectedChoice ===
-                correctChoice
+          responseCorrect
         ) {
           marksAwarded =
             marksCorrect;
