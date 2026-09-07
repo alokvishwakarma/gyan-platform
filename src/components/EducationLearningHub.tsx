@@ -1959,6 +1959,125 @@ export default function EducationLearningHub({
   }
 
 
+  async function openFoundationReport():
+    Promise<void> {
+    if (
+      !grade ||
+      !subject ||
+      grade.code.startsWith(
+        "PROGRAM_",
+      )
+    ) {
+      return;
+    }
+
+    setLoading(
+      true,
+    );
+    setError(
+      "",
+    );
+
+    try {
+      const progress =
+        await loadEducationProgressReport();
+
+      const progressByTopic =
+        new Map<
+          string,
+          EducationTopicProgress
+        >(
+          progress.topicProgress.map(
+            (item) => [
+              `${item.subjectCode}::${item.topicCode}`,
+              item,
+            ],
+          ),
+        );
+
+      setReportTopics(
+        topics.map(
+          (item) => {
+            const saved =
+              progressByTopic.get(
+                `${subject.code}::${item.code}`,
+              );
+
+            return {
+              code:
+                item.code,
+              name:
+                item.name,
+              attempts:
+                saved?.answersCount
+                  ? 1
+                  : 0,
+              questionsAnswered:
+                saved?.answersCount ??
+                0,
+              correctAnswers:
+                saved?.correctAnswers ??
+                0,
+              scorePercent:
+                saved?.scorePercent ??
+                null,
+            };
+          },
+        ),
+      );
+
+      setStep(
+        "report",
+      );
+    } catch (
+      caught
+    ) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Progress report could not be loaded.",
+      );
+    } finally {
+      setLoading(
+        false,
+      );
+    }
+  }
+
+
+  function openFoundationClass():
+    void {
+    if (
+      !grade ||
+      !subject
+    ) {
+      return;
+    }
+
+    showRegistrationMessage(
+      `${grade.name} · ${subject.name}`,
+      `To register for ${grade.name} ${subject.name} classes, contact admin@gyan.cc`,
+    );
+  }
+
+
+  function openFoundationTeacherRequest():
+    void {
+    setTeacherMessage(
+      "",
+    );
+
+    setTeacherRequestEmail(
+      activeGyanEmail ??
+        teacherRequestEmail,
+    );
+
+    setTeacherRequestDialogOpen(
+      true,
+    );
+  }
+
+
   async function openProgramReport(
     program:
       string,
@@ -2538,6 +2657,21 @@ export default function EducationLearningHub({
 
     setError("");
 
+    /*
+     * Foundation topic/subtopic cards display cumulative
+     * attempted counts and score shading from the shared
+     * education progress report. Refresh it every time a
+     * grade is entered/re-entered so the cards never depend
+     * on visiting an Advanced program first.
+     */
+    void loadEducationProgressReport()
+      .catch(
+        () => {
+          // Foundation practice remains available even if
+          // progress metrics cannot be refreshed.
+        },
+      );
+
     try {
       const subjects =
         await loadSubjects(
@@ -3039,6 +3173,145 @@ export default function EducationLearningHub({
         Error
           ? caught.message
           : "Topic practice questions unavailable.",
+      );
+    } finally {
+      setLoading(
+        false,
+      );
+    }
+  }
+
+
+  async function selectGradeSubtopic(
+    parentTopic:
+      TopicItem,
+    item:
+      SatSkillItem,
+  ): Promise<void> {
+    if (
+      !grade ||
+      !subject ||
+      grade.code.startsWith(
+        "PROGRAM_",
+      )
+    ) {
+      return;
+    }
+
+    /*
+     * The parent topic is passed directly from the card that
+     * rendered this subtopic. Do not depend on asynchronous
+     * `topic` state here; that can briefly point at another
+     * card if topic requests complete out of order.
+     */
+    setTopic(
+      parentTopic,
+    );
+
+    setExpandedGradeTopicCode(
+      parentTopic.code,
+    );
+
+    setSatSkill(
+      item,
+    );
+
+    setLoading(
+      true,
+    );
+
+    setError("");
+    setAutoSaveMessage("");
+
+    try {
+      const params =
+        new URLSearchParams({
+          country:
+            learningCountryFor(
+              grade,
+            ),
+          grade:
+            grade.code,
+          subject:
+            subject.code,
+          topic:
+            parentTopic.code,
+          subtopic:
+            item.code,
+        });
+
+      const response =
+        await fetch(
+          `/api/education/practice?${params.toString()}`,
+          {
+            cache:
+              "no-store",
+          },
+        );
+
+      const body =
+        await response.json() as {
+          questions?: PracticeQuestion[];
+          sequence?: PracticeSequence;
+          error?: string;
+        };
+
+      if (!response.ok) {
+        throw new Error(
+          body.error ??
+            "Subtopic practice questions unavailable.",
+        );
+      }
+
+      const next =
+        body.questions ??
+          [];
+
+      if (
+        next.length <
+          5
+      ) {
+        throw new Error(
+          "This subtopic does not yet have 5 practice questions.",
+        );
+      }
+
+      setQuestions(
+        next,
+      );
+
+      setPracticeSequence(
+        body.sequence ??
+        null,
+      );
+
+      setAnswers(
+        {},
+      );
+
+      setSubmitted(
+        false,
+      );
+
+      setPracticeQuestionIndex(
+        0,
+      );
+
+      setPracticeReviewIds(
+        [],
+      );
+
+      setStep(
+        "questions",
+      );
+    } catch (
+      caught
+    ) {
+      setError(
+        caught instanceof
+        Error
+          ? caught.message
+          : "Subtopic practice questions unavailable.",
       );
     } finally {
       setLoading(
@@ -3990,6 +4263,29 @@ export default function EducationLearningHub({
                     null,
                 );
               } else {
+                /*
+                 * A submitted Foundation batch may have changed
+                 * subtopic attempted counts / accuracy. Refresh
+                 * those metrics whenever the user returns to the
+                 * topic cards with the back arrow.
+                 */
+                void loadEducationProgressReport()
+                  .catch(
+                    () => {
+                      // Do not block navigation on report failure.
+                    },
+                  );
+
+                /*
+                 * Return to the exact parent topic of the current
+                 * Foundation subtopic, not whichever topic happened
+                 * to be expanded previously.
+                 */
+                setExpandedGradeTopicCode(
+                  topic?.code ??
+                    null,
+                );
+
                 setStep(
                   "topics",
                 );
@@ -4624,9 +4920,54 @@ export default function EducationLearningHub({
         step ===
           "topics" && (
           <section>
-            <h1>
-              Choose a topic
-            </h1>
+            <div className="education-learning__topic-toolbar">
+              <h1>
+                Choose a topic
+              </h1>
+
+              {
+                grade &&
+                !grade.code.startsWith(
+                  "PROGRAM_",
+                ) && (
+                  <div className="education-learning__topic-toolbar-actions">
+                    <button
+                      type="button"
+                      className="education-learning__topic-toolbar-action"
+                      onClick={() =>
+                        void openFoundationReport()
+                      }
+                      aria-label="View report"
+                      title="View report"
+                    >
+                      <span aria-hidden="true">
+                        📊
+                      </span>
+                      <span className="education-learning__topic-toolbar-label">
+                        Report
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="education-learning__topic-toolbar-action"
+                      onClick={
+                        openFoundationClass
+                      }
+                      aria-label="Open class registration"
+                      title="Class"
+                    >
+                      <span aria-hidden="true">
+                        🏫
+                      </span>
+                      <span className="education-learning__topic-toolbar-label">
+                        Class
+                      </span>
+                    </button>
+                  </div>
+                )
+              }
+            </div>
 
             <div
               className="education-learning__topic-stack"
@@ -4745,29 +5086,6 @@ export default function EducationLearningHub({
                             <div
                               className="education-learning__subtopic-inline"
                             >
-                              <button
-                                type="button"
-                                className="education-learning__subtopic-chip education-learning__subtopic-chip--all"
-                                disabled={
-                                  item.questionCount <
-                                    5
-                                }
-                                onClick={() =>
-                                  void selectWholeTopic()
-                                }
-                              >
-                                <strong>
-                                  All · New 5
-                                </strong>
-                                <small>
-                                  {
-                                    item.questionCount
-                                  } questions · {
-                                    attempted
-                                  } attempted
-                                </small>
-                              </button>
-
                               {
                                 satSkills.map(
                                   (
@@ -4805,7 +5123,8 @@ export default function EducationLearningHub({
                                           " ",
                                         )}
                                         onClick={() =>
-                                          void selectSatSkill(
+                                          void selectGradeSubtopic(
+                                            item,
                                             skill,
                                           )
                                         }
@@ -4846,6 +5165,58 @@ export default function EducationLearningHub({
                 )
               }
             </div>
+
+            {
+              grade &&
+                !grade.code.startsWith(
+                  "PROGRAM_",
+                ) && (
+                  <div className="education-learning__foundation-actions">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void openFoundationReport()
+                      }
+                    >
+                      <span aria-hidden="true">
+                        📊
+                      </span>
+                      <span>
+                        View Report
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={
+                        openFoundationClass
+                      }
+                    >
+                      <span aria-hidden="true">
+                        🏫
+                      </span>
+                      <span>
+                        Class
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="education-learning__foundation-assign-teacher"
+                      onClick={
+                        openFoundationTeacherRequest
+                      }
+                    >
+                      <span aria-hidden="true">
+                        👩‍🏫
+                      </span>
+                      <span>
+                        Assign Teacher
+                      </span>
+                    </button>
+                  </div>
+                )
+            }
           </section>
         )
       }
@@ -5417,14 +5788,35 @@ export default function EducationLearningHub({
                   <button
                     type="button"
                     className="education-learning__secondary"
-                    onClick={() =>
+                    onClick={() => {
+                      if (
+                        grade?.type !==
+                          "program"
+                      ) {
+                        /*
+                         * Refresh Foundation topic/subtopic
+                         * metrics after completing practice.
+                         */
+                        void loadEducationProgressReport()
+                          .catch(
+                            () => {
+                              // Navigation should remain available.
+                            },
+                          );
+
+                        setExpandedGradeTopicCode(
+                          topic?.code ??
+                            null,
+                        );
+                      }
+
                       setStep(
                         grade?.code ===
                           "PROGRAM_SAT"
                           ? "skills"
                           : "topics",
-                      )
-                    }
+                      );
+                    }}
                   >
                     {
                       grade?.code ===
