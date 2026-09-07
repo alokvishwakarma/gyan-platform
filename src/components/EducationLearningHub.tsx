@@ -118,6 +118,17 @@ type EducationTopicProgress = {
 };
 
 
+type EducationSubtopicProgress = {
+  subjectCode: string;
+  topicCode: string;
+  subtopicCode: string;
+  uniqueQuestionsAttempted: number;
+  answersCount: number;
+  correctAnswers: number;
+  scorePercent: number | null;
+};
+
+
 type EducationMockAttemptReport = {
   id: number;
   testId: number;
@@ -176,6 +187,7 @@ type EducationProtectionStatus = {
 type EducationProgressReport = {
   attemptSummary: EducationAttemptSummary;
   topicProgress: EducationTopicProgress[];
+  subtopicProgress: EducationSubtopicProgress[];
   mockAttempts: EducationMockAttemptReport[];
   protection: EducationProtectionStatus;
 };
@@ -352,6 +364,23 @@ export default function EducationLearningHub({
       null,
     );
 
+  /*
+   * UI-only state for ordinary grade topic cards.
+   *
+   * Keep this separate from `topic`, because `topic`
+   * is also the selected practice scope.
+   */
+  const [
+    expandedGradeTopicCode,
+    setExpandedGradeTopicCode,
+  ] =
+    useState<
+      string |
+      null
+    >(
+      null,
+    );
+
 
   const [
     satSkills,
@@ -457,6 +486,16 @@ export default function EducationLearningHub({
   ] =
     useState<
       EducationTopicProgress[]
+    >(
+      [],
+    );
+
+  const [
+    subtopicProgress,
+    setSubtopicProgress,
+  ] =
+    useState<
+      EducationSubtopicProgress[]
     >(
       [],
     );
@@ -1748,6 +1787,49 @@ export default function EducationLearningHub({
   }
 
 
+  function subtopicProgressFor(
+    subjectCode: string,
+    topicCode: string,
+    subtopicCode: string,
+  ):
+    EducationSubtopicProgress |
+    undefined {
+    return subtopicProgress.find(
+      (item) =>
+        item.subjectCode ===
+          subjectCode &&
+        item.topicCode ===
+          topicCode &&
+        item.subtopicCode ===
+          subtopicCode,
+    );
+  }
+
+
+  function topicAttemptedCount(
+    subjectCode: string,
+    topicCode: string,
+  ): number {
+    return subtopicProgress
+      .filter(
+        (item) =>
+          item.subjectCode ===
+            subjectCode &&
+          item.topicCode ===
+            topicCode,
+      )
+      .reduce(
+        (
+          total,
+          item,
+        ) =>
+          total +
+          item.uniqueQuestionsAttempted,
+        0,
+      );
+  }
+
+
   async function loadEducationProgressReport(
     program?:
       string,
@@ -1762,6 +1844,8 @@ export default function EducationLearningHub({
           [],
       },
       topicProgress:
+        [],
+      subtopicProgress:
         [],
       mockAttempts:
         [],
@@ -1785,6 +1869,9 @@ export default function EducationLearningHub({
         empty.attemptSummary,
       );
       setTopicProgress(
+        [],
+      );
+      setSubtopicProgress(
         [],
       );
 
@@ -1818,6 +1905,8 @@ export default function EducationLearningHub({
           EducationAttemptSummary;
         topicProgress?:
           EducationTopicProgress[];
+        subtopicProgress?:
+          EducationSubtopicProgress[];
         mockAttempts?:
           EducationMockAttemptReport[];
         protection?:
@@ -1835,6 +1924,12 @@ export default function EducationLearningHub({
         )
           ? body.topicProgress
           : [],
+      subtopicProgress:
+        Array.isArray(
+          body.subtopicProgress,
+        )
+          ? body.subtopicProgress
+          : [],
       mockAttempts:
         Array.isArray(
           body.mockAttempts,
@@ -1851,6 +1946,9 @@ export default function EducationLearningHub({
     );
     setTopicProgress(
       result.topicProgress,
+    );
+    setSubtopicProgress(
+      result.subtopicProgress,
     );
 
     setProtectionStatus(
@@ -2348,6 +2446,9 @@ export default function EducationLearningHub({
       setGrade(programSelection);
       setSubject(null);
       setTopic(null);
+      setExpandedGradeTopicCode(
+        null,
+      );
       setExpandedSubjectCode(null);
       setLoading(true);
       setError("");
@@ -2411,6 +2512,21 @@ export default function EducationLearningHub({
 
     setGrade(
       selection,
+    );
+    setSubject(
+      null,
+    );
+    setTopic(
+      null,
+    );
+    setSatSkill(
+      null,
+    );
+    setSatSkills(
+      [],
+    );
+    setExpandedGradeTopicCode(
+      null,
     );
     setExpandedSubjectCode(
       null,
@@ -2591,11 +2707,7 @@ export default function EducationLearningHub({
           topic.code,
       });
 
-    if (
-      grade.code ===
-        "PROGRAM_SAT" &&
-      satSkill
-    ) {
+    if (satSkill) {
       params.set(
         "subtopic",
         satSkill.code,
@@ -2630,6 +2742,71 @@ export default function EducationLearningHub({
           "Practice progress could not be advanced.",
       );
     }
+  }
+
+
+  async function toggleGradeTopic(
+    item:
+      TopicItem,
+  ): Promise<void> {
+    if (
+      !grade ||
+      !subject ||
+      grade.code.startsWith(
+        "PROGRAM_",
+      )
+    ) {
+      return;
+    }
+
+    /*
+     * Foundation accordion state is UI-only.
+     * Clicking an already-open topic must always
+     * collapse immediately without making a request.
+     */
+    if (
+      expandedGradeTopicCode ===
+        item.code
+    ) {
+      setExpandedGradeTopicCode(
+        null,
+      );
+
+      setSatSkill(
+        null,
+      );
+
+      setSatSkills(
+        [],
+      );
+
+      if (
+        topic?.code ===
+          item.code
+      ) {
+        setTopic(
+          null,
+        );
+      }
+
+      setError(
+        "",
+      );
+
+      return;
+    }
+
+    /*
+     * Close the previously open card immediately,
+     * then make this card the only expanded one.
+     */
+    setExpandedGradeTopicCode(
+      item.code,
+    );
+
+    await selectTopic(
+      item,
+    );
   }
 
 
@@ -2668,7 +2845,10 @@ export default function EducationLearningHub({
        */
       if (
         grade.code ===
-          "PROGRAM_SAT"
+          "PROGRAM_SAT" ||
+        !grade.code.startsWith(
+          "PROGRAM_",
+        )
       ) {
         const params =
           new URLSearchParams({
@@ -2702,7 +2882,7 @@ export default function EducationLearningHub({
         if (!response.ok) {
           throw new Error(
             body.error ??
-              "SAT skills unavailable.",
+              "Subtopics unavailable.",
           );
         }
 
@@ -2712,7 +2892,10 @@ export default function EducationLearningHub({
         );
 
         setStep(
-          "skills",
+          grade.code ===
+            "PROGRAM_SAT"
+            ? "skills"
+            : "topics",
         );
 
         return;
@@ -2783,6 +2966,88 @@ export default function EducationLearningHub({
   }
 
 
+  async function selectWholeTopic():
+    Promise<void> {
+    if (
+      !grade ||
+      !subject ||
+      !topic
+    ) {
+      return;
+    }
+
+    setSatSkill(
+      null,
+    );
+
+    setLoading(
+      true,
+    );
+
+    setError("");
+    setAutoSaveMessage("");
+
+    try {
+      const batch =
+        await loadPracticeBatch(
+          grade,
+          subject,
+          topic,
+        );
+
+      if (
+        batch.questions.length <
+          5
+      ) {
+        throw new Error(
+          "This topic does not yet have 5 practice questions.",
+        );
+      }
+
+      setQuestions(
+        batch.questions,
+      );
+
+      setPracticeSequence(
+        batch.sequence,
+      );
+
+      setAnswers(
+        {},
+      );
+
+      setSubmitted(
+        false,
+      );
+
+      setPracticeQuestionIndex(
+        0,
+      );
+
+      setPracticeReviewIds(
+        [],
+      );
+
+      setStep(
+        "questions",
+      );
+    } catch (
+      caught
+    ) {
+      setError(
+        caught instanceof
+        Error
+          ? caught.message
+          : "Topic practice questions unavailable.",
+      );
+    } finally {
+      setLoading(
+        false,
+      );
+    }
+  }
+
+
   async function selectSatSkill(
     item:
       SatSkillItem,
@@ -2842,7 +3107,7 @@ export default function EducationLearningHub({
       if (!response.ok) {
         throw new Error(
           body.error ??
-            "SAT practice questions unavailable.",
+            "Subtopic practice questions unavailable.",
         );
       }
 
@@ -2855,7 +3120,7 @@ export default function EducationLearningHub({
           5
       ) {
         throw new Error(
-          "This SAT skill does not yet have 5 practice questions.",
+          "This subtopic does not yet have 5 practice questions.",
         );
       }
 
@@ -2894,7 +3159,7 @@ export default function EducationLearningHub({
         caught instanceof
         Error
           ? caught.message
-          : "SAT practice questions unavailable.",
+          : "Subtopic practice questions unavailable.",
       );
     } finally {
       setLoading(
@@ -2928,9 +3193,7 @@ export default function EducationLearningHub({
           grade,
           subject,
           topic,
-          grade.code ===
-              "PROGRAM_SAT" &&
-            satSkill
+          satSkill
             ? satSkill.code
             : undefined,
           false,
@@ -4270,12 +4533,50 @@ export default function EducationLearningHub({
             </h1>
 
             <p>
-              Choose a skill
+              {
+                grade?.code ===
+                  "PROGRAM_SAT"
+                  ? "Choose a skill"
+                  : "Practice the whole topic or focus on one subtopic"
+              }
             </p>
 
             <div
               className="education-learning__cards"
             >
+              {
+                grade &&
+                !grade.code.startsWith(
+                  "PROGRAM_",
+                ) &&
+                topic && (
+                  <button
+                    type="button"
+                    disabled={
+                      topic.questionCount <
+                        5
+                    }
+                    onClick={() =>
+                      void selectWholeTopic()
+                    }
+                  >
+                    <strong>
+                      All {
+                        topic.name
+                      }
+                    </strong>
+
+                    <small>
+                      5 questions across {
+                        satSkills.length
+                      } subtopics · {
+                        topic.questionCount
+                      } available
+                    </small>
+                  </button>
+                )
+              }
+
               {
                 satSkills.map(
                   (
@@ -4328,46 +4629,220 @@ export default function EducationLearningHub({
             </h1>
 
             <div
-              className="education-learning__cards"
+              className="education-learning__topic-stack"
             >
               {
                 topics.map(
                   (
                     item,
-                  ) => (
-                    <button
-                      key={
-                        item.code
-                      }
-                      type="button"
-                      disabled={
-                        item.questionCount <
-                          5
-                      }
-                      onClick={() =>
-                        void selectTopic(
-                          item,
-                        )
-                      }
-                    >
-                      <strong>
-                        {
-                          item.name
-                        }
-                      </strong>
+                  ) => {
+                    const expanded =
+                      expandedGradeTopicCode ===
+                        item.code &&
+                      !grade?.code.startsWith(
+                        "PROGRAM_",
+                      );
 
-                      <small>
+                    const latest =
+                      subject
+                        ? latestTopicAttempt(
+                            subject.code,
+                            item.code,
+                          )
+                        : undefined;
+
+                    const attempted =
+                      subject
+                        ? topicAttemptedCount(
+                            subject.code,
+                            item.code,
+                          )
+                        : 0;
+
+                    return (
+                      <section
+                        key={
+                          item.code
+                        }
+                        className={[
+                          "education-learning__topic-inline-card",
+                          `education-learning__topic-status--${scoreState(
+                            latest?.scorePercent,
+                          )}`,
+                          expanded
+                            ? "education-learning__topic-inline-card--expanded"
+                            : "",
+                        ]
+                          .filter(
+                            Boolean,
+                          )
+                          .join(
+                            " ",
+                          )}
+                      >
+                        <button
+                          type="button"
+                          className="education-learning__topic-inline-head"
+                          disabled={
+                            item.questionCount <
+                              5
+                          }
+                          onClick={() =>
+                            void (
+                              grade &&
+                              !grade.code.startsWith(
+                                "PROGRAM_",
+                              )
+                                ? toggleGradeTopic(
+                                    item,
+                                  )
+                                : selectTopic(
+                                    item,
+                                  )
+                            )
+                          }
+                          aria-expanded={
+                            expanded
+                          }
+                        >
+                          <span>
+                            <strong>
+                              {
+                                item.name
+                              }
+                            </strong>
+
+                            <small>
+                              {
+                                item.questionCount
+                              } questions · {
+                                attempted
+                              } attempted{
+                                latest
+                                  ? ` · ${latest.scorePercent}%`
+                                  : " · New"
+                              }
+                            </small>
+                          </span>
+
+                          {
+                            !grade?.code.startsWith(
+                              "PROGRAM_",
+                            ) && (
+                              <b>
+                                {
+                                  expanded
+                                    ? "▴"
+                                    : "▾"
+                                }
+                              </b>
+                            )
+                          }
+                        </button>
+
                         {
-                          item.subtopicCount
-                        }{" "}
-                        subtopics ·{" "}
-                        {
-                          item.questionCount
-                        }{" "}
-                        questions
-                      </small>
-                    </button>
-                  ),
+                          expanded && (
+                            <div
+                              className="education-learning__subtopic-inline"
+                            >
+                              <button
+                                type="button"
+                                className="education-learning__subtopic-chip education-learning__subtopic-chip--all"
+                                disabled={
+                                  item.questionCount <
+                                    5
+                                }
+                                onClick={() =>
+                                  void selectWholeTopic()
+                                }
+                              >
+                                <strong>
+                                  All · New 5
+                                </strong>
+                                <small>
+                                  {
+                                    item.questionCount
+                                  } questions · {
+                                    attempted
+                                  } attempted
+                                </small>
+                              </button>
+
+                              {
+                                satSkills.map(
+                                  (
+                                    skill,
+                                  ) => {
+                                    const progress =
+                                      subject
+                                        ? subtopicProgressFor(
+                                            subject.code,
+                                            item.code,
+                                            skill.code,
+                                          )
+                                        : undefined;
+
+                                    const subAttempted =
+                                      progress?.uniqueQuestionsAttempted ??
+                                      0;
+
+                                    return (
+                                      <button
+                                        key={
+                                          skill.code
+                                        }
+                                        type="button"
+                                        disabled={
+                                          skill.questionCount <
+                                            5
+                                        }
+                                        className={[
+                                          "education-learning__subtopic-chip",
+                                          `education-learning__topic-status--${scoreState(
+                                            progress?.scorePercent,
+                                          )}`,
+                                        ].join(
+                                          " ",
+                                        )}
+                                        onClick={() =>
+                                          void selectSatSkill(
+                                            skill,
+                                          )
+                                        }
+                                        title={`${skill.name} · ${subAttempted}/${skill.questionCount} attempted${
+                                          progress?.scorePercent != null
+                                            ? ` · ${progress.scorePercent}%`
+                                            : ""
+                                        }`}
+                                      >
+                                        <strong>
+                                          {
+                                            skill.name
+                                          }
+                                        </strong>
+
+                                        <small>
+                                          {
+                                            skill.questionCount
+                                          } questions · {
+                                            subAttempted
+                                          } attempted{
+                                            progress?.scorePercent != null
+                                              ? ` · ${progress.scorePercent}%`
+                                              : " · New"
+                                          }
+                                        </small>
+                                      </button>
+                                    );
+                                  },
+                                )
+                              }
+                            </div>
+                          )
+                        }
+                      </section>
+                    );
+                  },
                 )
               }
             </div>
@@ -4389,8 +4864,6 @@ export default function EducationLearningHub({
               <div>
                 <h1>
                   {
-                    grade?.code ===
-                      "PROGRAM_SAT" &&
                     satSkill
                       ? satSkill.name
                       : topic?.name
@@ -4424,12 +4897,7 @@ export default function EducationLearningHub({
                     !subject ||
                     !topic ||
                     practiceSequence?.hasMore ===
-                      false ||
-                    (
-                      grade.code ===
-                        "PROGRAM_SAT" &&
-                      !satSkill
-                    )
+                      false
                   }
                   onClick={() =>
                     void newFive()
@@ -4937,12 +5405,7 @@ export default function EducationLearningHub({
                       !subject ||
                       !topic ||
                       practiceSequence?.hasMore ===
-                        false ||
-                      (
-                        grade.code ===
-                          "PROGRAM_SAT" &&
-                        !satSkill
-                      )
+                        false
                     }
                     onClick={() =>
                       void newFive()

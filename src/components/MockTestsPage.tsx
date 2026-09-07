@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -352,6 +353,27 @@ export default function MockTestsPage({
     useState("");
 
   const [
+    expandedQuestionId,
+    setExpandedQuestionId,
+  ] =
+    useState<number | null>(
+      null,
+    );
+
+  const [
+    questionTextTruncated,
+    setQuestionTextTruncated,
+  ] =
+    useState(
+      false,
+    );
+
+  const questionTextRef =
+    useRef<HTMLElement | null>(
+      null,
+    );
+
+  const [
     currentFixedQuestionId,
     setCurrentFixedQuestionId,
   ] =
@@ -480,6 +502,93 @@ export default function MockTestsPage({
 
   const isOlsat =
     program === "OLSAT";
+
+  useEffect(
+    () => {
+      const measure =
+        () => {
+          const element =
+            questionTextRef.current;
+
+          setQuestionTextTruncated(
+            Boolean(
+              element &&
+              element.scrollHeight >
+                element.clientHeight +
+                  1,
+            ),
+          );
+        };
+
+      const frame =
+        window.requestAnimationFrame(
+          measure,
+        );
+
+      window.addEventListener(
+        "resize",
+        measure,
+      );
+
+      return () => {
+        window.cancelAnimationFrame(
+          frame,
+        );
+
+        window.removeEventListener(
+          "resize",
+          measure,
+        );
+      };
+    },
+    [
+      fixedTest?.id,
+      currentFixedQuestionId,
+    ],
+  );
+
+
+  useEffect(
+    () => {
+      if (
+        expandedQuestionId ===
+        null
+      ) {
+        return;
+      }
+
+      const onKeyDown =
+        (
+          event:
+            KeyboardEvent,
+        ) => {
+          if (
+            event.key ===
+            "Escape"
+          ) {
+            setExpandedQuestionId(
+              null,
+            );
+          }
+        };
+
+      window.addEventListener(
+        "keydown",
+        onKeyDown,
+      );
+
+      return () => {
+        window.removeEventListener(
+          "keydown",
+          onKeyDown,
+        );
+      };
+    },
+    [
+      expandedQuestionId,
+    ],
+  );
+
 
   const cbtTimeLimitSeconds =
     fixedTest?.kind ===
@@ -1188,6 +1297,10 @@ export default function MockTestsPage({
     );
 
     setRunnerError("");
+
+    setExpandedQuestionId(
+      null,
+    );
   }
 
   function requestSaveAndExit():
@@ -1708,6 +1821,30 @@ export default function MockTestsPage({
             currentQuestion,
           ]
         : activeFixedTest.questions;
+
+    const expandedQuestion =
+      expandedQuestionId != null
+        ? activeFixedTest.questions.find(
+            (question) =>
+              question.id ===
+              expandedQuestionId,
+          ) ??
+          null
+        : null;
+
+    const expandedReview =
+      expandedQuestion
+        ? fixedScore
+            ?.questions
+            .find(
+              (
+                item,
+              ) =>
+                item.questionId ===
+                expandedQuestion.id,
+            ) ??
+          null
+        : null;
 
     function goToFixedQuestion(
       questionId: number,
@@ -2446,6 +2583,472 @@ export default function MockTestsPage({
         }
 
         {
+          expandedQuestion && (
+            <div
+              className="mock-tests__question-dialog-backdrop"
+              role="presentation"
+              onMouseDown={() =>
+                setExpandedQuestionId(
+                  null,
+                )
+              }
+            >
+              <section
+                className="mock-tests__question-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="mock-full-question-title"
+                onMouseDown={(
+                  event,
+                ) =>
+                  event.stopPropagation()
+                }
+              >
+                <header
+                  className="mock-tests__question-dialog-header"
+                >
+                  <strong
+                    id="mock-full-question-title"
+                  >
+                    Question {
+                      expandedQuestion.order
+                    }
+                  </strong>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedQuestionId(
+                        null,
+                      )
+                    }
+                    aria-label="Close full question"
+                  >
+                    ×
+                  </button>
+                </header>
+
+                <div
+                  className="mock-tests__question-dialog-body"
+                >
+                  <div
+                    className="mock-tests__question-dialog-text"
+                  >
+                    {
+                      expandedQuestion.text
+                    }
+                  </div>
+
+                  {
+                    expandedQuestion.stimulus.text && (
+                      <div
+                        className="mock-tests__stimulus"
+                      >
+                        {
+                          expandedQuestion.stimulus.text
+                        }
+                      </div>
+                    )
+                  }
+
+                  {
+                    expandedQuestion.directionsText && (
+                      <div
+                        className="mock-tests__directions"
+                      >
+                        {
+                          expandedQuestion.directionsText
+                        }
+                      </div>
+                    )
+                  }
+                </div>
+
+                <div
+                  className="mock-tests__question-dialog-answers"
+                >
+                  {
+                    expandedQuestion.answerMode ===
+                      "NUMERIC" ? (
+                      <div
+                        className="mock-tests__numerical"
+                      >
+                        <label>
+                          <span>
+                            Numerical answer
+                          </span>
+
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            step="any"
+                            value={
+                              fixedAnswers[
+                                expandedQuestion.id
+                              ] ??
+                              ""
+                            }
+                            disabled={
+                              Boolean(
+                                fixedScore,
+                              )
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              setFixedAnswers(
+                                (
+                                  current,
+                                ) => {
+                                  const nextAnswers = {
+                                    ...current,
+                                    [expandedQuestion.id]:
+                                      event.target.value,
+                                  };
+
+                                  queueMicrotask(
+                                    () =>
+                                      showProtectionMilestoneIfNeeded(
+                                        cumulativeAnsweredCount +
+                                          Object.values(
+                                            nextAnswers,
+                                          ).filter(
+                                            Boolean,
+                                          ).length,
+                                        protection25Shown,
+                                        protection50Shown,
+                                        gyanRecoveryProtected,
+                                      ),
+                                  );
+
+                                  return nextAnswers;
+                                },
+                              )
+                            }
+                          />
+                        </label>
+                      </div>
+                    ) : expandedQuestion.answerMode ===
+                        "MULTI_BLANK" ? (
+                      <div
+                        className="mock-tests__choice-groups"
+                      >
+                        {
+                          expandedQuestion.choiceGroups.map(
+                            (
+                              group,
+                            ) => {
+                              let selectedGroup:
+                                Record<
+                                  string,
+                                  string
+                                > =
+                                {};
+
+                              try {
+                                selectedGroup =
+                                  fixedAnswers[
+                                    expandedQuestion.id
+                                  ]
+                                    ? JSON.parse(
+                                        fixedAnswers[
+                                          expandedQuestion.id
+                                        ],
+                                      )
+                                    : {};
+                              } catch {
+                                selectedGroup =
+                                  {};
+                              }
+
+                              return (
+                                <fieldset
+                                  key={
+                                    group.key
+                                  }
+                                  className="mock-tests__choice-group"
+                                >
+                                  <legend>
+                                    {
+                                      group.label
+                                    }
+                                  </legend>
+
+                                  {
+                                    group.choices.map(
+                                      (
+                                        choice,
+                                      ) => (
+                                        <label
+                                          key={
+                                            choice.key
+                                          }
+                                          className={
+                                            selectedGroup[
+                                              group.key
+                                            ] ===
+                                            choice.key
+                                              ? "mock-tests__choice--selected"
+                                              : ""
+                                          }
+                                        >
+                                          <input
+                                            type="radio"
+                                            name={`mock-dialog-${expandedQuestion.id}-${group.key}`}
+                                            value={
+                                              choice.key
+                                            }
+                                            checked={
+                                              selectedGroup[
+                                                group.key
+                                              ] ===
+                                              choice.key
+                                            }
+                                            disabled={
+                                              Boolean(
+                                                fixedScore,
+                                              )
+                                            }
+                                            onChange={() =>
+                                              setFixedAnswers(
+                                                (
+                                                  current,
+                                                ) => {
+                                                  let currentGroup:
+                                                    Record<
+                                                      string,
+                                                      string
+                                                    >;
+
+                                                  try {
+                                                    currentGroup =
+                                                      current[
+                                                        expandedQuestion.id
+                                                      ]
+                                                        ? JSON.parse(
+                                                            current[
+                                                              expandedQuestion.id
+                                                            ],
+                                                          )
+                                                        : {};
+                                                  } catch {
+                                                    currentGroup =
+                                                      {};
+                                                  }
+
+                                                  return {
+                                                    ...current,
+                                                    [expandedQuestion.id]:
+                                                      JSON.stringify({
+                                                        ...currentGroup,
+                                                        [group.key]:
+                                                          choice.key,
+                                                      }),
+                                                  };
+                                                },
+                                              )
+                                            }
+                                          />
+
+                                          <span>
+                                            <b>
+                                              {
+                                                choice.key
+                                              }.
+                                            </b>{" "}
+                                            {
+                                              choice.text
+                                            }
+                                          </span>
+                                        </label>
+                                      ),
+                                    )
+                                  }
+                                </fieldset>
+                              );
+                            },
+                          )
+                        }
+                      </div>
+                    ) : (
+                      <div
+                        className="mock-tests__choices"
+                      >
+                        {
+                          expandedQuestion.choices.map(
+                            (
+                              choice,
+                            ) => {
+                              const isMultiSelect =
+                                expandedQuestion.answerMode ===
+                                "MULTI_SELECT";
+
+                              const selectedValue =
+                                fixedAnswers[
+                                  expandedQuestion.id
+                                ] ?? "";
+
+                              const isSelected =
+                                isMultiSelect
+                                  ? selectedValue.includes(
+                                      choice.key,
+                                    )
+                                  : selectedValue ===
+                                    choice.key;
+
+                              const isCorrectAfterSubmit =
+                                expandedReview
+                                  ?.correctChoice
+                                  .includes(
+                                    choice.key,
+                                  ) ??
+                                false;
+
+                              return (
+                                <label
+                                  key={
+                                    choice.key
+                                  }
+                                  className={[
+                                    isSelected
+                                      ? "mock-tests__choice--selected"
+                                      : "",
+                                    fixedScore &&
+                                    isCorrectAfterSubmit
+                                      ? "mock-tests__choice--answer"
+                                      : "",
+                                  ]
+                                    .filter(
+                                      Boolean,
+                                    )
+                                    .join(
+                                      " ",
+                                    )}
+                                >
+                                  <input
+                                    type={
+                                      isMultiSelect
+                                        ? "checkbox"
+                                        : "radio"
+                                    }
+                                    name={`mock-dialog-${expandedQuestion.id}`}
+                                    value={
+                                      choice.key
+                                    }
+                                    checked={
+                                      isSelected
+                                    }
+                                    disabled={
+                                      Boolean(
+                                        fixedScore,
+                                      )
+                                    }
+                                    onChange={() =>
+                                      setFixedAnswers(
+                                        (
+                                          current,
+                                        ) => {
+                                          if (
+                                            !isMultiSelect
+                                          ) {
+                                            return {
+                                              ...current,
+                                              [expandedQuestion.id]:
+                                                choice.key,
+                                            };
+                                          }
+
+                                          const next =
+                                            new Set(
+                                              (
+                                                current[
+                                                  expandedQuestion.id
+                                                ] ??
+                                                ""
+                                              )
+                                                .split(
+                                                  "",
+                                                )
+                                                .filter(
+                                                  Boolean,
+                                                ),
+                                            );
+
+                                          if (
+                                            next.has(
+                                              choice.key,
+                                            )
+                                          ) {
+                                            next.delete(
+                                              choice.key,
+                                            );
+                                          } else {
+                                            next.add(
+                                              choice.key,
+                                            );
+                                          }
+
+                                          return {
+                                            ...current,
+                                            [expandedQuestion.id]:
+                                              Array.from(
+                                                next,
+                                              )
+                                                .sort()
+                                                .join(
+                                                  "",
+                                                ),
+                                          };
+                                        },
+                                      )
+                                    }
+                                  />
+
+                                  <span>
+                                    <b>
+                                      {
+                                        choice.key
+                                      }.
+                                    </b>{" "}
+                                    {
+                                      choice.text
+                                    }
+                                  </span>
+                                </label>
+                              );
+                            },
+                          )
+                        }
+                      </div>
+                    )
+                  }
+
+                  {
+                    expandedReview && (
+                      <div
+                        className="mock-tests__explanation"
+                      >
+                        <strong>
+                          Answer: {
+                            expandedReview.correctChoice
+                          }
+                        </strong>
+
+                        <span>
+                          {
+                            expandedReview.explanation
+                          }
+                        </span>
+                      </div>
+                    )
+                  }
+                </div>
+              </section>
+            </div>
+          )
+        }
+
+        {
           runnerError && (
             <div
               className="mock-tests__runner-error"
@@ -2606,13 +3209,43 @@ export default function MockTestsPage({
                     <div
                       className="mock-tests__question-heading"
                     >
-                      <strong>
+                      <div
+                        className="mock-tests__question-text-wrap"
+                      >
+                        <strong
+                          ref={
+                            question.id ===
+                            currentQuestion?.id
+                              ? questionTextRef
+                              : undefined
+                          }
+                        >
+                          {
+                            question.order
+                          }. {
+                            question.text
+                          }
+                        </strong>
+
                         {
-                          question.order
-                        }. {
-                          question.text
+                          question.id ===
+                            currentQuestion?.id &&
+                          questionTextTruncated && (
+                            <button
+                              type="button"
+                              className="mock-tests__question-more"
+                              onClick={() =>
+                                setExpandedQuestionId(
+                                  question.id,
+                                )
+                              }
+                              aria-label={`Read full question ${question.order}`}
+                            >
+                              more
+                            </button>
+                          )
                         }
-                      </strong>
+                      </div>
 
                       <small>
                         {

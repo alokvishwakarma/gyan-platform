@@ -1868,6 +1868,87 @@ async function getReport(
       }>();
 
 
+  const subtopicProgress =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          s.subject_code AS subjectCode,
+          t.topic_code AS topicCode,
+          st.subtopic_code AS subtopicCode,
+          COUNT(DISTINCT h.question_id) AS uniqueQuestionsAttempted,
+
+          (
+            SELECT COUNT(*)
+            FROM education_attempt_answers aa
+            JOIN education_attempts a
+              ON a.id = aa.attempt_id
+            JOIN education_questions aq
+              ON aq.id = aa.question_id
+            WHERE
+              a.student_id = h.student_id
+              AND aq.subtopic_id = st.id
+          ) AS answersCount,
+
+          (
+            SELECT COUNT(*)
+            FROM education_attempt_answers aa
+            JOIN education_attempts a
+              ON a.id = aa.attempt_id
+            JOIN education_questions aq
+              ON aq.id = aa.question_id
+            WHERE
+              a.student_id = h.student_id
+              AND aq.subtopic_id = st.id
+              AND aa.correct = 1
+          ) AS correctAnswers
+
+        FROM education_student_question_history h
+        JOIN education_questions q
+          ON q.id = h.question_id
+        JOIN education_subtopics st
+          ON st.id = q.subtopic_id
+        JOIN education_topics t
+          ON t.id = st.topic_id
+        JOIN education_subjects s
+          ON s.id = t.subject_id
+
+        WHERE
+          h.student_id = ?
+          AND q.active = 1
+          AND (
+            ? = ''
+            OR s.grade_code = ?
+          )
+
+        GROUP BY
+          h.student_id,
+          s.subject_code,
+          t.topic_code,
+          st.id,
+          st.subtopic_code
+
+        ORDER BY
+          s.subject_code,
+          t.topic_code,
+          st.sort_order
+        `,
+      )
+      .bind(
+        student.id,
+        reportGradeCode,
+        reportGradeCode,
+      )
+      .all<{
+        subjectCode: string;
+        topicCode: string;
+        subtopicCode: string;
+        uniqueQuestionsAttempted: number;
+        answersCount: number;
+        correctAnswers: number;
+      }>();
+
+
   const mockAttemptsResult =
     await env.gyan_registry
       .prepare(
@@ -2323,6 +2404,47 @@ async function getReport(
                   item.scorePercent,
                 ),
         }),
+      ),
+
+    subtopicProgress:
+      subtopicProgress.results.map(
+        (item) => {
+          const answersCount =
+            Number(
+              item.answersCount ??
+              0,
+            );
+
+          const correctAnswers =
+            Number(
+              item.correctAnswers ??
+              0,
+            );
+
+          return {
+            subjectCode:
+              item.subjectCode,
+            topicCode:
+              item.topicCode,
+            subtopicCode:
+              item.subtopicCode,
+            uniqueQuestionsAttempted:
+              Number(
+                item.uniqueQuestionsAttempted ??
+                0,
+              ),
+            answersCount,
+            correctAnswers,
+            scorePercent:
+              answersCount > 0
+                ? Math.round(
+                    correctAnswers *
+                      100 /
+                      answersCount,
+                  )
+                : null,
+          };
+        },
       ),
 
     attemptSummary: {
