@@ -542,6 +542,7 @@ async function saveProgress(
         SELECT
           q.id,
           q.correct_choice,
+          st.subtopic_code,
           t.topic_code,
           s.subject_code,
           s.grade_code,
@@ -579,6 +580,7 @@ async function saveProgress(
       .all<{
         id: number;
         correct_choice: string;
+        subtopic_code: string;
         topic_code: string;
         subject_code: string;
         grade_code: string;
@@ -866,6 +868,7 @@ async function saveProgress(
         `
         INSERT INTO education_attempts (
           student_id,
+          grade_code,
           subject_code,
           topic_code,
           question_count,
@@ -874,13 +877,14 @@ async function saveProgress(
           created_at
         )
         VALUES (
-          ?, ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?, ?, ?,
           CURRENT_TIMESTAMP
         )
         `,
       )
       .bind(
         student.id,
+        grade,
         subject,
         topic,
         graded.length,
@@ -925,52 +929,155 @@ async function saveProgress(
     ),
   );
 
-  await env.gyan_registry.batch(
-    graded.map(
-      (
-        answer,
-      ) =>
-        env.gyan_registry
-          .prepare(
-            `
-            INSERT OR IGNORE INTO education_student_question_history (
-              student_id,
-              question_id,
-              first_attempted_at
+  const historyInsertResults =
+    await env.gyan_registry.batch(
+      graded.map(
+        (
+          answer,
+        ) =>
+          env.gyan_registry
+            .prepare(
+              `
+              INSERT OR IGNORE INTO education_student_question_history (
+                student_id,
+                question_id,
+                first_attempted_at
+              )
+              VALUES (
+                ?, ?,
+                CURRENT_TIMESTAMP
+              )
+              `,
             )
-            VALUES (
-              ?, ?,
-              CURRENT_TIMESTAMP
-            )
-            `,
-          )
-          .bind(
-            student.id,
-            answer.questionId,
-          ),
-    ),
+            .bind(
+              student.id,
+              answer.questionId,
+            ),
+      ),
+    );
+
+  const newlyAttemptedQuestionIds =
+    new Set<number>();
+
+  historyInsertResults.forEach(
+    (
+      result,
+      index,
+    ) => {
+      if (
+        Number(
+          result.meta?.changes ??
+          0,
+        ) > 0
+      ) {
+        newlyAttemptedQuestionIds.add(
+          graded[index].questionId,
+        );
+      }
+    },
   );
+
+  const subtopicByQuestionId =
+    new Map(
+      rows.results.map(
+        (
+          row,
+        ) => [
+          Number(
+            row.id,
+          ),
+          row.subtopic_code,
+        ] as const,
+      ),
+    );
+
+  type SubtopicBatchSummary = {
+    questionsAnswered: number;
+    correctAnswers: number;
+    uniqueQuestionsAttempted: number;
+  };
+
+  const subtopicSummaries =
+    new Map<
+      string,
+      SubtopicBatchSummary
+    >();
+
+  for (
+    const answer of graded
+  ) {
+    const subtopicCode =
+      subtopicByQuestionId.get(
+        answer.questionId,
+      );
+
+    if (!subtopicCode) {
+      continue;
+    }
+
+    let summary =
+      subtopicSummaries.get(
+        subtopicCode,
+      );
+
+    if (!summary) {
+      summary = {
+        questionsAnswered:
+          0,
+        correctAnswers:
+          0,
+        uniqueQuestionsAttempted:
+          0,
+      };
+
+      subtopicSummaries.set(
+        subtopicCode,
+        summary,
+      );
+    }
+
+    summary.questionsAnswered +=
+      1;
+
+    if (answer.correct) {
+      summary.correctAnswers +=
+        1;
+    }
+
+    if (
+      newlyAttemptedQuestionIds.has(
+        answer.questionId,
+      )
+    ) {
+      summary.uniqueQuestionsAttempted +=
+        1;
+    }
+  }
 
   await env.gyan_registry
     .prepare(
       `
       INSERT INTO education_topic_mastery (
         student_id,
+        grade_code,
         subject_code,
         topic_code,
         attempts,
         questions_answered,
         correct_answers,
+        unique_questions_attempted,
         score_percent,
         updated_at
       )
       VALUES (
-        ?, ?, ?, 1, ?, ?, ?,
+        ?, ?, ?, ?, 1,
+        ?, ?, ?, ?,
         CURRENT_TIMESTAMP
       )
 
       ON CONFLICT(
         student_id,
+        grade_code,
         subject_code,
         topic_code
       )
@@ -986,6 +1093,10 @@ async function saveProgress(
         correct_answers =
           education_topic_mastery.correct_answers +
           excluded.correct_answers,
+
+        unique_questions_attempted =
+          education_topic_mastery.unique_questions_attempted +
+          excluded.unique_questions_attempted,
 
         score_percent =
           ROUND(
@@ -1006,13 +1117,121 @@ async function saveProgress(
     )
     .bind(
       student.id,
+      grade,
       subject,
       topic,
       graded.length,
       correctCount,
+      newlyAttemptedQuestionIds.size,
       scorePercent,
     )
     .run();
+
+  if (
+    subtopicSummaries.size >
+    0
+  ) {
+    await env.gyan_registry.batch(
+      Array.from(
+        subtopicSummaries.entries(),
+      ).map(
+        (
+          [
+            subtopicCode,
+            summary,
+          ],
+        ) => {
+          const subtopicScorePercent =
+            summary.questionsAnswered >
+              0
+              ? Math.round(
+                  (
+                    summary.correctAnswers /
+                    summary.questionsAnswered
+                  ) *
+                    100,
+                )
+              : 0;
+
+          return env.gyan_registry
+            .prepare(
+              `
+              INSERT INTO education_subtopic_mastery (
+                student_id,
+                grade_code,
+                subject_code,
+                topic_code,
+                subtopic_code,
+                attempts,
+                questions_answered,
+                correct_answers,
+                unique_questions_attempted,
+                score_percent,
+                updated_at
+              )
+              VALUES (
+                ?, ?, ?, ?, ?,
+                1,
+                ?, ?, ?, ?,
+                CURRENT_TIMESTAMP
+              )
+
+              ON CONFLICT(
+                student_id,
+                grade_code,
+                subject_code,
+                topic_code,
+                subtopic_code
+              )
+              DO UPDATE SET
+                attempts =
+                  education_subtopic_mastery.attempts +
+                  1,
+
+                questions_answered =
+                  education_subtopic_mastery.questions_answered +
+                  excluded.questions_answered,
+
+                correct_answers =
+                  education_subtopic_mastery.correct_answers +
+                  excluded.correct_answers,
+
+                unique_questions_attempted =
+                  education_subtopic_mastery.unique_questions_attempted +
+                  excluded.unique_questions_attempted,
+
+                score_percent =
+                  ROUND(
+                    (
+                      education_subtopic_mastery.correct_answers +
+                      excluded.correct_answers
+                    ) *
+                    100.0 /
+                    (
+                      education_subtopic_mastery.questions_answered +
+                      excluded.questions_answered
+                    )
+                  ),
+
+                updated_at =
+                  CURRENT_TIMESTAMP
+              `,
+            )
+            .bind(
+              student.id,
+              grade,
+              subject,
+              topic,
+              subtopicCode,
+              summary.questionsAnswered,
+              summary.correctAnswers,
+              summary.uniqueQuestionsAttempted,
+              subtopicScorePercent,
+            );
+        },
+      ),
+    );
+  }
 
   const report =
     await loadReport(
@@ -1105,6 +1324,8 @@ async function loadReport(
 
               WHERE
                 a.student_id = ?
+                AND a.grade_code =
+                    s.grade_code
                 AND a.subject_code =
                     s.subject_code
                 AND a.topic_code =
@@ -1127,6 +1348,8 @@ async function loadReport(
 
         LEFT JOIN education_topic_mastery m
           ON m.student_id = ?
+          AND m.grade_code =
+              s.grade_code
           AND m.subject_code =
               s.subject_code
           AND m.topic_code =
@@ -1220,24 +1443,37 @@ async function educationProtectionStatus(
       .prepare(
         `
         SELECT
-          (
-            SELECT COUNT(*)
-            FROM education_attempt_answers aa
-            INNER JOIN education_attempts a
-              ON a.id = aa.attempt_id
-            WHERE a.student_id = ?
-              AND aa.selected_choice IS NOT NULL
-              AND TRIM(aa.selected_choice) <> ''
+          COALESCE(
+            (
+              SELECT
+                SUM(
+                  a.question_count
+                )
+              FROM education_attempts a
+              WHERE
+                a.student_id = ?
+            ),
+            0
           )
           +
-          (
-            SELECT COUNT(*)
-            FROM education_mock_attempt_answers maa
-            INNER JOIN education_mock_attempts ma
-              ON ma.id = maa.attempt_id
-            WHERE ma.student_id = ?
-              AND maa.selected_answer IS NOT NULL
-              AND TRIM(maa.selected_answer) <> ''
+          COALESCE(
+            (
+              SELECT
+                SUM(
+                  COALESCE(
+                    ma.correct_count,
+                    0
+                  ) +
+                  COALESCE(
+                    ma.incorrect_count,
+                    0
+                  )
+                )
+              FROM education_mock_attempts ma
+              WHERE
+                ma.student_id = ?
+            ),
+            0
           ) AS answered_count
         `,
       )
@@ -1559,13 +1795,37 @@ async function getReport(
       ),
     );
 
+  const requestedGradeCode =
+    normalizeCode(
+      url.searchParams.get(
+        "grade",
+      ),
+    );
+
   const reportProgram =
     requestedProgram;
 
+  const activityOnly =
+    url.searchParams.get(
+      "activity",
+    ) ===
+      "1";
+
+  /*
+   * grade_code is the canonical category key for both ordinary
+   * grades and programs. Examples:
+   *   GRADE_6, GRADE_8, PROGRAM_JEE, PROGRAM_NEET, PROGRAM_GRE.
+   */
   const reportGradeCode =
     reportProgram
-      ? `PROGRAM_${reportProgram}`
-      : "";
+      ? (
+          reportProgram.startsWith(
+            "PROGRAM_",
+          )
+            ? reportProgram
+            : `PROGRAM_${reportProgram}`
+        )
+      : requestedGradeCode;
 
   if (!studentCode) {
     return jsonResponse(
@@ -1725,6 +1985,8 @@ async function getReport(
             0,
           recentAttempts:
             [],
+          categories:
+            [],
         },
       });
     }
@@ -1737,6 +1999,139 @@ async function getReport(
       404,
     );
   }
+
+  /*
+   * Header "My Activity" needs only a tiny education roll-up.
+   * Do not load attempts, subtopic history, mocks, protection,
+   * or the detailed report for this request.
+   *
+   * Cost grows with mastered topic rows for this student, not
+   * with raw answer history.
+   */
+  if (
+    activityOnly
+  ) {
+    const categoryRows =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT
+            grade_code AS gradeCode,
+            SUM(
+              unique_questions_attempted
+            ) AS uniqueQuestionsAttempted,
+            SUM(
+              questions_answered
+            ) AS answersCount,
+            SUM(
+              correct_answers
+            ) AS correctAnswers,
+            SUM(
+              attempts
+            ) AS attempts,
+            MAX(
+              updated_at
+            ) AS updatedAt
+
+          FROM education_topic_mastery
+
+          WHERE
+            student_id = ?
+
+          GROUP BY
+            grade_code
+
+          ORDER BY
+            MAX(
+              updated_at
+            ) DESC
+
+          LIMIT 3
+          `,
+        )
+        .bind(
+          student.id,
+        )
+        .all<{
+          gradeCode: string;
+          uniqueQuestionsAttempted: number;
+          answersCount: number;
+          correctAnswers: number;
+          attempts: number;
+          updatedAt: string;
+        }>();
+
+    const categories =
+      categoryRows.results.map(
+        (
+          row,
+        ) => {
+          const answersCount =
+            Number(
+              row.answersCount ??
+              0,
+            );
+
+          const correctAnswers =
+            Number(
+              row.correctAnswers ??
+              0,
+            );
+
+          return {
+            gradeCode:
+              row.gradeCode,
+
+            uniqueQuestionsAttempted:
+              Number(
+                row.uniqueQuestionsAttempted ??
+                0,
+              ),
+
+            answersCount,
+
+            correctAnswers,
+
+            scorePercent:
+              answersCount >
+                0
+                ? Math.round(
+                    correctAnswers *
+                      100 /
+                      answersCount,
+                  )
+                : null,
+
+            updatedAt:
+              row.updatedAt,
+          };
+        },
+      );
+
+    return jsonResponse({
+      attemptSummary: {
+        totalAttempts:
+          categoryRows.results.reduce(
+            (
+              total,
+              row,
+            ) =>
+              total +
+              Number(
+                row.attempts ??
+                0,
+              ),
+            0,
+          ),
+
+        recentAttempts:
+          [],
+
+        categories,
+      },
+    });
+  }
+
 
   const subject =
     normalizeCode(
@@ -1755,11 +2150,18 @@ async function getReport(
 
         FROM education_attempts
 
-        WHERE student_id = ?
+        WHERE
+          student_id = ?
+          AND (
+            ? = ''
+            OR grade_code = ?
+          )
         `,
       )
       .bind(
         student.id,
+        reportGradeCode,
+        reportGradeCode,
       )
       .first<{
         totalAttempts: number;
@@ -1780,7 +2182,12 @@ async function getReport(
 
         FROM education_attempts
 
-        WHERE student_id = ?
+        WHERE
+          student_id = ?
+          AND (
+            ? = ''
+            OR grade_code = ?
+          )
 
         ORDER BY
           created_at DESC,
@@ -1791,6 +2198,8 @@ async function getReport(
       )
       .bind(
         student.id,
+        reportGradeCode,
+        reportGradeCode,
       )
       .all<{
         id: number;
@@ -1807,50 +2216,25 @@ async function getReport(
       .prepare(
         `
         SELECT
-          s.subject_code AS subjectCode,
-          t.topic_code AS topicCode,
-          COUNT(h.question_id) AS uniqueQuestionsAttempted,
-          COALESCE(m.questions_answered, 0) AS answersCount,
-          COALESCE(m.correct_answers, 0) AS correctAnswers,
+          m.subject_code AS subjectCode,
+          m.topic_code AS topicCode,
+          m.unique_questions_attempted AS uniqueQuestionsAttempted,
+          m.questions_answered AS answersCount,
+          m.correct_answers AS correctAnswers,
           m.score_percent AS scorePercent
 
-        FROM education_student_question_history h
-
-        JOIN education_questions q
-          ON q.id = h.question_id
-
-        JOIN education_subtopics st
-          ON st.id = q.subtopic_id
-
-        JOIN education_topics t
-          ON t.id = st.topic_id
-
-        JOIN education_subjects s
-          ON s.id = t.subject_id
-
-        LEFT JOIN education_topic_mastery m
-          ON m.student_id = h.student_id
-          AND m.subject_code = s.subject_code
-          AND m.topic_code = t.topic_code
+        FROM education_topic_mastery m
 
         WHERE
-          h.student_id = ?
-          AND q.active = 1
+          m.student_id = ?
           AND (
             ? = ''
-            OR s.grade_code = ?
+            OR m.grade_code = ?
           )
 
-        GROUP BY
-          s.subject_code,
-          t.topic_code,
-          m.questions_answered,
-          m.correct_answers,
-          m.score_percent
-
         ORDER BY
-          s.subject_code,
-          t.topic_code
+          m.subject_code,
+          m.topic_code
         `,
       )
       .bind(
@@ -1873,65 +2257,27 @@ async function getReport(
       .prepare(
         `
         SELECT
-          s.subject_code AS subjectCode,
-          t.topic_code AS topicCode,
-          st.subtopic_code AS subtopicCode,
-          COUNT(DISTINCT h.question_id) AS uniqueQuestionsAttempted,
+          m.subject_code AS subjectCode,
+          m.topic_code AS topicCode,
+          m.subtopic_code AS subtopicCode,
+          m.unique_questions_attempted AS uniqueQuestionsAttempted,
+          m.questions_answered AS answersCount,
+          m.correct_answers AS correctAnswers,
+          m.score_percent AS scorePercent
 
-          (
-            SELECT COUNT(*)
-            FROM education_attempt_answers aa
-            JOIN education_attempts a
-              ON a.id = aa.attempt_id
-            JOIN education_questions aq
-              ON aq.id = aa.question_id
-            WHERE
-              a.student_id = h.student_id
-              AND aq.subtopic_id = st.id
-          ) AS answersCount,
-
-          (
-            SELECT COUNT(*)
-            FROM education_attempt_answers aa
-            JOIN education_attempts a
-              ON a.id = aa.attempt_id
-            JOIN education_questions aq
-              ON aq.id = aa.question_id
-            WHERE
-              a.student_id = h.student_id
-              AND aq.subtopic_id = st.id
-              AND aa.correct = 1
-          ) AS correctAnswers
-
-        FROM education_student_question_history h
-        JOIN education_questions q
-          ON q.id = h.question_id
-        JOIN education_subtopics st
-          ON st.id = q.subtopic_id
-        JOIN education_topics t
-          ON t.id = st.topic_id
-        JOIN education_subjects s
-          ON s.id = t.subject_id
+        FROM education_subtopic_mastery m
 
         WHERE
-          h.student_id = ?
-          AND q.active = 1
+          m.student_id = ?
           AND (
             ? = ''
-            OR s.grade_code = ?
+            OR m.grade_code = ?
           )
 
-        GROUP BY
-          h.student_id,
-          s.subject_code,
-          t.topic_code,
-          st.id,
-          st.subtopic_code
-
         ORDER BY
-          s.subject_code,
-          t.topic_code,
-          st.sort_order
+          m.subject_code,
+          m.topic_code,
+          m.subtopic_code
         `,
       )
       .bind(
@@ -1946,6 +2292,7 @@ async function getReport(
         uniqueQuestionsAttempted: number;
         answersCount: number;
         correctAnswers: number;
+        scorePercent: number | null;
       }>();
 
 
@@ -1971,20 +2318,37 @@ async function getReport(
           mt.exam_level,
           mt.program_code,
           (
-            SELECT COUNT(*)
-            FROM education_mock_attempt_answers maa
-            WHERE maa.attempt_id = ma.id
+            COALESCE(
+              ma.correct_count,
+              0
+            ) +
+            COALESCE(
+              ma.incorrect_count,
+              0
+            ) +
+            COALESCE(
+              ma.unanswered_count,
+              0
+            )
           ) AS question_count
+
         FROM education_mock_attempts ma
+
         INNER JOIN education_mock_tests mt
           ON mt.id = ma.mock_test_id
+
         WHERE
           ma.student_id = ?
           AND (
             ? = ''
             OR mt.program_code = ?
           )
-        ORDER BY ma.submitted_at DESC, ma.id DESC
+
+        ORDER BY
+          ma.submitted_at DESC,
+          ma.id DESC
+
+        LIMIT 10
         `,
       )
       .bind(
@@ -2012,235 +2376,11 @@ async function getReport(
         question_count: number;
       }>();
 
-  const mockAttemptIds =
-    mockAttemptsResult.results.map(
-      (row) =>
-        Number(
-          row.id,
-        ),
-    );
-
-  const mockQuestionResults =
-    mockAttemptIds.length
-      ? await env.gyan_registry
-          .prepare(
-            `
-            SELECT
-              maa.attempt_id,
-              maa.question_id,
-              maa.selected_answer,
-              maa.correct,
-              mtq.question_order,
-              mtq.section_code,
-              q.question_text,
-              q.choice_a,
-              q.choice_b,
-              q.choice_c,
-              q.choice_d,
-              q.correct_choice,
-              q.explanation,
-              s.subject_code,
-              s.subject_name,
-              t.topic_code,
-              t.topic_name,
-              st.subtopic_code,
-              st.subtopic_name
-            FROM education_mock_attempt_answers maa
-            INNER JOIN education_mock_attempts ma
-              ON ma.id = maa.attempt_id
-            INNER JOIN education_mock_test_questions mtq
-              ON mtq.mock_test_id = ma.mock_test_id
-             AND mtq.question_id = maa.question_id
-            INNER JOIN education_questions q
-              ON q.id = maa.question_id
-            INNER JOIN education_subtopics st
-              ON st.id = q.subtopic_id
-            INNER JOIN education_topics t
-              ON t.id = st.topic_id
-            INNER JOIN education_subjects s
-              ON s.id = t.subject_id
-            WHERE maa.attempt_id IN (
-              ${mockAttemptIds
-                .map(() => "?")
-                .join(",")}
-            )
-            ORDER BY maa.attempt_id, mtq.question_order
-            `,
-          )
-          .bind(
-            ...mockAttemptIds,
-          )
-          .all<{
-            attempt_id: number;
-            question_id: number;
-            selected_answer: string | null;
-            correct: number;
-            question_order: number;
-            section_code: string | null;
-            question_text: string;
-            choice_a: string | null;
-            choice_b: string | null;
-            choice_c: string | null;
-            choice_d: string | null;
-            correct_choice: string | null;
-            explanation: string | null;
-            subject_code: string;
-            subject_name: string;
-            topic_code: string;
-            topic_name: string;
-            subtopic_code: string;
-            subtopic_name: string;
-          }>()
-      : {
-          results:
-            [] as Array<{
-              attempt_id: number;
-              question_id: number;
-              selected_answer: string | null;
-              correct: number;
-              question_order: number;
-              section_code: string | null;
-              question_text: string;
-              choice_a: string | null;
-              choice_b: string | null;
-              choice_c: string | null;
-              choice_d: string | null;
-              correct_choice: string | null;
-              explanation: string | null;
-              subject_code: string;
-              subject_name: string;
-              topic_code: string;
-              topic_name: string;
-              subtopic_code: string;
-              subtopic_name: string;
-            }>,
-        };
-
-  const mockResultsByAttempt =
-    new Map<
-      number,
-      Array<{
-        questionId: number;
-        sectionCode: string;
-        questionOrder: number;
-        status:
-          | "correct"
-          | "wrong"
-          | "unanswered";
-        selectedAnswer: string;
-        questionText: string;
-        choices: {
-          A: string;
-          B: string;
-          C: string;
-          D: string;
-        };
-        correctAnswer: string;
-        explanation: string | null;
-        subjectCode: string;
-        subjectName: string;
-        topicCode: string;
-        topicName: string;
-        subtopicCode: string;
-        subtopicName: string;
-      }>
-    >();
-
-  for (
-    const row of
-      mockQuestionResults.results
-  ) {
-    const attemptId =
-      Number(
-        row.attempt_id,
-      );
-
-    const current =
-      mockResultsByAttempt.get(
-        attemptId,
-      ) ?? [];
-
-    current.push({
-      questionId:
-        Number(
-          row.question_id,
-        ),
-
-      sectionCode:
-        row.section_code ??
-        "GENERAL",
-
-      questionOrder:
-        Number(
-          row.question_order,
-        ),
-
-      status:
-        !row.selected_answer
-          ? "unanswered"
-          : Number(
-              row.correct,
-            ) === 1
-            ? "correct"
-            : "wrong",
-
-      selectedAnswer:
-        row.selected_answer ??
-        "",
-
-      questionText:
-        row.question_text,
-
-      choices: {
-        A:
-          row.choice_a ??
-          "",
-        B:
-          row.choice_b ??
-          "",
-        C:
-          row.choice_c ??
-          "",
-        D:
-          row.choice_d ??
-          "",
-      },
-
-      correctAnswer:
-        row.correct_choice ??
-        "",
-
-      explanation:
-        row.explanation,
-
-      subjectCode:
-        row.subject_code,
-
-      subjectName:
-        row.subject_name,
-
-      topicCode:
-        row.topic_code,
-
-      topicName:
-        row.topic_name,
-
-      subtopicCode:
-        row.subtopic_code,
-
-      subtopicName:
-        row.subtopic_name,
-    });
-
-    mockResultsByAttempt.set(
-      attemptId,
-      current,
-    );
-  }
-
   const mockAttempts =
     mockAttemptsResult.results.map(
-      (row) => {
+      (
+        row,
+      ) => {
         const maximumMarks =
           Number(
             row.maximum_marks,
@@ -2251,33 +2391,44 @@ async function getReport(
             Number(
               row.id,
             ),
+
           testId:
             Number(
               row.test_id,
             ),
+
           testCode:
             row.test_code,
+
           testName:
             row.test_name,
+
           testKind:
             row.test_kind,
+
           examLevel:
             row.exam_level,
+
           programCode:
             row.program_code,
+
           attemptNumber:
             Number(
               row.attempt_number,
             ),
+
           questionCount:
             Number(
               row.question_count,
             ),
+
           score:
             Number(
               row.score,
             ),
+
           maximumMarks,
+
           scorePercent:
             maximumMarks > 0
               ? Math.min(
@@ -2291,34 +2442,40 @@ async function getReport(
                   ),
                 )
               : 0,
+
           correctCount:
             Number(
               row.correct_count,
             ),
+
           incorrectCount:
             Number(
               row.incorrect_count,
             ),
+
           unansweredCount:
             Number(
               row.unanswered_count,
             ),
+
           elapsedSeconds:
             Number(
               row.elapsed_seconds,
             ),
+
           saveCount:
             Number(
               row.save_count,
             ),
+
           submittedAt:
             row.submitted_at,
-          questionResults:
-            mockResultsByAttempt.get(
-              Number(
-                row.id,
-              ),
-            ) ?? [],
+
+          /*
+           * Full question details are loaded only when the learner
+           * opens this specific mock attempt.
+           */
+          questionResults: [],
         };
       },
     );
@@ -2540,6 +2697,13 @@ async function getReviewQuestions(
       ),
     );
 
+  const requestedGrade =
+    normalizeCode(
+      url.searchParams.get(
+        "grade",
+      ),
+    );
+
   if (
     !studentCode ||
     !subject ||
@@ -2642,10 +2806,17 @@ async function getReviewQuestions(
     );
   }
 
+  const reviewGrade =
+    requestedGrade ||
+    student.grade_code;
+
   /*
    * Latest response for each previously seen question.
    * Only questions whose latest saved response is still wrong
    * are considered unresolved.
+   *
+   * grade_code is part of the attempt identity so overlapping
+   * JEE / NEET / school topic codes never mix.
    */
   const wrong =
     await env.gyan_registry
@@ -2687,6 +2858,7 @@ async function getReviewQuestions(
 
           WHERE
             a.student_id = ?
+            AND a.grade_code = ?
             AND a.subject_code = ?
             AND a.topic_code = ?
             AND s.country_code = ?
@@ -2708,10 +2880,11 @@ async function getReviewQuestions(
       )
       .bind(
         student.id,
+        reviewGrade,
         subject,
         topic,
         student.country_code,
-        student.grade_code,
+        reviewGrade,
       )
       .all<{
         question_id: number;
@@ -2792,7 +2965,7 @@ async function getReviewQuestions(
         )
         .bind(
           student.country_code,
-          student.grade_code,
+          reviewGrade,
           subject,
           topic,
           ...wrongIds,
@@ -2947,6 +3120,504 @@ async function getReviewQuestions(
 }
 
 
+
+
+async function getMockAttemptDetail(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
+  const activeGuest =
+    await currentEducationGuest(
+      request,
+      env,
+    );
+
+  const guestCode =
+    normalizeCode(
+      activeGuest
+        ?.slug,
+    );
+
+  const user =
+    await currentUser(
+      request,
+      env,
+    );
+
+  const studentCode =
+    normalizeCode(
+      url.searchParams.get(
+        "student",
+      ),
+    );
+
+  const attemptId =
+    Number(
+      url.searchParams.get(
+        "attempt",
+      ) ??
+      0,
+    );
+
+  if (
+    !studentCode ||
+    !Number.isInteger(
+      attemptId,
+    ) ||
+    attemptId <= 0
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "student and attempt are required.",
+      },
+      400,
+    );
+  }
+
+  if (
+    !activeGuest &&
+    !user
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "Open this GYAN on its linked device to view saved progress.",
+      },
+      401,
+    );
+  }
+
+  const student =
+    await env.gyan_registry
+      .prepare(
+        activeGuest
+          ? `
+            SELECT
+              id,
+              student_code
+
+            FROM education_students
+
+            WHERE
+              gyan_account_id = ?
+
+            LIMIT 1
+          `
+          : `
+            SELECT
+              id,
+              student_code
+
+            FROM education_students
+
+            WHERE
+              student_code = ?
+              AND email = ?
+
+            LIMIT 1
+          `,
+      )
+      .bind(
+        ...(
+          activeGuest
+            ? [
+                activeGuest.id,
+              ]
+            : [
+                studentCode,
+                user!.email,
+              ]
+        ),
+      )
+      .first<{
+        id: number;
+        student_code: string;
+      }>();
+
+  if (!student) {
+    return jsonResponse(
+      {
+        error:
+          "Student card not found for this GYAN.",
+      },
+      404,
+    );
+  }
+
+  if (
+    activeGuest &&
+    guestCode &&
+    studentCode !==
+      guestCode
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "This GYAN is not active in this browser.",
+      },
+      403,
+    );
+  }
+
+  if (
+    !activeGuest &&
+    normalizeCode(
+      student.student_code,
+    ) !==
+      studentCode
+  ) {
+    return jsonResponse(
+      {
+        error:
+          "This education result does not belong to the active GYAN.",
+      },
+      403,
+    );
+  }
+
+  const attempt =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          ma.id,
+          ma.attempt_number,
+          ma.elapsed_seconds,
+          ma.save_count,
+          ma.score,
+          ma.max_score AS maximum_marks,
+          ma.correct_count,
+          ma.incorrect_count,
+          ma.unanswered_count,
+          ma.submitted_at,
+
+          mt.id AS test_id,
+          mt.test_code,
+          mt.test_name,
+          mt.test_kind,
+          mt.exam_level,
+          mt.program_code,
+
+          (
+            COALESCE(
+              ma.correct_count,
+              0
+            ) +
+            COALESCE(
+              ma.incorrect_count,
+              0
+            ) +
+            COALESCE(
+              ma.unanswered_count,
+              0
+            )
+          ) AS question_count
+
+        FROM education_mock_attempts ma
+
+        INNER JOIN education_mock_tests mt
+          ON mt.id = ma.mock_test_id
+
+        WHERE
+          ma.id = ?
+          AND ma.student_id = ?
+
+        LIMIT 1
+        `,
+      )
+      .bind(
+        attemptId,
+        student.id,
+      )
+      .first<{
+        id: number;
+        attempt_number: number;
+        elapsed_seconds: number;
+        save_count: number;
+        score: number;
+        maximum_marks: number;
+        correct_count: number;
+        incorrect_count: number;
+        unanswered_count: number;
+        submitted_at: string;
+        test_id: number;
+        test_code: string;
+        test_name: string;
+        test_kind: string;
+        exam_level: string;
+        program_code: string;
+        question_count: number;
+      }>();
+
+  if (!attempt) {
+    return jsonResponse(
+      {
+        error:
+          "Mock attempt not found.",
+      },
+      404,
+    );
+  }
+
+  const questionResults =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          maa.question_id,
+          maa.selected_answer,
+          maa.correct,
+
+          mtq.question_order,
+          mtq.section_code,
+
+          q.question_text,
+          q.choice_a,
+          q.choice_b,
+          q.choice_c,
+          q.choice_d,
+          q.correct_choice,
+          q.explanation,
+
+          s.subject_code,
+          s.subject_name,
+
+          t.topic_code,
+          t.topic_name,
+
+          st.subtopic_code,
+          st.subtopic_name
+
+        FROM education_mock_attempt_answers maa
+
+        INNER JOIN education_mock_attempts ma
+          ON ma.id = maa.attempt_id
+
+        INNER JOIN education_mock_test_questions mtq
+          ON mtq.mock_test_id =
+             ma.mock_test_id
+          AND mtq.question_id =
+              maa.question_id
+
+        INNER JOIN education_questions q
+          ON q.id =
+             maa.question_id
+
+        INNER JOIN education_subtopics st
+          ON st.id =
+             q.subtopic_id
+
+        INNER JOIN education_topics t
+          ON t.id =
+             st.topic_id
+
+        INNER JOIN education_subjects s
+          ON s.id =
+             t.subject_id
+
+        WHERE
+          maa.attempt_id = ?
+
+        ORDER BY
+          mtq.question_order
+        `,
+      )
+      .bind(
+        attemptId,
+      )
+      .all<{
+        question_id: number;
+        selected_answer: string | null;
+        correct: number;
+        question_order: number;
+        section_code: string | null;
+        question_text: string;
+        choice_a: string | null;
+        choice_b: string | null;
+        choice_c: string | null;
+        choice_d: string | null;
+        correct_choice: string | null;
+        explanation: string | null;
+        subject_code: string;
+        subject_name: string;
+        topic_code: string;
+        topic_name: string;
+        subtopic_code: string;
+        subtopic_name: string;
+      }>();
+
+  const maximumMarks =
+    Number(
+      attempt.maximum_marks,
+    );
+
+  return jsonResponse({
+    attempt: {
+      id:
+        Number(
+          attempt.id,
+        ),
+
+      testId:
+        Number(
+          attempt.test_id,
+        ),
+
+      testCode:
+        attempt.test_code,
+
+      testName:
+        attempt.test_name,
+
+      testKind:
+        attempt.test_kind,
+
+      examLevel:
+        attempt.exam_level,
+
+      programCode:
+        attempt.program_code,
+
+      attemptNumber:
+        Number(
+          attempt.attempt_number,
+        ),
+
+      questionCount:
+        Number(
+          attempt.question_count,
+        ),
+
+      score:
+        Number(
+          attempt.score,
+        ),
+
+      maximumMarks,
+
+      scorePercent:
+        maximumMarks > 0
+          ? Math.min(
+              100,
+              Math.round(
+                Number(
+                  attempt.score,
+                ) *
+                  100 /
+                  maximumMarks,
+              ),
+            )
+          : 0,
+
+      correctCount:
+        Number(
+          attempt.correct_count,
+        ),
+
+      incorrectCount:
+        Number(
+          attempt.incorrect_count,
+        ),
+
+      unansweredCount:
+        Number(
+          attempt.unanswered_count,
+        ),
+
+      elapsedSeconds:
+        Number(
+          attempt.elapsed_seconds,
+        ),
+
+      saveCount:
+        Number(
+          attempt.save_count,
+        ),
+
+      submittedAt:
+        attempt.submitted_at,
+
+      questionResults:
+        questionResults.results.map(
+          (
+            row,
+          ) => ({
+            questionId:
+              Number(
+                row.question_id,
+              ),
+
+            sectionCode:
+              row.section_code ??
+              "GENERAL",
+
+            questionOrder:
+              Number(
+                row.question_order,
+              ),
+
+            status:
+              !row.selected_answer
+                ? "unanswered"
+                : Number(
+                    row.correct,
+                  ) === 1
+                ? "correct"
+                : "wrong",
+
+            selectedAnswer:
+              row.selected_answer ??
+              "",
+
+            questionText:
+              row.question_text,
+
+            choices: {
+              A:
+                row.choice_a ??
+                "",
+              B:
+                row.choice_b ??
+                "",
+              C:
+                row.choice_c ??
+                "",
+              D:
+                row.choice_d ??
+                "",
+            },
+
+            correctAnswer:
+              row.correct_choice ??
+              "",
+
+            explanation:
+              row.explanation,
+
+            subjectCode:
+              row.subject_code,
+
+            subjectName:
+              row.subject_name,
+
+            topicCode:
+              row.topic_code,
+
+            topicName:
+              row.topic_name,
+
+            subtopicCode:
+              row.subtopic_code,
+
+            subtopicName:
+              row.subtopic_name,
+          }),
+        ),
+    },
+  });
+}
 
 async function getAttemptDetail(
   request: Request,
@@ -5209,6 +5880,19 @@ export async function handleEducationProgressRoute(
       "/api/education/report"
   ) {
     return getReport(
+      request,
+      env,
+      url,
+    );
+  }
+
+  if (
+    request.method ===
+      "GET" &&
+    url.pathname ===
+      "/api/education/mock-attempt-detail"
+  ) {
+    return getMockAttemptDetail(
       request,
       env,
       url,

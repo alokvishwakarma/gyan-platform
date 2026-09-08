@@ -2932,8 +2932,10 @@ async function emailCurrentCard(
                 >
                   <div
                     style={{
+                      marginTop:
+                        "2px",
                       marginBottom:
-                        "1px",
+                        "4px",
                       color:
                         "#356442",
                       fontSize:

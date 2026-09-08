@@ -305,34 +305,6 @@ type ActiveEducationGyan = {
 };
 
 
-type EducationAttemptDetail = {
-  id: number;
-  subjectCode: string;
-  topicCode: string;
-  questionCount: number;
-  correctCount: number;
-  scorePercent: number;
-  createdAt: string;
-
-  questions: {
-    questionId: number;
-    text: string;
-
-    choices: {
-      A: string;
-      B: string;
-      C: string;
-      D: string;
-    };
-
-    selectedChoice: string;
-    correctChoice: string;
-    correct: boolean;
-    explanation?: string | null;
-  }[];
-};
-
-
 type EducationAttemptSummary = {
   totalAttempts: number;
 
@@ -344,6 +316,15 @@ type EducationAttemptSummary = {
     correctCount: number;
     scorePercent: number;
     createdAt: string;
+  }[];
+
+  categories: {
+    gradeCode: string;
+    uniqueQuestionsAttempted: number;
+    answersCount: number;
+    correctAnswers: number;
+    scorePercent: number | null;
+    updatedAt: string;
   }[];
 };
 
@@ -378,6 +359,49 @@ type GyanActivitySummary = {
     createdAt: string;
   }[];
 };
+
+
+function educationCategoryLabel(
+  gradeCode: string,
+): string {
+  const normalized =
+    gradeCode
+      .trim()
+      .toUpperCase();
+
+  if (
+    normalized.startsWith(
+      "PROGRAM_",
+    )
+  ) {
+    return normalized.replace(
+      /^PROGRAM_/,
+      "",
+    );
+  }
+
+  if (
+    normalized.startsWith(
+      "GRADE_",
+    )
+  ) {
+    return `Grade ${
+      normalized.replace(
+        /^GRADE_/,
+        "",
+      )
+    }`;
+  }
+
+  if (
+    normalized ===
+      "PREK"
+  ) {
+    return "Pre-K";
+  }
+
+  return normalized;
+}
 
 
 function getEffectiveEducationCountry():
@@ -1027,27 +1051,6 @@ export default function PublicHomePage({
 
 
   const [
-    selectedEducationAttempt,
-    setSelectedEducationAttempt,
-  ] =
-    useState<
-      EducationAttemptDetail | null
-    >(null);
-
-  const [
-    educationAttemptDetailLoading,
-    setEducationAttemptDetailLoading,
-  ] =
-    useState(false);
-
-  const [
-    educationAttemptDetailError,
-    setEducationAttemptDetailError,
-  ] =
-    useState("");
-
-
-  const [
     recentGWinks,
     setRecentGWinks,
   ] =
@@ -1078,6 +1081,12 @@ export default function PublicHomePage({
       null,
     );
 
+  const [
+    educationInitialCategoryCode,
+    setEducationInitialCategoryCode,
+  ] =
+    useState("");
+
 
   const [
     gyanActivity,
@@ -1096,77 +1105,6 @@ export default function PublicHomePage({
 
 
 
-  async function openEducationAttempt(
-    attemptId:
-      number,
-  ): Promise<void> {
-    if (
-      !educationHeaderCode
-    ) {
-      return;
-    }
-
-    setEducationAttemptDetailLoading(
-      true,
-    );
-
-    setEducationAttemptDetailError(
-      "",
-    );
-
-    try {
-      const response =
-        await fetch(
-          `/api/education/attempt-detail?student=${encodeURIComponent(
-            educationHeaderCode,
-          )}&attempt=${encodeURIComponent(
-            String(
-              attemptId,
-            ),
-          )}`,
-          {
-            credentials:
-              "include",
-            cache:
-              "no-store",
-          },
-        );
-
-      const body =
-        await response.json() as {
-          attempt?:
-            EducationAttemptDetail;
-          error?:
-            string;
-        };
-
-      if (
-        !response.ok ||
-        !body.attempt
-      ) {
-        throw new Error(
-          body.error ??
-            "Education result could not be loaded.",
-        );
-      }
-
-      setSelectedEducationAttempt(
-        body.attempt,
-      );
-    } catch (
-      caught
-    ) {
-      setEducationAttemptDetailError(
-        caught instanceof Error
-          ? caught.message
-          : "Education result could not be loaded.",
-      );
-    } finally {
-      setEducationAttemptDetailLoading(
-        false,
-      );
-    }
-  }
 
 
   useEffect(
@@ -2183,7 +2121,7 @@ export default function PublicHomePage({
       void fetch(
         `/api/education/report?student=${encodeURIComponent(
           educationHeaderCode,
-        )}`,
+        )}&activity=1`,
         {
           cache:
             "no-store",
@@ -2220,6 +2158,9 @@ export default function PublicHomePage({
                 0,
 
               recentAttempts:
+                [],
+
+              categories:
                 [],
             },
           );
@@ -2557,6 +2498,228 @@ export default function PublicHomePage({
                   </button>
                 </div>
 
+                <div className="public-home__activity-row public-home__activity-inline-row">
+                  <strong>
+                    Service Requests:
+                  </strong>
+
+                  <div className="public-home__activity-strip">
+                    {gyanActivityLoading
+                      ? (
+                          <span className="public-home__activity-loading">
+                            Loading…
+                          </span>
+                        )
+                      : gyanActivity.serviceRequests.length
+                        ? (
+                            gyanActivity.serviceRequests.map(
+                              (
+                                request,
+                              ) => {
+                                const normalized =
+                                  request.status
+                                    .trim()
+                                    .toLowerCase();
+
+                                const closed =
+                                  [
+                                    "completed",
+                                    "ready",
+                                    "closed",
+                                    "fulfilled",
+                                  ].includes(
+                                    normalized,
+                                  );
+
+                                return (
+                                  <span
+                                    key={
+                                      request.requestNumber
+                                    }
+                                    className={`public-home__activity-box public-home__activity-box--${
+                                      closed
+                                        ? "green"
+                                        : "yellow"
+                                    }`}
+                                    title={`${request.requestNumber} · ${request.status}`}
+                                  />
+                                );
+                              },
+                            )
+                          )
+                        : (
+                            <span className="public-home__activity-empty">
+                              No recent requests
+                            </span>
+                          )}
+                  </div>
+                </div>
+
+                <div
+                  className="public-home__activity-row"
+                  style={{
+                    display:
+                      "grid",
+                    gap:
+                      "4px",
+                  }}
+                >
+                  <strong>
+                    Education:
+                  </strong>
+
+                  {educationAttemptSummaryLoading
+                    ? (
+                        <span className="public-home__activity-loading">
+                          Loading…
+                        </span>
+                      )
+                    : educationAttemptSummary
+                        ?.categories
+                        .length
+                      ? (
+                          educationAttemptSummary
+                            .categories
+                            .map(
+                              (
+                                category,
+                              ) => {
+                                const score =
+                                  category.scorePercent;
+
+                                const background =
+                                  score == null
+                                    ? "#f3f5f7"
+                                    : score >=
+                                        80
+                                      ? "#eaf7ed"
+                                      : score >=
+                                          50
+                                        ? "#fff9dc"
+                                        : "#fff0ec";
+
+                                const border =
+                                  score == null
+                                    ? "#d5dce4"
+                                    : score >=
+                                        80
+                                      ? "#78b985"
+                                      : score >=
+                                          50
+                                        ? "#d8bd54"
+                                        : "#ce826b";
+
+                                return (
+                                  <button
+                                    key={
+                                      category.gradeCode
+                                    }
+                                    type="button"
+                                    onClick={() => {
+                                      setEducationRatingsCardOpen(
+                                        false,
+                                      );
+
+                                      setSearchFocused(
+                                        false,
+                                      );
+
+                                      setShowPuzzle(
+                                        false,
+                                      );
+
+                                      setEducationInitialCategoryCode(
+                                        category.gradeCode,
+                                      );
+
+                                      setActiveView(
+                                        "education",
+                                      );
+
+                                      window.history.pushState(
+                                        {},
+                                        "",
+                                        "/education",
+                                      );
+                                    }}
+                                    style={{
+                                      display:
+                                        "grid",
+                                      gridTemplateColumns:
+                                        "minmax(0, 1fr) auto",
+                                      alignItems:
+                                        "center",
+                                      gap:
+                                        "8px",
+                                      width:
+                                        "100%",
+                                      minHeight:
+                                        "25px",
+                                      padding:
+                                        "3px 6px",
+                                      border:
+                                        `1px solid ${border}`,
+                                      borderRadius:
+                                        "7px",
+                                      background,
+                                      textAlign:
+                                        "left",
+                                      cursor:
+                                        "pointer",
+                                    }}
+                                    title={`${category.uniqueQuestionsAttempted} unique questions attempted · ${
+                                      score == null
+                                        ? "New"
+                                        : `${score}% accuracy`
+                                    }`}
+                                  >
+                                    <strong
+                                      style={{
+                                        overflow:
+                                          "hidden",
+                                        textOverflow:
+                                          "ellipsis",
+                                        whiteSpace:
+                                          "nowrap",
+                                        fontSize:
+                                          "0.64rem",
+                                      }}
+                                    >
+                                      {
+                                        educationCategoryLabel(
+                                          category.gradeCode,
+                                        )
+                                      }
+                                    </strong>
+
+                                    <small
+                                      style={{
+                                        whiteSpace:
+                                          "nowrap",
+                                        fontSize:
+                                          "0.6rem",
+                                      }}
+                                    >
+                                      {
+                                        category.uniqueQuestionsAttempted
+                                      } attempted · {
+                                        score == null
+                                          ? "New"
+                                          : `${score}%`
+                                      }
+                                    </small>
+                                  </button>
+                                );
+                              },
+                            )
+                        )
+                      : (
+                          <span className="public-home__activity-empty">
+                            No attempts yet
+                          </span>
+                        )}
+                </div>
+
                 <div
                   className="public-home__activity-row public-home__activity-winks public-home__activity-inline-row"
                 >
@@ -2711,120 +2874,84 @@ export default function PublicHomePage({
                   />
                 </div>
 
-                <div className="public-home__activity-row public-home__activity-inline-row">
-                  <strong>
-                    Service Requests:
-                  </strong>
+                {(educationHeaderCode ||
+                  activeEducationGyan?.code) && (
+                  <button
+                    type="button"
+                    className="public-home__activity-row"
+                    onClick={() => {
+                      setEducationRatingsCardOpen(
+                        false,
+                      );
 
-                  <div className="public-home__activity-strip">
-                    {gyanActivityLoading
-                      ? (
-                          <span className="public-home__activity-loading">
-                            Loading…
-                          </span>
-                        )
-                      : gyanActivity.serviceRequests.length
-                        ? (
-                            gyanActivity.serviceRequests.map(
-                              (
-                                request,
-                              ) => {
-                                const normalized =
-                                  request.status
-                                    .trim()
-                                    .toLowerCase();
+                      /*
+                       * Keep UserAccountMenu as the single owner
+                       * of the GYAN Card dialog. Reuse its existing
+                       * working UI path instead of duplicating card
+                       * state inside PublicHomePage.
+                       */
+                      window.requestAnimationFrame(
+                        () => {
+                          const accountButton =
+                            document.querySelector<HTMLButtonElement>(
+                              'button[aria-label="Open user menu"], button[aria-label="Open signed-in user menu"]',
+                            );
 
-                                const closed =
-                                  [
-                                    "completed",
-                                    "ready",
-                                    "closed",
-                                    "fulfilled",
-                                  ].includes(
-                                    normalized,
-                                  );
+                          if (!accountButton) {
+                            return;
+                          }
 
-                                return (
-                                  <span
-                                    key={
-                                      request.requestNumber
-                                    }
-                                    className={`public-home__activity-box public-home__activity-box--${
-                                      closed
-                                        ? "green"
-                                        : "yellow"
-                                    }`}
-                                    title={`${request.requestNumber} · ${request.status}`}
-                                  />
+                          accountButton.click();
+
+                          window.requestAnimationFrame(
+                            () => {
+                              const cardButton =
+                                Array.from(
+                                  document.querySelectorAll<HTMLButtonElement>(
+                                    'button[title="Download GYAN Card"]',
+                                  ),
+                                ).find(
+                                  (button) =>
+                                    button.textContent
+                                      ?.includes(
+                                        "GYAN Card",
+                                      ),
                                 );
-                              },
-                            )
-                          )
-                        : (
-                            <span className="public-home__activity-empty">
-                              No recent requests
-                            </span>
-                          )}
-                  </div>
-                </div>
 
-                <div className="public-home__activity-row public-home__activity-inline-row">
-                  <strong>
-                    Education Ratings:
-                  </strong>
-
-                  <div className="public-home__activity-strip">
-                    {educationAttemptSummaryLoading
-                      ? (
-                          <span className="public-home__activity-loading">
-                            Loading…
-                          </span>
-                        )
-                      : educationAttemptSummary
-                          ?.recentAttempts
-                          .length
-                        ? (
-                            educationAttemptSummary
-                              .recentAttempts
-                              .map(
-                                (
-                                  attempt,
-                                ) => {
-                                  const state =
-                                    attempt.scorePercent >=
-                                      80
-                                      ? "green"
-                                      : attempt.scorePercent >=
-                                          50
-                                        ? "yellow"
-                                        : "red";
-
-                                  return (
-                                    <button
-                                      key={
-                                        attempt.id
-                                      }
-                                      type="button"
-                                      className={`public-home__activity-box public-home__activity-box--${state}`}
-                                      title={`${attempt.correctCount}/${attempt.questionCount} · ${attempt.scorePercent}% · ${attempt.topicCode}`}
-                                      aria-label={`Open ${attempt.topicCode} result: ${attempt.correctCount} of ${attempt.questionCount}`}
-                                      onClick={() =>
-                                        void openEducationAttempt(
-                                          attempt.id,
-                                        )
-                                      }
-                                    />
-                                  );
-                                },
-                              )
-                          )
-                        : (
-                            <span className="public-home__activity-empty">
-                              No attempts yet
-                            </span>
-                          )}
-                  </div>
-                </div>
+                              cardButton?.click();
+                            },
+                          );
+                        },
+                      );
+                    }}
+                    title="Open GYAN Card"
+                    aria-label="Open GYAN Card"
+                    style={{
+                      width:
+                        "100%",
+                      minHeight:
+                        "29px",
+                      border:
+                        "1px solid #d7c8f2",
+                      borderRadius:
+                        "7px",
+                      background:
+                        "#faf7ff",
+                      color:
+                        "#5b3ea8",
+                      font:
+                        "inherit",
+                      fontSize:
+                        "0.64rem",
+                      fontWeight:
+                        800,
+                      cursor:
+                        "pointer",
+                    }}
+                  >
+                    🎁 GYAN Card
+                  </button>
+                )}
 
                 {educationCodeNeedsRecovery && (
                   <small className="public-home__education-ratings-warning">
@@ -2832,34 +2959,6 @@ export default function PublicHomePage({
                   </small>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEducationRatingsCardOpen(
-                      false,
-                    );
-
-                    setSearchFocused(
-                      false,
-                    );
-
-                    setShowPuzzle(
-                      false,
-                    );
-
-                    setActiveView(
-                      "ratings",
-                    );
-
-                    window.history.pushState(
-                      {},
-                      "",
-                      "/ratings",
-                    );
-                  }}
-                >
-                  Open My Ratings
-                </button>
               </section>
             )}
           </div>
@@ -3109,314 +3208,6 @@ export default function PublicHomePage({
             🧰
           </button>
 
-          {(educationAttemptDetailLoading ||
-            educationAttemptDetailError ||
-            selectedEducationAttempt) &&
-            createPortal(
-              <div
-                role="dialog"
-                aria-modal="true"
-                aria-label="Education result"
-                style={{
-                  position:
-                    "fixed",
-                  inset:
-                    0,
-                  zIndex:
-                    2147482000,
-                  display:
-                    "grid",
-                  placeItems:
-                    "start center",
-                  padding:
-                    "58px 10px 16px",
-                  background:
-                    "rgb(15 23 42 / 34%)",
-                  overflowY:
-                    "auto",
-                }}
-                onClick={() => {
-                  setSelectedEducationAttempt(
-                    null,
-                  );
-                  setEducationAttemptDetailError(
-                    "",
-                  );
-                }}
-              >
-                <section
-                  style={{
-                    position:
-                      "relative",
-                    width:
-                      "min(94vw, 650px)",
-                    maxHeight:
-                      "calc(100dvh - 78px)",
-                    overflowY:
-                      "auto",
-                    boxSizing:
-                      "border-box",
-                    padding:
-                      "12px",
-                    border:
-                      "1px solid #d8dee7",
-                    borderRadius:
-                      "14px",
-                    background:
-                      "#fffdf8",
-                    boxShadow:
-                      "0 18px 50px rgb(15 23 42 / 20%)",
-                  }}
-                  onClick={(
-                    event,
-                  ) =>
-                    event.stopPropagation()
-                  }
-                >
-                  <button
-                    type="button"
-                    aria-label="Close education result"
-                    onClick={() => {
-                      setSelectedEducationAttempt(
-                        null,
-                      );
-                      setEducationAttemptDetailError(
-                        "",
-                      );
-                    }}
-                    style={{
-                      position:
-                        "absolute",
-                      top:
-                        "7px",
-                      right:
-                        "7px",
-                      width:
-                        "26px",
-                      height:
-                        "26px",
-                      padding:
-                        0,
-                      border:
-                        "1px solid #d8dee7",
-                      borderRadius:
-                        "999px",
-                      background:
-                        "#fff",
-                      cursor:
-                        "pointer",
-                    }}
-                  >
-                    ×
-                  </button>
-
-                  <strong
-                    style={{
-                      display:
-                        "block",
-                      paddingRight:
-                        "34px",
-                      marginBottom:
-                        "4px",
-                    }}
-                  >
-                    Education Result
-                  </strong>
-
-                  {educationAttemptDetailLoading ? (
-                    <p>
-                      Loading…
-                    </p>
-                  ) : educationAttemptDetailError ? (
-                    <p
-                      style={{
-                        color:
-                          "#a33131",
-                      }}
-                    >
-                      {
-                        educationAttemptDetailError
-                      }
-                    </p>
-                  ) : selectedEducationAttempt ? (
-                    <>
-                      <small
-                        style={{
-                          display:
-                            "block",
-                          marginBottom:
-                            "10px",
-                          color:
-                            "#64748b",
-                        }}
-                      >
-                        {
-                          selectedEducationAttempt.topicCode
-                        }
-                        {" · "}
-                        {
-                          selectedEducationAttempt.correctCount
-                        }/
-                        {
-                          selectedEducationAttempt.questionCount
-                        }
-                        {" · "}
-                        {
-                          new Date(
-                            selectedEducationAttempt.createdAt,
-                          ).toLocaleString()
-                        }
-                      </small>
-
-                      <div
-                        style={{
-                          display:
-                            "grid",
-                          gap:
-                            "8px",
-                        }}
-                      >
-                        {
-                          selectedEducationAttempt.questions.map(
-                            (
-                              question,
-                              index,
-                            ) => (
-                              <article
-                                key={
-                                  question.questionId
-                                }
-                                style={{
-                                  padding:
-                                    "9px",
-                                  border:
-                                    `1px solid ${
-                                      question.correct
-                                        ? "#86c98a"
-                                        : "#ef9a9a"
-                                    }`,
-                                  borderRadius:
-                                    "9px",
-                                  background:
-                                    "#fff",
-                                }}
-                              >
-                                <strong
-                                  style={{
-                                    display:
-                                      "block",
-                                    marginBottom:
-                                      "5px",
-                                    fontSize:
-                                      "0.76rem",
-                                  }}
-                                >
-                                  {
-                                    index +
-                                    1
-                                  }. {
-                                    question.text
-                                  }
-                                </strong>
-
-                                {
-                                  (
-                                    [
-                                      "A",
-                                      "B",
-                                      "C",
-                                      "D",
-                                    ] as const
-                                  ).map(
-                                    (
-                                      choice,
-                                    ) => {
-                                      const selected =
-                                        question.selectedChoice ===
-                                        choice;
-
-                                      const correct =
-                                        question.correctChoice ===
-                                        choice;
-
-                                      return (
-                                        <div
-                                          key={
-                                            choice
-                                          }
-                                          style={{
-                                            padding:
-                                              "3px 5px",
-                                            margin:
-                                              "2px 0",
-                                            borderRadius:
-                                              "5px",
-                                            background:
-                                              correct
-                                                ? "#e7f6e8"
-                                                : selected
-                                                  ? "#fde8e8"
-                                                  : "transparent",
-                                            fontSize:
-                                              "0.7rem",
-                                          }}
-                                        >
-                                          <b>
-                                            {
-                                              choice
-                                            }.
-                                          </b>{" "}
-                                          {
-                                            question.choices[
-                                              choice
-                                            ]
-                                          }
-                                          {
-                                            selected
-                                              ? "  ← your answer"
-                                              : ""
-                                          }
-                                          {
-                                            correct
-                                              ? "  ✓"
-                                              : ""
-                                          }
-                                        </div>
-                                      );
-                                    },
-                                  )
-                                }
-
-                                {
-                                  question.explanation && (
-                                    <small
-                                      style={{
-                                        display:
-                                          "block",
-                                        marginTop:
-                                          "5px",
-                                        color:
-                                          "#64748b",
-                                      }}
-                                    >
-                                      {
-                                        question.explanation
-                                      }
-                                    </small>
-                                  )
-                                }
-                              </article>
-                            ),
-                          )
-                        }
-                      </div>
-                    </>
-                  ) : null}
-                </section>
-              </div>,
-              document.body,
-            )}
-
           {openGWink &&
             createPortal(
               <div
@@ -3582,6 +3373,11 @@ export default function PublicHomePage({
                 <EducationLearningHub
                   country={
                     educationCountry
+                  }
+
+                  initialCategoryCode={
+                    educationInitialCategoryCode ||
+                    undefined
                   }
 
                   activeGyanCode={

@@ -240,6 +240,9 @@ interface EducationLearningHubProps {
   country:
     EducationCountry;
 
+  initialCategoryCode?:
+    string;
+
   activeGyanCode?:
     string;
 
@@ -262,6 +265,7 @@ interface EducationLearningHubProps {
 
 export default function EducationLearningHub({
   country,
+  initialCategoryCode,
   activeGyanCode,
   activeGyanName,
   activeGyanEmail,
@@ -318,6 +322,26 @@ export default function EducationLearningHub({
   ] =
     useState(
       false,
+    );
+
+  /*
+   * Program subjects (Physics / Chemistry / Mathematics, etc.)
+   * are the top-level "topic" cards in the Grade-6-style UI.
+   * Cache each subject's database topics so collapsed rows can
+   * show total questions immediately and expansion does not
+   * issue the same topic request again.
+   */
+  const [
+    programTopicsBySubject,
+    setProgramTopicsBySubject,
+  ] =
+    useState<
+      Record<
+        string,
+        TopicItem[]
+      >
+    >(
+      {},
     );
 
 
@@ -481,7 +505,7 @@ export default function EducationLearningHub({
     );
 
   const [
-,
+    topicProgress,
     setTopicProgress,
   ] =
     useState<
@@ -1830,8 +1854,180 @@ export default function EducationLearningHub({
   }
 
 
+  function programSubjectSummary(
+    subjectCode: string,
+  ): {
+    questionCount: number;
+    attempted: number;
+    scorePercent:
+      number |
+      null;
+  } {
+    const subjectTopics =
+      programTopicsBySubject[
+        subjectCode
+      ] ??
+      [];
+
+    const questionCount =
+      subjectTopics.reduce(
+        (
+          total,
+          item,
+        ) =>
+          total +
+          item.questionCount,
+        0,
+      );
+
+    const progress =
+      topicProgress.filter(
+        (item) =>
+          item.subjectCode ===
+            subjectCode,
+      );
+
+    const attempted =
+      progress.reduce(
+        (
+          total,
+          item,
+        ) =>
+          total +
+          item.uniqueQuestionsAttempted,
+        0,
+      );
+
+    const answersCount =
+      progress.reduce(
+        (
+          total,
+          item,
+        ) =>
+          total +
+          item.answersCount,
+        0,
+      );
+
+    const correctAnswers =
+      progress.reduce(
+        (
+          total,
+          item,
+        ) =>
+          total +
+          item.correctAnswers,
+        0,
+      );
+
+    return {
+      questionCount,
+      attempted,
+      scorePercent:
+        answersCount >
+          0
+          ? Math.round(
+              (
+                correctAnswers /
+                answersCount
+              ) *
+                100,
+            )
+          : null,
+    };
+  }
+
+
+  function openCurrentProgramClass():
+    void {
+    if (
+      !grade ||
+      grade.type !==
+        "program"
+    ) {
+      return;
+    }
+
+    const programCode =
+      (
+        grade.programCode ??
+        grade.code.replace(
+          /^PROGRAM_/,
+          "",
+        )
+      )
+        .trim()
+        .toLowerCase()
+        .replace(
+          /_/g,
+          "-",
+        );
+
+    window.location.href =
+      `/class?category=${encodeURIComponent(
+        programCode,
+      )}`;
+  }
+
+
+  async function loadMockAttemptDetail(
+    attemptId:
+      number,
+  ): Promise<EducationMockAttemptReport> {
+    if (
+      !normalizedActiveGyanCode
+    ) {
+      throw new Error(
+        "No active GYAN.",
+      );
+    }
+
+    const response =
+      await fetch(
+        `/api/education/mock-attempt-detail?student=${encodeURIComponent(
+          normalizedActiveGyanCode,
+        )}&attempt=${encodeURIComponent(
+          String(
+            attemptId,
+          ),
+        )}`,
+        {
+          credentials:
+            "include",
+          cache:
+            "no-store",
+        },
+      );
+
+    if (
+      !response.ok
+    ) {
+      throw new Error(
+        "Mock attempt details could not be loaded.",
+      );
+    }
+
+    const body =
+      await response.json() as {
+        attempt?:
+          EducationMockAttemptReport;
+      };
+
+    if (!body.attempt) {
+      throw new Error(
+        "Mock attempt details are unavailable.",
+      );
+    }
+
+    return body.attempt;
+  }
+
+
   async function loadEducationProgressReport(
     program?:
+      string,
+
+    gradeCode?:
       string,
   ):
     Promise<EducationProgressReport> {
@@ -1882,7 +2078,11 @@ export default function EducationLearningHub({
       await fetch(
         `/api/education/report?student=${encodeURIComponent(
           normalizedActiveGyanCode,
-        )}${program ? `&program=${encodeURIComponent(program)}` : ""}`,
+        )}${program ? `&program=${encodeURIComponent(program)}` : ""}${
+          !program && gradeCode
+            ? `&grade=${encodeURIComponent(gradeCode)}`
+            : ""
+        }`,
         {
           credentials:
             "include",
@@ -1980,7 +2180,10 @@ export default function EducationLearningHub({
 
     try {
       const progress =
-        await loadEducationProgressReport();
+        await loadEducationProgressReport(
+          undefined,
+          grade.code,
+        );
 
       const progressByTopic =
         new Map<
@@ -2075,6 +2278,170 @@ export default function EducationLearningHub({
     setTeacherRequestDialogOpen(
       true,
     );
+  }
+
+
+  async function openGradeReport(
+    gradeCode:
+      string,
+
+    gradeName:
+      string,
+  ): Promise<void> {
+    const normalizedGradeCode =
+      gradeCode
+        .trim()
+        .toUpperCase();
+
+    if (
+      !normalizedGradeCode
+    ) {
+      return;
+    }
+
+    setProgramReportLoading(
+      true,
+    );
+    setError("");
+
+    try {
+      const progressReport =
+        await loadEducationProgressReport(
+          undefined,
+          normalizedGradeCode,
+        );
+
+      /*
+       * Grade mock tests are not wired yet. The backend intentionally
+       * returns no program mocks for a grade-scoped report, so this
+       * remains ready for the future without leaking JEE/NEET history.
+       */
+      setProgramMockAttempts(
+        progressReport.mockAttempts,
+      );
+
+      const reportSubjects =
+        await loadSubjects(
+          country,
+          normalizedGradeCode,
+        );
+
+      const progressByTopic =
+        new Map<
+          string,
+          EducationTopicProgress
+        >(
+          progressReport.topicProgress.map(
+            (item) => [
+              `${item.subjectCode}::${item.topicCode}`,
+              item,
+            ],
+          ),
+        );
+
+      const rows:
+        ProgramReportTopic[] =
+          [];
+
+      for (
+        const reportSubject of
+          reportSubjects
+      ) {
+        const reportSubjectTopics =
+          await loadTopics(
+            country,
+            normalizedGradeCode,
+            reportSubject.code,
+          );
+
+        for (
+          const reportTopic of
+            reportSubjectTopics
+        ) {
+          const progressItem =
+            progressByTopic.get(
+              `${reportSubject.code}::${reportTopic.code}`,
+            );
+
+          const uniqueQuestionsAttempted =
+            progressItem
+              ?.uniqueQuestionsAttempted ??
+            0;
+
+          const completionPercent =
+            reportTopic.questionCount >
+              0
+              ? Math.min(
+                  100,
+                  Math.round(
+                    (
+                      uniqueQuestionsAttempted /
+                      reportTopic.questionCount
+                    ) *
+                      100,
+                  ),
+                )
+              : 0;
+
+          rows.push({
+            subjectCode:
+              reportSubject.code,
+
+            subjectName:
+              reportSubject.name,
+
+            topicCode:
+              reportTopic.code,
+
+            topicName:
+              reportTopic.name,
+
+            questionCount:
+              reportTopic.questionCount,
+
+            completionPercent,
+
+            scorePercent:
+              progressItem
+                ?.scorePercent ??
+              null,
+          });
+        }
+      }
+
+      setGrade({
+        type:
+          "grade",
+        code:
+          normalizedGradeCode,
+        name:
+          `Grade ${gradeName}`,
+      });
+
+      setSubjects(
+        reportSubjects,
+      );
+
+      setProgramReportTopics(
+        rows,
+      );
+
+      setStep(
+        "program-report",
+      );
+    } catch (
+      caught
+    ) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Progress report could not be loaded.",
+      );
+    } finally {
+      setProgramReportLoading(
+        false,
+      );
+    }
   }
 
 
@@ -2480,7 +2847,13 @@ export default function EducationLearningHub({
     );
 
     try {
+      const cachedTopics =
+        programTopicsBySubject[
+          selectedSubject.code
+        ];
+
       const nextTopics =
+        cachedTopics ??
         await loadTopics(
           learningCountryFor(
             grade,
@@ -2489,11 +2862,34 @@ export default function EducationLearningHub({
           selectedSubject.code,
         );
 
+      if (
+        !cachedTopics
+      ) {
+        setProgramTopicsBySubject(
+          (
+            current,
+          ) => ({
+            ...current,
+            [selectedSubject.code]:
+              nextTopics,
+          }),
+        );
+      }
+
       setSubject(
         selectedSubject,
       );
       setTopics(
         nextTopics,
+      );
+      setExpandedGradeTopicCode(
+        null,
+      );
+      setSatSkill(
+        null,
+      );
+      setSatSkills(
+        [],
       );
       setExpandedSubjectCode(
         selectedSubject.code,
@@ -2510,6 +2906,97 @@ export default function EducationLearningHub({
       );
     }
   }
+
+
+  useEffect(
+    () => {
+      const normalized =
+        initialCategoryCode
+          ?.trim()
+          .toUpperCase() ??
+        "";
+
+      if (!normalized) {
+        return;
+      }
+
+      const programCode =
+        normalized.startsWith(
+          "PROGRAM_",
+        )
+          ? normalized.replace(
+              /^PROGRAM_/,
+              "",
+            )
+          : "";
+
+      const programCountry:
+        EducationCountry =
+        programCode ===
+          "JEE" ||
+        programCode ===
+          "NEET"
+          ? "IN"
+          : programCode ===
+                "SAT" ||
+              programCode ===
+                "OLSAT"
+            ? "US"
+            : country;
+
+      const selection:
+        PortalSelection =
+        programCode
+          ? {
+              type:
+                "program",
+
+              code:
+                normalized,
+
+              name:
+                programCode ===
+                  "JEE"
+                  ? "IIT-JEE"
+                  : programCode,
+
+              countryCode:
+                programCountry,
+
+              programCode,
+            }
+          : {
+              type:
+                "grade",
+
+              code:
+                normalized,
+
+              name:
+                normalized.startsWith(
+                  "GRADE_",
+                )
+                  ? `Grade ${normalized.replace(
+                      /^GRADE_/,
+                      "",
+                    )}`
+                  : normalized,
+
+              countryCode:
+                country,
+            };
+
+      void selectPortal(
+        selection,
+      );
+
+      // Only re-open when the requested Activity category changes.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [
+      initialCategoryCode,
+    ],
+  );
 
 
   async function selectPortal(
@@ -2569,22 +3056,31 @@ export default function EducationLearningHub({
         null,
       );
       setExpandedSubjectCode(null);
+      setProgramTopicsBySubject(
+        {},
+      );
       setLoading(true);
       setError("");
 
-      if (
-        programGradeCode ===
-          "PROGRAM_JEE" ||
-        programGradeCode ===
-          "PROGRAM_NEET"
-      ) {
-        void loadEducationProgressReport()
-          .catch(
-            () => {
-              // Practice must remain available if report data cannot load.
-            },
-          );
-      }
+      /*
+       * Every education program uses the same grade_code-scoped
+       * progress model (PROGRAM_JEE, PROGRAM_NEET, PROGRAM_GRE,
+       * PROGRAM_SAT, PROGRAM_OLSAT, ...). Load progress whenever
+       * any program is entered so topic/subtopic cards can display
+       * attempted counts consistently.
+       */
+      void loadEducationProgressReport(
+        selection.programCode ||
+          programGradeCode.replace(
+            /^PROGRAM_/,
+            "",
+          ),
+      )
+        .catch(
+          () => {
+            // Practice must remain available if report data cannot load.
+          },
+        );
 
       try {
         const nextSubjects =
@@ -2596,6 +3092,35 @@ export default function EducationLearningHub({
           );
 
         setSubjects(nextSubjects);
+
+        /*
+         * Grade-6-style program rows need the total question count
+         * before a subject is expanded. Load each subject catalog
+         * once and cache it; toggleProgramSubject reuses this data.
+         */
+        const topicCatalogEntries =
+          await Promise.all(
+            nextSubjects.map(
+              async (
+                nextSubject,
+              ) => [
+                nextSubject.code,
+                await loadTopics(
+                  learningCountryFor(
+                    programSelection,
+                  ),
+                  programGradeCode,
+                  nextSubject.code,
+                ),
+              ] as const,
+            ),
+          );
+
+        setProgramTopicsBySubject(
+          Object.fromEntries(
+            topicCatalogEntries,
+          ),
+        );
 
         if (
           nextSubjects.length === 1
@@ -2664,7 +3189,10 @@ export default function EducationLearningHub({
      * grade is entered/re-entered so the cards never depend
      * on visiting an Advanced program first.
      */
-    void loadEducationProgressReport()
+    void loadEducationProgressReport(
+      undefined,
+      selection.code,
+    )
       .catch(
         () => {
           // Foundation practice remains available even if
@@ -2678,6 +3206,15 @@ export default function EducationLearningHub({
           country,
           selection.code,
         );
+
+      /*
+       * Always replace subjects for the newly selected grade.
+       * Otherwise a one-subject grade can inherit stale subjects
+       * from the previously visited program (for example GRE).
+       */
+      setSubjects(
+        subjects,
+      );
 
       /*
        * Grade 6 currently has only Mathematics.
@@ -2885,18 +3422,14 @@ export default function EducationLearningHub({
   ): Promise<void> {
     if (
       !grade ||
-      !subject ||
-      grade.code.startsWith(
-        "PROGRAM_",
-      )
+      !subject
     ) {
       return;
     }
 
     /*
-     * Foundation accordion state is UI-only.
-     * Clicking an already-open topic must always
-     * collapse immediately without making a request.
+     * Topic accordion state is shared by Foundation and programs.
+     * Clicking an already-open topic collapses immediately.
      */
     if (
       expandedGradeTopicCode ===
@@ -2930,17 +3463,92 @@ export default function EducationLearningHub({
       return;
     }
 
-    /*
-     * Close the previously open card immediately,
-     * then make this card the only expanded one.
-     */
     setExpandedGradeTopicCode(
       item.code,
     );
 
-    await selectTopic(
+    setTopic(
       item,
     );
+
+    setSatSkill(
+      null,
+    );
+
+    setSatSkills(
+      [],
+    );
+
+    setLoading(
+      true,
+    );
+
+    setError(
+      "",
+    );
+
+    try {
+      const params =
+        new URLSearchParams({
+          country:
+            learningCountryFor(
+              grade,
+            ),
+          grade:
+            grade.code,
+          subject:
+            subject.code,
+          topic:
+            item.code,
+        });
+
+      const response =
+        await fetch(
+          `/api/education/subtopics?${params.toString()}`,
+          {
+            cache:
+              "no-store",
+          },
+        );
+
+      const body =
+        await response.json() as {
+          subtopics?: SatSkillItem[];
+          error?: string;
+        };
+
+      if (!response.ok) {
+        throw new Error(
+          body.error ??
+            "Subtopics unavailable.",
+        );
+      }
+
+      setSatSkills(
+        body.subtopics ??
+          [],
+      );
+    } catch (
+      caught
+    ) {
+      setExpandedGradeTopicCode(
+        null,
+      );
+
+      setSatSkills(
+        [],
+      );
+
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Subtopics unavailable.",
+      );
+    } finally {
+      setLoading(
+        false,
+      );
+    }
   }
 
 
@@ -3190,10 +3798,7 @@ export default function EducationLearningHub({
   ): Promise<void> {
     if (
       !grade ||
-      !subject ||
-      grade.code.startsWith(
-        "PROGRAM_",
-      )
+      !subject
     ) {
       return;
     }
@@ -4269,7 +4874,10 @@ export default function EducationLearningHub({
                  * those metrics whenever the user returns to the
                  * topic cards with the back arrow.
                  */
-                void loadEducationProgressReport()
+                void loadEducationProgressReport(
+                  undefined,
+                  grade?.code,
+                )
                   .catch(
                     () => {
                       // Do not block navigation on report failure.
@@ -4333,11 +4941,7 @@ export default function EducationLearningHub({
 
         <div>
           <strong>
-            🎓 Education
-          </strong>
-
-          <small>
-            {
+            🎓 {
               [
                 grade?.name,
                 subject?.name,
@@ -4348,9 +4952,10 @@ export default function EducationLearningHub({
                 )
                 .join(
                   " › ",
-                )
+                ) ||
+              "Education"
             }
-          </small>
+          </strong>
         </div>
       </header>
 
@@ -4616,27 +5221,92 @@ export default function EducationLearningHub({
         step ===
           "subjects" && (
           <section>
-            <h1>
-              {
-                grade?.type ===
-                  "program"
-                  ? "Choose a subject / topic"
-                  : "Choose a subject"
-              }
-            </h1>
+            {
+              grade?.type ===
+                "program" ? (
+                <div
+                  className="education-learning__topic-toolbar"
+                >
+                  <h1>
+                    Choose a topic
+                  </h1>
+
+                  <div
+                    className="education-learning__topic-toolbar-actions"
+                  >
+                    <button
+                      type="button"
+                      className="education-learning__topic-toolbar-action"
+                      onClick={() =>
+                        void openProgramReport(
+                          grade.programCode ??
+                            grade.code.replace(
+                              /^PROGRAM_/,
+                              "",
+                            ),
+                        )
+                      }
+                      aria-label="View report"
+                      title="View report"
+                    >
+                      <span aria-hidden="true">
+                        📊
+                      </span>
+                      <span className="education-learning__topic-toolbar-label">
+                        Report
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="education-learning__topic-toolbar-action"
+                      onClick={
+                        openCurrentProgramClass
+                      }
+                      aria-label="Open class"
+                      title="Class"
+                    >
+                      <span aria-hidden="true">
+                        🏫
+                      </span>
+                      <span className="education-learning__topic-toolbar-label">
+                        Class
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <h1>
+                  Choose a subject
+                </h1>
+              )
+            }
 
             {
               grade?.type ===
                 "program" ? (
                 <div
-                  className="education-learning__subject-accordion"
+                  className="education-learning__topic-stack"
                 >
                   {
                     subjects.map(
-                      (item) => {
+                      (
+                        item,
+                      ) => {
                         const expanded =
                           expandedSubjectCode ===
                             item.code;
+
+                        const summary =
+                          programSubjectSummary(
+                            item.code,
+                          );
+
+                        const subjectTopics =
+                          programTopicsBySubject[
+                            item.code
+                          ] ??
+                          [];
 
                         return (
                           <section
@@ -4644,9 +5314,12 @@ export default function EducationLearningHub({
                               item.code
                             }
                             className={[
-                              "education-learning__subject-block",
+                              "education-learning__topic-inline-card",
+                              `education-learning__topic-status--${scoreState(
+                                summary.scorePercent,
+                              )}`,
                               expanded
-                                ? "education-learning__subject-block--expanded"
+                                ? "education-learning__topic-inline-card--expanded"
                                 : "",
                             ]
                               .filter(
@@ -4658,7 +5331,7 @@ export default function EducationLearningHub({
                           >
                             <button
                               type="button"
-                              className="education-learning__subject-toggle"
+                              className="education-learning__topic-inline-head"
                               onClick={() =>
                                 void toggleProgramSubject(
                                   item,
@@ -4668,102 +5341,125 @@ export default function EducationLearningHub({
                                 expanded
                               }
                             >
-                              <strong>
-                                {
-                                  item.name
-                                    .replace(
-                                      /^JEE\s+/i,
-                                      "",
-                                    )
-                                    .replace(
-                                      /^NEET\s+/i,
-                                      "",
-                                    )
-                                }
-                              </strong>
-
                               <span>
+                                <strong>
+                                  {
+                                    item.name
+                                      .replace(
+                                        /^JEE\s+/i,
+                                        "",
+                                      )
+                                      .replace(
+                                        /^NEET\s+/i,
+                                        "",
+                                      )
+                                  }
+                                </strong>
+
+                                <small>
+                                  {
+                                    summary.questionCount
+                                  } questions · {
+                                    summary.attempted
+                                  } attempted{
+                                    summary.scorePercent != null
+                                      ? ` · ${summary.scorePercent}%`
+                                      : " · New"
+                                  }
+                                </small>
+                              </span>
+
+                              <b>
                                 {
                                   expanded
                                     ? "▴"
                                     : "▾"
                                 }
-                              </span>
+                              </b>
                             </button>
 
                             {
                               expanded && (
                                 <div
-                                  className="education-learning__subject-topics"
+                                  className="education-learning__subtopic-inline"
                                 >
                                   {
                                     subjectTopicsLoading ? (
-                                      <div
-                                        className="education-learning__subject-topics-state"
-                                      >
-                                        Loading topics…
-                                      </div>
-                                    ) : topics.length >
+                                      <small>
+                                        Loading subtopics…
+                                      </small>
+                                    ) : subjectTopics.length >
                                       0 ? (
-                                      <div
-                                        className="education-learning__topic-grid--compact"
-                                      >
-                                        {
-                                          topics.map(
-                                            (topicItem) => (
-                                              <button
-                                                key={
-                                                  topicItem.code
-                                                }
-                                                type="button"
-                                                className={
-                                                  `education-learning__topic-status education-learning__topic-status--${scoreState(
-                                                    latestTopicAttempt(
-                                                      item.code,
-                                                      topicItem.code,
-                                                    )?.scorePercent,
-                                                  )}`
-                                                }
-                                                disabled={
-                                                  topicItem.questionCount <
-                                                    5
-                                                }
-                                                onClick={() =>
-                                                  void selectTopic(
-                                                    topicItem,
-                                                  )
-                                                }
-                                              >
-                                                <strong>
-                                                  {
-                                                    topicItem.name
-                                                  }
-                                                </strong>
+                                      subjectTopics.map(
+                                        (
+                                          topicItem,
+                                        ) => {
+                                          const latest =
+                                            latestTopicAttempt(
+                                              item.code,
+                                              topicItem.code,
+                                            );
 
-                                                <small>
-                                                  {
-                                                    latestTopicAttempt(
-                                                      item.code,
-                                                      topicItem.code,
-                                                    )
-                                                      ? `${latestTopicAttempt(
-                                                          item.code,
-                                                          topicItem.code,
-                                                        )?.scorePercent}% · ${topicItem.questionCount} questions`
-                                                      : `${topicItem.questionCount} questions · New`
-                                                  }
-                                                </small>
-                                              </button>
-                                            ),
-                                          )
-                                        }
-                                      </div>
+                                          const attempted =
+                                            topicAttemptedCount(
+                                              item.code,
+                                              topicItem.code,
+                                            );
+
+                                          return (
+                                            <button
+                                              key={
+                                                topicItem.code
+                                              }
+                                              type="button"
+                                              disabled={
+                                                topicItem.questionCount <
+                                                  5
+                                              }
+                                              className={[
+                                                "education-learning__subtopic-chip",
+                                                `education-learning__topic-status--${scoreState(
+                                                  latest?.scorePercent,
+                                                )}`,
+                                              ].join(
+                                                " ",
+                                              )}
+                                              onClick={() =>
+                                                void selectTopic(
+                                                  topicItem,
+                                                )
+                                              }
+                                              title={`${topicItem.name} · ${attempted}/${topicItem.questionCount} attempted${
+                                                latest?.scorePercent != null
+                                                  ? ` · ${latest.scorePercent}%`
+                                                  : ""
+                                              }`}
+                                            >
+                                              <strong>
+                                                {
+                                                  topicItem.name
+                                                }
+                                              </strong>
+
+                                              <small>
+                                                {
+                                                  topicItem.questionCount
+                                                } questions · {
+                                                  attempted
+                                                } attempted{
+                                                  latest?.scorePercent != null
+                                                    ? ` · ${latest.scorePercent}%`
+                                                    : " · New"
+                                                }
+                                              </small>
+                                            </button>
+                                          );
+                                        },
+                                      )
                                     ) : (
-                                      <div
-                                        className="education-learning__subject-topics-state"
-                                      >
-                                        No topics configured yet.
-                                      </div>
+                                      <small>
+                                        No subtopics configured yet.
+                                      </small>
                                     )
                                   }
                                 </div>
@@ -4877,36 +5573,68 @@ export default function EducationLearningHub({
                 satSkills.map(
                   (
                     item,
-                  ) => (
-                    <button
-                      key={
-                        item.code
-                      }
-                      type="button"
-                      disabled={
-                        item.questionCount <
-                          5
-                      }
-                      onClick={() =>
-                        void selectSatSkill(
-                          item,
-                        )
-                      }
-                    >
-                      <strong>
-                        {
-                          item.name
-                        }
-                      </strong>
+                  ) => {
+                    const progress =
+                      subject &&
+                      topic
+                        ? subtopicProgressFor(
+                            subject.code,
+                            topic.code,
+                            item.code,
+                          )
+                        : undefined;
 
-                      <small>
-                        {
-                          item.questionCount
-                        }{" "}
-                        questions
-                      </small>
-                    </button>
-                  ),
+                    const attempted =
+                      progress?.uniqueQuestionsAttempted ??
+                      0;
+
+                    return (
+                      <button
+                        key={
+                          item.code
+                        }
+                        type="button"
+                        disabled={
+                          item.questionCount <
+                            5
+                        }
+                        className={
+                          `education-learning__topic-status education-learning__topic-status--${scoreState(
+                            progress?.scorePercent,
+                          )}`
+                        }
+                        onClick={() =>
+                          void selectSatSkill(
+                            item,
+                          )
+                        }
+                        title={`${item.name} · ${attempted}/${item.questionCount} attempted${
+                          progress?.scorePercent != null
+                            ? ` · ${progress.scorePercent}%`
+                            : ""
+                        }`}
+                      >
+                        <strong>
+                          {
+                            item.name
+                          }
+                        </strong>
+
+                        <small>
+                          {
+                            item.questionCount
+                          }{" "}
+                          questions · {
+                            attempted
+                          } attempted{
+                            progress?.scorePercent != null
+                              ? ` · ${progress.scorePercent}%`
+                              : " · New"
+                          }
+                        </small>
+                      </button>
+                    );
+                  },
                 )
               }
             </div>
@@ -4935,7 +5663,10 @@ export default function EducationLearningHub({
                       type="button"
                       className="education-learning__topic-toolbar-action"
                       onClick={() =>
-                        void openFoundationReport()
+                        void openGradeReport(
+                          grade.code,
+                          grade.name,
+                        )
                       }
                       aria-label="View report"
                       title="View report"
@@ -4979,10 +5710,7 @@ export default function EducationLearningHub({
                   ) => {
                     const expanded =
                       expandedGradeTopicCode ===
-                        item.code &&
-                      !grade?.code.startsWith(
-                        "PROGRAM_",
-                      );
+                        item.code;
 
                     const latest =
                       subject
@@ -5029,17 +5757,8 @@ export default function EducationLearningHub({
                               5
                           }
                           onClick={() =>
-                            void (
-                              grade &&
-                              !grade.code.startsWith(
-                                "PROGRAM_",
-                              )
-                                ? toggleGradeTopic(
-                                    item,
-                                  )
-                                : selectTopic(
-                                    item,
-                                  )
+                            void toggleGradeTopic(
+                              item,
                             )
                           }
                           aria-expanded={
@@ -5066,19 +5785,13 @@ export default function EducationLearningHub({
                             </small>
                           </span>
 
-                          {
-                            !grade?.code.startsWith(
-                              "PROGRAM_",
-                            ) && (
-                              <b>
-                                {
-                                  expanded
-                                    ? "▴"
-                                    : "▾"
-                                }
-                              </b>
-                            )
-                          }
+                          <b>
+                            {
+                              expanded
+                                ? "▴"
+                                : "▾"
+                            }
+                          </b>
                         </button>
 
                         {
@@ -5797,7 +6510,10 @@ export default function EducationLearningHub({
                          * Refresh Foundation topic/subtopic
                          * metrics after completing practice.
                          */
-                        void loadEducationProgressReport()
+                        void loadEducationProgressReport(
+                          undefined,
+                          grade?.code,
+                        )
                           .catch(
                             () => {
                               // Navigation should remain available.
@@ -5854,7 +6570,12 @@ export default function EducationLearningHub({
                         <div
                           className="education-learning__mock-results-empty"
                         >
-                          No submitted mock tests yet.
+                          {
+                            grade?.type ===
+                              "grade"
+                              ? "Grade mock tests coming soon."
+                              : "No submitted mock tests yet."
+                          }
                         </div>
                       ) : (
                         <div
@@ -5902,9 +6623,29 @@ export default function EducationLearningHub({
                                         null,
                                       );
 
-                                      setSelectedMockAttempt(
-                                        attempt,
-                                      );
+                                      void loadMockAttemptDetail(
+                                        attempt.id,
+                                      )
+                                        .then(
+                                          (
+                                            detailedAttempt,
+                                          ) => {
+                                            setSelectedMockAttempt(
+                                              detailedAttempt,
+                                            );
+                                          },
+                                        )
+                                        .catch(
+                                          (
+                                            caught,
+                                          ) => {
+                                            setError(
+                                              caught instanceof Error
+                                                ? caught.message
+                                                : "Mock attempt details could not be loaded.",
+                                            );
+                                          },
+                                        );
                                     }}
                                     title={`${attempt.testName} · ${mockLevelLabel(
                                       attempt.examLevel,

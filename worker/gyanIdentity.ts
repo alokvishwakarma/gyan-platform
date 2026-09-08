@@ -1801,6 +1801,214 @@ export async function handleGyanIdentityRoute(
   }
 
 
+  /*
+   * POST /api/gyan-identity/friends
+   *
+   * Add another GYAN account to the current browser owner's
+   * friend list. Friendship is intentionally one-way.
+   */
+  if (
+    url.pathname ===
+      "/api/gyan-identity/friends" &&
+    request.method ===
+      "POST"
+  ) {
+    const existingSecret =
+      identityCookie(
+        request,
+        "gyan_anon",
+      );
+
+    if (!existingSecret) {
+      return identityJson(
+        {
+          error:
+            "This device needs its own GYAN identity before adding a friend.",
+        },
+        401,
+      );
+    }
+
+    const secretHash =
+      await identitySha256(
+        existingSecret,
+      );
+
+    const session =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT account_id
+          FROM gyan_browser_sessions
+          WHERE secret_hash = ?
+          LIMIT 1
+          `,
+        )
+        .bind(
+          secretHash,
+        )
+        .first<{
+          account_id: number;
+        }>();
+
+    if (!session) {
+      return identityJson(
+        {
+          error:
+            "GYAN ownership could not be verified.",
+        },
+        401,
+      );
+    }
+
+    // eslint-disable-next-line no-useless-assignment
+    let body:
+      {
+        friendCode?:
+          unknown;
+      } = {};
+
+    try {
+      body =
+        await request.json<{
+          friendCode?:
+            unknown;
+        }>();
+    } catch {
+      return identityJson(
+        {
+          error:
+            "Invalid request.",
+        },
+        400,
+      );
+    }
+
+    const friendCode =
+      typeof body.friendCode ===
+        "string"
+        ? body.friendCode
+            .trim()
+            .toUpperCase()
+        : "";
+
+    if (
+      !/^[A-Z0-9]{4,5}$/.test(
+        friendCode,
+      )
+    ) {
+      return identityJson(
+        {
+          error:
+            "Enter a valid GYAN friend code.",
+        },
+        400,
+      );
+    }
+
+    const owner =
+      await loadGyanAccount(
+        env.gyan_registry,
+        session.account_id,
+      );
+
+    if (!owner) {
+      return identityJson(
+        {
+          error:
+            "Your GYAN identity could not be loaded.",
+        },
+        404,
+      );
+    }
+
+    const friend =
+      await loadPublicGyanAccountByCode(
+        env.gyan_registry,
+        friendCode,
+      );
+
+    if (!friend) {
+      return identityJson(
+        {
+          error:
+            `GYAN ${friendCode} was not found.`,
+        },
+        404,
+      );
+    }
+
+    if (
+      owner.id ===
+      friend.id
+    ) {
+      return identityJson(
+        {
+          error:
+            "You cannot add your own GYAN as a friend.",
+        },
+        400,
+      );
+    }
+
+    const existingFriend =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT id
+          FROM gyan_friends
+          WHERE
+            owner_account_id = ?
+            AND friend_account_id = ?
+          LIMIT 1
+          `,
+        )
+        .bind(
+          owner.id,
+          friend.id,
+        )
+        .first<{
+          id: number;
+        }>();
+
+    if (!existingFriend) {
+      await env.gyan_registry
+        .prepare(
+          `
+          INSERT INTO gyan_friends (
+            owner_account_id,
+            friend_account_id
+          )
+          VALUES (?, ?)
+          `,
+        )
+        .bind(
+          owner.id,
+          friend.id,
+        )
+        .run();
+    }
+
+    return identityJson({
+      added:
+        true,
+
+      alreadyFriend:
+        Boolean(
+          existingFriend,
+        ),
+
+      friend: {
+        code:
+          friend.code,
+
+        displayName:
+          friend.display_name,
+      },
+    });
+  }
+
+
   const publicCodeMatch =
     url.pathname.match(
       /^\/api\/gyan-identity\/([A-Za-z0-9]{4,5})$/,
@@ -1827,6 +2035,70 @@ export async function handleGyanIdentityRoute(
       );
     }
 
+    let isFriend =
+      false;
+
+    const viewerSecret =
+      identityCookie(
+        request,
+        "gyan_anon",
+      );
+
+    if (viewerSecret) {
+      const viewerSecretHash =
+        await identitySha256(
+          viewerSecret,
+        );
+
+      const viewerSession =
+        await env.gyan_registry
+          .prepare(
+            `
+            SELECT account_id
+            FROM gyan_browser_sessions
+            WHERE secret_hash = ?
+            LIMIT 1
+            `,
+          )
+          .bind(
+            viewerSecretHash,
+          )
+          .first<{
+            account_id: number;
+          }>();
+
+      if (
+        viewerSession &&
+        viewerSession.account_id !==
+          account.id
+      ) {
+        const friendRow =
+          await env.gyan_registry
+            .prepare(
+              `
+              SELECT 1 AS found
+              FROM gyan_friends
+              WHERE
+                owner_account_id = ?
+                AND friend_account_id = ?
+              LIMIT 1
+              `,
+            )
+            .bind(
+              viewerSession.account_id,
+              account.id,
+            )
+            .first<{
+              found: number;
+            }>();
+
+        isFriend =
+          Boolean(
+            friendRow,
+          );
+      }
+    }
+
     return identityJson({
       account: {
         id:
@@ -1845,6 +2117,8 @@ export async function handleGyanIdentityRoute(
 
         createdAt:
           account.created_at,
+
+        isFriend,
       },
     });
   }

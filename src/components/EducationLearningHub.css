@@ -7254,3 +7254,39 @@ button.education-learning__topic-status--none {
   }
 }
 
+/* Grade/Foundation bottom actions: Report | Class | Assign Teacher */
+.education-learning__foundation-actions {
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(
+        0,
+        1fr
+      )
+    );
+}
+
+.education-learning__foundation-actions
+  .education-learning__foundation-assign-teacher {
+  grid-column: auto;
+}
+
+@media (max-width: 430px) {
+  .education-learning__foundation-actions {
+    grid-template-columns:
+      repeat(
+        3,
+        minmax(
+          0,
+          1fr
+        )
+      );
+    gap: 5px;
+  }
+
+  .education-learning__foundation-actions > button {
+    min-width: 0;
+    padding-inline: 5px;
+    font-size: 0.62rem;
+  }
+}

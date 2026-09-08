@@ -4,14 +4,10 @@ import {
 } from "react";
 
 import {
+  loadPublicEducationConfig,
   type EducationCountry,
+  type EducationCountryConfig,
 } from "../config/education";
-
-import {
-  loadEducationCatalog,
-  type EducationCatalog,
-  type EducationCatalogProgram,
-} from "../config/educationCatalog";
 
 import "./EducationPortal.css";
 
@@ -21,14 +17,6 @@ interface EducationPortalProps {
 
   onBack:
     () => void;
-
-  onMockTests?: (
-    programCode: string,
-  ) => void;
-
-  onReport?: (
-    programCode: string,
-  ) => void;
 
   onSelect:
     (
@@ -41,9 +29,19 @@ interface EducationPortalProps {
         name: string;
         countryCode?: string;
         programCode?: string;
-        experienceType?: string;
       },
     ) => void;
+
+  onMockTests:
+    (
+      program: string,
+    ) => void;
+
+  onReport:
+    (
+      program: string,
+    ) => void;
+
 }
 
 const FOUNDATION_ROWS:
@@ -76,19 +74,54 @@ const FOUNDATION_ROWS:
     ],
   ];
 
+/*
+ * Temporary external demo board.
+ *
+ * Keep the URL in one place so GYAN is not coupled to Zoom throughout
+ * the component. This can later be replaced by a config/API value or a
+ * native GYAN demo/whiteboard route without changing the portal UI.
+ */
+const EDUCATION_DEMO_URL =
+  "https://us05whiteboard.zoom.us/wb/db/eWaLjYeCRrGwjTxytRnnQg/p/17502055956480";
+
+function openEducationDemo(): void {
+  window.open(
+    EDUCATION_DEMO_URL,
+    "_blank",
+    "noopener,noreferrer",
+  );
+}
+
+function normalizeProgramCode(
+  value: string,
+): string {
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(
+      /[^A-Z0-9]+/g,
+      "_",
+    )
+    .replace(
+      /^_+|_+$/g,
+      "",
+    );
+}
+
+
 export default function EducationPortal({
   country,
   onBack,
+  onSelect,
   onMockTests,
   onReport,
-  onSelect,
 }: EducationPortalProps) {
   const [
-    catalog,
-    setCatalog,
+    config,
+    setConfig,
   ] =
     useState<
-      EducationCatalog |
+      EducationCountryConfig |
       null
     >(
       null,
@@ -114,7 +147,7 @@ export default function EducationPortal({
       let active =
         true;
 
-      void loadEducationCatalog(
+      void loadPublicEducationConfig(
         country,
       )
         .then(
@@ -122,7 +155,7 @@ export default function EducationPortal({
             if (
               active
             ) {
-              setCatalog(
+              setConfig(
                 next,
               );
 
@@ -137,7 +170,7 @@ export default function EducationPortal({
             if (
               active
             ) {
-              setCatalog(
+              setConfig(
                 null,
               );
 
@@ -158,6 +191,52 @@ export default function EducationPortal({
     ],
   );
 
+  const enabledPrograms =
+    (
+      config?.programs ??
+      []
+    )
+      .filter(
+        (
+          program,
+        ) =>
+          program.enabled,
+      )
+      .sort(
+        (
+          first,
+          second,
+        ) =>
+          (
+            first.sortOrder ??
+            100
+          ) -
+            (
+              second.sortOrder ??
+              100
+            ) ||
+          first.name.localeCompare(
+            second.name,
+          ),
+      );
+
+  const gradeCodeForProgram =
+    (
+      programCode: string,
+    ): string => {
+      const normalized =
+        normalizeProgramCode(
+          programCode,
+        );
+
+      return normalized.startsWith(
+        "PROGRAM_",
+      )
+        ? normalized
+        : `PROGRAM_${normalized}`;
+    };
+
+
   return (
     <main
       className="education-portal"
@@ -177,7 +256,7 @@ export default function EducationPortal({
 
         <div>
           <strong>
-            🎓 Education Portal
+            🎓 Education
           </strong>
         </div>
       </header>
@@ -205,119 +284,112 @@ export default function EducationPortal({
               className="education-portal__advanced-list"
             >
               {
-                (
-                  catalog
-                    ?.programs ??
-                  []
-                ).map(
+                enabledPrograms.map(
                   (
-                    program:
-                      EducationCatalogProgram,
-                  ) => (
-                    <div
-                      key={
-                        `${program.countryCode}:${program.code}`
-                      }
-                      className="education-portal__advanced-row"
-                    >
-                      <strong>
-                        {
-                          program.name
-                        }
-                      </strong>
+                    program,
+                  ) => {
+                    const programCode =
+                      normalizeProgramCode(
+                        program.code,
+                      );
 
+                    const classCategory =
+                      programCode
+                        .toLowerCase()
+                        .replace(
+                          /_/g,
+                          "-",
+                        );
+
+                    return (
                       <div
-                        className="education-portal__advanced-actions"
+                        key={
+                          `${country}:${programCode}`
+                        }
+                        className="education-portal__advanced-row"
                       >
-                        {
-                          program.showQuestions && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                onSelect({
-                                  type:
-                                    "program",
-                                  code:
-                                    program.gradeCode,
-                                  name:
-                                    program.name,
-                                  countryCode:
-                                    program.countryCode,
-                                  programCode:
-                                    program.code,
-                                  experienceType:
-                                    program.experienceType,
-                                })
-                              }
-                            >
-                              Questions
-                            </button>
-                          )
-                        }
+                        <strong>
+                          {
+                            program.name
+                          }
+                        </strong>
 
-                        {
-                          program.showMockTests &&
-                          onMockTests && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                onMockTests(
-                                  program.code,
-                                )
-                              }
-                            >
-                              Mock Tests
-                            </button>
-                          )
-                        }
+                        <div
+                          className="education-portal__advanced-actions"
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onSelect({
+                                type:
+                                  "program",
 
-                        {
-                          program.showReports &&
-                          onReport && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                onReport(
-                                  program.code,
-                                )
-                              }
-                            >
-                              Report
-                            </button>
-                          )
-                        }
+                                code:
+                                  gradeCodeForProgram(
+                                    programCode,
+                                  ),
 
-                        {
-                          program.showDemo && (
-                            <button
-                              type="button"
-                              disabled
-                              title="Demo Class · Coming Soon"
-                            >
-                              Demo · Soon
-                            </button>
-                          )
-                        }
+                                name:
+                                  program.name,
 
-                        {
-                          program.showClasses && (
-                            <button
-                              type="button"
-                              className="education-portal__class-action"
-                              onClick={() => {
-                                window.location.href =
-                                  `/class?category=${encodeURIComponent(
-                                    program.code.toLowerCase(),
-                                  )}`;
-                              }}
-                            >
-                              Class
-                            </button>
-                          )
-                        }
+                                countryCode:
+                                  country,
+
+                                programCode,
+                              })
+                            }
+                          >
+                            Topics
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onMockTests(
+                                programCode,
+                              )
+                            }
+                          >
+                            Tests
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onReport(
+                                programCode,
+                              )
+                            }
+                            title={`${program.name} progress report`}
+                          >
+                            Report
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={
+                              openEducationDemo
+                            }
+                            title="Open demo whiteboard"
+                          >
+                            Demo
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              window.location.href =
+                                `/class?category=${encodeURIComponent(
+                                  classCategory,
+                                )}`;
+                            }}
+                          >
+                            Class
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ),
+                    );
+                  },
                 )
               }
             </div>
@@ -325,15 +397,10 @@ export default function EducationPortal({
         )
       }
 
-
       {
         !loading &&
-        (
-          catalog?.selectedCountry ===
-            "US" ||
-          catalog?.selectedCountry ===
-            "IN"
-        ) && (
+        config
+          ?.preK12Enabled && (
           <section
             className="education-portal__section education-portal__section--grades"
           >

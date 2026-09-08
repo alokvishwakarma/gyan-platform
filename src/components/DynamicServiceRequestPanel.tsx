@@ -1319,6 +1319,16 @@ export default function DynamicServiceRequestPanel({
     "GENERAL_REQUEST";
 
   /*
+   * GENERAL_REQUEST is intentionally treated like the compact
+   * online/remote flow. This keeps the short form, validation,
+   * and submission behavior aligned even if its catalog
+   * workflow/category metadata changes.
+   */
+  const usesCompactContactFlow =
+    isOnlineRequest ||
+    isGeneralRequest;
+
+  /*
    * All schema-driven service request forms use the
    * compact presentation by default.
    *
@@ -1605,7 +1615,7 @@ export default function DynamicServiceRequestPanel({
       );
 
     const compactEmailItem =
-      isOnlineRequest
+      usesCompactContactFlow
         ? allFields.find(
             ({ field }) =>
               isEmailField(
@@ -1638,7 +1648,7 @@ export default function DynamicServiceRequestPanel({
     ) {
       const validationField:
         DynamicServiceField =
-        isOnlineRequest
+        usesCompactContactFlow
           ? {
               ...field,
 
@@ -1650,7 +1660,7 @@ export default function DynamicServiceRequestPanel({
           : field;
 
       const error =
-        isOnlineRequest &&
+        usesCompactContactFlow &&
         compactHasValidEmail &&
         isPhoneLikeField(
           field,
@@ -1667,7 +1677,7 @@ export default function DynamicServiceRequestPanel({
       }
     }
 
-    if (isOnlineRequest) {
+    if (usesCompactContactFlow) {
       const nameItem =
         allFields.find(
           ({ field }) =>
@@ -3006,17 +3016,10 @@ export default function DynamicServiceRequestPanel({
     field:
       DynamicServiceField,
   ): boolean {
-    if (isOnlineRequest) {
+    if (usesCompactContactFlow) {
       return isCompactOnlineField(
         section,
         field,
-      );
-    }
-
-    if (isGeneralRequest) {
-      return (
-        field.required ||
-        isContactField(field)
       );
     }
 
@@ -3259,13 +3262,38 @@ export default function DynamicServiceRequestPanel({
             </small>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close service request"
+          <div
+            className="dynamic-service-request__header-actions"
           >
-            ×
-          </button>
+            {responseData
+              ?.form
+              ?.hasConfiguration && (
+              <button
+                type="submit"
+                form="dynamic-service-request-form"
+                disabled={
+                  submitting ||
+                  storageState ===
+                    "stopped"
+                }
+                aria-label="Submit request"
+                title="Submit request"
+              >
+                {submitting
+                  ? "…"
+                  : "✓"}
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close service request"
+              title="Close"
+            >
+              ×
+            </button>
+          </div>
         </header>
 
         <div className="dynamic-service-request__content">
@@ -3299,6 +3327,7 @@ export default function DynamicServiceRequestPanel({
               ?.form
               ?.hasConfiguration && (
               <form
+                id="dynamic-service-request-form"
                 className={
                   isCompactRequest &&
                   !showOptionalDetails
