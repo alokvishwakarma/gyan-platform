@@ -1802,6 +1802,613 @@ export async function handleGyanIdentityRoute(
 
 
   /*
+   * GET /api/gyan-identity/service-request?number=...
+   *
+   * Owner-only, read-only request details.
+   * Ownership is verified through the current browser GYAN account,
+   * its calendar bridge email, and the request customer email.
+   */
+  if (
+    url.pathname ===
+      "/api/gyan-identity/service-request" &&
+    request.method ===
+      "GET"
+  ) {
+    const requestNumber =
+      (
+        url.searchParams.get(
+          "number",
+        ) ??
+        ""
+      )
+        .trim()
+        .toUpperCase();
+
+    if (!requestNumber) {
+      return identityJson(
+        {
+          error:
+            "Request number is required.",
+        },
+        400,
+      );
+    }
+
+    const existingSecret =
+      identityCookie(
+        request,
+        "gyan_anon",
+      );
+
+    if (!existingSecret) {
+      return identityJson(
+        {
+          error:
+            "This device is not signed in to a GYAN identity.",
+        },
+        401,
+      );
+    }
+
+    const secretHash =
+      await identitySha256(
+        existingSecret,
+      );
+
+    const owner =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT
+            ga.id AS account_id,
+            cac.email AS owner_email
+          FROM gyan_browser_sessions gbs
+          INNER JOIN gyan_accounts ga
+            ON ga.id =
+               gbs.account_id
+          LEFT JOIN gyan_account_calendar_links gacl
+            ON gacl.gyan_account_id =
+               ga.id
+          LEFT JOIN calendar_access_codes cac
+            ON cac.id =
+               gacl.calendar_access_id
+          WHERE gbs.secret_hash = ?
+          LIMIT 1
+          `,
+        )
+        .bind(
+          secretHash,
+        )
+        .first<{
+          account_id:
+            number;
+
+          owner_email:
+            string | null;
+        }>();
+
+    if (!owner) {
+      return identityJson(
+        {
+          error:
+            "This device does not own a GYAN identity.",
+        },
+        403,
+      );
+    }
+
+    const ownerEmail =
+      owner
+        .owner_email
+        ?.trim()
+        .toLowerCase() ??
+      "";
+
+    /*
+     * A recovery email is useful as an additional ownership check,
+     * but it must not be required for an anonymous GYAN account.
+     *
+     * - If the GYAN account has an email, require the request email
+     *   to match it.
+     * - If the GYAN account has no email yet, only allow requests
+     *   that were themselves submitted without an email.
+     *
+     * We still require the valid HttpOnly gyan_anon browser session
+     * above, so a completely anonymous browser cannot use this route.
+     */
+    const row =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT
+            sr.id,
+            sr.request_number,
+            sr.status,
+            sr.created_at,
+            sr.updated_at,
+            sr.customer_name,
+            sr.phone_number,
+            sr.email_address,
+            sr.whatsapp_number,
+            sr.details_json,
+            sr.estimated_amount_paise,
+            sr.shop_code,
+            s.name AS service_name,
+            sh.name AS shop_name
+
+          FROM service_requests sr
+
+          INNER JOIN services s
+            ON s.id =
+               sr.service_id
+
+          INNER JOIN shops sh
+            ON sh.code =
+               sr.shop_code
+
+          WHERE
+            sr.request_number = ?
+            AND (
+              (
+                ? <> ''
+                AND lower(
+                  trim(
+                    COALESCE(
+                      sr.email_address,
+                      ''
+                    )
+                  )
+                ) = ?
+              )
+              OR
+              (
+                ? = ''
+                AND trim(
+                  COALESCE(
+                    sr.email_address,
+                    ''
+                  )
+                ) = ''
+              )
+            )
+
+          LIMIT 1
+          `,
+        )
+        .bind(
+          requestNumber,
+          ownerEmail,
+          ownerEmail,
+          ownerEmail,
+        )
+        .first<{
+          id:
+            number;
+
+          request_number:
+            string;
+
+          status:
+            string;
+
+          created_at:
+            string;
+
+          updated_at:
+            string;
+
+          customer_name:
+            string | null;
+
+          phone_number:
+            string | null;
+
+          email_address:
+            string | null;
+
+          whatsapp_number:
+            string | null;
+
+          details_json:
+            string | null;
+
+          estimated_amount_paise:
+            number | null;
+
+          shop_code:
+            string;
+
+          service_name:
+            string;
+
+          shop_name:
+            string;
+        }>();
+
+    if (!row) {
+      return identityJson(
+        {
+          error:
+            "Service request not found for this GYAN account.",
+        },
+        404,
+      );
+    }
+
+    let answers:
+      Record<
+        string,
+        unknown
+      > = {};
+
+    if (
+      row.details_json
+    ) {
+      try {
+        const parsed =
+          JSON.parse(
+            row.details_json,
+          );
+
+        if (
+          typeof parsed ===
+            "object" &&
+          parsed !==
+            null &&
+          !Array.isArray(
+            parsed,
+          )
+        ) {
+          answers =
+            parsed as Record<
+              string,
+              unknown
+            >;
+        }
+      } catch {
+        answers = {};
+      }
+    }
+
+    const files =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT
+            id,
+            original_file_name,
+            file_size,
+            content_type
+          FROM service_request_files
+          WHERE service_request_id = ?
+          ORDER BY id ASC
+          `,
+        )
+        .bind(
+          row.id,
+        )
+        .all<{
+          id:
+            number;
+
+          original_file_name:
+            string;
+
+          file_size:
+            number;
+
+          content_type:
+            string | null;
+        }>();
+
+    return identityJson({
+      request: {
+        requestNumber:
+          row.request_number,
+
+        status:
+          row.status,
+
+        createdAt:
+          row.created_at,
+
+        updatedAt:
+          row.updated_at,
+
+        serviceName:
+          row.service_name,
+
+        shopName:
+          row.shop_name,
+
+        shopCode:
+          row.shop_code,
+
+        customerName:
+          row.customer_name,
+
+        phoneNumber:
+          row.phone_number,
+
+        emailAddress:
+          row.email_address,
+
+        whatsAppNumber:
+          row.whatsapp_number,
+
+        estimatedAmountPaise:
+          row.estimated_amount_paise,
+
+        answers,
+
+        files:
+          files.results.map(
+            (
+              file,
+            ) => ({
+              id:
+                file.id,
+
+              name:
+                file.original_file_name,
+
+              size:
+                file.file_size,
+
+              contentType:
+                file.content_type,
+            }),
+          ),
+      },
+    });
+  }
+
+
+  /*
+   * GET /api/gyan-identity/gems
+   *
+   * Owner-only Gem balance and recent transaction history.
+   */
+  if (
+    url.pathname ===
+      "/api/gyan-identity/gems" &&
+    request.method ===
+      "GET"
+  ) {
+    const existingSecret =
+      identityCookie(
+        request,
+        "gyan_anon",
+      );
+
+    if (!existingSecret) {
+      return identityJson({
+        total: 0,
+        transactions: [],
+      });
+    }
+
+    const secretHash =
+      await identitySha256(
+        existingSecret,
+      );
+
+    const session =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT account_id
+          FROM gyan_browser_sessions
+          WHERE secret_hash = ?
+          LIMIT 1
+          `,
+        )
+        .bind(
+          secretHash,
+        )
+        .first<{
+          account_id:
+            number;
+        }>();
+
+    if (!session) {
+      return identityJson({
+        total: 0,
+        transactions: [],
+      });
+    }
+
+    const link =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT calendar_access_id
+          FROM gyan_account_calendar_links
+          WHERE gyan_account_id = ?
+          LIMIT 1
+          `,
+        )
+        .bind(
+          session.account_id,
+        )
+        .first<{
+          calendar_access_id:
+            number;
+        }>();
+
+    if (!link) {
+      return identityJson({
+        total: 0,
+        transactions: [],
+      });
+    }
+
+    const rows =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT
+            id,
+            amount,
+            reason,
+            created_at,
+            SUM(amount) OVER () AS total
+          FROM gem_transactions
+          WHERE calendar_access_id = ?
+          ORDER BY created_at DESC, id DESC
+          LIMIT 100
+          `,
+        )
+        .bind(
+          link.calendar_access_id,
+        )
+        .all<{
+          id: number;
+          amount: number;
+          reason: string;
+          created_at: string;
+          total: number;
+        }>();
+
+    const total =
+      rows.results.length
+        ? Number(
+            rows.results[0]
+              ?.total ??
+            0,
+          )
+        : 0;
+
+    return identityJson({
+      total,
+
+      transactions:
+        rows.results.map(
+          (
+            row,
+          ) => ({
+            id:
+              row.id,
+
+            amount:
+              row.amount,
+
+            reason:
+              row.reason,
+
+            createdAt:
+              row.created_at,
+          }),
+        ),
+    });
+  }
+
+
+  /*
+   * GET /api/gyan-identity/friends
+   *
+   * Return the current browser owner's one-way friend list.
+   * Read-only and indexed by owner_account_id.
+   */
+  if (
+    url.pathname ===
+      "/api/gyan-identity/friends" &&
+    request.method ===
+      "GET"
+  ) {
+    const existingSecret =
+      identityCookie(
+        request,
+        "gyan_anon",
+      );
+
+    if (!existingSecret) {
+      return identityJson({
+        friends: [],
+      });
+    }
+
+    const secretHash =
+      await identitySha256(
+        existingSecret,
+      );
+
+    const session =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT account_id
+          FROM gyan_browser_sessions
+          WHERE secret_hash = ?
+          LIMIT 1
+          `,
+        )
+        .bind(
+          secretHash,
+        )
+        .first<{
+          account_id: number;
+        }>();
+
+    if (!session) {
+      return identityJson({
+        friends: [],
+      });
+    }
+
+    const rows =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT
+            ga.code,
+            ga.display_name,
+            gf.created_at
+
+          FROM gyan_friends gf
+
+          INNER JOIN gyan_accounts ga
+            ON ga.id =
+               gf.friend_account_id
+
+          WHERE
+            gf.owner_account_id = ?
+
+          ORDER BY
+            gf.created_at DESC,
+            gf.id DESC
+          `,
+        )
+        .bind(
+          session.account_id,
+        )
+        .all<{
+          code: string;
+          display_name: string;
+          created_at: string;
+        }>();
+
+    return identityJson({
+      friends:
+        rows.results.map(
+          (
+            row,
+          ) => ({
+            code:
+              row.code,
+
+            displayName:
+              row.display_name,
+
+            addedAt:
+              row.created_at,
+          }),
+        ),
+    });
+  }
+
+
+  /*
    * POST /api/gyan-identity/friends
    *
    * Add another GYAN account to the current browser owner's

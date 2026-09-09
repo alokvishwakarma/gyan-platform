@@ -132,6 +132,10 @@ import {
 } from "./adminStudents";
 
 import {
+  handleAdminNearbySearchesRoute,
+} from "./adminNearbySearches";
+
+import {
   handleSafetyResourceRoute,
 } from "./safetyResources";
 
@@ -941,6 +945,26 @@ if (adminStudentsResponse) {
     adminAuthResponse
   ) {
     return adminAuthResponse;
+  }
+
+
+  /*
+   * ------------------------------------------------
+   * Nearby-search administration
+   * ------------------------------------------------
+   */
+
+  const adminNearbySearchesResponse =
+    await handleAdminNearbySearchesRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (
+    adminNearbySearchesResponse
+  ) {
+    return adminNearbySearchesResponse;
   }
 
 

@@ -376,6 +376,20 @@ type UnifiedGyanIdentity = {
   }[];
 };
 
+type AdminPrintTargetMode =
+  | "mine"
+  | "other"
+  | "generic";
+
+type ResolvedPrintTarget = {
+  mode:
+    AdminPrintTargetMode;
+
+  record?:
+    CalendarAccessRecord;
+};
+
+
 
 function nearestAccountPrintSize():
   PrintSize {
@@ -504,6 +518,127 @@ async function loadCurrentGyanRecord({
 
 
 
+async function loadGyanRecordByCode({
+  code,
+  durationMonths,
+  artworkKey,
+}: {
+  code:
+    string;
+
+  durationMonths:
+    DurationMonths;
+
+  artworkKey:
+    ArtworkKey;
+}):
+  Promise<CalendarAccessRecord> {
+  const normalizedCode =
+    code
+      .trim()
+      .toUpperCase();
+
+  if (
+    !/^[A-Z0-9]{4,5}$/.test(
+      normalizedCode,
+    )
+  ) {
+    throw new Error(
+      "Enter a valid 4–5 character GYAN code.",
+    );
+  }
+
+  const response =
+    await fetch(
+      `/api/gyan-identity/${encodeURIComponent(
+        normalizedCode,
+      )}`,
+      {
+        method:
+          "GET",
+
+        credentials:
+          "include",
+
+        cache:
+          "no-store",
+      },
+    );
+
+  const body =
+    await response.json() as {
+      account?: {
+        id:
+          number;
+
+        code:
+          string;
+
+        displayName:
+          string;
+      };
+
+      error?:
+        string;
+    };
+
+  if (
+    !response.ok ||
+    !body.account
+  ) {
+    throw new Error(
+      body.error ??
+        `GYAN ${normalizedCode} was not found.`,
+    );
+  }
+
+  const publicUrl =
+    `${window.location.origin}/${body.account.code
+      .trim()
+      .toLowerCase()}`;
+
+  return {
+    id:
+      body.account.id,
+
+    slug:
+      body.account.code
+        .trim()
+        .toUpperCase(),
+
+    publicUrl,
+
+    qrUrl:
+      publicUrl,
+
+    gyanName:
+      body.account.displayName,
+
+    accessCode:
+      "•••••-•••••",
+
+    durationMonths,
+
+    welcomeGems:
+      getPrintConfig(
+        durationMonths === 12
+          ? "A5"
+          : durationMonths === 6
+            ? "A6"
+            : "A7",
+      ).welcomeGems,
+
+    artworkKey,
+
+    status:
+      "CLAIMED",
+
+    email:
+      null,
+  };
+}
+
+
 function createIndependentRecord({
   durationMonths,
   artworkKey,
@@ -539,6 +674,32 @@ function createIndependentRecord({
      * Intentionally omit safetyCards so A5SafetyCards uses the
      * privacy-friendly generic preview URLs.
      */
+  };
+}
+
+
+function createGenericDistributionRecord({
+  durationMonths,
+  artworkKey,
+}: {
+  durationMonths:
+    DurationMonths;
+
+  artworkKey:
+    ArtworkKey;
+}):
+  CalendarAccessRecord {
+  return {
+    ...createIndependentRecord({
+      durationMonths,
+      artworkKey,
+    }),
+
+    gyanName:
+      "GYAN",
+
+    accessCode:
+      "Created on first use",
   };
 }
 
@@ -1473,12 +1634,8 @@ function EducationAccountBlock({
         </div>
 
         <div className="gyan-account-screenlet__url">
-          <span>
-            https://
-          </span>
-
           <strong>
-            gyan.cc/{shortCode}
+            https://gyan.cc/{shortCode}
           </strong>
         </div>
 
@@ -1520,11 +1677,8 @@ function EducationAccountBlock({
     const shortUrl =
       record
         ?.slug
-        ? `gyan.cc/${record.slug.toLowerCase()}`
-        : publicUrl.replace(
-            /^https?:\/\//,
-            "",
-          );
+        ? `https://gyan.cc/${record.slug.toLowerCase()}`
+        : publicUrl;
 
     return (
       <section className="gyan-print-card-v2__account gyan-print-card-v2__account--collectible">
@@ -1674,11 +1828,8 @@ function EducationAccountBlock({
         </div>
 
         <div className="gyan-account-screenlet__url">
-          gyan.cc/
           <strong>
-            {
-              shortCode
-            }
+            https://gyan.cc/{shortCode}
           </strong>
         </div>
 
@@ -1766,11 +1917,8 @@ function EducationAccountBlock({
         </div>
 
         <div className="gyan-account-screenlet__url">
-          gyan.cc/
           <strong>
-            {
-              shortCode
-            }
+            https://gyan.cc/{shortCode}
           </strong>
         </div>
 
@@ -1866,10 +2014,7 @@ function EducationAccountBlock({
         <div className="gyan-print-card-v2__account-copy">
           <strong>
             {
-              publicUrl.replace(
-                /^https?:\/\//,
-                "",
-              )
+              publicUrl
             }
           </strong>
 
@@ -2115,6 +2260,8 @@ function PrintChooser({
     false,
   isIndependent =
     false,
+  isAdmin =
+    false,
   autoDownloadA5 =
     false,
   onPdfDownloaded,
@@ -2137,6 +2284,9 @@ function PrintChooser({
     boolean;
 
   isIndependent?:
+    boolean;
+
+  isAdmin?:
     boolean;
 
   autoDownloadA5?:
@@ -2253,6 +2403,33 @@ function PrintChooser({
   const [
     error,
     setError,
+  ] =
+    useState("");
+
+
+  const [
+    adminPrintTargetOpen,
+    setAdminPrintTargetOpen,
+  ] =
+    useState(false);
+
+  const [
+    adminPrintTargetMode,
+    setAdminPrintTargetMode,
+  ] =
+    useState<AdminPrintTargetMode>(
+      "mine",
+    );
+
+  const [
+    adminPrintOtherCode,
+    setAdminPrintOtherCode,
+  ] =
+    useState("");
+
+  const [
+    adminPrintTargetError,
+    setAdminPrintTargetError,
   ] =
     useState("");
 
@@ -2707,7 +2884,10 @@ function PrintChooser({
     );
   }
 
-  async function generatePdf():
+  async function generatePdf(
+    resolvedTarget?:
+      ResolvedPrintTarget,
+  ):
     Promise<boolean> {
     if (
       !selected ||
@@ -2723,8 +2903,36 @@ function PrintChooser({
     setError("");
 
     try {
+      const targetMode =
+        resolvedTarget
+          ?.mode ??
+        null;
+
       let singleRecord =
-        issuedRecord;
+        targetMode ===
+          "generic"
+          ? createGenericDistributionRecord({
+              durationMonths:
+                selected.durationMonths,
+
+              artworkKey:
+                artwork,
+            })
+          : targetMode ===
+              "other"
+            ? resolvedTarget
+                ?.record ??
+              null
+            : targetMode ===
+                "mine"
+              ? await loadCurrentGyanRecord({
+                  durationMonths:
+                    selected.durationMonths,
+
+                  artworkKey:
+                    artwork,
+                })
+              : issuedRecord;
 
       if (
         !singleRecord
@@ -2745,8 +2953,22 @@ function PrintChooser({
         CalendarAccessRecord[] =
           [];
 
+      const personalizedTarget =
+        targetMode ===
+          "mine" ||
+        targetMode ===
+          "other";
+
+      const genericTarget =
+        targetMode ===
+          "generic";
+
       const additionalCount =
-        useCurrentGyan
+        personalizedTarget ||
+        (
+          useCurrentGyan &&
+          !genericTarget
+        )
           ? 0
           : Math.max(
               0,
@@ -2755,6 +2977,7 @@ function PrintChooser({
             );
 
       const additionalRecords =
+        genericTarget ||
         isIndependent
           ? Array.from(
               {
@@ -2762,13 +2985,21 @@ function PrintChooser({
                   additionalCount,
               },
               () =>
-                createIndependentRecord({
-                  durationMonths:
-                    selected.durationMonths,
+                genericTarget
+                  ? createGenericDistributionRecord({
+                      durationMonths:
+                        selected.durationMonths,
 
-                  artworkKey:
-                    artwork,
-                }),
+                      artworkKey:
+                        artwork,
+                    })
+                  : createIndependentRecord({
+                      durationMonths:
+                        selected.durationMonths,
+
+                      artworkKey:
+                        artwork,
+                    }),
             )
           : additionalCount >
               0
@@ -3075,9 +3306,16 @@ function PrintChooser({
           ) ||
         singleRecord.slug.toUpperCase();
 
+      const personalizedPrint =
+        useCurrentGyan ||
+        targetMode ===
+          "mine" ||
+        targetMode ===
+          "other";
+
       const fileName =
-        useCurrentGyan
-          ? `GYAN-${safeDisplayName}-${singleRecord.slug.toUpperCase()}-A5.pdf`
+        personalizedPrint
+          ? `GYAN-${safeDisplayName}-${singleRecord.slug.toUpperCase()}-${selected.id}.pdf`
           : `gyan-${selected.id.toLowerCase()}-${selected.durationMonths}months.pdf`;
 
       pdf.save(
@@ -3085,7 +3323,8 @@ function PrintChooser({
       );
 
       if (
-        !isIndependent
+        !isIndependent &&
+        !personalizedPrint
       ) {
         await markCalendarAccessPrinted(
           printedIds,
@@ -3144,6 +3383,91 @@ function PrintChooser({
       );
     }
   }
+
+  function requestPdfPrint():
+    void {
+    if (
+      isAdmin &&
+      !autoDownloadA5
+    ) {
+      setAdminPrintTargetError(
+        "",
+      );
+
+      setAdminPrintTargetMode(
+        "mine",
+      );
+
+      setAdminPrintTargetOpen(
+        true,
+      );
+
+      return;
+    }
+
+    void generatePdf();
+  }
+
+
+  async function confirmAdminPrintTarget():
+    Promise<void> {
+    setAdminPrintTargetError(
+      "",
+    );
+
+    if (
+      adminPrintTargetMode ===
+        "other"
+    ) {
+      try {
+        const record =
+          await loadGyanRecordByCode({
+            code:
+              adminPrintOtherCode,
+
+            durationMonths:
+              selected.durationMonths,
+
+            artworkKey:
+              artwork,
+          });
+
+        setAdminPrintTargetOpen(
+          false,
+        );
+
+        await generatePdf({
+          mode:
+            "other",
+
+          record,
+        });
+
+        return;
+      } catch (
+        caught
+      ) {
+        setAdminPrintTargetError(
+          caught instanceof
+            Error
+            ? caught.message
+            : "The GYAN code could not be loaded.",
+        );
+
+        return;
+      }
+    }
+
+    setAdminPrintTargetOpen(
+      false,
+    );
+
+    await generatePdf({
+      mode:
+        adminPrintTargetMode,
+    });
+  }
+
 
   useEffect(
     () => {
@@ -3229,8 +3553,8 @@ function PrintChooser({
             !selected ||
             busy
           }
-          onClick={() =>
-            void generatePdf()
+          onClick={
+            requestPdfPrint
           }
         >
           🖨️
@@ -3690,6 +4014,329 @@ function PrintChooser({
         )
       }
 
+      {
+        isAdmin &&
+        adminPrintTargetOpen && (
+          <div
+            role="presentation"
+            onClick={() =>
+              setAdminPrintTargetOpen(
+                false,
+              )
+            }
+            style={{
+              position:
+                "fixed",
+              top:
+                "52px",
+              left:
+                "50%",
+              zIndex:
+                1300,
+              width:
+                "min(calc(100% - 20px), 390px)",
+              transform:
+                "translateX(-50%)",
+            }}
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-label="Choose print target"
+              onClick={(
+                event,
+              ) =>
+                event.stopPropagation()
+              }
+              style={{
+                boxSizing:
+                  "border-box",
+                width:
+                  "100%",
+                padding:
+                  "12px 14px",
+                border:
+                  "1px solid #d8dee8",
+                borderRadius:
+                  "0 0 12px 12px",
+                background:
+                  "#fff",
+                boxShadow:
+                  "0 10px 28px rgba(15, 23, 42, 0.18)",
+              }}
+            >
+              <h2
+                style={{
+                  margin:
+                    "0 0 8px",
+                  textAlign:
+                    "center",
+                  fontSize:
+                    "1rem",
+                }}
+              >
+                Print target
+              </h2>
+
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gridTemplateColumns:
+                    "auto minmax(0, 1fr)",
+                  gap:
+                    "8px",
+                  alignItems:
+                    "start",
+                  padding:
+                    "8px 0",
+                  cursor:
+                    "pointer",
+                }}
+              >
+                <input
+                  type="radio"
+                  name="gyan-admin-print-target"
+                  checked={
+                    adminPrintTargetMode ===
+                      "mine"
+                  }
+                  onChange={() =>
+                    setAdminPrintTargetMode(
+                      "mine",
+                    )
+                  }
+                />
+
+                <span>
+                  <strong>
+                    My GYAN
+                  </strong>
+
+                  <small
+                    style={{
+                      display:
+                        "block",
+                      marginTop:
+                        "2px",
+                      color:
+                        "#64748b",
+                    }}
+                  >
+                    {
+                      issuedRecord
+                        ? `https://gyan.cc/${issuedRecord.slug.toLowerCase()}`
+                        : "Current admin GYAN"
+                    }
+                  </small>
+                </span>
+              </label>
+
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gridTemplateColumns:
+                    "auto minmax(0, 1fr)",
+                  gap:
+                    "8px",
+                  alignItems:
+                    "start",
+                  padding:
+                    "8px 0",
+                  cursor:
+                    "pointer",
+                }}
+              >
+                <input
+                  type="radio"
+                  name="gyan-admin-print-target"
+                  checked={
+                    adminPrintTargetMode ===
+                      "other"
+                  }
+                  onChange={() =>
+                    setAdminPrintTargetMode(
+                      "other",
+                    )
+                  }
+                />
+
+                <span>
+                  <strong>
+                    Another GYAN
+                  </strong>
+
+                  <input
+                    type="text"
+                    value={
+                      adminPrintOtherCode
+                    }
+                    maxLength={
+                      5
+                    }
+                    placeholder="ABCD"
+                    onFocus={() =>
+                      setAdminPrintTargetMode(
+                        "other",
+                      )
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      setAdminPrintOtherCode(
+                        event.target.value
+                          .replace(
+                            /[^a-z0-9]/gi,
+                            "",
+                          )
+                          .toUpperCase(),
+                      )
+                    }
+                    style={{
+                      boxSizing:
+                        "border-box",
+                      width:
+                        "100%",
+                      marginTop:
+                        "5px",
+                      padding:
+                        "6px 8px",
+                      border:
+                        "1px solid #cbd5e1",
+                      borderRadius:
+                        "8px",
+                      font:
+                        "inherit",
+                      textTransform:
+                        "uppercase",
+                    }}
+                  />
+                </span>
+              </label>
+
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gridTemplateColumns:
+                    "auto minmax(0, 1fr)",
+                  gap:
+                    "8px",
+                  alignItems:
+                    "start",
+                  padding:
+                    "8px 0",
+                  cursor:
+                    "pointer",
+                }}
+              >
+                <input
+                  type="radio"
+                  name="gyan-admin-print-target"
+                  checked={
+                    adminPrintTargetMode ===
+                      "generic"
+                  }
+                  onChange={() =>
+                    setAdminPrintTargetMode(
+                      "generic",
+                    )
+                  }
+                />
+
+                <span>
+                  <strong>
+                    Generic GYAN — Distribution
+                  </strong>
+
+                  <small
+                    style={{
+                      display:
+                        "block",
+                      marginTop:
+                        "2px",
+                      color:
+                        "#64748b",
+                    }}
+                  >
+                    https://gyan.cc/ · no personal ABCD
+                  </small>
+                </span>
+              </label>
+
+              {
+                adminPrintTargetError && (
+                  <div
+                    style={{
+                      marginTop:
+                        "7px",
+                      color:
+                        "#b42318",
+                      fontSize:
+                        "0.72rem",
+                    }}
+                  >
+                    {
+                      adminPrintTargetError
+                    }
+                  </div>
+                )
+              }
+
+              <div
+                style={{
+                  display:
+                    "grid",
+                  gridTemplateColumns:
+                    "1fr 1fr",
+                  gap:
+                    "8px",
+                  marginTop:
+                    "13px",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAdminPrintTargetOpen(
+                      false,
+                    )
+                  }
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  disabled={
+                    busy ||
+                    (
+                      adminPrintTargetMode ===
+                        "other" &&
+                      !/^[A-Z0-9]{4,5}$/.test(
+                        adminPrintOtherCode
+                          .trim()
+                          .toUpperCase(),
+                      )
+                    )
+                  }
+                  onClick={() => {
+                    void confirmAdminPrintTarget();
+                  }}
+                >
+                  {
+                    busy
+                      ? "Preparing…"
+                      : "Continue"
+                  }
+                </button>
+              </div>
+            </section>
+          </div>
+        )
+      }
+
       <div className="gyan-calendar-print__next gyan-calendar-print__next--compact">
         <span className="gyan-calendar-print__next-context">
           {
@@ -3724,8 +4371,8 @@ function PrintChooser({
             disabled={
               busy
             }
-            onClick={() =>
-              void generatePdf()
+            onClick={
+              requestPdfPrint
             }
           >
             <span className="gyan-calendar-print__button-label--desktop">
@@ -3758,6 +4405,8 @@ export default function GyanCalendarPage({
   initialPrintOpen =
     false,
   useCurrentGyan =
+    false,
+  isAdmin =
     false,
   isIndependent =
     false,
@@ -3859,6 +4508,9 @@ export default function GyanCalendarPage({
         }
         isIndependent={
           isIndependent
+        }
+        isAdmin={
+          isAdmin
         }
         autoDownloadA5={
           shouldAutoDownloadA5

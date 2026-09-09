@@ -345,6 +345,44 @@ type RecentGWinkMessage = {
 };
 
 
+type GyanGemTransaction = {
+  id: number;
+  amount: number;
+  reason: string;
+  createdAt: string;
+};
+
+
+type GyanFriendSummary = {
+  code: string;
+  displayName: string;
+  addedAt: string;
+};
+
+
+type GyanServiceRequestDetail = {
+  requestNumber: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  serviceName: string;
+  shopName: string;
+  shopCode: string;
+  customerName: string | null;
+  phoneNumber: string | null;
+  emailAddress: string | null;
+  whatsAppNumber: string | null;
+  estimatedAmountPaise: number | null;
+  answers: Record<string, unknown>;
+  files: {
+    id: number;
+    name: string;
+    size: number;
+    contentType: string | null;
+  }[];
+};
+
+
 type GyanActivitySummary = {
   puzzles: {
     puzzleNumber: number;
@@ -1010,6 +1048,7 @@ export default function PublicHomePage({
                 .toUpperCase() ??
               "",
             );
+
           },
         )
         .catch(
@@ -1032,6 +1071,7 @@ export default function PublicHomePage({
             setCanonicalGyanCode(
               "",
             );
+
           },
         );
 
@@ -1046,6 +1086,33 @@ export default function PublicHomePage({
   const [
     educationRatingsCardOpen,
     setEducationRatingsCardOpen,
+  ] =
+    useState(false);
+
+
+  const [
+    gemBalance,
+    setGemBalance,
+  ] =
+    useState(0);
+
+  const [
+    gemTransactions,
+    setGemTransactions,
+  ] =
+    useState<
+      GyanGemTransaction[]
+    >([]);
+
+  const [
+    gemLedgerLoading,
+    setGemLedgerLoading,
+  ] =
+    useState(false);
+
+  const [
+    gemDialogOpen,
+    setGemDialogOpen,
   ] =
     useState(false);
 
@@ -1071,6 +1138,27 @@ export default function PublicHomePage({
     useState<
       RecentGWinkMessage | null
     >(null);
+
+
+  const [
+    gyanFriends,
+    setGyanFriends,
+  ] =
+    useState<
+      GyanFriendSummary[]
+    >([]);
+
+  const [
+    gyanFriendsLoading,
+    setGyanFriendsLoading,
+  ] =
+    useState(false);
+
+  const [
+    friendsDialogOpen,
+    setFriendsDialogOpen,
+  ] =
+    useState(false);
 
 
   const [
@@ -1104,7 +1192,287 @@ export default function PublicHomePage({
     useState(false);
 
 
+  const [
+    serviceRequestDetail,
+    setServiceRequestDetail,
+  ] =
+    useState<
+      GyanServiceRequestDetail | null
+    >(null);
 
+  const [
+    serviceRequestDetailLoading,
+    setServiceRequestDetailLoading,
+  ] =
+    useState(false);
+
+  const [
+    serviceRequestDetailError,
+    setServiceRequestDetailError,
+  ] =
+    useState("");
+
+  const [
+    serviceRequestDetailOpen,
+    setServiceRequestDetailOpen,
+  ] =
+    useState(false);
+
+  const [
+    serviceRequestDetailExpanded,
+    setServiceRequestDetailExpanded,
+  ] =
+    useState(false);
+
+
+
+
+
+  useEffect(
+    () => {
+      if (
+        !educationRatingsCardOpen &&
+        !gemDialogOpen
+      ) {
+        return;
+      }
+
+      const controller =
+        new AbortController();
+
+      queueMicrotask(
+        () => {
+          if (
+            !controller.signal.aborted
+          ) {
+            setGemLedgerLoading(
+              true,
+            );
+          }
+        },
+      );
+
+      void fetch(
+        "/api/gyan-identity/gems",
+        {
+          method:
+            "GET",
+
+          cache:
+            "no-store",
+
+          credentials:
+            "include",
+
+          signal:
+            controller.signal,
+        },
+      )
+        .then(
+          async (
+            response,
+          ) => {
+            if (
+              !response.ok
+            ) {
+              return null;
+            }
+
+            return await response.json() as {
+              total?: number;
+              transactions?: GyanGemTransaction[];
+            };
+          },
+        )
+        .then(
+          (
+            body,
+          ) => {
+            if (
+              controller.signal.aborted ||
+              !body
+            ) {
+              return;
+            }
+
+            setGemBalance(
+              typeof body.total ===
+                "number"
+                ? body.total
+                : 0,
+            );
+
+            setGemTransactions(
+              Array.isArray(
+                body.transactions,
+              )
+                ? body.transactions
+                : [],
+            );
+          },
+        )
+        .catch(
+          (
+            caught,
+          ) => {
+            if (
+              caught instanceof
+                DOMException &&
+              caught.name ===
+                "AbortError"
+            ) {
+              return;
+            }
+
+            if (
+              !controller.signal.aborted
+            ) {
+              setGemBalance(0);
+              setGemTransactions([]);
+            }
+          },
+        )
+        .finally(
+          () => {
+            if (
+              !controller.signal.aborted
+            ) {
+              setGemLedgerLoading(
+                false,
+              );
+            }
+          },
+        );
+
+      return () => {
+        controller.abort();
+      };
+    },
+    [
+      educationRatingsCardOpen,
+      gemDialogOpen,
+    ],
+  );
+
+
+  useEffect(
+    () => {
+      if (
+        !educationRatingsCardOpen
+      ) {
+        return;
+      }
+
+      const controller =
+        new AbortController();
+
+      queueMicrotask(
+        () => {
+          if (
+            !controller.signal.aborted
+          ) {
+            setGyanFriendsLoading(
+              true,
+            );
+          }
+        },
+      );
+
+      void fetch(
+        "/api/gyan-identity/friends",
+        {
+          method:
+            "GET",
+
+          cache:
+            "no-store",
+
+          credentials:
+            "include",
+
+          signal:
+            controller.signal,
+        },
+      )
+        .then(
+          async (
+            response,
+          ) => {
+            if (
+              !response.ok
+            ) {
+              return {
+                friends: [],
+              };
+            }
+
+            return await response.json() as {
+              friends?:
+                GyanFriendSummary[];
+            };
+          },
+        )
+        .then(
+          (
+            body,
+          ) => {
+            if (
+              controller.signal.aborted
+            ) {
+              return;
+            }
+
+            setGyanFriends(
+              Array.isArray(
+                body.friends,
+              )
+                ? body.friends
+                : [],
+            );
+          },
+        )
+        .catch(
+          (
+            caught,
+          ) => {
+            if (
+              caught instanceof
+                DOMException &&
+              caught.name ===
+                "AbortError"
+            ) {
+              return;
+            }
+
+            if (
+              !controller.signal.aborted
+            ) {
+              setGyanFriends(
+                [],
+              );
+            }
+          },
+        )
+        .finally(
+          () => {
+            if (
+              !controller.signal.aborted
+            ) {
+              setGyanFriendsLoading(
+                false,
+              );
+            }
+          },
+        );
+
+      return () => {
+        controller.abort();
+      };
+    },
+    [
+      educationRatingsCardOpen,
+    ],
+  );
 
 
   useEffect(
@@ -2078,11 +2446,6 @@ export default function PublicHomePage({
       .toUpperCase() ||
     "";
 
-  const activityGyanName =
-    activeEducationGyan
-      ?.name
-      ?.trim() ??
-    "";
 
   const educationEmailKnown =
     activeEducationGyan
@@ -2327,6 +2690,234 @@ export default function PublicHomePage({
       null;
 
 
+  function serviceAnswerLabel(
+    rawKey:
+      string,
+  ): string {
+    const leaf =
+      rawKey
+        .split(".")
+        .pop() ??
+      rawKey;
+
+    return leaf
+      .replace(
+        /_/g,
+        " ",
+      )
+      .replace(
+        /\b\w/g,
+        (
+          value,
+        ) =>
+          value.toUpperCase(),
+      );
+  }
+
+
+  function serviceAnswerValue(
+    value:
+      unknown,
+  ): string {
+    if (
+      value === null ||
+      value === undefined ||
+      value === ""
+    ) {
+      return "—";
+    }
+
+    if (
+      typeof value ===
+        "boolean"
+    ) {
+      return value
+        ? "Yes"
+        : "No";
+    }
+
+    if (
+      Array.isArray(
+        value,
+      )
+    ) {
+      return value
+        .map(
+          (
+            item,
+          ) =>
+            String(item),
+        )
+        .join(", ");
+    }
+
+    if (
+      typeof value ===
+        "object"
+    ) {
+      try {
+        return JSON.stringify(
+          value,
+        );
+      } catch {
+        return String(
+          value,
+        );
+      }
+    }
+
+    return String(
+      value,
+    );
+  }
+
+
+  async function openServiceRequestDetail(
+    requestNumber:
+      string,
+  ): Promise<void> {
+    setEducationRatingsCardOpen(
+      false,
+    );
+
+    setServiceRequestDetail(
+      null,
+    );
+
+    setServiceRequestDetailError(
+      "",
+    );
+
+    setServiceRequestDetailLoading(
+      true,
+    );
+
+    setServiceRequestDetailExpanded(
+      false,
+    );
+
+    setServiceRequestDetailOpen(
+      true,
+    );
+
+    try {
+      const response =
+        await fetch(
+          `/api/gyan-identity/service-request?number=${encodeURIComponent(
+            requestNumber,
+          )}`,
+          {
+            method:
+              "GET",
+
+            cache:
+              "no-store",
+
+            credentials:
+              "include",
+          },
+        );
+
+      const body =
+        await response.json() as {
+          request?:
+            GyanServiceRequestDetail;
+
+          error?:
+            string;
+        };
+
+      if (
+        !response.ok ||
+        !body.request
+      ) {
+        throw new Error(
+          body.error ??
+            "The service request could not be loaded.",
+        );
+      }
+
+      setServiceRequestDetail(
+        body.request,
+      );
+    } catch (
+      caught
+    ) {
+      setServiceRequestDetailError(
+        caught instanceof
+          Error
+          ? caught.message
+          : "The service request could not be loaded.",
+      );
+    } finally {
+      setServiceRequestDetailLoading(
+        false,
+      );
+    }
+  }
+
+
+  function gemReasonLabel(
+    reason:
+      string,
+  ): string {
+    if (
+      reason ===
+        "WELCOME_UNIFIED_GYAN"
+    ) {
+      return "Welcome Gems";
+    }
+
+    if (
+      reason ===
+        "WELCOME_PRINT"
+    ) {
+      return "Printed GYAN welcome Gems";
+    }
+
+    if (
+      reason.startsWith(
+        "PUZZLE:",
+      )
+    ) {
+      return "Puzzle reward";
+    }
+
+    if (
+      reason.startsWith(
+        "TEST:",
+      ) ||
+      reason.startsWith(
+        "EDUCATION:",
+      )
+    ) {
+      return "Education / test reward";
+    }
+
+    if (
+      reason.startsWith(
+        "ADMIN:",
+      )
+    ) {
+      return "Admin Gem award";
+    }
+
+    return reason
+      .replace(
+        /_/g,
+        " ",
+      )
+      .toLowerCase()
+      .replace(
+        /\b\w/g,
+        (
+          value,
+        ) =>
+          value.toUpperCase(),
+      );
+  }
+
+
   const headerLeft =
     searchFocused
       ? (
@@ -2472,17 +3063,69 @@ export default function PublicHomePage({
                 aria-label="GYAN activity"
               >
                 <div className="public-home__activity-top">
-                  <strong className="public-home__activity-heading">
-                    My Activity
-                    {
-                      activityGyanName
-                        ? ` ${activityGyanName}`
-                        : ""
-                    }
-                    {educationHeaderCode
-                      ? ` [${educationHeaderCode}]`
-                      : ""}
-                  </strong>
+                  <div
+                    className="public-home__activity-heading"
+                    style={{
+                      display:
+                        "flex",
+                      alignItems:
+                        "center",
+                      gap:
+                        "6px",
+                      minWidth:
+                        0,
+                    }}
+                  >
+                    <strong>
+                      My Activity
+                      {educationHeaderCode
+                        ? ` [${educationHeaderCode}]`
+                        : ""}
+                    </strong>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEducationRatingsCardOpen(
+                          false,
+                        );
+
+                        setGemDialogOpen(
+                          true,
+                        );
+                      }}
+                      title="View Gem activity"
+                      aria-label={`${gemBalance} Gems. View Gem activity.`}
+                      style={{
+                        padding:
+                          "1px 5px",
+                        border:
+                          "1px solid rgba(15, 23, 42, 0.12)",
+                        borderRadius:
+                          "7px",
+                        background:
+                          "#fff",
+                        color:
+                          "#475569",
+                        font:
+                          "inherit",
+                        fontSize:
+                          "0.68rem",
+                        fontWeight:
+                          900,
+                        cursor:
+                          "pointer",
+                        whiteSpace:
+                          "nowrap",
+                      }}
+                    >
+                      💎 {
+                        gemLedgerLoading
+                          ? "…"
+                          : gemBalance
+                      }
+                    </button>
+                  </div>
 
                   <button
                     type="button"
@@ -2496,6 +3139,550 @@ export default function PublicHomePage({
                   >
                     ×
                   </button>
+                </div>
+
+                <div
+                  className="public-home__activity-row public-home__activity-inline-row"
+                  style={{
+                    display:
+                      "flex",
+                    alignItems:
+                      "center",
+                    gap:
+                      "6px",
+                    minWidth:
+                      0,
+                  }}
+                >
+                  <div
+                    aria-label={`${gyanFriends.length} friends`}
+                    title={`${gyanFriends.length} friends`}
+                    style={{
+                      display:
+                        "flex",
+                      alignItems:
+                        "center",
+                      gap:
+                        "2px",
+                      minWidth:
+                        0,
+                      overflow:
+                        "hidden",
+                    }}
+                  >
+                    {
+                      gyanFriendsLoading
+                        ? (
+                          <span
+                            style={{
+                              fontSize:
+                                "0.7rem",
+                            }}
+                          >
+                            👥 …
+                          </span>
+                        )
+                        : gyanFriends
+                            .slice(
+                              0,
+                              Math.min(
+                                10,
+                                gyanFriends.length,
+                              ),
+                            )
+                            .map(
+                              (
+                                friend,
+                              ) => (
+                                <span
+                                  key={
+                                    friend.code
+                                  }
+                                  title={`${friend.displayName} [${friend.code}]`}
+                                  aria-hidden="true"
+                                  style={{
+                                    flex:
+                                      "0 0 auto",
+                                    fontSize:
+                                      "0.72rem",
+                                    lineHeight:
+                                      1,
+                                  }}
+                                >
+                                  👥
+                                </span>
+                              ),
+                            )
+                    }
+                  </div>
+
+                  {
+                    !gyanFriendsLoading &&
+                    gyanFriends.length >
+                      10 && (
+                      <span
+                        style={{
+                          flex:
+                            "0 0 auto",
+                          color:
+                            "#64748b",
+                          fontSize:
+                            "0.58rem",
+                          whiteSpace:
+                            "nowrap",
+                        }}
+                      >
+                        ... {
+                          gyanFriends.length -
+                          10
+                        } more
+                      </span>
+                    )
+                  }
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFriendsDialogOpen(
+                        true,
+                      )
+                    }
+                    title="See all friends"
+                    style={{
+                      flex:
+                        "0 0 auto",
+                      marginLeft:
+                        "2px",
+                      padding:
+                        "0",
+                      border:
+                        "0",
+                      background:
+                        "transparent",
+                      color:
+                        "#475569",
+                      font:
+                        "inherit",
+                      fontSize:
+                        "0.58rem",
+                      fontWeight:
+                        800,
+                      textDecoration:
+                        "underline",
+                      cursor:
+                        "pointer",
+                      whiteSpace:
+                        "nowrap",
+                    }}
+                  >
+                    See all
+                  </button>
+                </div>
+
+                {friendsDialogOpen && (
+                  <div
+                    role="presentation"
+                    onClick={() =>
+                      setFriendsDialogOpen(
+                        false,
+                      )
+                    }
+                    style={{
+                      position:
+                        "fixed",
+                      inset:
+                        0,
+                      zIndex:
+                        1200,
+                      display:
+                        "grid",
+                      placeItems:
+                        "center",
+                      padding:
+                        "16px",
+                      background:
+                        "rgba(15, 23, 42, 0.46)",
+                    }}
+                  >
+                    <section
+                      role="dialog"
+                      aria-modal="true"
+                      aria-label="Friends"
+                      onClick={(
+                        event,
+                      ) =>
+                        event.stopPropagation()
+                      }
+                      style={{
+                        boxSizing:
+                          "border-box",
+                        width:
+                          "min(100%, 360px)",
+                        maxHeight:
+                          "min(70vh, 520px)",
+                        display:
+                          "grid",
+                        gridTemplateRows:
+                          "auto minmax(0, 1fr) auto",
+                        overflow:
+                          "hidden",
+                        border:
+                          "1px solid #d8dee8",
+                        borderRadius:
+                          "13px",
+                        background:
+                          "#fff",
+                        boxShadow:
+                          "0 18px 48px rgba(15, 23, 42, 0.22)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          padding:
+                            "11px 12px 8px",
+                          borderBottom:
+                            "1px solid #e5e7eb",
+                          textAlign:
+                            "center",
+                          fontSize:
+                            "0.8rem",
+                          fontWeight:
+                            900,
+                        }}
+                      >
+                        👥 Friends ({
+                          gyanFriends.length
+                        })
+                      </div>
+
+                      <div
+                        style={{
+                          overflowY:
+                            "auto",
+                          padding:
+                            "7px",
+                        }}
+                      >
+                        {
+                          gyanFriendsLoading
+                            ? (
+                              <div
+                                style={{
+                                  padding:
+                                    "15px",
+                                  textAlign:
+                                    "center",
+                                  fontSize:
+                                    "0.72rem",
+                                }}
+                              >
+                                Loading…
+                              </div>
+                            )
+                            : gyanFriends.length
+                              ? gyanFriends.map(
+                                  (
+                                    friend,
+                                  ) => (
+                                    <button
+                                      key={
+                                        friend.code
+                                      }
+                                      type="button"
+                                      onClick={() => {
+                                        setFriendsDialogOpen(
+                                          false,
+                                        );
+
+                                        setEducationRatingsCardOpen(
+                                          false,
+                                        );
+
+                                        window.open(
+                                          `/${friend.code.toLowerCase()}`,
+                                          "_blank",
+                                          "noopener,noreferrer",
+                                        );
+                                      }}
+                                      style={{
+                                        width:
+                                          "100%",
+                                        display:
+                                          "grid",
+                                        gridTemplateColumns:
+                                          "minmax(0, 1fr) auto",
+                                        gap:
+                                          "8px",
+                                        alignItems:
+                                          "center",
+                                        padding:
+                                          "9px 10px",
+                                        border:
+                                          "0",
+                                        borderBottom:
+                                          "1px solid #eef1f4",
+                                        background:
+                                          "#fff",
+                                        color:
+                                          "#1f2937",
+                                        font:
+                                          "inherit",
+                                        cursor:
+                                          "pointer",
+                                        textAlign:
+                                          "left",
+                                      }}
+                                    >
+                                      <strong
+                                        style={{
+                                          overflow:
+                                            "hidden",
+                                          textOverflow:
+                                            "ellipsis",
+                                          whiteSpace:
+                                            "nowrap",
+                                          fontSize:
+                                            "0.72rem",
+                                        }}
+                                      >
+                                        {
+                                          friend.displayName
+                                        }
+                                      </strong>
+
+                                      <span
+                                        style={{
+                                          color:
+                                            "#9a5b24",
+                                          fontSize:
+                                            "0.65rem",
+                                          fontWeight:
+                                            800,
+                                        }}
+                                      >
+                                        [{
+                                          friend.code
+                                        }]
+                                      </span>
+                                    </button>
+                                  ),
+                                )
+                              : (
+                                <div
+                                  style={{
+                                    padding:
+                                      "17px",
+                                    textAlign:
+                                      "center",
+                                    color:
+                                      "#64748b",
+                                    fontSize:
+                                      "0.72rem",
+                                  }}
+                                >
+                                  No friends yet.
+                                </div>
+                              )
+                        }
+                      </div>
+
+                      <div
+                        style={{
+                          padding:
+                            "8px",
+                          borderTop:
+                            "1px solid #e5e7eb",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFriendsDialogOpen(
+                              false,
+                            )
+                          }
+                          style={{
+                            width:
+                              "100%",
+                            minHeight:
+                              "30px",
+                            border:
+                              "1px solid #cbd5e1",
+                            borderRadius:
+                              "8px",
+                            background:
+                              "#f8fafc",
+                            color:
+                              "#334155",
+                            font:
+                              "inherit",
+                            fontSize:
+                              "0.68rem",
+                            fontWeight:
+                              800,
+                            cursor:
+                              "pointer",
+                          }}
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </section>
+                  </div>
+                )}
+
+                <div
+                  className="public-home__activity-row public-home__activity-winks public-home__activity-inline-row"
+                >
+                  <strong>
+                    G-Winks:
+                  </strong>
+
+                  <div
+                    className="public-home__activity-strip"
+                    style={{
+                      display:
+                        "flex",
+                      alignItems:
+                        "center",
+                      gap:
+                        "4px",
+                      flexWrap:
+                        "nowrap",
+                      overflowX:
+                        "auto",
+                    }}
+                  >
+                    {
+                      recentGWinksLoading ? (
+                        <span className="public-home__activity-loading">
+                          Loading…
+                        </span>
+                      ) : recentGWinks.length ? (
+                        recentGWinks.map(
+                          (
+                            wink,
+                          ) => (
+                            <button
+                              key={
+                                wink.id
+                              }
+                              type="button"
+                              className={`public-home__activity-wink public-home__activity-wink--${wink.direction}`}
+                              title={`${
+                                wink.direction ===
+                                  "sent"
+                                  ? "Sent"
+                                  : "Received"
+                              } · ${
+                                wink.read
+                                  ? "Read"
+                                  : "Unread"
+                              } · ${
+                                wink.direction ===
+                                  "sent"
+                                  ? wink.recipientDisplayName ??
+                                    wink.recipientCode ??
+                                    "GYAN recipient"
+                                  : wink.senderDisplayName
+                              } · ${wink.preview}`}
+                              aria-label={`${
+                                wink.direction ===
+                                  "sent"
+                                  ? "Sent"
+                                  : "Received"
+                              } ${wink.read ? "read" : "unread"} G-Wink`}
+                              onClick={() => {
+                                setRecentGWinks(
+                                  (
+                                    current,
+                                  ) =>
+                                    current.map(
+                                      (
+                                        item,
+                                      ) =>
+                                        item.id ===
+                                          wink.id
+                                          ? {
+                                              ...item,
+                                              read:
+                                                true,
+                                            }
+                                          : item,
+                                    ),
+                                );
+
+                                setOpenGWink(
+                                  wink,
+                                );
+                              }}
+                              style={{
+                                flex:
+                                  "0 0 auto",
+                                width:
+                                  "28px",
+                                height:
+                                  "28px",
+                                padding:
+                                  0,
+                                border:
+                                  "1px solid rgba(15, 23, 42, 0.16)",
+                                background:
+                                  wink.read
+                                    ? "#86c98a"
+                                    : "#f5d76e",
+                                cursor:
+                                  "pointer",
+                                fontSize:
+                                  "0.9rem",
+                                lineHeight:
+                                  1,
+                              }}
+                            >
+                              ✉
+                            </button>
+                          ),
+                        )
+                      ) : (
+                        <span className="public-home__activity-empty">
+                          No G-Winks
+                        </span>
+                      )
+                    }
+                  </div>
+                </div>
+
+                <div className="public-home__activity-puzzle-summary">
+                  <PuzzleRatingsStrip
+                    onOpenPuzzle={() => {
+                    setEducationRatingsCardOpen(
+                      false,
+                    );
+
+                    setSearchFocused(
+                      false,
+                    );
+
+                    setActiveView(
+                      "home",
+                    );
+
+                    setPuzzleInstanceKey(
+                      (current) =>
+                        current + 1,
+                    );
+
+                    setShowPuzzle(
+                      true,
+                    );
+
+                    window.history.pushState(
+                      {},
+                      "",
+                      "/puzzle",
+                    );
+                    }}
+                  />
                 </div>
 
                 <div className="public-home__activity-row public-home__activity-inline-row">
@@ -2532,16 +3719,29 @@ export default function PublicHomePage({
                                   );
 
                                 return (
-                                  <span
+                                  <button
                                     key={
                                       request.requestNumber
                                     }
+                                    type="button"
                                     className={`public-home__activity-box public-home__activity-box--${
                                       closed
                                         ? "green"
                                         : "yellow"
                                     }`}
-                                    title={`${request.requestNumber} · ${request.status}`}
+                                    title={`${request.requestNumber} · ${request.status} · View details`}
+                                    aria-label={`View service request ${request.requestNumber}`}
+                                    onClick={() => {
+                                      void openServiceRequestDetail(
+                                        request.requestNumber,
+                                      );
+                                    }}
+                                    style={{
+                                      padding:
+                                        0,
+                                      cursor:
+                                        "pointer",
+                                    }}
                                   />
                                 );
                               },
@@ -2719,239 +3919,6 @@ export default function PublicHomePage({
                           </span>
                         )}
                 </div>
-
-                <div
-                  className="public-home__activity-row public-home__activity-winks public-home__activity-inline-row"
-                >
-                  <strong>
-                    G-Winks:
-                  </strong>
-
-                  <div
-                    className="public-home__activity-strip"
-                    style={{
-                      display:
-                        "flex",
-                      alignItems:
-                        "center",
-                      gap:
-                        "4px",
-                      flexWrap:
-                        "nowrap",
-                      overflowX:
-                        "auto",
-                    }}
-                  >
-                    {
-                      recentGWinksLoading ? (
-                        <span className="public-home__activity-loading">
-                          Loading…
-                        </span>
-                      ) : recentGWinks.length ? (
-                        recentGWinks.map(
-                          (
-                            wink,
-                          ) => (
-                            <button
-                              key={
-                                wink.id
-                              }
-                              type="button"
-                              className={`public-home__activity-wink public-home__activity-wink--${wink.direction}`}
-                              title={`${
-                                wink.direction ===
-                                  "sent"
-                                  ? "Sent"
-                                  : "Received"
-                              } · ${
-                                wink.read
-                                  ? "Read"
-                                  : "Unread"
-                              } · ${
-                                wink.direction ===
-                                  "sent"
-                                  ? wink.recipientDisplayName ??
-                                    wink.recipientCode ??
-                                    "GYAN recipient"
-                                  : wink.senderDisplayName
-                              } · ${wink.preview}`}
-                              aria-label={`${
-                                wink.direction ===
-                                  "sent"
-                                  ? "Sent"
-                                  : "Received"
-                              } ${wink.read ? "read" : "unread"} G-Wink`}
-                              onClick={() => {
-                                setRecentGWinks(
-                                  (
-                                    current,
-                                  ) =>
-                                    current.map(
-                                      (
-                                        item,
-                                      ) =>
-                                        item.id ===
-                                          wink.id
-                                          ? {
-                                              ...item,
-                                              read:
-                                                true,
-                                            }
-                                          : item,
-                                    ),
-                                );
-
-                                setOpenGWink(
-                                  wink,
-                                );
-                              }}
-                              style={{
-                                flex:
-                                  "0 0 auto",
-                                width:
-                                  "28px",
-                                height:
-                                  "28px",
-                                padding:
-                                  0,
-                                border:
-                                  "1px solid rgba(15, 23, 42, 0.16)",
-                                background:
-                                  wink.read
-                                    ? "#86c98a"
-                                    : "#f5d76e",
-                                cursor:
-                                  "pointer",
-                                fontSize:
-                                  "0.9rem",
-                                lineHeight:
-                                  1,
-                              }}
-                            >
-                              ✉
-                            </button>
-                          ),
-                        )
-                      ) : (
-                        <span className="public-home__activity-empty">
-                          No G-Winks
-                        </span>
-                      )
-                    }
-                  </div>
-                </div>
-
-                <div className="public-home__activity-puzzle-summary">
-                  <PuzzleRatingsStrip
-                    onOpenPuzzle={() => {
-                    setEducationRatingsCardOpen(
-                      false,
-                    );
-
-                    setSearchFocused(
-                      false,
-                    );
-
-                    setActiveView(
-                      "home",
-                    );
-
-                    setPuzzleInstanceKey(
-                      (current) =>
-                        current + 1,
-                    );
-
-                    setShowPuzzle(
-                      true,
-                    );
-
-                    window.history.pushState(
-                      {},
-                      "",
-                      "/puzzle",
-                    );
-                    }}
-                  />
-                </div>
-
-                {(educationHeaderCode ||
-                  activeEducationGyan?.code) && (
-                  <button
-                    type="button"
-                    className="public-home__activity-row"
-                    onClick={() => {
-                      setEducationRatingsCardOpen(
-                        false,
-                      );
-
-                      /*
-                       * Keep UserAccountMenu as the single owner
-                       * of the GYAN Card dialog. Reuse its existing
-                       * working UI path instead of duplicating card
-                       * state inside PublicHomePage.
-                       */
-                      window.requestAnimationFrame(
-                        () => {
-                          const accountButton =
-                            document.querySelector<HTMLButtonElement>(
-                              'button[aria-label="Open user menu"], button[aria-label="Open signed-in user menu"]',
-                            );
-
-                          if (!accountButton) {
-                            return;
-                          }
-
-                          accountButton.click();
-
-                          window.requestAnimationFrame(
-                            () => {
-                              const cardButton =
-                                Array.from(
-                                  document.querySelectorAll<HTMLButtonElement>(
-                                    'button[title="Download GYAN Card"]',
-                                  ),
-                                ).find(
-                                  (button) =>
-                                    button.textContent
-                                      ?.includes(
-                                        "GYAN Card",
-                                      ),
-                                );
-
-                              cardButton?.click();
-                            },
-                          );
-                        },
-                      );
-                    }}
-                    title="Open GYAN Card"
-                    aria-label="Open GYAN Card"
-                    style={{
-                      width:
-                        "100%",
-                      minHeight:
-                        "29px",
-                      border:
-                        "1px solid #d7c8f2",
-                      borderRadius:
-                        "7px",
-                      background:
-                        "#faf7ff",
-                      color:
-                        "#5b3ea8",
-                      font:
-                        "inherit",
-                      fontSize:
-                        "0.64rem",
-                      fontWeight:
-                        800,
-                      cursor:
-                        "pointer",
-                    }}
-                  >
-                    🎁 GYAN Card
-                  </button>
-                )}
 
                 {educationCodeNeedsRecovery && (
                   <small className="public-home__education-ratings-warning">
@@ -3356,6 +4323,9 @@ export default function PublicHomePage({
                   calendarPrintDirect
                 }
                 useCurrentGyan
+                isAdmin={
+                  adminAuthenticated
+                }
                 onClose={() => {
                   setCalendarOpen(
                     false,
@@ -3888,6 +4858,939 @@ export default function PublicHomePage({
             )
         }
       </GyanShell>
+
+      {gemDialogOpen && (
+        <div
+          role="presentation"
+          onClick={() =>
+            setGemDialogOpen(
+              false,
+            )
+          }
+          style={{
+            position:
+              "fixed",
+            top:
+              "60px",
+            left:
+              "50%",
+            zIndex:
+              1250,
+            width:
+              "min(calc(100% - 20px), 390px)",
+            transform:
+              "translateX(-50%)",
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="GYAN Gems"
+            onClick={(
+              event,
+            ) =>
+              event.stopPropagation()
+            }
+            style={{
+              boxSizing:
+                "border-box",
+              width:
+                "100%",
+              maxHeight:
+                "min(calc(100vh - 72px), 620px)",
+              display:
+                "grid",
+              gridTemplateRows:
+                "auto minmax(0, 1fr) auto",
+              overflow:
+                "hidden",
+              border:
+                "1px solid #d8dee8",
+              borderRadius:
+                "0 0 14px 14px",
+              background:
+                "#fff",
+              boxShadow:
+                "0 12px 30px rgba(15, 23, 42, 0.20)",
+            }}
+          >
+            <div
+              style={{
+                padding:
+                  "12px",
+                borderBottom:
+                  "1px solid #e5e7eb",
+                textAlign:
+                  "center",
+              }}
+            >
+              <strong
+                style={{
+                  display:
+                    "block",
+                  fontSize:
+                    "0.92rem",
+                }}
+              >
+                💎 {
+                  gemBalance
+                } Gems
+              </strong>
+
+              <small
+                style={{
+                  color:
+                    "#64748b",
+                }}
+              >
+                Gem activity
+              </small>
+            </div>
+
+            <div
+              style={{
+                overflowY:
+                  "auto",
+                padding:
+                  "10px 12px",
+              }}
+            >
+              <strong
+                style={{
+                  display:
+                    "block",
+                  marginBottom:
+                    "6px",
+                  fontSize:
+                    "0.72rem",
+                }}
+              >
+                Transactions
+              </strong>
+
+              {
+                gemLedgerLoading
+                  ? (
+                    <div
+                      style={{
+                        padding:
+                          "10px 0",
+                        fontSize:
+                          "0.7rem",
+                      }}
+                    >
+                      Loading…
+                    </div>
+                  )
+                  : gemTransactions.length
+                    ? gemTransactions.map(
+                        (
+                          transaction,
+                        ) => (
+                          <div
+                            key={
+                              transaction.id
+                            }
+                            style={{
+                              display:
+                                "grid",
+                              gridTemplateColumns:
+                                "minmax(0, 1fr) auto",
+                              gap:
+                                "8px",
+                              padding:
+                                "7px 0",
+                              borderBottom:
+                                "1px solid #eef1f4",
+                            }}
+                          >
+                            <div
+                              style={{
+                                minWidth:
+                                  0,
+                              }}
+                            >
+                              <strong
+                                style={{
+                                  display:
+                                    "block",
+                                  fontSize:
+                                    "0.68rem",
+                                }}
+                              >
+                                {
+                                  gemReasonLabel(
+                                    transaction.reason,
+                                  )
+                                }
+                              </strong>
+
+                              <small
+                                style={{
+                                  color:
+                                    "#64748b",
+                                  fontSize:
+                                    "0.58rem",
+                                }}
+                              >
+                                {
+                                  new Date(
+                                    transaction.createdAt,
+                                  ).toLocaleString()
+                                }
+                              </small>
+                            </div>
+
+                            <strong
+                              style={{
+                                color:
+                                  transaction.amount >=
+                                    0
+                                    ? "#166534"
+                                    : "#b42318",
+                                fontSize:
+                                  "0.72rem",
+                                whiteSpace:
+                                  "nowrap",
+                              }}
+                            >
+                              {
+                                transaction.amount >=
+                                  0
+                                  ? "+"
+                                  : ""
+                              }{
+                                transaction.amount
+                              } 💎
+                            </strong>
+                          </div>
+                        ),
+                      )
+                    : (
+                      <div
+                        style={{
+                          padding:
+                            "8px 0",
+                          color:
+                            "#64748b",
+                          fontSize:
+                            "0.68rem",
+                        }}
+                      >
+                        No Gem transactions yet.
+                      </div>
+                    )
+              }
+
+              <div
+                style={{
+                  marginTop:
+                    "13px",
+                  padding:
+                    "10px",
+                  border:
+                    "1px solid #e2e8f0",
+                  borderRadius:
+                    "10px",
+                  background:
+                    "#f8fafc",
+                }}
+              >
+                <strong
+                  style={{
+                    display:
+                      "block",
+                    marginBottom:
+                      "6px",
+                    fontSize:
+                      "0.72rem",
+                  }}
+                >
+                  Earn more Gems
+                </strong>
+
+                <div
+                  style={{
+                    display:
+                      "grid",
+                    gap:
+                      "5px",
+                    fontSize:
+                      "0.66rem",
+                  }}
+                >
+                  <span>
+                    🧩 Solve a puzzle — <strong>5 Gems</strong>
+                  </span>
+
+                  <span>
+                    🎓 Take tests — <strong>1 Gem per question</strong>
+                  </span>
+
+                  <span>
+                    ✉️ Contact GYAN admin for more Gems.
+                  </span>
+                </div>
+
+                <a
+                  href="mailto:admin@gyan.cc?subject=GYAN%20Gems"
+                  style={{
+                    display:
+                      "inline-block",
+                    marginTop:
+                      "7px",
+                    color:
+                      "#334155",
+                    fontSize:
+                      "0.64rem",
+                    fontWeight:
+                      800,
+                  }}
+                >
+                  Contact admin
+                </a>
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding:
+                  "8px",
+                borderTop:
+                  "1px solid #e5e7eb",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() =>
+                  setGemDialogOpen(
+                    false,
+                  )
+                }
+                style={{
+                  width:
+                    "100%",
+                  minHeight:
+                    "30px",
+                  border:
+                    "1px solid #cbd5e1",
+                  borderRadius:
+                    "8px",
+                  background:
+                    "#f8fafc",
+                  color:
+                    "#334155",
+                  font:
+                    "inherit",
+                  fontSize:
+                    "0.68rem",
+                  fontWeight:
+                    800,
+                  cursor:
+                    "pointer",
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+
+
+      {serviceRequestDetailOpen && (
+        <div
+          role="presentation"
+          onClick={() =>
+            setServiceRequestDetailOpen(
+              false,
+            )
+          }
+          style={{
+            position:
+              "fixed",
+            top:
+              "60px",
+            left:
+              "50%",
+            zIndex:
+              1260,
+            width:
+              "min(calc(100% - 20px), 430px)",
+            transform:
+              "translateX(-50%)",
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Service request details"
+            onClick={(
+              event,
+            ) =>
+              event.stopPropagation()
+            }
+            style={{
+              boxSizing:
+                "border-box",
+              width:
+                "100%",
+              maxHeight:
+                "min(calc(100vh - 72px), 680px)",
+              display:
+                "grid",
+              gridTemplateRows:
+                "auto minmax(0, 1fr) auto",
+              overflow:
+                "hidden",
+              border:
+                "1px solid #d8dee8",
+              borderRadius:
+                "0 0 14px 14px",
+              background:
+                "#fff",
+              boxShadow:
+                "0 12px 30px rgba(15, 23, 42, 0.20)",
+            }}
+          >
+            <div
+              style={{
+                position:
+                  "relative",
+                padding:
+                  "11px 42px 8px",
+                borderBottom:
+                  "1px solid #e5e7eb",
+                textAlign:
+                  "center",
+              }}
+            >
+              <strong
+                style={{
+                  display:
+                    "block",
+                  fontSize:
+                    "0.86rem",
+                }}
+              >
+                🧰 Service Request
+              </strong>
+
+              {serviceRequestDetail && (
+                <small
+                  style={{
+                    color:
+                      "#64748b",
+                  }}
+                >
+                  {
+                    serviceRequestDetail.requestNumber
+                  }
+                </small>
+              )}
+
+              <button
+                type="button"
+                onClick={() =>
+                  setServiceRequestDetailOpen(
+                    false,
+                  )
+                }
+                aria-label="Close service request"
+                title="Close"
+                style={{
+                  position:
+                    "absolute",
+                  top:
+                    "7px",
+                  right:
+                    "8px",
+                  width:
+                    "28px",
+                  height:
+                    "28px",
+                  display:
+                    "grid",
+                  placeItems:
+                    "center",
+                  padding:
+                    0,
+                  border:
+                    "1px solid #d7dee8",
+                  borderRadius:
+                    "8px",
+                  background:
+                    "#fff",
+                  color:
+                    "#475569",
+                  font:
+                    "inherit",
+                  fontSize:
+                    "1rem",
+                  lineHeight:
+                    1,
+                  cursor:
+                    "pointer",
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div
+              style={{
+                overflowY:
+                  "auto",
+                padding:
+                  "10px 12px",
+              }}
+            >
+              {serviceRequestDetailLoading && (
+                <div
+                  style={{
+                    padding:
+                      "14px 0",
+                    textAlign:
+                      "center",
+                    fontSize:
+                      "0.72rem",
+                  }}
+                >
+                  Loading request…
+                </div>
+              )}
+
+              {!serviceRequestDetailLoading &&
+                serviceRequestDetailError && (
+                  <div
+                    style={{
+                      padding:
+                        "10px",
+                      border:
+                        "1px solid #fecaca",
+                      borderRadius:
+                        "9px",
+                      background:
+                        "#fff7f7",
+                      color:
+                        "#b42318",
+                      fontSize:
+                        "0.7rem",
+                    }}
+                  >
+                    {
+                      serviceRequestDetailError
+                    }
+                  </div>
+                )}
+
+              {!serviceRequestDetailLoading &&
+                !serviceRequestDetailError &&
+                serviceRequestDetail && (
+                  <>
+                    <div
+                      style={{
+                        display:
+                          "grid",
+                        gap:
+                          "5px",
+                        padding:
+                          "9px",
+                        border:
+                          "1px solid #e2e8f0",
+                        borderRadius:
+                          "10px",
+                        background:
+                          "#f8fafc",
+                        fontSize:
+                          "0.66rem",
+                      }}
+                    >
+                      <div>
+                        <strong>Service: </strong>
+                        {
+                          serviceRequestDetail.serviceName
+                        }
+                      </div>
+
+                      <div>
+                        <strong>Status: </strong>
+                        {
+                          serviceRequestDetail.status
+                        }
+                      </div>
+
+                      <div>
+                        <strong>Shop: </strong>
+                        {
+                          serviceRequestDetail.shopName
+                        } [{
+                          serviceRequestDetail.shopCode
+                        }]
+                      </div>
+
+                      <div>
+                        <strong>Submitted: </strong>
+                        {
+                          new Date(
+                            serviceRequestDetail.createdAt,
+                          ).toLocaleString()
+                        }
+                      </div>
+                    </div>
+
+                    {!serviceRequestDetailExpanded && (() => {
+                      const previewEntry =
+                        Object.entries(
+                          serviceRequestDetail.answers,
+                        ).find(
+                          ([key, value]) =>
+                            !key.startsWith(
+                              "customer.",
+                            ) &&
+                            value !== null &&
+                            value !== undefined &&
+                            value !== "",
+                        );
+
+                      if (!previewEntry) {
+                        return null;
+                      }
+
+                      const [
+                        previewKey,
+                        previewValue,
+                      ] = previewEntry;
+
+                      return (
+                        <div
+                          style={{
+                            marginTop:
+                              "9px",
+                            padding:
+                              "8px 9px",
+                            border:
+                              "1px solid #eef1f4",
+                            borderRadius:
+                              "9px",
+                            background:
+                              "#fff",
+                            fontSize:
+                              "0.66rem",
+                          }}
+                        >
+                          <strong>
+                            {
+                              serviceAnswerLabel(
+                                previewKey,
+                              )
+                            }: {" "}
+                          </strong>
+
+                          <span
+                            style={{
+                              display:
+                                "-webkit-box",
+                              overflow:
+                                "hidden",
+                              WebkitBoxOrient:
+                                "vertical",
+                              WebkitLineClamp:
+                                2,
+                              whiteSpace:
+                                "pre-wrap",
+                              wordBreak:
+                                "break-word",
+                            }}
+                          >
+                            {
+                              serviceAnswerValue(
+                                previewValue,
+                              )
+                            }
+                          </span>
+                        </div>
+                      );
+                    })()}
+
+                    {serviceRequestDetailExpanded && (
+                      <>
+                    <strong
+                      style={{
+                        display:
+                          "block",
+                        margin:
+                          "12px 0 5px",
+                        fontSize:
+                          "0.72rem",
+                      }}
+                    >
+                      Request details
+                    </strong>
+
+                    <div
+                      style={{
+                        display:
+                          "grid",
+                        gap:
+                          "7px",
+                      }}
+                    >
+                      {
+                        Object.entries(
+                          serviceRequestDetail.answers,
+                        )
+                          .filter(
+                            ([
+                              key,
+                              value,
+                            ]) =>
+                              !key.startsWith(
+                                "customer.",
+                              ) &&
+                              value !==
+                                null &&
+                              value !==
+                                undefined &&
+                              value !==
+                                "",
+                          )
+                          .map(
+                            ([
+                              key,
+                              value,
+                            ]) => (
+                              <div
+                                key={
+                                  key
+                                }
+                                style={{
+                                  padding:
+                                    "7px 8px",
+                                  borderBottom:
+                                    "1px solid #eef1f4",
+                                  fontSize:
+                                    "0.66rem",
+                                }}
+                              >
+                                <strong
+                                  style={{
+                                    display:
+                                      "block",
+                                    marginBottom:
+                                      "2px",
+                                  }}
+                                >
+                                  {
+                                    serviceAnswerLabel(
+                                      key,
+                                    )
+                                  }
+                                </strong>
+
+                                <span
+                                  style={{
+                                    whiteSpace:
+                                      "pre-wrap",
+                                    wordBreak:
+                                      "break-word",
+                                  }}
+                                >
+                                  {
+                                    serviceAnswerValue(
+                                      value,
+                                    )
+                                  }
+                                </span>
+                              </div>
+                            ),
+                          )
+                      }
+                    </div>
+
+                    <strong
+                      style={{
+                        display:
+                          "block",
+                        margin:
+                          "12px 0 5px",
+                        fontSize:
+                          "0.72rem",
+                      }}
+                    >
+                      Contact
+                    </strong>
+
+                    <div
+                      style={{
+                        display:
+                          "grid",
+                        gap:
+                          "4px",
+                        fontSize:
+                          "0.66rem",
+                      }}
+                    >
+                      <span>
+                        <strong>Name: </strong>
+                        {
+                          serviceRequestDetail.customerName ??
+                          "—"
+                        }
+                      </span>
+
+                      <span>
+                        <strong>Email: </strong>
+                        {
+                          serviceRequestDetail.emailAddress ??
+                          "—"
+                        }
+                      </span>
+
+                      <span>
+                        <strong>Phone: </strong>
+                        {
+                          serviceRequestDetail.phoneNumber ??
+                          serviceRequestDetail.whatsAppNumber ??
+                          "—"
+                        }
+                      </span>
+                    </div>
+
+                    {serviceRequestDetail.files.length >
+                      0 && (
+                      <>
+                        <strong
+                          style={{
+                            display:
+                              "block",
+                            margin:
+                              "12px 0 5px",
+                            fontSize:
+                              "0.72rem",
+                          }}
+                        >
+                          Attachments
+                        </strong>
+
+                        <div
+                          style={{
+                            display:
+                              "grid",
+                            gap:
+                              "4px",
+                          }}
+                        >
+                          {
+                            serviceRequestDetail.files.map(
+                              (
+                                file,
+                              ) => (
+                                <div
+                                  key={
+                                    file.id
+                                  }
+                                  style={{
+                                    fontSize:
+                                      "0.64rem",
+                                  }}
+                                >
+                                  📎 {
+                                    file.name
+                                  } · {
+                                    Math.max(
+                                      1,
+                                      Math.round(
+                                        file.size /
+                                        1024,
+                                      ),
+                                    )
+                                  } KB
+                                </div>
+                              ),
+                            )
+                          }
+                        </div>
+                      </>
+                    )}
+
+                    <div
+                      style={{
+                        marginTop:
+                          "12px",
+                        color:
+                          "#64748b",
+                        fontSize:
+                          "0.58rem",
+                        textAlign:
+                          "center",
+                      }}
+                    >
+                      Read-only view
+                    </div>
+                      </>
+                    )}
+                  </>
+                )}
+            </div>
+
+            <div
+              style={{
+                padding:
+                  "8px",
+                borderTop:
+                  "1px solid #e5e7eb",
+              }}
+            >
+              {!serviceRequestDetailLoading &&
+                !serviceRequestDetailError &&
+                serviceRequestDetail && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setServiceRequestDetailExpanded(
+                      (current) =>
+                        !current,
+                    )
+                  }
+                  aria-expanded={
+                    serviceRequestDetailExpanded
+                  }
+                  style={{
+                    width:
+                      "100%",
+                    minHeight:
+                      "30px",
+                    border:
+                      "1px solid #cbd5e1",
+                    borderRadius:
+                      "8px",
+                    background:
+                      "#f8fafc",
+                    color:
+                      "#334155",
+                    font:
+                      "inherit",
+                    fontSize:
+                      "0.68rem",
+                    fontWeight:
+                      800,
+                    cursor:
+                      "pointer",
+                  }}
+                >
+                  {
+                    serviceRequestDetailExpanded
+                      ? "Less"
+                      : "More"
+                  }
+                </button>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
 
 
       {

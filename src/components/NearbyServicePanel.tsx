@@ -28,7 +28,16 @@ interface NearbyServicePanelProps {
 interface LocationHint {
   countryCode?: string;
   region?: string;
+  regionCode?: string;
   city?: string;
+}
+
+
+interface ReverseLocationResult {
+  city: string;
+  region: string;
+  regionCode: string;
+  countryCode: string;
 }
 
 
@@ -138,8 +147,9 @@ const NEARBY_CACHE_PREFIX =
 
 
 /*
- * GPS results can change as the
- * user moves, so keep these shorter.
+ * GPS results can change as the user moves.
+ * Keep them short-lived and key them only by
+ * coarse coordinates on this device.
  */
 const GPS_CACHE_TTL =
   30 * 60 * 1000;
@@ -189,13 +199,13 @@ function createGpsCacheKey(
     ":",
 
     latitude.toFixed(
-      3,
+      2,
     ),
 
     ",",
 
     longitude.toFixed(
-      3,
+      2,
     ),
   ].join("");
 }
@@ -461,6 +471,83 @@ function hasValidPhoneForCountry(
 }
 
 
+async function reverseGeocodeCoordinates(
+  latitude:
+    number,
+
+  longitude:
+    number,
+):
+  Promise<
+    ReverseLocationResult | null
+  > {
+  try {
+    const parameters =
+      new URLSearchParams({
+        lat:
+          String(
+            latitude,
+          ),
+
+        lng:
+          String(
+            longitude,
+          ),
+      });
+
+    const response =
+      await fetch(
+        `/api/location/resolve?${parameters.toString()}`,
+        {
+          method:
+            "GET",
+
+          cache:
+            "no-store",
+        },
+      );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const body =
+      await response.json() as {
+        city?: string;
+        region?: string;
+        regionCode?: string;
+        countryCode?: string;
+      };
+
+    return {
+      city:
+        body.city
+          ?.trim() ??
+        "",
+
+      region:
+        body.region
+          ?.trim() ??
+        "",
+
+      regionCode:
+        body.regionCode
+          ?.trim()
+          .toUpperCase() ??
+        "",
+
+      countryCode:
+        body.countryCode
+          ?.trim()
+          .toUpperCase() ??
+        "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+
 /*
  * ========================================================
  * COMPONENT
@@ -492,6 +579,13 @@ export default function NearbyServicePanel({
   const [
     stateRegion,
     setStateRegion,
+  ] =
+    useState("");
+
+
+  const [
+    detectedRegionCode,
+    setDetectedRegionCode,
   ] =
     useState("");
 
@@ -596,7 +690,7 @@ export default function NearbyServicePanel({
 
 
   const [
-    preciseLocationVerified,
+,
     setPreciseLocationVerified,
   ] =
     useState(false);
@@ -663,6 +757,10 @@ export default function NearbyServicePanel({
             "",
         );
 
+        setDetectedRegionCode(
+          "",
+        );
+
         setDetectedCountryCode(
           adminLocation.countryCode,
         );
@@ -674,6 +772,16 @@ export default function NearbyServicePanel({
               : getDialCode(
                   adminLocation.countryCode,
                 ),
+        );
+
+        void searchNearby(
+          null,
+          null,
+          adminLocation.city ??
+            adminLocation.label ??
+            "",
+          adminLocation.region ??
+            "",
         );
 
         return;
@@ -734,6 +842,11 @@ export default function NearbyServicePanel({
             "",
         );
 
+        setDetectedRegionCode(
+          hint.regionCode ??
+            "",
+        );
+
         setDetectedCountryCode(
           hint.countryCode,
         );
@@ -745,6 +858,16 @@ export default function NearbyServicePanel({
               : getDialCode(
                   hint.countryCode,
                 ),
+        );
+
+
+        void searchNearby(
+          null,
+          null,
+          hint.city ??
+            "",
+          hint.region ??
+            "",
         );
       } catch {
         /*
@@ -841,24 +964,20 @@ export default function NearbyServicePanel({
       setSearchMessage(
         fromCache
           ? "No nearby results in the saved search."
-          : "No nearby businesses found.",
+          : `No nearby ${serviceName} results found.`,
       );
 
       return;
     }
 
+    /*
+     * The count is rendered once in the
+     * summary below the selector. Clear the
+     * transient status instead of appending
+     * a second count message.
+     */
     setSearchMessage(
-      fromCache
-        ? `${total} nearby result${
-            total === 1
-              ? ""
-              : "s"
-          } loaded from this device.`
-        : `${total} nearby result${
-            total === 1
-              ? ""
-              : "s"
-          } found.`,
+      "",
     );
   }
 
@@ -877,6 +996,12 @@ export default function NearbyServicePanel({
     nextLongitude:
       | number
       | null = null,
+
+    nextCity:
+      string = city,
+
+    nextStateRegion:
+      string = stateRegion,
   ): Promise<void> {
     setError(
       "",
@@ -897,8 +1022,8 @@ export default function NearbyServicePanel({
           )
         : createAddressCacheKey(
             serviceCode,
-            city,
-            stateRegion,
+            nextCity,
+            nextStateRegion,
           );
 
 
@@ -933,7 +1058,7 @@ export default function NearbyServicePanel({
     );
 
     setSearchMessage(
-      "Searching nearby…",
+      `Searching for ${serviceName} nearby…`,
     );
 
 
@@ -964,21 +1089,21 @@ export default function NearbyServicePanel({
 
 
       if (
-        city.trim()
+        nextCity.trim()
       ) {
         parameters.set(
           "city",
-          city.trim(),
+          nextCity.trim(),
         );
       }
 
 
       if (
-        stateRegion.trim()
+        nextStateRegion.trim()
       ) {
         parameters.set(
           "state",
-          stateRegion.trim(),
+          nextStateRegion.trim(),
         );
       }
 
@@ -1055,51 +1180,11 @@ export default function NearbyServicePanel({
 
   function useMyLocation():
     void {
-    const adminLocation =
-      getAdminLocationOverride();
-
-    if (adminLocation) {
-      setCity(
-        adminLocation.city ??
-          adminLocation.label ??
-          "",
-      );
-
-      setStateRegion(
-        adminLocation.region ??
-          "",
-      );
-
-      setDetectedCountryCode(
-        adminLocation.countryCode,
-      );
-
-      setPhoneOrWhatsApp(
-        (current) =>
-          current.trim()
-            ? current
-            : getDialCode(
-                adminLocation.countryCode,
-              ),
-      );
-
-      setPreciseLocationVerified(
-        true,
-      );
-
-      void searchNearby(
-        adminLocation.latitude,
-        adminLocation.longitude,
-      );
-
-      return;
-    }
-
     if (
       !navigator.geolocation
     ) {
       setError(
-        "Location is not available in this browser. Search by address or area instead.",
+        "Location is not available in this browser. The approximate city / state location will continue to be used.",
       );
 
       return;
@@ -1139,9 +1224,67 @@ export default function NearbyServicePanel({
             true,
           );
 
+          /*
+           * Nearby shops are fetched from the exact GPS
+           * coordinates immediately. Reverse geocoding only
+           * updates the human-readable city/state/country
+           * displayed in the compact row.
+           */
           void searchNearby(
             nextLatitude,
             nextLongitude,
+          );
+
+          void reverseGeocodeCoordinates(
+            nextLatitude,
+            nextLongitude,
+          ).then(
+            (
+              resolved,
+            ) => {
+              if (!resolved) {
+                return;
+              }
+
+              if (
+                resolved.city
+              ) {
+                setCity(
+                  resolved.city,
+                );
+              }
+
+              if (
+                resolved.region
+              ) {
+                setStateRegion(
+                  resolved.region,
+                );
+              }
+
+              setDetectedRegionCode(
+                resolved.regionCode,
+              );
+
+              if (
+                resolved.countryCode
+              ) {
+                setDetectedCountryCode(
+                  resolved.countryCode,
+                );
+
+                setPhoneOrWhatsApp(
+                  (
+                    current,
+                  ) =>
+                    current.trim()
+                      ? current
+                      : getDialCode(
+                          resolved.countryCode,
+                        ),
+                );
+              }
+            },
           );
         },
 
@@ -1159,7 +1302,7 @@ export default function NearbyServicePanel({
           );
 
           setError(
-            "Location permission was not available. You can continue with the city / state location or search by address / area.",
+            "Location permission was not available. The approximate city / state location will continue to be used.",
           );
         },
 
@@ -1179,42 +1322,6 @@ export default function NearbyServicePanel({
             300000,
         },
       );
-  }
-
-
-  /*
-   * ========================================================
-   * MANUAL SEARCH
-   * ========================================================
-   */
-
-  function searchByAddress():
-    void {
-    setPreciseLocationVerified(
-      false,
-    );
-
-    if (
-      !city.trim() &&
-      !stateRegion.trim()
-    ) {
-      setError(
-        "Enter an address, area, city, state or postal code.",
-      );
-
-      return;
-    }
-
-
-    /*
-     * Manual search should not reuse
-     * an earlier GPS position.
-     */
-
-    void searchNearby(
-      null,
-      null,
-    );
   }
 
 
@@ -1796,146 +1903,103 @@ export default function NearbyServicePanel({
               LOCATION SEARCH — ALWAYS VISIBLE
               ============================================= */}
 
-          <section className="nearby-service-panel__location-search">
-            {isGeneralRequest && (
-              <p className="nearby-service-panel__routing-hint">
-                📍 We will use the available city / state location.
-                You do not need to choose a service category.
-                Use My Location if you want to share a more precise location.
-              </p>
-            )}
-
-            <div className="nearby-service-panel__location-search-row">
-
+          <section className="nearby-service-panel__location-search nearby-service-panel__location-search--compact">
+            <div className="nearby-service-panel__location-compact-row">
               <button
                 type="button"
-                className="nearby-service-panel__use-location"
+                className="nearby-service-panel__use-location nearby-service-panel__use-location--compact"
                 disabled={
                   searching
                 }
                 onClick={
                   useMyLocation
                 }
+                aria-label={
+                  searching
+                    ? "Getting your location"
+                    : "Use my location"
+                }
+                title={
+                  searching
+                    ? "Getting your location"
+                    : "Use my location"
+                }
               >
-                {searching
-                  ? "Searching…"
-                  : "📍 Use my location"}
+                <span
+                  className="nearby-service-panel__location-pin"
+                  aria-hidden="true"
+                >
+                  📍
+                </span>
+
+                <span className="nearby-service-panel__location-button-label">
+                  {
+                    searching
+                      ? "Locating…"
+                      : "Use my location"
+                  }
+                </span>
               </button>
 
-
-              <div className="nearby-service-panel__address-search">
-                <input
-                  value={
-                    city
-                  }
-                  placeholder="Address / area / city"
-                  aria-label="Address, area or city"
-                  disabled={
-                    searching
-                  }
-                  onChange={(
-                    event,
-                  ) => {
-                    setCity(
-                      event.target
-                        .value,
-                    );
-
-                    setError(
-                      "",
-                    );
-                  }}
-                  onKeyDown={(
-                    event,
-                  ) => {
-                    if (
-                      event.key ===
-                      "Enter"
-                    ) {
-                      event.preventDefault();
-
-                      searchByAddress();
-                    }
-                  }}
-                />
-
-                <button
-                  type="button"
-                  aria-label="Search nearby"
-                  title="Search nearby"
-                  disabled={
-                    searching ||
+              <div
+                className="nearby-service-panel__location-current"
+                aria-label="Current request location"
+                title={
+                  [
+                    city.trim(),
                     (
-                      !city.trim() &&
-                      !stateRegion.trim()
+                      detectedRegionCode.trim() ||
+                      stateRegion.trim()
+                    ),
+                    detectedCountryCode
+                      ?.trim()
+                      .toUpperCase() ??
+                    "",
+                  ]
+                    .filter(
+                      Boolean,
                     )
+                    .join(
+                      ", ",
+                    )
+                }
+              >
+                <span className="nearby-service-panel__location-city">
+                  {
+                    city.trim() ||
+                    "Location"
                   }
-                  onClick={
-                    searchByAddress
-                  }
-                >
-                  🔎
-                </button>
+                </span>
+
+                {
+                  (
+                    detectedRegionCode.trim() ||
+                    stateRegion.trim()
+                  ) && (
+                    <span className="nearby-service-panel__location-code">
+                      {
+                        (
+                          detectedRegionCode.trim() ||
+                          stateRegion.trim()
+                        ).toUpperCase()
+                      }
+                    </span>
+                  )
+                }
+
+                {
+                  detectedCountryCode && (
+                    <span className="nearby-service-panel__location-code">
+                      {
+                        detectedCountryCode
+                          .trim()
+                          .toUpperCase()
+                      }
+                    </span>
+                  )
+                }
               </div>
             </div>
-
-
-            <div className="nearby-service-panel__state-row">
-              <input
-                value={
-                  stateRegion
-                }
-                placeholder="State / region (optional)"
-                aria-label="State"
-                disabled={
-                  searching
-                }
-                onChange={(
-                  event,
-                ) => {
-                  setStateRegion(
-                    event.target
-                      .value,
-                  );
-
-                  setError(
-                    "",
-                  );
-                }}
-                onKeyDown={(
-                  event,
-                ) => {
-                  if (
-                    event.key ===
-                      "Enter"
-                  ) {
-                    event.preventDefault();
-
-                    searchByAddress();
-                  }
-                }}
-              />
-            </div>
-
-
-            <p className="nearby-service-panel__routing-hint">
-              {isGeneralRequest
-                ? preciseLocationVerified
-                  ? "✓ Precise location shared. Your request will go to GYAN Support."
-                  : "Using the available city / state location. You may use My Location for more precision."
-                : (
-                  <>
-                    📍 Select a nearby shop
-                    before submitting.
-                    {" "}
-                    <strong>
-                      Otherwise, your request
-                      goes to GYAN Support.
-                    </strong>
-                  </>
-                )}
-            </p>
-
 
             {searchMessage && (
               <small className="nearby-service-panel__search-message">

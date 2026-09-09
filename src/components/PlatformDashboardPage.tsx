@@ -1,5 +1,6 @@
 import "./PlatformDashboardPage.css";
 
+
 interface PlatformDashboardPageProps {
   onBack: () => void;
   onAddShop: () => void;
@@ -9,16 +10,18 @@ interface PlatformDashboardPageProps {
   onOpenStudents?: () => void;
   onOpenRequests?: () => void;
   onOpenAnalytics?: () => void;
+  onOpenNearbySearches?: () => void;
   onChangeLocation: () => void;
   onOpenEducation: () => void;
 }
 
+
 interface AdminTile {
   icon: string;
   title: string;
-  description: string;
   onClick?: () => void;
 }
+
 
 export default function PlatformDashboardPage({
   onBack,
@@ -29,89 +32,130 @@ export default function PlatformDashboardPage({
   onOpenStudents,
   onOpenRequests,
   onOpenAnalytics,
+  onOpenNearbySearches,
   onChangeLocation,
   onOpenEducation,
 }: PlatformDashboardPageProps) {
   const tiles: AdminTile[] = [
     {
-      icon: "🎓",
-      title: "Students",
-      description:
-        "Search, review and manage GYAN learners",
+      icon:
+        "🎓",
+
+      title:
+        "Students",
+
       onClick:
         onOpenStudents,
     },
+
     {
-      icon: "📨",
-      title: "Requests",
-      description:
-        "View and update service requests",
+      icon:
+        "📨",
+
+      title:
+        "Requests",
+
       onClick:
         onOpenRequests,
     },
+
     {
-      icon: "🏬",
-      title: "Shops",
-      description:
-        "Registered GYAN shops",
+      icon:
+        "🏬",
+
+      title:
+        "Shops",
+
       onClick:
         onOpenShops,
     },
+
     {
-      icon: "🧩",
-      title: "Services",
-      description:
-        "Catalog, forms and templates",
+      icon:
+        "🧩",
+
+      title:
+        "Services",
+
       onClick:
         onOpenServices,
     },
+
     {
-      icon: "☁️",
-      title: "Storage",
-      description:
-        "Files, usage and retention",
+      icon:
+        "☁️",
+
+      title:
+        "Storage",
+
       onClick:
         onOpenStorage,
     },
+
     {
-      icon: "📊",
-      title: "Analytics",
-      description:
-        "Platform activity and visitors",
+      icon:
+        "📊",
+
+      title:
+        "Analytics",
+
       onClick:
         onOpenAnalytics,
     },
+
     {
-      icon: "📍",
-      title: "Location",
-      description:
-        "Change admin working location",
+      icon:
+        "🔎",
+
+      title:
+        "Searches",
+
+      onClick:
+        onOpenNearbySearches,
+    },
+
+    {
+      icon:
+        "📍",
+
+      title:
+        "Location",
+
       onClick:
         onChangeLocation,
     },
+
     {
-  icon: "🎓",
-  title: "Education",
-  description:
-    "Programs, countries and exams",
-  onClick:
-    onOpenEducation,
-},
+      icon:
+        "🎓",
+
+      title:
+        "Education",
+
+      onClick:
+        onOpenEducation,
+    },
+
     {
-      icon: "➕",
-      title: "Add shop",
-      description:
-        "Register a new shop",
+      icon:
+        "➕",
+
+      title:
+        "Add shop",
+
       onClick:
         onAddShop,
     },
+
     {
-      icon: "⚙️",
-      title: "Settings",
-      description:
-        "Platform settings",
+      icon:
+        "⚙️",
+
+      title:
+        "Settings",
     },
   ];
+
 
   return (
     <main
@@ -123,7 +167,9 @@ export default function PlatformDashboardPage({
         <button
           type="button"
           className="platform-dashboard__brand"
-          onClick={onBack}
+          onClick={
+            onBack
+          }
           aria-label="Return to GYAN"
           title="Return to GYAN"
         >
@@ -150,7 +196,9 @@ export default function PlatformDashboardPage({
         <button
           type="button"
           className="platform-dashboard__home"
-          onClick={onBack}
+          onClick={
+            onBack
+          }
         >
           Home
         </button>
@@ -174,107 +222,64 @@ export default function PlatformDashboardPage({
         <div
           className="platform-dashboard__grid"
         >
-          {tiles.map(
-            (tile) => {
-              const available =
-                Boolean(
-                  tile.onClick,
-                );
+          {
+            tiles.map(
+              (
+                tile,
+              ) => {
+                const available =
+                  Boolean(
+                    tile.onClick,
+                  );
 
-              return (
-                <button
-                  type="button"
-                  key={
-                    tile.title
-                  }
-                  className={
-                    available
-                      ? "platform-dashboard__tile"
-                      : "platform-dashboard__tile platform-dashboard__tile--disabled"
-                  }
-                  disabled={
-                    !available
-                  }
-                  onClick={
-                    tile.onClick
-                  }
-                >
-                  <span
-                    className="platform-dashboard__tile-icon"
-                    aria-hidden="true"
-                  >
-                    {
-                      tile.icon
+                return (
+                  <button
+                    type="button"
+                    key={
+                      tile.title
                     }
-                  </span>
-
-                  <span
-                    className="platform-dashboard__tile-copy"
+                    className={
+                      available
+                        ? "platform-dashboard__tile"
+                        : "platform-dashboard__tile platform-dashboard__tile--disabled"
+                    }
+                    disabled={
+                      !available
+                    }
+                    onClick={
+                      tile.onClick
+                    }
                   >
-                    <strong>
+                    <span
+                      className="platform-dashboard__tile-icon"
+                      aria-hidden="true"
+                    >
+                      {
+                        tile.icon
+                      }
+                    </span>
+
+                    <strong
+                      className="platform-dashboard__tile-title"
+                    >
                       {
                         tile.title
                       }
                     </strong>
 
-                    <small>
-                      {
-                        tile.description
-                      }
-                    </small>
-                  </span>
-
-                  {available ? (
-                    <span
-                      className="platform-dashboard__tile-arrow"
-                      aria-hidden="true"
-                    >
-                      ›
-                    </span>
-                  ) : (
-                    <span
-                      className="platform-dashboard__soon"
-                    >
-                      Soon
-                    </span>
-                  )}
-                </button>
-              );
-            },
-          )}
-        </div>
-
-        <button
-          type="button"
-          className="platform-dashboard__featured"
-          onClick={
-            onAddShop
+                    {!available && (
+                      <span
+                        className="platform-dashboard__soon"
+                      >
+                        Soon
+                      </span>
+                    )}
+                  </button>
+                );
+              },
+            )
           }
-        >
-          <span
-            aria-hidden="true"
-          >
-            ➕
-          </span>
-
-          <span>
-            <strong>
-              Add a new shop
-            </strong>
-
-            <small>
-              Create a partner
-              profile and GYAN
-              shop code
-            </small>
-          </span>
-
-          <span
-            aria-hidden="true"
-          >
-            ›
-          </span>
-        </button>
+        </div>
       </section>
     </main>
   );

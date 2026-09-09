@@ -16,6 +16,8 @@ import AdminShopsScreen from "./components/AdminShopsScreen";
 import AdminShopServicesScreen from "./components/AdminShopServicesScreen";
 import AdminStoragePanel from "./components/AdminStoragePanel";
 import AdminStudentsPage from "./components/AdminStudentsPage";
+import AdminNearbySearchesPage
+  from "./components/AdminNearbySearchesPage";
 import PlatformDashboardPage from "./components/PlatformDashboardPage";
 import PublicHomePage from "./components/PublicHomePage";
 import SafetyResourceLandingPage from "./components/SafetyResourceLandingPage";
@@ -760,6 +762,15 @@ export default function App() {
   );
 
   const [
+    adminNearbySearchesOpen,
+    setAdminNearbySearchesOpen,
+  ] = useState(
+    () =>
+      window.location.pathname ===
+      "/admin/nearby-searches",
+  );
+
+  const [
     adminEducationOpen,
     setAdminEducationOpen,
   ] = useState(
@@ -1452,6 +1463,10 @@ export default function App() {
         false,
       );
 
+      setAdminNearbySearchesOpen(
+        false,
+      );
+
       setAdminStorageOpen(
         false,
       );
@@ -1719,6 +1734,31 @@ if (
     );
   }
 
+  if (
+    adminNearbySearchesOpen
+  ) {
+    return (
+      <AdminNearbySearchesPage
+        onBack={() => {
+          setAdminNearbySearchesOpen(
+            false,
+          );
+
+          setDashboardView(
+            "platform",
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            "/admin",
+          );
+        }}
+      />
+    );
+  }
+
+
   if (adminStudentsOpen) {
     return (
       <AdminStudentsPage
@@ -1811,6 +1851,10 @@ if (
           exitAdminServices
         }
         onOpenShops={() => {
+          setAdminNearbySearchesOpen(
+            false,
+          );
+
           setAdminServicesOpen(
             false,
           );
@@ -1911,6 +1955,10 @@ if (
         }
 
         onOpenEducation={() => {
+          setAdminNearbySearchesOpen(
+            false,
+          );
+
           setDashboardView(
             null,
           );
@@ -1947,6 +1995,10 @@ if (
         }}
 
         onOpenStudents={() => {
+          setAdminNearbySearchesOpen(
+            false,
+          );
+
           setDashboardView(
             null,
           );
@@ -1987,6 +2039,10 @@ if (
         }}
 
         onOpenServices={() => {
+          setAdminNearbySearchesOpen(
+            false,
+          );
+
           setDashboardView(
             null,
           );
@@ -2003,6 +2059,10 @@ if (
         }}
 
         onOpenStorage={() => {
+          setAdminNearbySearchesOpen(
+            false,
+          );
+
           setDashboardView(
             null,
           );
@@ -2020,7 +2080,51 @@ if (
           );
         }}
 
+        onOpenNearbySearches={() => {
+          setDashboardView(
+            null,
+          );
+
+          setAdminStudentsOpen(
+            false,
+          );
+
+          setAdminEducationOpen(
+            false,
+          );
+
+          setAdminServicesOpen(
+            false,
+          );
+
+          setAdminShopsOpen(
+            false,
+          );
+
+          setAdminStorageOpen(
+            false,
+          );
+
+          setAdminAnalyticsOpen(
+            false,
+          );
+
+          setAdminNearbySearchesOpen(
+            true,
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            "/admin/nearby-searches",
+          );
+        }}
+
         onOpenAnalytics={() => {
+          setAdminNearbySearchesOpen(
+            false,
+          );
+
           setDashboardView(
             null,
           );

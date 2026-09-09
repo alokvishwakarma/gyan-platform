@@ -74,7 +74,12 @@ const SERVICE_SEARCH_TERMS: Record<string, string[]> = {
 };
 
 const GEOAPIFY_CATEGORIES: Record<string, string[]> = {
-  NEARBY_PRINT: ["commercial", "service"],
+  NEARBY_PRINT: [
+    "commercial.stationery",
+    "commercial.hobby.photo",
+    "service.photographer",
+    "service.post",
+  ],
   NEARBY_GROCERY: ["commercial.food_and_drink", "commercial.supermarket", "commercial.marketplace"],
   NEARBY_MEDICAL: ["healthcare", "healthcare.pharmacy"],
   NEARBY_TUITION: ["education", "office.educational_institution"],
@@ -125,6 +130,436 @@ function calculateDistanceKm(
 function normalizeText(value: string | null): string {
   return value?.trim().toLowerCase() ?? "";
 }
+
+function roundLocationBucket(
+  value:
+    number | null,
+): number | null {
+  if (value == null) {
+    return null;
+  }
+
+  return Math.round(
+    value * 100,
+  ) / 100;
+}
+
+
+function createNearbySearchKey({
+  serviceCode,
+  latitude,
+  longitude,
+  city,
+  state,
+}: {
+  serviceCode:
+    string;
+
+  latitude:
+    number | null;
+
+  longitude:
+    number | null;
+
+  city:
+    string;
+
+  state:
+    string;
+}): {
+  key: string;
+  mode: "gps" | "city";
+  latitudeBucket: number | null;
+  longitudeBucket: number | null;
+} {
+  const latitudeBucket =
+    roundLocationBucket(
+      latitude,
+    );
+
+  const longitudeBucket =
+    roundLocationBucket(
+      longitude,
+    );
+
+  if (
+    latitudeBucket != null &&
+    longitudeBucket != null
+  ) {
+    return {
+      key:
+        [
+          serviceCode,
+          "gps",
+          latitudeBucket.toFixed(2),
+          longitudeBucket.toFixed(2),
+        ].join("|"),
+
+      mode:
+        "gps",
+
+      latitudeBucket,
+      longitudeBucket,
+    };
+  }
+
+  return {
+    key:
+      [
+        serviceCode,
+        "city",
+        city,
+        state,
+      ].join("|"),
+
+    mode:
+      "city",
+
+    latitudeBucket:
+      null,
+
+    longitudeBucket:
+      null,
+  };
+}
+
+
+async function loadCachedNearbyResponse(
+  env:
+    Env,
+
+  searchKey:
+    string,
+): Promise<
+  Record<string, unknown> | null
+> {
+  const row =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT response_json
+        FROM nearby_search_cache
+        WHERE
+          search_key = ?
+          AND expires_at >
+              CURRENT_TIMESTAMP
+        LIMIT 1
+        `,
+      )
+      .bind(
+        searchKey,
+      )
+      .first<{
+        response_json:
+          string;
+      }>();
+
+  if (!row) {
+    return null;
+  }
+
+  try {
+    const parsed =
+      JSON.parse(
+        row.response_json,
+      );
+
+    if (
+      typeof parsed !==
+        "object" ||
+      parsed ===
+        null ||
+      Array.isArray(
+        parsed,
+      )
+    ) {
+      return null;
+    }
+
+    await env.gyan_registry
+      .prepare(
+        `
+        UPDATE nearby_search_cache
+        SET
+          search_count =
+            search_count + 1,
+          last_searched_at =
+            CURRENT_TIMESTAMP
+        WHERE search_key = ?
+        `,
+      )
+      .bind(
+        searchKey,
+      )
+      .run();
+
+    return parsed as
+      Record<
+        string,
+        unknown
+      >;
+  } catch {
+    return null;
+  }
+}
+
+
+async function saveNearbySearchSnapshot({
+  env,
+  searchKey,
+  serviceCode,
+  mode,
+  city,
+  state,
+  latitudeBucket,
+  longitudeBucket,
+  registeredCount,
+  externalCount,
+  responsePayload,
+  externalPlaces,
+}: {
+  env:
+    Env;
+
+  searchKey:
+    string;
+
+  serviceCode:
+    string;
+
+  mode:
+    "gps" | "city";
+
+  city:
+    string;
+
+  state:
+    string;
+
+  latitudeBucket:
+    number | null;
+
+  longitudeBucket:
+    number | null;
+
+  registeredCount:
+    number;
+
+  externalCount:
+    number;
+
+  responsePayload:
+    Record<
+      string,
+      unknown
+    >;
+
+  externalPlaces:
+    ExternalPlaceResult[];
+}): Promise<void> {
+  const expiresModifier =
+    mode ===
+      "gps"
+      ? "+30 minutes"
+      : "+6 hours";
+
+  const statements = [
+    env.gyan_registry
+      .prepare(
+        `
+        INSERT INTO nearby_search_cache (
+          search_key,
+          service_code,
+          location_mode,
+          city,
+          state,
+          latitude_bucket,
+          longitude_bucket,
+          search_count,
+          registered_result_count,
+          external_result_count,
+          response_json,
+          first_searched_at,
+          last_searched_at,
+          expires_at
+        )
+        VALUES (
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          1,
+          ?,
+          ?,
+          ?,
+          CURRENT_TIMESTAMP,
+          CURRENT_TIMESTAMP,
+          datetime(
+            'now',
+            ?
+          )
+        )
+        ON CONFLICT(search_key)
+        DO UPDATE SET
+          search_count =
+            nearby_search_cache.search_count + 1,
+          registered_result_count =
+            excluded.registered_result_count,
+          external_result_count =
+            excluded.external_result_count,
+          response_json =
+            excluded.response_json,
+          last_searched_at =
+            CURRENT_TIMESTAMP,
+          expires_at =
+            excluded.expires_at
+        `,
+      )
+      .bind(
+        searchKey,
+        serviceCode,
+        mode,
+        city || null,
+        state || null,
+        latitudeBucket,
+        longitudeBucket,
+        registeredCount,
+        externalCount,
+        JSON.stringify(
+          responsePayload,
+        ),
+        expiresModifier,
+      ),
+  ];
+
+  for (
+    const place
+    of externalPlaces
+  ) {
+    statements.push(
+      env.gyan_registry
+        .prepare(
+          `
+          INSERT INTO nearby_discovered_places (
+            provider,
+            provider_place_id,
+            name,
+            address,
+            latitude,
+            longitude,
+            phone_number,
+            website,
+            categories_json,
+            first_seen_at,
+            last_seen_at,
+            seen_count
+          )
+          VALUES (
+            'geoapify',
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP,
+            1
+          )
+          ON CONFLICT(
+            provider,
+            provider_place_id
+          )
+          DO UPDATE SET
+            name =
+              excluded.name,
+            address =
+              excluded.address,
+            latitude =
+              excluded.latitude,
+            longitude =
+              excluded.longitude,
+            phone_number =
+              COALESCE(
+                excluded.phone_number,
+                nearby_discovered_places.phone_number
+              ),
+            website =
+              COALESCE(
+                excluded.website,
+                nearby_discovered_places.website
+              ),
+            categories_json =
+              excluded.categories_json,
+            last_seen_at =
+              CURRENT_TIMESTAMP,
+            seen_count =
+              nearby_discovered_places.seen_count + 1
+          `,
+        )
+        .bind(
+          place.id,
+          place.name,
+          place.address,
+          place.latitude,
+          place.longitude,
+          place.phoneNumber,
+          place.website,
+          JSON.stringify(
+            place.categories,
+          ),
+        ),
+    );
+
+    statements.push(
+      env.gyan_registry
+        .prepare(
+          `
+          INSERT INTO nearby_discovered_place_services (
+            provider,
+            provider_place_id,
+            service_code,
+            seen_count,
+            first_seen_at,
+            last_seen_at
+          )
+          VALUES (
+            'geoapify',
+            ?,
+            ?,
+            1,
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
+          )
+          ON CONFLICT(
+            provider,
+            provider_place_id,
+            service_code
+          )
+          DO UPDATE SET
+            seen_count =
+              nearby_discovered_place_services.seen_count + 1,
+            last_seen_at =
+              CURRENT_TIMESTAMP
+          `,
+        )
+        .bind(
+          place.id,
+          serviceCode,
+        ),
+    );
+  }
+
+  await env.gyan_registry.batch(
+    statements,
+  );
+}
+
 
 async function geocodeLocation(
   apiKey: string,
@@ -182,9 +617,20 @@ async function loadGeoapifyPlaces(
   const result = (await response.json()) as GeoapifyResponse;
   return (result.features ?? [])
     .map((feature, index): ExternalPlaceResult | null => {
-      const properties = feature.properties;
-      const name = properties?.name?.trim();
-      if (!name) return null;
+      const properties =
+        feature.properties;
+
+      if (!properties) {
+        return null;
+      }
+
+      const name =
+        properties.name
+          ?.trim();
+
+      if (!name) {
+        return null;
+      }
 
       const placeLatitude = typeof properties.lat === "number" ? properties.lat : null;
       const placeLongitude = typeof properties.lon === "number" ? properties.lon : null;
@@ -236,6 +682,37 @@ export async function handleNearbyShopsRoute(
   const requestedCity = normalizeText(url.searchParams.get("city"));
   const requestedState = normalizeText(url.searchParams.get("state"));
   const terms = SERVICE_SEARCH_TERMS[serviceCode] ?? [];
+
+  const searchIdentity =
+    createNearbySearchKey({
+      serviceCode,
+      latitude,
+      longitude,
+      city:
+        requestedCity,
+      state:
+        requestedState,
+    });
+
+  const cachedResponse =
+    await loadCachedNearbyResponse(
+      env,
+      searchIdentity.key,
+    );
+
+  if (cachedResponse) {
+    return jsonResponse({
+      ...cachedResponse,
+
+      cache: {
+        hit:
+          true,
+
+        source:
+          "d1",
+      },
+    });
+  }
 
   const result = await env.gyan_registry
     .prepare(`
@@ -351,22 +828,118 @@ export async function handleNearbyShopsRoute(
     );
   }
 
-  return jsonResponse({
-    serviceCode,
-    location: {
-      latitude,
-      longitude,
-      city: requestedCity || null,
-      state: requestedState || null,
-    },
-    registeredShops: shops
-      .filter((shop) => shop.matchingServiceCount > 0 || terms.length === 0)
-      .slice(0, 20),
-    externalPlaces,
-    externalSearchAvailable: Boolean(geoapifyApiKey),
-    attribution:
-      externalPlaces.length > 0
-        ? "Places data © OpenStreetMap contributors, served by Geoapify"
-        : null,
-  });
+  const registeredShops =
+    shops
+      .filter(
+        (
+          shop,
+        ) =>
+          shop.matchingServiceCount >
+            0 ||
+          terms.length ===
+            0,
+      )
+      .slice(
+        0,
+        20,
+      );
+
+  const responsePayload:
+    Record<
+      string,
+      unknown
+    > = {
+      serviceCode,
+
+      location: {
+        latitude,
+        longitude,
+        city:
+          requestedCity ||
+          null,
+        state:
+          requestedState ||
+          null,
+      },
+
+      registeredShops,
+      externalPlaces,
+
+      externalSearchAvailable:
+        Boolean(
+          geoapifyApiKey,
+        ),
+
+      attribution:
+        externalPlaces.length >
+          0
+          ? "Places data © OpenStreetMap contributors, served by Geoapify"
+          : null,
+
+      cache: {
+        hit:
+          false,
+
+        source:
+          "live",
+      },
+    };
+
+  /*
+   * Search intelligence is deliberately anonymous:
+   * no IP, cookie, GYAN code, email, or browser identifier
+   * is stored. GPS search coordinates are rounded to
+   * 2 decimals (~1 km) before being persisted.
+   */
+  try {
+    await saveNearbySearchSnapshot({
+      env,
+
+      searchKey:
+        searchIdentity.key,
+
+      serviceCode,
+
+      mode:
+        searchIdentity.mode,
+
+      city:
+        requestedCity,
+
+      state:
+        requestedState,
+
+      latitudeBucket:
+        searchIdentity
+          .latitudeBucket,
+
+      longitudeBucket:
+        searchIdentity
+          .longitudeBucket,
+
+      registeredCount:
+        registeredShops.length,
+
+      externalCount:
+        externalPlaces.length,
+
+      responsePayload,
+      externalPlaces,
+    });
+  } catch (
+    error
+  ) {
+    /*
+     * Search must continue working even if analytics/cache
+     * persistence fails.
+     */
+    console.error(
+      "Nearby search cache save failed:",
+      error,
+    );
+  }
+
+  return jsonResponse(
+    responsePayload,
+  );
 }
