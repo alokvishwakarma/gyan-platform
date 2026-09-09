@@ -15,6 +15,9 @@ import MockTestsPage
 import LittleLearnersExperience
   from "./LittleLearnersExperience";
 
+import LiveTestRunner
+  from "./LiveTestRunner";
+
 import {
   checkPracticeAnswer,
   loadPracticeQuestions,
@@ -59,7 +62,8 @@ type Step =
   | "program-report"
   | "student-card"
   | "little-learners"
-  | "mock-tests";
+  | "mock-tests"
+  | "live-test";
 
 
 type AnswerState = {
@@ -299,6 +303,17 @@ export default function EducationLearningHub({
   const [
     mockProgram,
     setMockProgram,
+  ] =
+    useState<
+      string |
+      null
+    >(
+      null,
+    );
+
+  const [
+    liveTestCode,
+    setLiveTestCode,
   ] =
     useState<
       string |
@@ -4751,6 +4766,34 @@ export default function EducationLearningHub({
 
   if (
     step ===
+      "live-test" &&
+    liveTestCode
+  ) {
+    return (
+      <>
+        {educationAccessNotice}
+
+        <LiveTestRunner
+          code={
+            liveTestCode
+          }
+          onBack={() => {
+            setLiveTestCode(
+              null,
+            );
+
+            setStep(
+              "portal",
+            );
+          }}
+        />
+      </>
+    );
+  }
+
+
+  if (
+    step ===
       "mock-tests" &&
     mockProgram
   ) {
@@ -4796,9 +4839,25 @@ export default function EducationLearningHub({
             country
           }
 
+          adminAuthenticated={
+            adminAuthenticated
+          }
+
           onBack={
             onBack
           }
+
+          onLiveTest={(
+            code,
+          ) => {
+            setLiveTestCode(
+              code,
+            );
+
+            setStep(
+              "live-test",
+            );
+          }}
 
           onMockTests={(
             program,

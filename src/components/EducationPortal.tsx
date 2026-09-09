@@ -11,9 +11,27 @@ import {
 
 import "./EducationPortal.css";
 
+interface LiveTestSummary {
+  code: string;
+  program: string;
+  state: string;
+  startsAt: string;
+  scheduleTimezone: string;
+  durationMinutes: number;
+  entryGemCost: number;
+  reportGemCost: number;
+}
+
+interface LiveTestsResponse {
+  liveTests?: LiveTestSummary[];
+}
+
 interface EducationPortalProps {
   country:
     EducationCountry;
+
+  adminAuthenticated?:
+    boolean;
 
   onBack:
     () => void;
@@ -40,6 +58,11 @@ interface EducationPortalProps {
   onReport:
     (
       program: string,
+    ) => void;
+
+  onLiveTest?:
+    (
+      code: string,
     ) => void;
 
 }
@@ -92,6 +115,253 @@ function openEducationDemo(): void {
   );
 }
 
+
+function parseLiveUtc(
+  value: string,
+): number {
+  const trimmed =
+    value.trim();
+
+  const normalized =
+    /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/
+      .test(trimmed)
+      ? `${trimmed.replace(" ", "T")}Z`
+      : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/
+          .test(trimmed)
+        ? `${trimmed}Z`
+        : trimmed;
+
+  return Date.parse(
+    normalized,
+  );
+}
+
+function relativeStartText(
+  startMs: number,
+  nowMs: number,
+): string {
+  const remainingMs =
+    Math.max(
+      0,
+      startMs - nowMs,
+    );
+
+  const totalMinutes =
+    Math.ceil(
+      remainingMs / 60000,
+    );
+
+  if (totalMinutes <= 1) {
+    return "starts in <1 min";
+  }
+
+  const days =
+    Math.floor(
+      totalMinutes / 1440,
+    );
+
+  const hours =
+    Math.floor(
+      (totalMinutes % 1440) / 60,
+    );
+
+  const minutes =
+    totalMinutes % 60;
+
+  if (days > 0) {
+    return `starts in ${days}d ${hours}h`;
+  }
+
+  if (hours > 0) {
+    return minutes > 0
+      ? `starts in ${hours}h ${minutes}m`
+      : `starts in ${hours}h`;
+  }
+
+  return `starts in ${minutes}m`;
+}
+
+function shortTimezoneLabel(
+  timezone: string,
+): string {
+  if (timezone === "Asia/Kolkata") {
+    return "IST";
+  }
+
+  return timezone;
+}
+
+function scheduledStartText(
+  test: LiveTestSummary,
+): string {
+  const startMs =
+    parseLiveUtc(
+      test.startsAt,
+    );
+
+  if (!Number.isFinite(startMs)) {
+    return "Scheduled";
+  }
+
+  try {
+    const formatted =
+      new Intl.DateTimeFormat(
+        "en-US",
+        {
+          timeZone:
+            test.scheduleTimezone ||
+            "UTC",
+          hour:
+            "numeric",
+          minute:
+            "2-digit",
+        },
+      ).format(
+        new Date(startMs),
+      );
+
+    return `${formatted} ${shortTimezoneLabel(
+      test.scheduleTimezone,
+    )}`;
+  } catch {
+    return new Date(
+      startMs,
+    ).toLocaleTimeString(
+      [],
+      {
+        hour:
+          "numeric",
+        minute:
+          "2-digit",
+      },
+    );
+  }
+}
+
+function liveTestDisplayState(
+  test: LiveTestSummary,
+  nowMs: number,
+): {
+  open: boolean;
+  clickable: boolean;
+  tone:
+    | "default"
+    | "soon"
+    | "open"
+    | "ended";
+  shortTime: string;
+  text: string;
+} {
+  const startMs =
+    parseLiveUtc(
+      test.startsAt,
+    );
+
+  const shortTime =
+    Number.isFinite(startMs)
+      ? new Intl.DateTimeFormat(
+          "en-US",
+          {
+            timeZone:
+              test.scheduleTimezone ||
+              "UTC",
+            hour:
+              "numeric",
+            minute:
+              "2-digit",
+          },
+        )
+          .format(
+            new Date(startMs),
+          )
+          .replace(
+            ":00",
+            "",
+          )
+          .replace(
+            " AM",
+            "a",
+          )
+          .replace(
+            " PM",
+            "p",
+          )
+      : "--";
+
+  if (
+    test.state ===
+      "CANCELLED"
+  ) {
+    return {
+      open: false,
+      clickable: false,
+      tone: "ended",
+      shortTime,
+      text: "Cancelled",
+    };
+  }
+
+  if (
+    nowMs <= 0 ||
+    !Number.isFinite(startMs)
+  ) {
+    return {
+      open: false,
+      clickable: true,
+      tone: "default",
+      shortTime,
+      text: "Upcoming",
+    };
+  }
+
+  const endMs =
+    startMs +
+    Math.max(
+      1,
+      test.durationMinutes,
+    ) *
+      60 *
+      1000;
+
+  if (nowMs < startMs) {
+    const withinHour =
+      startMs - nowMs <=
+      60 * 60 * 1000;
+
+    return {
+      open: false,
+      clickable: true,
+      tone:
+        withinHour
+          ? "soon"
+          : "default",
+      shortTime,
+      text: `${scheduledStartText(test)} · ${relativeStartText(
+        startMs,
+        nowMs,
+      )}`,
+    };
+  }
+
+  if (nowMs < endMs) {
+    return {
+      open: true,
+      clickable: true,
+      tone: "open",
+      shortTime,
+      text: `Open now · ${test.durationMinutes} min`,
+    };
+  }
+
+  return {
+    open: false,
+    clickable: true,
+    tone: "ended",
+    shortTime,
+    text: "Test ended",
+  };
+}
+
 function normalizeProgramCode(
   value: string,
 ): string {
@@ -111,10 +381,13 @@ function normalizeProgramCode(
 
 export default function EducationPortal({
   country,
+  adminAuthenticated =
+    false,
   onBack,
   onSelect,
   onMockTests,
   onReport,
+  onLiveTest,
 }: EducationPortalProps) {
   const [
     config,
@@ -137,6 +410,18 @@ export default function EducationPortal({
     >(
       null,
     );
+
+  const [
+    liveTests,
+    setLiveTests,
+  ] =
+    useState<LiveTestSummary[]>([]);
+
+  const [
+    liveClockMs,
+    setLiveClockMs,
+  ] =
+    useState(0);
 
   const loading =
     loadedCountry !==
@@ -190,6 +475,89 @@ export default function EducationPortal({
       country,
     ],
   );
+
+  useEffect(
+    () => {
+      let active =
+        true;
+
+      void fetch(
+        "/api/education/live-tests",
+        {
+          credentials:
+            "include",
+          cache:
+            "no-store",
+        },
+      )
+        .then(
+          async (response) => {
+            if (!response.ok) {
+              throw new Error(
+                "Live Tests could not be loaded.",
+              );
+            }
+
+            return await response.json() as
+              LiveTestsResponse;
+          },
+        )
+        .then(
+          (body) => {
+            if (active) {
+              setLiveTests(
+                Array.isArray(
+                  body.liveTests,
+                )
+                  ? body.liveTests
+                  : [],
+              );
+            }
+          },
+        )
+        .catch(
+          () => {
+            if (active) {
+              setLiveTests([]);
+            }
+          },
+        );
+
+      return () => {
+        active =
+          false;
+      };
+    },
+    [],
+  );
+
+
+  useEffect(
+    () => {
+      const updateClock =
+        (): void => {
+          setLiveClockMs(
+            Date.now(),
+          );
+        };
+
+      updateClock();
+
+      const timer =
+        window.setInterval(
+          updateClock,
+          30000,
+        );
+
+      return () => {
+        window.clearInterval(
+          timer,
+        );
+      };
+    },
+    [],
+  );
+
 
   const enabledPrograms =
     (
@@ -279,6 +647,107 @@ export default function EducationPortal({
             <h2>
               Advanced
             </h2>
+
+            {adminAuthenticated && (
+              <div
+                className="education-portal__advanced-row"
+              >
+                <strong>
+                  Admin
+                </strong>
+
+                <div
+                  className="education-portal__advanced-actions"
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onLiveTest?.(
+                        "ADMIN101",
+                      )
+                    }
+                    title="Permanent admin-only live test"
+                  >
+                    Test #101
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {liveTests.length > 0 && (
+              <div
+                className="education-portal__advanced-row"
+              >
+                <strong>
+                  Live Tests
+                </strong>
+
+                <div
+                  className="education-portal__advanced-actions"
+                >
+                  {liveTests.map(
+                    (test) => {
+                      const display =
+                        liveTestDisplayState(
+                          test,
+                          liveClockMs,
+                        );
+
+                      return (
+                        <button
+                          type="button"
+                          key={test.code}
+                          disabled={
+                            !display.clickable
+                          }
+                          onClick={() =>
+                            onLiveTest?.(
+                              test.code,
+                            )
+                          }
+                          title={`${test.program} · ${display.text}`}
+                          style={{
+                            background:
+                              display.tone ===
+                                "soon"
+                                ? "#fff2a8"
+                                : display.tone ===
+                                    "open"
+                                  ? "#d9f5df"
+                                  : display.tone ===
+                                      "ended"
+                                    ? "#ffd9d9"
+                                    : undefined,
+                            borderColor:
+                              display.tone ===
+                                "soon"
+                                ? "#e1c44f"
+                                : display.tone ===
+                                    "open"
+                                  ? "#86c993"
+                                  : display.tone ===
+                                      "ended"
+                                    ? "#db9090"
+                                    : undefined,
+                            whiteSpace:
+                              "nowrap",
+                          }}
+                        >
+                          #{test.code}
+                          {" · "}
+                          {test.program}
+                          {
+                            display.shortTime
+                              ? ` · ${display.shortTime}`
+                              : ""
+                          }
+                        </button>
+                      );
+                    },
+                  )}
+                </div>
+              </div>
+            )}
 
             <div
               className="education-portal__advanced-list"
