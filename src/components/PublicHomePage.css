@@ -3442,3 +3442,114 @@ button:hover {
   cursor: pointer;
 }
 
+
+/* =========================================================
+   MY ACTIVITY — LIVE TEST HISTORY
+   ========================================================= */
+
+.public-home__activity-live-tests {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  min-width: 0;
+}
+
+.public-home__activity-live-tests-label {
+  flex: 0 0 auto;
+
+  color: #61758a;
+
+  font-size: 0.6rem;
+  font-weight: 800;
+
+  white-space: nowrap;
+}
+
+.public-home__activity-live-tests-strip {
+  flex: 1 1 auto;
+
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  min-width: 0;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  scrollbar-width: thin;
+}
+
+.public-home__live-test-chip {
+  flex: 0 0 auto;
+
+  min-height: 22px;
+  padding: 2px 6px;
+
+  border: 1px solid #ccd9e4;
+  border-radius: 6px;
+
+  background: #f8fbfd;
+  color: #17345c;
+
+  font: inherit;
+  font-size: 0.56rem;
+  font-weight: 850;
+  line-height: 1;
+
+  white-space: nowrap;
+
+  cursor: pointer;
+}
+
+.public-home__live-test-chip--green {
+  border-color: #9bcba3;
+  background: #edf8ee;
+  color: #28633a;
+}
+
+.public-home__live-test-chip--blue {
+  border-color: #9fc3e4;
+  background: #eef6fd;
+  color: #245f91;
+}
+
+.public-home__live-test-chip--gray {
+  border-color: #d4dce3;
+  background: #f3f5f7;
+  color: #74808c;
+}
+
+.public-home__live-test-more {
+  flex: 0 0 auto;
+
+  min-height: 22px;
+  padding: 2px 4px;
+
+  border: 0;
+
+  background: transparent;
+  color: #3574a8;
+
+  font: inherit;
+  font-size: 0.55rem;
+  font-weight: 850;
+
+  white-space: nowrap;
+
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .public-home__activity-live-tests {
+    gap: 4px;
+  }
+
+  .public-home__live-test-chip {
+    min-height: 21px;
+    padding-inline: 5px;
+
+    font-size: 0.53rem;
+  }
+}

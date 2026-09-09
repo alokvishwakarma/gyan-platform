@@ -1013,6 +1013,9 @@ async function enterLiveTest(
   const transactionReason =
     `LIVE_TEST_ENTRY:${test.public_code}`;
 
+  const entryTransactionKey =
+    `${transactionReason}:${owner.accountId}`;
+
   /*
    * Deduct only when:
    *   1) sufficient Gems exist, and
@@ -1135,7 +1138,7 @@ async function enterLiveTest(
         String(
           owner.accountId,
         ),
-        transactionReason,
+        entryTransactionKey,
       )
       .run();
   } catch (
@@ -1512,6 +1515,12 @@ async function getLiveTestQuestions(
    * but once entered its actual runner receives a normal fixed 18-minute
    * session. Real Live Tests remain synchronized to their event clock.
    */
+  const startMs =
+    isAdminTest(
+      test,
+    )
+      ? entryStartMs
+      : eventWindow.startMs;
 
   const endMs =
     isAdminTest(
@@ -2405,6 +2414,44 @@ async function unlockLiveTestReport(
     );
   }
 
+  /*
+   * Normal Live Test answers must remain sealed until the
+   * synchronized event window is over. A student may submit
+   * early, but cannot buy/reveal the report while other
+   * participants are still testing.
+   */
+  const {
+    endMs:
+      reportAvailableMs,
+  } =
+    effectiveLiveWindow(
+      test,
+    );
+
+  if (
+    !Number.isFinite(
+      reportAvailableMs,
+    ) ||
+    Date.now() <
+      reportAvailableMs
+  ) {
+    return liveJson(
+      {
+        error:
+          "The detailed report will be available after the Live Test ends.",
+        reportAvailableAt:
+          Number.isFinite(
+            reportAvailableMs,
+          )
+            ? new Date(
+                reportAvailableMs,
+              ).toISOString()
+            : null,
+      },
+      409,
+    );
+  }
+
   const entry =
     await env.gyan_registry
       .prepare(
@@ -3165,6 +3212,134 @@ async function adminTestStatus(
 }
 
 
+async function liveTestHistory(
+  request:
+    Request,
+
+  env:
+    LiveTestsEnv,
+): Promise<Response> {
+  const owner =
+    await currentGyanOwner(
+      request,
+      env,
+    );
+
+  if (!owner) {
+    return liveJson(
+      {
+        error:
+          "Open your GYAN Card to view Live Test history.",
+      },
+      401,
+    );
+  }
+
+  const rows =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          lt.public_code,
+          lt.program_code,
+          lt.starts_at_utc,
+          le.entered_at,
+          le.submitted_at,
+          le.report_unlocked_at,
+          le.attempt_id
+
+        FROM education_live_entries le
+
+        INNER JOIN education_live_tests lt
+          ON lt.id = le.live_test_id
+
+        WHERE
+          le.participant_type = 'GYAN'
+          AND le.participant_key = ?
+          AND lt.event_kind != 'ADMIN_TEST'
+
+        ORDER BY
+          datetime(
+            COALESCE(
+              le.submitted_at,
+              le.entered_at
+            )
+          ) DESC,
+          le.id DESC
+
+        LIMIT 20
+        `,
+      )
+      .bind(
+        String(
+          owner.accountId,
+        ),
+      )
+      .all<{
+        public_code:
+          string;
+
+        program_code:
+          string;
+
+        starts_at_utc:
+          string;
+
+        entered_at:
+          string;
+
+        submitted_at:
+          string | null;
+
+        report_unlocked_at:
+          string | null;
+
+        attempt_id:
+          number | null;
+      }>();
+
+  return liveJson({
+    tests:
+      rows.results.map(
+        (row) => ({
+          code:
+            row.public_code,
+
+          program:
+            row.program_code,
+
+          startsAt:
+            row.starts_at_utc,
+
+          enteredAt:
+            row.entered_at,
+
+          submitted:
+            Boolean(
+              row.submitted_at ||
+              row.attempt_id,
+            ),
+
+          submittedAt:
+            row.submitted_at,
+
+          reportUnlocked:
+            Boolean(
+              row.report_unlocked_at,
+            ),
+
+          attemptId:
+            row.attempt_id == null
+              ? null
+              : Number(
+                  row.attempt_id,
+                ),
+        }),
+      ),
+  });
+}
+
+
 export async function handleLiveTestsRoute(
   request:
     Request,
@@ -3194,6 +3369,18 @@ export async function handleLiveTestsRoute(
       "/api/admin/live-tests/test-101"
   ) {
     return adminTestStatus(
+      request,
+      env,
+    );
+  }
+
+  if (
+    request.method ===
+      "GET" &&
+    url.pathname ===
+      "/api/education/live-tests/history"
+  ) {
+    return liveTestHistory(
       request,
       env,
     );

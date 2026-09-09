@@ -247,6 +247,9 @@ interface EducationLearningHubProps {
   initialCategoryCode?:
     string;
 
+  initialLiveTestCode?:
+    string | null;
+
   activeGyanCode?:
     string;
 
@@ -270,6 +273,7 @@ interface EducationLearningHubProps {
 export default function EducationLearningHub({
   country,
   initialCategoryCode,
+  initialLiveTestCode,
   activeGyanCode,
   activeGyanName,
   activeGyanEmail,
@@ -282,12 +286,24 @@ export default function EducationLearningHub({
     step,
     setStep,
   ] =
-    useState<Step>(() =>
-      window.location.pathname ===
-      "/education/aba"
-        ? "little-learners"
-        : "portal",
-    );
+    useState<Step>(() => {
+      const normalizedLiveTestCode =
+        initialLiveTestCode
+          ?.trim()
+          .toUpperCase() ??
+        "";
+
+      if (normalizedLiveTestCode) {
+        return "live-test";
+      }
+
+      return (
+        window.location.pathname ===
+        "/education/aba"
+          ? "little-learners"
+          : "portal"
+      );
+    });
 
   const [
     grade,
@@ -319,7 +335,18 @@ export default function EducationLearningHub({
       string |
       null
     >(
-      null,
+      () => {
+        const normalized =
+          initialLiveTestCode
+            ?.trim()
+            .toUpperCase() ??
+          "";
+
+        return (
+          normalized ||
+          null
+        );
+      },
     );
 
 
@@ -4776,6 +4803,9 @@ export default function EducationLearningHub({
         <LiveTestRunner
           code={
             liveTestCode
+          }
+          adminAuthenticated={
+            adminAuthenticated
           }
           onBack={() => {
             setLiveTestCode(

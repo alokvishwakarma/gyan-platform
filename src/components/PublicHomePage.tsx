@@ -329,6 +329,18 @@ type EducationAttemptSummary = {
 };
 
 
+type LiveTestHistoryItem = {
+  code: string;
+  program: string;
+  startsAt: string;
+  enteredAt: string;
+  submitted: boolean;
+  submittedAt: string | null;
+  reportUnlocked: boolean;
+  attemptId: number | null;
+};
+
+
 type RecentGWinkMessage = {
   id: number;
   winkToken: string;
@@ -1284,6 +1296,42 @@ export default function PublicHomePage({
     setEducationInitialCategoryCode,
   ] =
     useState("");
+
+
+  const [
+    liveTestHistory,
+    setLiveTestHistory,
+  ] =
+    useState<
+      LiveTestHistoryItem[]
+    >([]);
+
+  const [
+    liveTestHistoryLoading,
+    setLiveTestHistoryLoading,
+  ] =
+    useState(false);
+
+  const [
+    liveTestHistoryExpanded,
+    setLiveTestHistoryExpanded,
+  ] =
+    useState(false);
+
+  const [
+    activityLiveTestCode,
+    setActivityLiveTestCode,
+  ] =
+    useState<
+      string | null
+    >(null);
+
+
+  const [
+    activityLiveTestLaunchKey,
+    setActivityLiveTestLaunchKey,
+  ] =
+    useState(0);
 
 
   const [
@@ -2577,6 +2625,123 @@ export default function PublicHomePage({
       "education" ||
     educationHeaderCode.length >
       0;
+
+
+  useEffect(
+    () => {
+      if (
+        !educationRatingsCardOpen ||
+        !educationHeaderCode
+      ) {
+        return;
+      }
+
+      const controller =
+        new AbortController();
+
+      queueMicrotask(
+        () => {
+          if (
+            !controller.signal.aborted
+          ) {
+            setLiveTestHistoryLoading(
+              true,
+            );
+          }
+        },
+      );
+
+      void fetch(
+        "/api/education/live-tests/history",
+        {
+          credentials:
+            "include",
+
+          cache:
+            "no-store",
+
+          signal:
+            controller.signal,
+        },
+      )
+        .then(
+          async (
+            response,
+          ) => {
+            if (!response.ok) {
+              return {
+                tests: [],
+              };
+            }
+
+            return await response.json() as {
+              tests?:
+                LiveTestHistoryItem[];
+            };
+          },
+        )
+        .then(
+          (
+            body,
+          ) => {
+            if (
+              controller.signal.aborted
+            ) {
+              return;
+            }
+
+            setLiveTestHistory(
+              Array.isArray(
+                body.tests,
+              )
+                ? body.tests
+                : [],
+            );
+          },
+        )
+        .catch(
+          (
+            caught,
+          ) => {
+            if (
+              caught instanceof
+                DOMException &&
+              caught.name ===
+                "AbortError"
+            ) {
+              return;
+            }
+
+            if (
+              !controller.signal.aborted
+            ) {
+              setLiveTestHistory(
+                [],
+              );
+            }
+          },
+        )
+        .finally(
+          () => {
+            if (
+              !controller.signal.aborted
+            ) {
+              setLiveTestHistoryLoading(
+                false,
+              );
+            }
+          },
+        );
+
+      return () => {
+        controller.abort();
+      };
+    },
+    [
+      educationRatingsCardOpen,
+      educationHeaderCode,
+    ],
+  );
 
 
   useEffect(
@@ -3885,6 +4050,132 @@ export default function PublicHomePage({
                     Education:
                   </strong>
 
+                  <div className="public-home__activity-live-tests">
+                    <span className="public-home__activity-live-tests-label">
+                      Live Tests:
+                    </span>
+
+                    <div className="public-home__activity-live-tests-strip">
+                      {
+                        liveTestHistoryLoading
+                          ? (
+                              <span className="public-home__activity-loading">
+                                Loading…
+                              </span>
+                            )
+                          : liveTestHistory.length
+                            ? (
+                                <>
+                                  {
+                                    (
+                                      liveTestHistoryExpanded
+                                        ? liveTestHistory
+                                        : liveTestHistory.slice(
+                                            0,
+                                            5,
+                                          )
+                                    ).map(
+                                      (
+                                        test,
+                                      ) => {
+                                        const state =
+                                          !test.submitted
+                                            ? "gray"
+                                            : test.reportUnlocked
+                                              ? "green"
+                                              : "blue";
+
+                                        return (
+                                          <button
+                                            key={
+                                              test.code
+                                            }
+                                            type="button"
+                                            className={`public-home__live-test-chip public-home__live-test-chip--${state}`}
+                                            title={`${test.program} · ${
+                                              test.reportUnlocked
+                                                ? "Report viewed"
+                                                : test.submitted
+                                                  ? "Results available"
+                                                  : "Not submitted"
+                                            }`}
+                                            onClick={() => {
+                                              setEducationRatingsCardOpen(
+                                                false,
+                                              );
+
+                                              setSearchFocused(
+                                                false,
+                                              );
+
+                                              setShowPuzzle(
+                                                false,
+                                              );
+
+                                              setActivityLiveTestCode(
+                                                test.code,
+                                              );
+
+                                              setActivityLiveTestLaunchKey(
+                                                (
+                                                  current,
+                                                ) =>
+                                                  current +
+                                                  1,
+                                              );
+
+                                              setActiveView(
+                                                "education",
+                                              );
+
+                                              window.history.pushState(
+                                                {},
+                                                "",
+                                                `/education/live-test/${test.code}`,
+                                              );
+                                            }}
+                                          >
+                                            #{test.code}
+                                          </button>
+                                        );
+                                      },
+                                    )
+                                  }
+
+                                  {
+                                    liveTestHistory.length >
+                                      5 && (
+                                      <button
+                                        type="button"
+                                        className="public-home__live-test-more"
+                                        onClick={() =>
+                                          setLiveTestHistoryExpanded(
+                                            (
+                                              current,
+                                            ) =>
+                                              !current,
+                                          )
+                                        }
+                                      >
+                                        {
+                                          liveTestHistoryExpanded
+                                            ? "Less ‹"
+                                            : "More ›"
+                                        }
+                                      </button>
+                                    )
+                                  }
+                                </>
+                              )
+                            : (
+                                <span className="public-home__activity-empty">
+                                  No Live Tests yet
+                                </span>
+                              )
+                      }
+                    </div>
+                  </div>
+
                   {educationAttemptSummaryLoading
                     ? (
                         <span className="public-home__activity-loading">
@@ -4458,6 +4749,8 @@ export default function PublicHomePage({
                 "education"
               ? (
                 <EducationLearningHub
+                  key={`education-${activityLiveTestLaunchKey}`}
+
                   country={
                     educationCountry
                   }
@@ -4465,6 +4758,10 @@ export default function PublicHomePage({
                   initialCategoryCode={
                     educationInitialCategoryCode ||
                     undefined
+                  }
+
+                  initialLiveTestCode={
+                    activityLiveTestCode
                   }
 
                   activeGyanCode={
@@ -4493,6 +4790,10 @@ export default function PublicHomePage({
                   }
 
                   onBack={() => {
+                    setActivityLiveTestCode(
+                      null,
+                    );
+
                     setActiveView(
                       "home",
                     );

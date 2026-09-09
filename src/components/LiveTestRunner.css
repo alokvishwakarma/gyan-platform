@@ -495,3 +495,57 @@
   background: #fff;
   color: #35536f;
 }
+
+.live-test-runner__participants {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+
+  margin: -4px 0 12px;
+
+  color: #60758a;
+  font-size: 0.6rem;
+  font-weight: 850;
+}
+
+.live-test-runner__participants span {
+  white-space: nowrap;
+}
+
+.live-test-runner__participants-real {
+  color: #9f3042;
+}
+
+.live-test-runner__participants-simulated {
+  color: #566f86;
+}
+
+.live-test-runner__simulation-inline {
+  margin-left: auto;
+  color: #718293;
+  font-size: 0.54rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* Live Test lobby countdown */
+.live-test-runner__lobby-clock {
+  margin: 14px auto 4px;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+
+.live-test-runner__lobby-clock small {
+  color: #687b8c;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.live-test-runner__lobby-clock strong {
+  font-size: 1.55rem;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.035em;
+}

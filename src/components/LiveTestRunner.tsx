@@ -11,6 +11,9 @@ interface LiveTestRunnerProps {
   code:
     string;
 
+  adminAuthenticated?:
+    boolean;
+
   onBack:
     () => void;
 }
@@ -25,6 +28,18 @@ interface LiveTestSummary {
   durationMinutes: number;
   entryGemCost: number;
   reportGemCost: number;
+
+  participants?:
+    number;
+
+  hearts?:
+    number;
+
+  bolts?:
+    number;
+
+  questionCount?:
+    number;
 }
 
 
@@ -289,6 +304,47 @@ function relativeStartText(
 }
 
 
+function clockCountdownText(
+  targetMs: number,
+  nowMs: number,
+): string {
+  if (
+    nowMs <= 0 ||
+    !Number.isFinite(targetMs)
+  ) {
+    return "--:--";
+  }
+
+  const totalSeconds =
+    Math.max(
+      0,
+      Math.ceil(
+        (targetMs - nowMs) /
+        1000,
+      ),
+    );
+
+  const hours =
+    Math.floor(
+      totalSeconds / 3600,
+    );
+
+  const minutes =
+    Math.floor(
+      (totalSeconds % 3600) / 60,
+    );
+
+  const seconds =
+    totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+
 function scheduledDetailText(
   test: LiveTestSummary,
   nowMs: number,
@@ -365,8 +421,120 @@ function scheduledDetailText(
 }
 
 
+function deterministicSimulationTarget(
+  code: string,
+): number {
+  let hash = 17;
+
+  for (const character of code) {
+    hash =
+      (hash * 31 +
+        character.charCodeAt(0)) %
+      100000;
+  }
+
+  return 1200 +
+    (hash % 701);
+}
+
+
+function simulatedActivityCount(
+  test: LiveTestSummary,
+  nowMs: number,
+): number {
+  const startMs =
+    parseLiveUtc(
+      test.startsAt,
+    );
+
+  if (
+    nowMs <= 0 ||
+    !Number.isFinite(startMs)
+  ) {
+    return 0;
+  }
+
+  const durationMs =
+    Math.max(
+      1,
+      test.durationMinutes,
+    ) *
+    60 *
+    1000;
+
+  const endMs =
+    startMs + durationMs;
+
+  const previewStartMs =
+    startMs -
+    5 * 60 * 1000;
+
+  if (nowMs < previewStartMs) {
+    return 0;
+  }
+
+  const target =
+    deterministicSimulationTarget(
+      test.code,
+    );
+
+  if (nowMs < startMs) {
+    const progress =
+      Math.min(
+        1,
+        Math.max(
+          0,
+          (nowMs -
+            previewStartMs) /
+            (startMs -
+              previewStartMs),
+        ),
+      );
+
+    return Math.round(
+      target *
+        (
+          0.04 +
+          0.2 * progress
+        ),
+    );
+  }
+
+  if (nowMs >= endMs) {
+    return target;
+  }
+
+  const progress =
+    Math.min(
+      1,
+      Math.max(
+        0,
+        (nowMs - startMs) /
+          durationMs,
+      ),
+    );
+
+  const eased =
+    1 -
+    Math.pow(
+      1 - progress,
+      2.2,
+    );
+
+  return Math.round(
+    target *
+      (
+        0.24 +
+        0.76 * eased
+      ),
+  );
+}
+
+
 export default function LiveTestRunner({
   code,
+  adminAuthenticated =
+    false,
   onBack,
 }: LiveTestRunnerProps) {
   const [
@@ -553,10 +721,7 @@ export default function LiveTestRunner({
 
   useEffect(
     () => {
-      if (
-        isAdminTest ||
-        started
-      ) {
+      if (isAdminTest) {
         return;
       }
 
@@ -567,15 +732,23 @@ export default function LiveTestRunner({
           );
         };
 
-      update();
+      const initialTimer =
+        window.setTimeout(
+          update,
+          0,
+        );
 
       const timer =
         window.setInterval(
           update,
-          30000,
+          1000,
         );
 
       return () => {
+        window.clearTimeout(
+          initialTimer,
+        );
+
         window.clearInterval(
           timer,
         );
@@ -583,7 +756,6 @@ export default function LiveTestRunner({
     },
     [
       isAdminTest,
-      started,
     ],
   );
 
@@ -609,19 +781,81 @@ export default function LiveTestRunner({
           1000
       : Number.NaN;
 
+  const lobbyOpensMs =
+    Number.isFinite(
+      scheduledStartMs,
+    )
+      ? scheduledStartMs -
+        15 * 60 * 1000
+      : Number.NaN;
+
+  const isBeforeLobby =
+    !isAdminTest &&
+    liveSummary !== null &&
+    introClockMs > 0 &&
+    Number.isFinite(
+      lobbyOpensMs,
+    ) &&
+    introClockMs <
+      lobbyOpensMs;
+
+  const isInLobby =
+    !isAdminTest &&
+    liveSummary !== null &&
+    introClockMs > 0 &&
+    Number.isFinite(
+      lobbyOpensMs,
+    ) &&
+    Number.isFinite(
+      scheduledStartMs,
+    ) &&
+    introClockMs >=
+      lobbyOpensMs &&
+    introClockMs <
+      scheduledStartMs;
+
+  const isScheduledOpen =
+    !isAdminTest &&
+    liveSummary !== null &&
+    introClockMs > 0 &&
+    Number.isFinite(
+      scheduledStartMs,
+    ) &&
+    Number.isFinite(
+      scheduledEndMs,
+    ) &&
+    introClockMs >=
+      scheduledStartMs &&
+    introClockMs <
+      scheduledEndMs;
+
+  const isScheduledOver =
+    !isAdminTest &&
+    liveSummary !== null &&
+    introClockMs > 0 &&
+    Number.isFinite(
+      scheduledEndMs,
+    ) &&
+    introClockMs >=
+      scheduledEndMs;
+
   const canStartScheduledTest =
     isAdminTest ||
-    !liveSummary ||
     (
-      introClockMs > 0 &&
-      Number.isFinite(
-        scheduledStartMs,
-      ) &&
-      introClockMs >=
-        scheduledStartMs &&
-      introClockMs <
-        scheduledEndMs
+      liveSummary !== null &&
+      isScheduledOpen
     );
+
+
+  const simulatedParticipants =
+    adminAuthenticated &&
+    !isAdminTest &&
+    liveSummary
+      ? simulatedActivityCount(
+          liveSummary,
+          introClockMs,
+        )
+      : 0;
 
 
   async function startTest():
@@ -1064,9 +1298,10 @@ export default function LiveTestRunner({
   );
 
 
-  if (
-    submitted
-  ) {
+if (
+  submitted ||
+  reportResult
+) {
     return (
       <main className="live-test-runner">
         <header className="live-test-runner__header">
@@ -1236,27 +1471,61 @@ export default function LiveTestRunner({
                   } questions answered.
                 </p>
 
-                <small>
-                  Your detailed report is available for 💎{reportGemCost}.
-                  Opening it charges only once.
-                </small>
+                {
+                  !isAdminTest &&
+                  Number.isFinite(
+                    scheduledEndMs,
+                  ) &&
+                  introClockMs > 0 &&
+                  introClockMs <
+                    scheduledEndMs
+                    ? (
+                        <small>
+                          Report available after the Live Test ends ·{" "}
+                          {clockCountdownText(
+                            scheduledEndMs,
+                            introClockMs,
+                          )} remaining.
+                        </small>
+                      )
+                    : (
+                        <small>
+                          Your detailed report is available for 💎{reportGemCost}.
+                          Opening it charges only once.
+                        </small>
+                      )
+                }
 
                 <div className="live-test-runner__done-actions">
-                  <button
-                    type="button"
-                    disabled={
-                      loading
-                    }
-                    onClick={() =>
-                      void unlockReport()
-                    }
-                  >
-                    {
-                      loading
-                        ? "Opening…"
-                        : `Open Report · 💎${reportGemCost}`
-                    }
-                  </button>
+                  {
+                    (
+                      isAdminTest ||
+                      !Number.isFinite(
+                        scheduledEndMs,
+                      ) ||
+                      (
+                        introClockMs > 0 &&
+                        introClockMs >=
+                          scheduledEndMs
+                      )
+                    ) && (
+                      <button
+                        type="button"
+                        disabled={
+                          loading
+                        }
+                        onClick={() =>
+                          void unlockReport()
+                        }
+                      >
+                        {
+                          loading
+                            ? "Opening…"
+                            : `Open Report · 💎${reportGemCost}`
+                        }
+                      </button>
+                    )
+                  }
 
                   <button
                     type="button"
@@ -1364,13 +1633,36 @@ export default function LiveTestRunner({
                   isAdminTest
                     ? "Permanent admin smoke test. The event clock always began 15 minutes ago."
                     : liveSummary
-                      ? scheduledDetailText(
-                          liveSummary,
-                          introClockMs,
-                        )
-                      : "Enter the synchronized GYAN Live Test."
+                      ? isBeforeLobby
+                        ? `Lobby opens 15 minutes before the test · ${scheduledDetailText(
+                            liveSummary,
+                            introClockMs,
+                          )}`
+                        : isInLobby
+                          ? "Welcome to the Live Test lobby. No Gems are charged until you begin the test."
+                          : scheduledDetailText(
+                              liveSummary,
+                              introClockMs,
+                            )
+                      : "Loading synchronized Live Test details…"
                 }
               </p>
+
+              {
+                isInLobby && (
+                  <div className="live-test-runner__lobby-clock">
+                    <small>Test begins in</small>
+                    <strong>
+                      {
+                        clockCountdownText(
+                          scheduledStartMs,
+                          introClockMs,
+                        )
+                      }
+                    </strong>
+                  </div>
+                )
+              }
 
               <div className="live-test-runner__facts">
                 <span>
@@ -1378,7 +1670,12 @@ export default function LiveTestRunner({
                 </span>
 
                 <span>
-                  📝 {isAdminTest ? 8 : "Live"} questions
+                  📝 {
+                    isAdminTest
+                      ? 8
+                      : liveSummary?.questionCount ??
+                        "—"
+                  } questions
                 </span>
 
                 <span>
@@ -1390,31 +1687,70 @@ export default function LiveTestRunner({
                 </span>
               </div>
 
+              {
+                (
+                  (liveSummary?.hearts ?? 0) > 0 ||
+                  simulatedParticipants > 0
+                ) && (
+                  <div className="live-test-runner__participants">
+                    <span
+                      className="live-test-runner__participants-real"
+                      title="Real GYAN participants"
+                    >
+                      ♥{" "}
+                      {(liveSummary?.hearts ?? 0).toLocaleString()}
+                    </span>
+
+                    <span
+                      className="live-test-runner__participants-simulated"
+                      title="Simulated participants"
+                    >
+                      ⚡{" "}
+                      {simulatedParticipants.toLocaleString()} participants
+                    </span>
+                  </div>
+                )
+              }
+
               <button
                 type="button"
                 className="live-test-runner__start"
                 disabled={
                   loading ||
-                  !canStartScheduledTest
+                  (
+                    !isScheduledOver &&
+                    !canStartScheduledTest
+                  )
                 }
-                onClick={() =>
-                  void startTest()
-                }
+                onClick={() => {
+                  if (isScheduledOver) {
+                    void unlockReport();
+                    return;
+                  }
+
+                  void startTest();
+                }}
               >
                 {
                   loading
                     ? "Opening…"
-                    : canStartScheduledTest
+                    : isAdminTest
                       ? "Start Test"
-                      : liveSummary &&
-                          introClockMs > 0 &&
-                          Number.isFinite(
-                            scheduledEndMs,
-                          ) &&
-                          introClockMs >=
-                            scheduledEndMs
-                        ? "Test Ended"
-                        : "Not Started Yet"
+                      : canStartScheduledTest
+                        ? `Begin Test · 💎${liveSummary?.entryGemCost ?? 5}`
+                        : isScheduledOver
+                          ? "View Results"
+                          : isInLobby
+                            ? `Begins in ${clockCountdownText(
+                                scheduledStartMs,
+                                introClockMs,
+                              )}`
+                            : isBeforeLobby
+                              ? `Lobby opens in ${clockCountdownText(
+                                  lobbyOpensMs,
+                                  introClockMs,
+                                )}`
+                              : "Loading…"
                 }
               </button>
             </section>
@@ -1436,6 +1772,14 @@ export default function LiveTestRunner({
                 <span>
                   answered
                 </span>
+
+                {
+                  simulatedParticipants > 0 && (
+                    <span className="live-test-runner__simulation-inline">
+                      ⚡ {simulatedParticipants.toLocaleString()} participants
+                    </span>
+                  )
+                }
               </div>
 
               <section className="live-test-runner__questions">
