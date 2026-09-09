@@ -2463,6 +2463,20 @@ export default function EducationLearningHub({
         ? "IIT-JEE"
         : normalizedProgram;
 
+    const programCountry:
+      EducationCountry =
+      normalizedProgram ===
+        "JEE" ||
+      normalizedProgram ===
+        "NEET"
+        ? "IN"
+        : normalizedProgram ===
+            "SAT" ||
+          normalizedProgram ===
+            "OLSAT"
+          ? "US"
+          : country;
+
     setProgramReportLoading(
       true,
     );
@@ -2480,7 +2494,7 @@ export default function EducationLearningHub({
 
       const reportSubjects =
         await loadSubjects(
-          country,
+          programCountry,
           programGradeCode,
         );
 
@@ -2507,7 +2521,7 @@ export default function EducationLearningHub({
       ) {
         const reportSubjectTopics =
           await loadTopics(
-            "IN",
+            programCountry,
             programGradeCode,
             reportSubject.code,
           );
@@ -2603,6 +2617,20 @@ export default function EducationLearningHub({
     reportItem:
       ProgramReportTopic,
   ): Promise<void> {
+    const reportCountry:
+      EducationCountry =
+      grade?.code ===
+        "PROGRAM_JEE" ||
+      grade?.code ===
+        "PROGRAM_NEET"
+        ? "IN"
+        : grade?.code ===
+            "PROGRAM_SAT" ||
+          grade?.code ===
+            "PROGRAM_OLSAT"
+          ? "US"
+          : country;
+
     setLoading(
       true,
     );
@@ -2636,9 +2664,9 @@ export default function EducationLearningHub({
 
       const nextTopics =
         await loadTopics(
-          "IN",
+          reportCountry,
           grade?.code ??
-        "PROGRAM_JEE",
+            "PROGRAM_JEE",
           nextSubject.code,
         );
 
@@ -2659,9 +2687,9 @@ export default function EducationLearningHub({
 
       const nextQuestions =
         await loadPracticeQuestions(
-          "IN",
+          reportCountry,
           grade?.code ??
-        "PROGRAM_JEE",
+            "PROGRAM_JEE",
           nextSubject.code,
           nextTopic.code,
         );
@@ -2673,7 +2701,8 @@ export default function EducationLearningHub({
           grade?.code ??
         "PROGRAM_JEE",
         name:
-          "IIT-JEE",
+          grade?.name ??
+            "Program",
       });
       setSubjects(
         nextSubjects,
@@ -7794,7 +7823,12 @@ export default function EducationLearningHub({
                       className="education-learning__primary"
                       onClick={() => {
                         setMockProgram(
-                          "JEE",
+                          grade?.code
+                            ?.replace(
+                              /^PROGRAM_/,
+                              "",
+                            ) ??
+                            "JEE",
                         );
 
                         setStep(
@@ -7813,9 +7847,20 @@ export default function EducationLearningHub({
                           type:
                             "program",
                           code:
-                            "IIT",
+                            grade?.code ??
+                            "PROGRAM_JEE",
                           name:
+                            grade?.name ??
                             "IIT-JEE",
+                          countryCode:
+                            grade?.countryCode,
+                          programCode:
+                            grade?.programCode ??
+                            grade?.code
+                              ?.replace(
+                                /^PROGRAM_/,
+                                "",
+                              ),
                         })
                       }
                     >

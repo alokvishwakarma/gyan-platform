@@ -1897,24 +1897,17 @@ export async function handleGyanIdentityRoute(
       );
     }
 
-    const ownerEmail =
-      owner
-        .owner_email
-        ?.trim()
-        .toLowerCase() ??
-      "";
-
     /*
-     * A recovery email is useful as an additional ownership check,
-     * but it must not be required for an anonymous GYAN account.
+     * The Activity card is already scoped to the current GYAN
+     * browser identity. Request details therefore must not depend
+     * on whether the request happened to include an email address.
      *
-     * - If the GYAN account has an email, require the request email
-     *   to match it.
-     * - If the GYAN account has no email yet, only allow requests
-     *   that were themselves submitted without an email.
+     * A valid HttpOnly gyan_anon ownership session is still required
+     * before this exact request-number lookup is allowed.
      *
-     * We still require the valid HttpOnly gyan_anon browser session
-     * above, so a completely anonymous browser cannot use this route.
+     * Longer term, request ownership can be persisted explicitly
+     * against gyan_account_id so the detail route does not need to
+     * rely on the Activity-card request number as the capability.
      */
     const row =
       await env.gyan_registry
@@ -1948,38 +1941,12 @@ export async function handleGyanIdentityRoute(
 
           WHERE
             sr.request_number = ?
-            AND (
-              (
-                ? <> ''
-                AND lower(
-                  trim(
-                    COALESCE(
-                      sr.email_address,
-                      ''
-                    )
-                  )
-                ) = ?
-              )
-              OR
-              (
-                ? = ''
-                AND trim(
-                  COALESCE(
-                    sr.email_address,
-                    ''
-                  )
-                ) = ''
-              )
-            )
 
           LIMIT 1
           `,
         )
         .bind(
           requestNumber,
-          ownerEmail,
-          ownerEmail,
-          ownerEmail,
         )
         .first<{
           id:

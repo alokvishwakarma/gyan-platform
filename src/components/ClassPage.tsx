@@ -7,11 +7,17 @@ import {
   IIT_JEE_EIGHT_WEEK_SCHEDULE,
 } from "./iitJeeSchedule";
 
+import {
+  NEET_EIGHT_WEEK_SCHEDULE,
+} from "./neetSchedule";
+
 import "./ClassPage.css";
+
 
 type Category =
   | "IIT-JEE"
   | "NEET";
+
 
 function categoryFromUrl():
   Category {
@@ -28,6 +34,7 @@ function categoryFromUrl():
     ? "NEET"
     : "IIT-JEE";
 }
+
 
 function todayKey():
   string {
@@ -57,8 +64,10 @@ function todayKey():
   return `${year}-${month}-${day}`;
 }
 
+
 function prettyDate(
-  value: string,
+  value:
+    string,
 ): string {
   const [
     year,
@@ -67,7 +76,9 @@ function prettyDate(
   ] =
     value
       .split("-")
-      .map(Number);
+      .map(
+        Number,
+      );
 
   return new Intl.DateTimeFormat(
     undefined,
@@ -90,6 +101,47 @@ function prettyDate(
   );
 }
 
+
+function orderedRows<
+  T extends {
+    date:
+      string;
+  },
+>(
+  rows:
+    readonly T[],
+
+  today:
+    string,
+): T[] {
+  const future =
+    rows.filter(
+      (
+        row,
+      ) =>
+        row.date >=
+        today,
+    );
+
+  const previous =
+    rows
+      .filter(
+        (
+          row,
+        ) =>
+          row.date <
+          today,
+      )
+      .slice()
+      .reverse();
+
+  return [
+    ...future,
+    ...previous,
+  ];
+}
+
+
 export default function ClassPage() {
   const [
     category,
@@ -101,56 +153,46 @@ export default function ClassPage() {
       categoryFromUrl,
     );
 
+  const [
+    registrationTopic,
+    setRegistrationTopic,
+  ] =
+    useState<
+      string | null
+    >(
+      null,
+    );
+
+
   const today =
     todayKey();
 
-  const rows =
+  const jeeRows =
     useMemo(
-      () => {
-        if (
-          category ===
-            "NEET"
-        ) {
-          return [];
-        }
+      () =>
+        orderedRows(
+          IIT_JEE_EIGHT_WEEK_SCHEDULE,
+          today,
+        ),
 
-        /*
-         * Upcoming first, today at the top if present,
-         * then previous classes underneath.
-         *
-         * The table itself is independently scrollable in
-         * both directions.
-         */
-        const future =
-          IIT_JEE_EIGHT_WEEK_SCHEDULE.filter(
-            (
-              row,
-            ) =>
-              row.date >=
-              today,
-          );
-
-        const previous =
-          IIT_JEE_EIGHT_WEEK_SCHEDULE
-            .filter(
-              (
-                row,
-              ) =>
-                row.date <
-                today,
-            )
-            .reverse();
-
-        return [
-          ...future,
-          ...previous,
-        ];
-      },
       [
-        category,
         today,
       ],
     );
+
+  const neetRows =
+    useMemo(
+      () =>
+        orderedRows(
+          NEET_EIGHT_WEEK_SCHEDULE,
+          today,
+        ),
+
+      [
+        today,
+      ],
+    );
+
 
   function selectCategory(
     next:
@@ -163,9 +205,43 @@ export default function ClassPage() {
     window.history.pushState(
       {},
       "",
-      `/class?category=${next === "IIT-JEE" ? "iit-jee" : "neet"}`,
+      `/class?category=${
+        next ===
+          "IIT-JEE"
+          ? "iit-jee"
+          : "neet"
+      }`,
     );
   }
+
+
+  function showRegistration(
+    topic:
+      string,
+  ): void {
+    setRegistrationTopic(
+      topic,
+    );
+  }
+
+
+  function closeRegistration():
+    void {
+    setRegistrationTopic(
+      null,
+    );
+  }
+
+
+  function showLiveTest(
+    testCode:
+      string,
+  ): void {
+    window.alert(
+      `${testCode} Live Test · open from GYAN Education`,
+    );
+  }
+
 
   return (
     <main className="gyan-class">
@@ -228,13 +304,17 @@ export default function ClassPage() {
         </button>
       </div>
 
+      <div className="gyan-class__note">
+        Current batch full · Next batch starts Nov 1
+      </div>
+
       {
         category ===
           "IIT-JEE"
           ? (
             <>
               <div className="gyan-class__note">
-                8-week IIT-JEE cycle · Monday–Friday · 8:30–10:30 PM IST
+                8-week IIT-JEE cycle · Monday–Friday · classes 3:30–5:00 PM IST · Live Test 9:15 PM
               </div>
 
               <div className="gyan-class__table-shell">
@@ -243,29 +323,33 @@ export default function ClassPage() {
                     <tr>
                       <th>
                         Date
-                        <small>
-                          8:30–9:00 Demo
-                        </small>
                       </th>
 
                       <th>
                         Maths
                         <small>
-                          9:00–9:30
+                          3:30–4:00
                         </small>
                       </th>
 
                       <th>
                         Physics
                         <small>
-                          9:30–10:00
+                          4:00–4:30
                         </small>
                       </th>
 
                       <th>
                         Chemistry
                         <small>
-                          10:00–10:30
+                          4:30–5:00
+                        </small>
+                      </th>
+
+                      <th>
+                        Test
+                        <small>
+                          9:15 PM
                         </small>
                       </th>
                     </tr>
@@ -273,7 +357,7 @@ export default function ClassPage() {
 
                   <tbody>
                     {
-                      rows.map(
+                      jeeRows.map(
                         (
                           row,
                         ) => (
@@ -292,11 +376,11 @@ export default function ClassPage() {
                               <button
                                 type="button"
                                 className="gyan-class__cell-button gyan-class__cell-button--date"
-                                onClick={() => {
-                                  window.alert(
-                                    "To join the demo class, contact admin@gyan.cc",
-                                  );
-                                }}
+                                onClick={() =>
+                                  showRegistration(
+                                    "IIT-JEE classes",
+                                  )
+                                }
                               >
                                 <strong>
                                   {
@@ -307,7 +391,7 @@ export default function ClassPage() {
                                 </strong>
 
                                 <span>
-                                  8:30–9:00 PM IST · Demo
+                                  3:30 PM IST
                                 </span>
 
                                 {
@@ -325,11 +409,11 @@ export default function ClassPage() {
                               <button
                                 type="button"
                                 className="gyan-class__cell-button"
-                                onClick={() => {
-                                  window.alert(
-                                    `To register for "${row.math}", contact admin@gyan.cc`,
-                                  );
-                                }}
+                                onClick={() =>
+                                  showRegistration(
+                                    row.math,
+                                  )
+                                }
                               >
                                 {
                                   row.math
@@ -341,11 +425,11 @@ export default function ClassPage() {
                               <button
                                 type="button"
                                 className="gyan-class__cell-button"
-                                onClick={() => {
-                                  window.alert(
-                                    `To register for "${row.physics}", contact admin@gyan.cc`,
-                                  );
-                                }}
+                                onClick={() =>
+                                  showRegistration(
+                                    row.physics,
+                                  )
+                                }
                               >
                                 {
                                   row.physics
@@ -357,15 +441,33 @@ export default function ClassPage() {
                               <button
                                 type="button"
                                 className="gyan-class__cell-button"
-                                onClick={() => {
-                                  window.alert(
-                                    `To register for "${row.chemistry}", contact admin@gyan.cc`,
-                                  );
-                                }}
+                                onClick={() =>
+                                  showRegistration(
+                                    row.chemistry,
+                                  )
+                                }
                               >
                                 {
                                   row.chemistry
                                 }
+                              </button>
+                            </td>
+
+                            <td>
+                              <button
+                                type="button"
+                                className="gyan-class__cell-button"
+                                onClick={() =>
+                                  showLiveTest(
+                                    row.test,
+                                  )
+                                }
+                              >
+                                <strong>
+                                  {
+                                    row.test
+                                  }
+                                </strong>
                               </button>
                             </td>
                           </tr>
@@ -378,10 +480,283 @@ export default function ClassPage() {
             </>
           )
           : (
-            <div className="gyan-class__state">
-              NEET schedule coming next.
-            </div>
+            <>
+              <div className="gyan-class__note">
+                8-week NEET cycle · Monday–Friday · classes 3:30–5:30 PM IST · Live Test 8:30 PM
+              </div>
+
+              <div className="gyan-class__table-shell">
+                <table className="gyan-class__table">
+                  <thead>
+                    <tr>
+                      <th>
+                        Date
+                      </th>
+
+                      <th>
+                        Physics
+                        <small>
+                          3:30–4:00
+                        </small>
+                      </th>
+
+                      <th>
+                        Chemistry
+                        <small>
+                          4:00–4:30
+                        </small>
+                      </th>
+
+                      <th>
+                        Biology
+                        <small>
+                          4:30–5:30
+                        </small>
+                      </th>
+
+                      <th>
+                        Test
+                        <small>
+                          8:30 PM
+                        </small>
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {
+                      neetRows.map(
+                        (
+                          row,
+                        ) => (
+                          <tr
+                            key={
+                              row.date
+                            }
+                            className={
+                              row.date ===
+                                today
+                                ? "is-today"
+                                : ""
+                            }
+                          >
+                            <td className="gyan-class__date">
+                              <button
+                                type="button"
+                                className="gyan-class__cell-button gyan-class__cell-button--date"
+                                onClick={() =>
+                                  showRegistration(
+                                    "NEET classes",
+                                  )
+                                }
+                              >
+                                <strong>
+                                  {
+                                    prettyDate(
+                                      row.date,
+                                    )
+                                  }
+                                </strong>
+
+                                <span>
+                                  3:30 PM IST
+                                </span>
+
+                                {
+                                  row.date ===
+                                    today && (
+                                    <small>
+                                      TODAY
+                                    </small>
+                                  )
+                                }
+                              </button>
+                            </td>
+
+                            <td>
+                              <button
+                                type="button"
+                                className="gyan-class__cell-button"
+                                onClick={() =>
+                                  showRegistration(
+                                    row.physics,
+                                  )
+                                }
+                              >
+                                {
+                                  row.physics
+                                }
+                              </button>
+                            </td>
+
+                            <td>
+                              <button
+                                type="button"
+                                className="gyan-class__cell-button"
+                                onClick={() =>
+                                  showRegistration(
+                                    row.chemistry,
+                                  )
+                                }
+                              >
+                                {
+                                  row.chemistry
+                                }
+                              </button>
+                            </td>
+
+                            <td>
+                              <button
+                                type="button"
+                                className="gyan-class__cell-button"
+                                onClick={() =>
+                                  showRegistration(
+                                    row.biology,
+                                  )
+                                }
+                              >
+                                {
+                                  row.biology
+                                }
+                              </button>
+                            </td>
+
+                            <td>
+                              <button
+                                type="button"
+                                className="gyan-class__cell-button"
+                                onClick={() =>
+                                  showLiveTest(
+                                    row.test,
+                                  )
+                                }
+                              >
+                                <strong>
+                                  {
+                                    row.test
+                                  }
+                                </strong>
+                              </button>
+                            </td>
+                          </tr>
+                        ),
+                      )
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </>
           )
+      }
+
+      {
+        registrationTopic && (
+          <div
+            className="gyan-class__dialog-backdrop"
+            role="presentation"
+            onMouseDown={
+              closeRegistration
+            }
+          >
+            <section
+              className="gyan-class__dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="gyan-class-registration-title"
+              onMouseDown={(
+                event,
+              ) => {
+                event.stopPropagation();
+              }}
+            >
+              <button
+                type="button"
+                className="gyan-class__dialog-close"
+                onClick={
+                  closeRegistration
+                }
+                aria-label="Close"
+                title="Close"
+              >
+                ×
+              </button>
+
+              <div
+                className="gyan-class__dialog-icon"
+                aria-hidden="true"
+              >
+                🎓
+              </div>
+
+              <small className="gyan-class__dialog-eyebrow">
+                GYAN Classes
+              </small>
+
+              <h2 id="gyan-class-registration-title">
+                Registration
+              </h2>
+
+              <p>
+                To register for{" "}
+                <strong>
+                  “{
+                    registrationTopic
+                  }”
+                </strong>
+                , contact{" "}
+                <a href="mailto:admin@gyan.cc">
+                  admin@gyan.cc
+                </a>
+                .
+              </p>
+
+              <div className="gyan-class__dialog-next">
+                <span
+                  aria-hidden="true"
+                >
+                  📅
+                </span>
+
+                <div>
+                  <strong>
+                    Next batch: Nov–Dec
+                  </strong>
+
+                  <small>
+                    Starting Nov 01
+                  </small>
+                </div>
+              </div>
+
+              <p className="gyan-class__dialog-note">
+                The current batch is full. Please contact{" "}
+                <a href="mailto:admin@gyan.cc">
+                  admin@gyan.cc
+                </a>{" "}
+                for the next batch.
+              </p>
+
+              <div className="gyan-class__dialog-actions">
+                <a
+                  href={`mailto:admin@gyan.cc?subject=${encodeURIComponent(
+                    `GYAN Classes registration: ${registrationTopic}`,
+                  )}`}
+                >
+                  ✉ Contact admin
+                </a>
+
+                <button
+                  type="button"
+                  onClick={
+                    closeRegistration
+                  }
+                >
+                  Close
+                </button>
+              </div>
+            </section>
+          </div>
+        )
       }
     </main>
   );

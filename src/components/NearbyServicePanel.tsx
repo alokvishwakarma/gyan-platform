@@ -169,6 +169,110 @@ const ADDRESS_CACHE_TTL =
  * ========================================================
  */
 
+const US_REGION_CODES:
+  Record<
+    string,
+    string
+  > = {
+    alabama: "AL",
+    alaska: "AK",
+    arizona: "AZ",
+    arkansas: "AR",
+    california: "CA",
+    colorado: "CO",
+    connecticut: "CT",
+    delaware: "DE",
+    florida: "FL",
+    georgia: "GA",
+    hawaii: "HI",
+    idaho: "ID",
+    illinois: "IL",
+    indiana: "IN",
+    iowa: "IA",
+    kansas: "KS",
+    kentucky: "KY",
+    louisiana: "LA",
+    maine: "ME",
+    maryland: "MD",
+    massachusetts: "MA",
+    michigan: "MI",
+    minnesota: "MN",
+    mississippi: "MS",
+    missouri: "MO",
+    montana: "MT",
+    nebraska: "NE",
+    nevada: "NV",
+    "new hampshire": "NH",
+    "new jersey": "NJ",
+    "new mexico": "NM",
+    "new york": "NY",
+    "north carolina": "NC",
+    "north dakota": "ND",
+    ohio: "OH",
+    oklahoma: "OK",
+    oregon: "OR",
+    pennsylvania: "PA",
+    "rhode island": "RI",
+    "south carolina": "SC",
+    "south dakota": "SD",
+    tennessee: "TN",
+    texas: "TX",
+    utah: "UT",
+    vermont: "VT",
+    virginia: "VA",
+    washington: "WA",
+    "west virginia": "WV",
+    wisconsin: "WI",
+    wyoming: "WY",
+    "district of columbia": "DC",
+  };
+
+
+function compactRegionCode(
+  countryCode:
+    string | undefined,
+
+  regionCode:
+    string,
+
+  regionName:
+    string,
+): string {
+  const explicit =
+    regionCode
+      .trim()
+      .toUpperCase();
+
+  if (explicit) {
+    return explicit;
+  }
+
+  const country =
+    countryCode
+      ?.trim()
+      .toUpperCase() ??
+    "";
+
+  const region =
+    regionName
+      .trim();
+
+  if (
+    country ===
+      "US"
+  ) {
+    return (
+      US_REGION_CODES[
+        region.toLowerCase()
+      ] ??
+      region.toUpperCase()
+    );
+  }
+
+  return region.toUpperCase();
+}
+
+
 function normalizeCacheText(
   value: string,
 ): string {
@@ -1771,6 +1875,14 @@ export default function NearbyServicePanel({
   }
 
 
+  const displayedRegionCode =
+    compactRegionCode(
+      detectedCountryCode,
+      detectedRegionCode,
+      stateRegion,
+    );
+
+
   const containerClassName =
     embedded
       ? "nearby-service-embedded"
@@ -1885,15 +1997,41 @@ export default function NearbyServicePanel({
             }
           </h2>
 
-          <button
-            type="button"
-            onClick={
-              onClose
-            }
-            aria-label="Close nearby request"
-          >
-            ×
-          </button>
+          <div className="nearby-service-panel__header-actions">
+            <button
+              type="button"
+              className="nearby-service-panel__header-submit"
+              disabled={
+                submitting
+              }
+              onClick={() =>
+                void submitRequest()
+              }
+              aria-label="Submit request"
+              title={
+                submitting
+                  ? "Submitting…"
+                  : "Submit request"
+              }
+            >
+              {
+                submitting
+                  ? "…"
+                  : "➤"
+              }
+            </button>
+
+            <button
+              type="button"
+              onClick={
+                onClose
+              }
+              aria-label="Close nearby request"
+              title="Close"
+            >
+              ×
+            </button>
+          </div>
         </header>
 
 
@@ -1947,10 +2085,7 @@ export default function NearbyServicePanel({
                 title={
                   [
                     city.trim(),
-                    (
-                      detectedRegionCode.trim() ||
-                      stateRegion.trim()
-                    ),
+                    displayedRegionCode,
                     detectedCountryCode
                       ?.trim()
                       .toUpperCase() ??
@@ -1972,16 +2107,10 @@ export default function NearbyServicePanel({
                 </span>
 
                 {
-                  (
-                    detectedRegionCode.trim() ||
-                    stateRegion.trim()
-                  ) && (
+                  displayedRegionCode && (
                     <span className="nearby-service-panel__location-code">
                       {
-                        (
-                          detectedRegionCode.trim() ||
-                          stateRegion.trim()
-                        ).toUpperCase()
+                        displayedRegionCode
                       }
                     </span>
                   )

@@ -1,322 +1,322 @@
-export const IIT_JEE_EIGHT_WEEK_SCHEDULE = [
+export const NEET_EIGHT_WEEK_SCHEDULE = [
   {
     "date": "2026-08-31",
     "demo": "3:30–4:00 PM IST",
-    "math": "Sets, Relations & Functions",
     "physics": "Units, Dimensions & Errors",
     "chemistry": "Mole Concept",
-    "test": "#228J"
+    "biology": "The Living World",
+    "test": "#228N"
   },
   {
     "date": "2026-09-01",
     "demo": "3:30–4:00 PM IST",
-    "math": "Quadratic Equations",
     "physics": "Vectors & Basic Mathematics",
     "chemistry": "Atomic Structure",
-    "test": "#229J"
+    "biology": "Biological Classification",
+    "test": "#229N"
   },
   {
     "date": "2026-09-02",
     "demo": "3:30–4:00 PM IST",
-    "math": "Sequences & Series",
     "physics": "Kinematics 1D",
     "chemistry": "Periodic Table",
-    "test": "#230J"
+    "biology": "Plant Kingdom",
+    "test": "#230N"
   },
   {
     "date": "2026-09-03",
     "demo": "3:30–4:00 PM IST",
-    "math": "Permutations & Combinations",
     "physics": "Kinematics 2D",
     "chemistry": "Chemical Bonding",
-    "test": "#231J"
+    "biology": "Animal Kingdom",
+    "test": "#231N"
   },
   {
     "date": "2026-09-04",
     "demo": "3:30–4:00 PM IST",
-    "math": "Binomial Theorem",
     "physics": "Laws of Motion",
     "chemistry": "States of Matter",
-    "test": "#232J"
+    "biology": "Morphology of Flowering Plants",
+    "test": "#232N"
   },
   {
     "date": "2026-09-07",
     "demo": "3:30–4:00 PM IST",
-    "math": "Trigonometric Ratios",
     "physics": "Friction",
     "chemistry": "Thermodynamics",
-    "test": "#235J"
+    "biology": "Anatomy of Flowering Plants",
+    "test": "#235N"
   },
   {
     "date": "2026-09-08",
     "demo": "3:30–4:00 PM IST",
-    "math": "Trigonometric Equations",
     "physics": "Work, Energy & Power",
     "chemistry": "Thermochemistry",
-    "test": "#236J"
+    "biology": "Structural Organisation in Animals",
+    "test": "#236N"
   },
   {
     "date": "2026-09-09",
     "demo": "3:30–4:00 PM IST",
-    "math": "Straight Lines",
     "physics": "Center of Mass",
     "chemistry": "Chemical Equilibrium",
-    "test": "#237J"
+    "biology": "Cell: The Unit of Life",
+    "test": "#237N"
   },
   {
     "date": "2026-09-10",
     "demo": "3:30–4:00 PM IST",
-    "math": "Circles",
     "physics": "Rotational Motion",
     "chemistry": "Ionic Equilibrium",
-    "test": "#238J"
+    "biology": "Biomolecules",
+    "test": "#238N"
   },
   {
     "date": "2026-09-11",
     "demo": "3:30–4:00 PM IST",
-    "math": "Parabola",
     "physics": "Gravitation",
     "chemistry": "Redox Reactions",
-    "test": "#239J"
+    "biology": "Cell Cycle & Cell Division",
+    "test": "#239N"
   },
   {
     "date": "2026-09-14",
     "demo": "3:30–4:00 PM IST",
-    "math": "Ellipse & Hyperbola",
     "physics": "Properties of Matter",
     "chemistry": "Solutions",
-    "test": "#242J"
+    "biology": "Transport in Plants",
+    "test": "#242N"
   },
   {
     "date": "2026-09-15",
     "demo": "3:30–4:00 PM IST",
-    "math": "Limits",
     "physics": "Fluid Mechanics",
     "chemistry": "Electrochemistry",
-    "test": "#243J"
+    "biology": "Mineral Nutrition",
+    "test": "#243N"
   },
   {
     "date": "2026-09-16",
     "demo": "3:30–4:00 PM IST",
-    "math": "Continuity & Differentiability",
     "physics": "Thermal Properties",
     "chemistry": "Chemical Kinetics",
-    "test": "#244J"
+    "biology": "Photosynthesis in Higher Plants",
+    "test": "#244N"
   },
   {
     "date": "2026-09-17",
     "demo": "3:30–4:00 PM IST",
-    "math": "Differentiation Techniques",
     "physics": "Thermodynamics",
     "chemistry": "Surface Chemistry",
-    "test": "#245J"
+    "biology": "Respiration in Plants",
+    "test": "#245N"
   },
   {
     "date": "2026-09-18",
     "demo": "3:30–4:00 PM IST",
-    "math": "Applications of Derivatives",
     "physics": "Kinetic Theory",
     "chemistry": "Hydrogen",
-    "test": "#246J"
+    "biology": "Plant Growth & Development",
+    "test": "#246N"
   },
   {
     "date": "2026-09-21",
     "demo": "3:30–4:00 PM IST",
-    "math": "Indefinite Integration",
     "physics": "SHM",
     "chemistry": "s-Block Elements",
-    "test": "#249J"
+    "biology": "Digestion & Absorption",
+    "test": "#249N"
   },
   {
     "date": "2026-09-22",
     "demo": "3:30–4:00 PM IST",
-    "math": "Definite Integration",
     "physics": "Waves",
     "chemistry": "p-Block Elements I",
-    "test": "#250J"
+    "biology": "Breathing & Exchange of Gases",
+    "test": "#250N"
   },
   {
     "date": "2026-09-23",
     "demo": "3:30–4:00 PM IST",
-    "math": "Area Under Curves",
     "physics": "Electrostatics",
     "chemistry": "p-Block Elements II",
-    "test": "#251J"
+    "biology": "Body Fluids & Circulation",
+    "test": "#251N"
   },
   {
     "date": "2026-09-24",
     "demo": "3:30–4:00 PM IST",
-    "math": "Differential Equations",
     "physics": "Capacitance",
     "chemistry": "d- & f-Block Elements",
-    "test": "#252J"
+    "biology": "Excretory Products & Elimination",
+    "test": "#252N"
   },
   {
     "date": "2026-09-25",
     "demo": "3:30–4:00 PM IST",
-    "math": "Matrices",
     "physics": "Current Electricity",
     "chemistry": "Coordination Compounds",
-    "test": "#253J"
+    "biology": "Locomotion & Movement",
+    "test": "#253N"
   },
   {
     "date": "2026-09-28",
     "demo": "3:30–4:00 PM IST",
-    "math": "Determinants",
     "physics": "Magnetic Effects of Current",
     "chemistry": "Metallurgy",
-    "test": "#256J"
+    "biology": "Neural Control & Coordination",
+    "test": "#256N"
   },
   {
     "date": "2026-09-29",
     "demo": "3:30–4:00 PM IST",
-    "math": "Complex Numbers",
     "physics": "Magnetism",
     "chemistry": "General Organic Chemistry",
-    "test": "#257J"
+    "biology": "Chemical Coordination & Integration",
+    "test": "#257N"
   },
   {
     "date": "2026-09-30",
     "demo": "3:30–4:00 PM IST",
-    "math": "Vectors",
     "physics": "Electromagnetic Induction",
     "chemistry": "Isomerism",
-    "test": "#258J"
+    "biology": "Reproduction in Organisms",
+    "test": "#258N"
   },
   {
     "date": "2026-10-01",
     "demo": "3:30–4:00 PM IST",
-    "math": "3D Geometry",
     "physics": "Alternating Current",
     "chemistry": "Hydrocarbons",
-    "test": "#259J"
+    "biology": "Sexual Reproduction in Flowering Plants",
+    "test": "#259N"
   },
   {
     "date": "2026-10-02",
     "demo": "3:30–4:00 PM IST",
-    "math": "Probability",
     "physics": "Electromagnetic Waves",
     "chemistry": "Haloalkanes & Haloarenes",
-    "test": "#260J"
+    "biology": "Human Reproduction",
+    "test": "#260N"
   },
   {
     "date": "2026-10-05",
     "demo": "3:30–4:00 PM IST",
-    "math": "Statistics",
     "physics": "Ray Optics",
     "chemistry": "Alcohols, Phenols & Ethers",
-    "test": "#263J"
+    "biology": "Reproductive Health",
+    "test": "#263N"
   },
   {
     "date": "2026-10-06",
     "demo": "3:30–4:00 PM IST",
-    "math": "Mathematical Reasoning",
     "physics": "Wave Optics",
     "chemistry": "Aldehydes & Ketones",
-    "test": "#264J"
+    "biology": "Principles of Inheritance & Variation",
+    "test": "#264N"
   },
   {
     "date": "2026-10-07",
     "demo": "3:30–4:00 PM IST",
-    "math": "Inverse Trigonometric Functions",
     "physics": "Dual Nature",
     "chemistry": "Carboxylic Acids",
-    "test": "#265J"
+    "biology": "Molecular Basis of Inheritance",
+    "test": "#265N"
   },
   {
     "date": "2026-10-08",
     "demo": "3:30–4:00 PM IST",
-    "math": "Functions & Graph Transformations",
     "physics": "Atoms",
     "chemistry": "Amines",
-    "test": "#266J"
+    "biology": "Evolution",
+    "test": "#266N"
   },
   {
     "date": "2026-10-09",
     "demo": "3:30–4:00 PM IST",
-    "math": "Coordinate Geometry Revision",
     "physics": "Nuclei",
     "chemistry": "Biomolecules",
-    "test": "#267J"
+    "biology": "Human Health & Disease",
+    "test": "#267N"
   },
   {
     "date": "2026-10-12",
     "demo": "3:30–4:00 PM IST",
-    "math": "Algebra Mixed Problems",
     "physics": "Semiconductors",
     "chemistry": "Polymers",
-    "test": "#270J"
+    "biology": "Strategies for Enhancement in Food Production",
+    "test": "#270N"
   },
   {
     "date": "2026-10-13",
     "demo": "3:30–4:00 PM IST",
-    "math": "Calculus Mixed Problems",
     "physics": "Experimental Physics",
     "chemistry": "Chemistry in Everyday Life",
-    "test": "#271J"
+    "biology": "Microbes in Human Welfare",
+    "test": "#271N"
   },
   {
     "date": "2026-10-14",
     "demo": "3:30–4:00 PM IST",
-    "math": "JEE Main Maths Practice I",
     "physics": "Mechanics Mixed Problems",
     "chemistry": "Physical Chemistry Mixed Problems",
-    "test": "#272J"
+    "biology": "Biotechnology: Principles & Processes",
+    "test": "#272N"
   },
   {
     "date": "2026-10-15",
     "demo": "3:30–4:00 PM IST",
-    "math": "JEE Main Maths Practice II",
     "physics": "Electrodynamics Mixed Problems",
     "chemistry": "Inorganic Chemistry Mixed Problems",
-    "test": "#273J"
+    "biology": "Biotechnology & Its Applications",
+    "test": "#273N"
   },
   {
     "date": "2026-10-16",
     "demo": "3:30–4:00 PM IST",
-    "math": "JEE Advanced Maths Practice I",
     "physics": "Optics Mixed Problems",
     "chemistry": "Organic Chemistry Mixed Problems",
-    "test": "#274J"
+    "biology": "Organisms & Populations",
+    "test": "#274N"
   },
   {
     "date": "2026-10-19",
     "demo": "3:30–4:00 PM IST",
-    "math": "JEE Advanced Maths Practice II",
     "physics": "Modern Physics Mixed Problems",
     "chemistry": "JEE Main Chemistry Practice",
-    "test": "#277J"
+    "biology": "Ecosystem",
+    "test": "#277N"
   },
   {
     "date": "2026-10-20",
     "demo": "3:30–4:00 PM IST",
-    "math": "Weak Area Repair I",
     "physics": "JEE Main Physics Practice",
     "chemistry": "JEE Advanced Chemistry Practice",
-    "test": "#278J"
+    "biology": "Biodiversity & Conservation",
+    "test": "#278N"
   },
   {
     "date": "2026-10-21",
     "demo": "3:30–4:00 PM IST",
-    "math": "Weak Area Repair II",
     "physics": "JEE Advanced Physics Practice",
     "chemistry": "Weak Area Repair",
-    "test": "#279J"
+    "biology": "Environmental Issues",
+    "test": "#279N"
   },
   {
     "date": "2026-10-22",
     "demo": "3:30–4:00 PM IST",
-    "math": "Full Maths Revision",
     "physics": "Full Physics Revision",
     "chemistry": "Full Chemistry Revision",
-    "test": "#280J"
+    "biology": "NEET Biology Practice & Revision I",
+    "test": "#280N"
   },
   {
     "date": "2026-10-23",
     "demo": "3:30–4:00 PM IST",
-    "math": "Maths Mock & Review",
     "physics": "Physics Mock & Review",
     "chemistry": "Chemistry Mock & Review",
-    "test": "#281J"
+    "biology": "NEET Biology Practice & Revision II",
+    "test": "#281N"
   }
 ] as const;

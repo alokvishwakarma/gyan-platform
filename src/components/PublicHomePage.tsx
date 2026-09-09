@@ -399,6 +399,116 @@ type GyanActivitySummary = {
 };
 
 
+function serviceRequestIcon(
+  requestNumber:
+    string,
+): string {
+  const value =
+    requestNumber
+      .trim()
+      .toUpperCase();
+
+  if (
+    value.includes(
+      "PRINT",
+    )
+  ) {
+    return "🖨️";
+  }
+
+  if (
+    value.includes(
+      "GROCERY",
+    )
+  ) {
+    return "🛒";
+  }
+
+  if (
+    value.includes(
+      "MEDICAL",
+    ) ||
+    value.includes(
+      "HEALTH",
+    )
+  ) {
+    return "🏥";
+  }
+
+  if (
+    value.includes(
+      "FOOD",
+    ) ||
+    value.includes(
+      "RESTAURANT",
+    )
+  ) {
+    return "🍽️";
+  }
+
+  if (
+    value.includes(
+      "PHARM",
+    )
+  ) {
+    return "💊";
+  }
+
+  if (
+    value.includes(
+      "REPAIR",
+    )
+  ) {
+    return "🔧";
+  }
+
+  return "🧰";
+}
+
+
+function serviceRequestState(
+  status:
+    string,
+):
+  "green" |
+  "yellow" |
+  "red" {
+  const normalized =
+    status
+      .trim()
+      .toLowerCase();
+
+  if (
+    [
+      "completed",
+      "ready",
+      "closed",
+      "fulfilled",
+    ].includes(
+      normalized,
+    )
+  ) {
+    return "green";
+  }
+
+  if (
+    [
+      "cancelled",
+      "canceled",
+      "rejected",
+      "failed",
+      "declined",
+    ].includes(
+      normalized,
+    )
+  ) {
+    return "red";
+  }
+
+  return "yellow";
+}
+
+
 function educationCategoryLabel(
   gradeCode: string,
 ): string {
@@ -3703,19 +3813,14 @@ export default function PublicHomePage({
                               (
                                 request,
                               ) => {
-                                const normalized =
-                                  request.status
-                                    .trim()
-                                    .toLowerCase();
+                                const state =
+                                  serviceRequestState(
+                                    request.status,
+                                  );
 
-                                const closed =
-                                  [
-                                    "completed",
-                                    "ready",
-                                    "closed",
-                                    "fulfilled",
-                                  ].includes(
-                                    normalized,
+                                const icon =
+                                  serviceRequestIcon(
+                                    request.requestNumber,
                                   );
 
                                 return (
@@ -3724,11 +3829,7 @@ export default function PublicHomePage({
                                       request.requestNumber
                                     }
                                     type="button"
-                                    className={`public-home__activity-box public-home__activity-box--${
-                                      closed
-                                        ? "green"
-                                        : "yellow"
-                                    }`}
+                                    className={`public-home__activity-box public-home__activity-box--${state}`}
                                     title={`${request.requestNumber} · ${request.status} · View details`}
                                     aria-label={`View service request ${request.requestNumber}`}
                                     onClick={() => {
@@ -3737,12 +3838,28 @@ export default function PublicHomePage({
                                       );
                                     }}
                                     style={{
+                                      display:
+                                        "grid",
+                                      placeItems:
+                                        "center",
                                       padding:
                                         0,
                                       cursor:
                                         "pointer",
+                                      fontSize:
+                                        "0.78rem",
+                                      lineHeight:
+                                        1,
                                     }}
-                                  />
+                                  >
+                                    <span
+                                      aria-hidden="true"
+                                    >
+                                      {
+                                        icon
+                                      }
+                                    </span>
+                                  </button>
                                 );
                               },
                             )

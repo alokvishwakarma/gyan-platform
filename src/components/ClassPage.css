@@ -263,3 +263,164 @@
     font-size: 0.51rem;
   }
 }
+
+
+.gyan-class__dialog-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: start center;
+  padding: max(78px, calc(env(safe-area-inset-top) + 70px)) 12px 18px;
+  background: rgb(15 23 42 / 36%);
+  backdrop-filter: blur(3px);
+}
+
+.gyan-class__dialog {
+  position: relative;
+  width: min(100%, 420px);
+  padding: 20px 18px 16px;
+  border: 1px solid #dbe4ef;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 18px 50px rgb(15 23 42 / 24%);
+  color: #17345c;
+  text-align: center;
+}
+
+.gyan-class__dialog-close {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #eef3f8;
+  color: #526b7b;
+  font: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.gyan-class__dialog-icon {
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 7px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #fff1df;
+  font-size: 1.35rem;
+}
+
+.gyan-class__dialog-eyebrow {
+  color: #b96527;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gyan-class__dialog h2 {
+  margin: 2px 0 10px;
+  font-size: 1.08rem;
+}
+
+.gyan-class__dialog p {
+  margin: 0 auto 11px;
+  color: #526b7b;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.gyan-class__dialog p strong {
+  color: #17345c;
+}
+
+.gyan-class__dialog a {
+  color: #1976d2;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.gyan-class__dialog-next {
+  margin: 12px 0;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #f0d8c3;
+  border-radius: 12px;
+  background: #fff7ee;
+  text-align: left;
+}
+
+.gyan-class__dialog-next > span {
+  font-size: 1.2rem;
+}
+
+.gyan-class__dialog-next div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gyan-class__dialog-next strong {
+  font-size: 0.72rem;
+}
+
+.gyan-class__dialog-next small {
+  color: #8a674f;
+  font-size: 0.6rem;
+}
+
+.gyan-class__dialog-note {
+  font-size: 0.64rem !important;
+}
+
+.gyan-class__dialog-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: 13px;
+}
+
+.gyan-class__dialog-actions a,
+.gyan-class__dialog-actions button {
+  min-height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 7px 12px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 900;
+}
+
+.gyan-class__dialog-actions a {
+  background: #1976d2;
+  color: #ffffff;
+}
+
+.gyan-class__dialog-actions button {
+  border: 1px solid #d6dee7;
+  background: #ffffff;
+  color: #526b7b;
+  cursor: pointer;
+}
+
+@media (max-width: 420px) {
+  .gyan-class__dialog-backdrop {
+    padding-top: max(70px, calc(env(safe-area-inset-top) + 62px));
+  }
+
+  .gyan-class__dialog {
+    padding: 17px 14px 14px;
+    border-radius: 15px;
+  }
+}
