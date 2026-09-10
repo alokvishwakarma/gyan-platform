@@ -151,6 +151,21 @@ import {
   handleEducationMockTestsRoute,
 } from "./educationMockTestsRoute";
 
+import {
+  handleLiveTestsRoute,
+} from "./liveTests";
+import {
+  handleAdminLiveTestScheduleRoute,
+} from "./adminLiveTestSchedule";
+import {
+  maintainLiveTestInventory,
+  switchLiveTestVisibility,
+} from "./liveTestScheduler";
+
+import {
+  handleAdminGemsRoute,
+} from "./adminGems";
+
 interface RegisterShopRequest {
   code?: unknown;
   name?: unknown;
@@ -1074,6 +1089,31 @@ if (adminStudentsResponse) {
     return analyticsResponse;
   }
 
+  const liveTestsResponse =
+  await handleLiveTestsRoute(
+    request,
+    env,
+    url,
+  );
+
+if (
+  liveTestsResponse
+) {
+  return liveTestsResponse;
+}
+  const adminLiveTestScheduleResponse =
+    await handleAdminLiveTestScheduleRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (
+    adminLiveTestScheduleResponse
+  ) {
+    return adminLiveTestScheduleResponse;
+  }
+
 
   /*
    * ------------------------------------------------
@@ -1691,6 +1731,18 @@ if (
   return educationMockTestsResponse;
 }
 
+const adminGemsResponse =
+  await handleAdminGemsRoute(
+    request,
+    env,
+    url,
+  );
+
+if (
+  adminGemsResponse
+) {
+  return adminGemsResponse;
+}
   /*
    * ------------------------------------------------
    * Unified GYAN activity
@@ -1788,6 +1840,55 @@ export default {
     context:
       ExecutionContext,
   ): Promise<void> {
+    /*
+     * Live Test 14-day inventory.
+     *
+     * Daily builder: existing 03:17 UTC cron.
+     * Hourly switcher: minute 5 of every hour.
+     */
+    if (
+      controller.cron ===
+      "17 3 * * *"
+    ) {
+      context.waitUntil(
+        maintainLiveTestInventory(
+          env,
+          14,
+        )
+          .catch(
+            (
+              error,
+            ) => {
+              console.error(
+                "Live Test 14-day inventory failed:",
+                error,
+              );
+            },
+          ),
+      );
+    }
+
+    if (
+      controller.cron ===
+      "5 * * * *"
+    ) {
+      context.waitUntil(
+        switchLiveTestVisibility(
+          env,
+        )
+          .catch(
+            (
+              error,
+            ) => {
+              console.error(
+                "Live Test visibility switch failed:",
+                error,
+              );
+            },
+          ),
+      );
+    }
+
     context.waitUntil(
       Promise.all([
         reconcileExpiredStorage(

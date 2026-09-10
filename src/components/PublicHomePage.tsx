@@ -103,6 +103,10 @@ interface PublicHomePageProps {
   onOpenChat:
     () => void;
 
+  onOpenRequestChat?: (
+    requestNumber: string,
+  ) => void;
+
   onOpenMyShop: (
     shopCode: string,
   ) => void;
@@ -672,6 +676,8 @@ export default function PublicHomePage({
   onOpenAdmin,
 
   onOpenChat,
+
+  onOpenRequestChat,
 
   onOpenMyShop,
 
@@ -6164,46 +6170,110 @@ export default function PublicHomePage({
               {!serviceRequestDetailLoading &&
                 !serviceRequestDetailError &&
                 serviceRequestDetail && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setServiceRequestDetailExpanded(
-                      (current) =>
-                        !current,
-                    )
-                  }
-                  aria-expanded={
-                    serviceRequestDetailExpanded
-                  }
+                <div
                   style={{
-                    width:
-                      "100%",
-                    minHeight:
-                      "30px",
-                    border:
-                      "1px solid #cbd5e1",
-                    borderRadius:
-                      "8px",
-                    background:
-                      "#f8fafc",
-                    color:
-                      "#334155",
-                    font:
-                      "inherit",
-                    fontSize:
-                      "0.68rem",
-                    fontWeight:
-                      800,
-                    cursor:
-                      "pointer",
+                    display:
+                      "grid",
+                    gridTemplateColumns:
+                      "1fr 1fr",
+                    gap:
+                      "6px",
                   }}
                 >
-                  {
-                    serviceRequestDetailExpanded
-                      ? "Less"
-                      : "More"
-                  }
-                </button>
+                  <button
+                    type="button"
+                    title="Chat about this request"
+                    disabled={
+                      !onOpenRequestChat
+                    }
+                    onClick={() => {
+                      if (
+                        !onOpenRequestChat
+                      ) {
+                        return;
+                      }
+
+                      const requestNumber =
+                        serviceRequestDetail
+                          .requestNumber;
+
+                      setServiceRequestDetailOpen(
+                        false,
+                      );
+
+                      onOpenRequestChat(
+                        requestNumber,
+                      );
+                    }}
+                    style={{
+                      width:
+                        "100%",
+                      minHeight:
+                        "30px",
+                      border:
+                        "1px solid #bfdbfe",
+                      borderRadius:
+                        "8px",
+                      background:
+                        "#eff6ff",
+                      color:
+                        "#1d4ed8",
+                      font:
+                        "inherit",
+                      fontSize:
+                        "0.68rem",
+                      fontWeight:
+                        800,
+                      cursor:
+                        onOpenRequestChat
+                          ? "pointer"
+                          : "default",
+                    }}
+                  >
+                    💬 Chat
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setServiceRequestDetailExpanded(
+                        (current) =>
+                          !current,
+                      )
+                    }
+                    aria-expanded={
+                      serviceRequestDetailExpanded
+                    }
+                    style={{
+                      width:
+                        "100%",
+                      minHeight:
+                        "30px",
+                      border:
+                        "1px solid #cbd5e1",
+                      borderRadius:
+                        "8px",
+                      background:
+                        "#f8fafc",
+                      color:
+                        "#334155",
+                      font:
+                        "inherit",
+                      fontSize:
+                        "0.68rem",
+                      fontWeight:
+                        800,
+                      cursor:
+                        "pointer",
+                    }}
+                  >
+                    {
+                      serviceRequestDetailExpanded
+                        ? "Less"
+                        : "More"
+                    }
+                  </button>
+                </div>
               )}
             </div>
           </section>

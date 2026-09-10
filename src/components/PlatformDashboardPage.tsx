@@ -13,6 +13,8 @@ interface PlatformDashboardPageProps {
   onOpenNearbySearches?: () => void;
   onChangeLocation: () => void;
   onOpenEducation: () => void;
+  onOpenAddGems?: () => void;
+  onOpenLiveTestsSchedule?: () => void;
 }
 
 
@@ -35,6 +37,8 @@ export default function PlatformDashboardPage({
   onOpenNearbySearches,
   onChangeLocation,
   onOpenEducation,
+  onOpenAddGems,
+  onOpenLiveTestsSchedule,
 }: PlatformDashboardPageProps) {
   const tiles: AdminTile[] = [
     {
@@ -134,6 +138,28 @@ export default function PlatformDashboardPage({
 
       onClick:
         onOpenEducation,
+    },
+
+    {
+      icon:
+        "💎",
+
+      title:
+        "Add Gems",
+
+      onClick:
+        onOpenAddGems,
+    },
+
+    {
+      icon:
+        "📝",
+
+      title:
+        "Live",
+
+      onClick:
+        onOpenLiveTestsSchedule,
     },
 
     {

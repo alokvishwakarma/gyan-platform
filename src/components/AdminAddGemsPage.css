@@ -1,0 +1,123 @@
+.admin-add-gems {
+  width: min(100%, 520px);
+  margin: 0 auto;
+  padding: 10px 12px 28px;
+  box-sizing: border-box;
+  color: #17345c;
+}
+
+.admin-add-gems__header {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: 8px;
+}
+
+.admin-add-gems__header > button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e2e8ee;
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-add-gems__header > div {
+  grid-column: 2;
+  text-align: center;
+}
+
+.admin-add-gems__header strong,
+.admin-add-gems__header small {
+  display: block;
+}
+
+.admin-add-gems__header strong {
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.admin-add-gems__header small {
+  margin-top: 2px;
+  color: #72839a;
+  font-size: 0.62rem;
+}
+
+.admin-add-gems__card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #dfe7ee;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.admin-add-gems__card label {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-add-gems__card label > span {
+  color: #526b82;
+  font-size: 0.64rem;
+  font-weight: 850;
+}
+
+.admin-add-gems__card input {
+  width: 100%;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 6px 9px;
+  border: 1px solid #ccd9e4;
+  border-radius: 8px;
+  background: #fff;
+  color: #17345c;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.admin-add-gems__card label small {
+  color: #7b8997;
+  font-size: 0.56rem;
+}
+
+.admin-add-gems__error,
+.admin-add-gems__message {
+  padding: 7px 9px;
+  border-radius: 8px;
+  font-size: 0.64rem;
+  line-height: 1.35;
+}
+
+.admin-add-gems__error,
+.admin-add-gems__message--error {
+  border: 1px solid #efc0c0;
+  background: #fff6f6;
+  color: #8a4343;
+}
+
+.admin-add-gems__message--success {
+  border: 1px solid #b9ddbf;
+  background: #f3fbf4;
+  color: #2f6f3b;
+}
+
+.admin-add-gems__submit {
+  min-height: 36px;
+  border: 1px solid #d7bd57;
+  border-radius: 8px;
+  background: #fff4b8;
+  color: #6f5710;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.admin-add-gems__submit:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

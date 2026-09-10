@@ -19,6 +19,10 @@ import AdminStudentsPage from "./components/AdminStudentsPage";
 import AdminNearbySearchesPage
   from "./components/AdminNearbySearchesPage";
 import PlatformDashboardPage from "./components/PlatformDashboardPage";
+import AdminAddGemsPage
+  from "./components/AdminAddGemsPage";
+import AdminLiveTestSchedule
+  from "./components/AdminLiveTestSchedule";
 import PublicHomePage from "./components/PublicHomePage";
 import SafetyResourceLandingPage from "./components/SafetyResourceLandingPage";
 import StudentProgressPage
@@ -666,7 +670,69 @@ export default function App() {
   const [
     chatOpen,
     setChatOpen,
-  ] = useState(false);
+  ] =
+    useState(
+      () => {
+        const parameters =
+          new URLSearchParams(
+            window.location.search,
+          );
+
+        if (
+          parameters.get(
+            "auth",
+          ) !==
+          "success"
+        ) {
+          return false;
+        }
+
+        try {
+          return Boolean(
+            window.localStorage.getItem(
+              "gyan_pending_chat_request_v1",
+            ),
+          );
+        } catch {
+          return false;
+        }
+      },
+    );
+
+  const [
+    chatRequestNumber,
+    setChatRequestNumber,
+  ] =
+    useState(
+      () => {
+        const parameters =
+          new URLSearchParams(
+            window.location.search,
+          );
+
+        if (
+          parameters.get(
+            "auth",
+          ) !==
+          "success"
+        ) {
+          return "";
+        }
+
+        try {
+          return (
+            window.localStorage.getItem(
+              "gyan_pending_chat_request_v1",
+            ) ??
+            ""
+          )
+            .trim()
+            .toUpperCase();
+        } catch {
+          return "";
+        }
+      },
+    );
 
   const [
     shopChatOpen,
@@ -760,6 +826,25 @@ export default function App() {
       window.location.pathname ===
       "/admin/students",
   );
+
+  const [
+    adminLiveTestsOpen,
+    setAdminLiveTestsOpen,
+  ] = useState(
+    () =>
+      window.location.pathname ===
+        "/admin/live-tests",
+  );
+
+  const [
+    adminAddGemsOpen,
+    setAdminAddGemsOpen,
+  ] =
+    useState(
+      () =>
+        window.location.pathname ===
+        "/admin/add-gems",
+    );
 
   const [
     adminNearbySearchesOpen,
@@ -1758,6 +1843,55 @@ if (
     );
   }
 
+  if (
+    adminAddGemsOpen
+  ) {
+    return (
+      <AdminAddGemsPage
+        onBack={() => {
+          setAdminAddGemsOpen(
+            false,
+          );
+
+          setDashboardView(
+            "platform",
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            "/admin",
+          );
+        }}
+      />
+    );
+  }
+
+  if (
+    adminLiveTestsOpen
+  ) {
+    return (
+      <AdminLiveTestSchedule
+        onBack={() => {
+          setAdminLiveTestsOpen(
+            false,
+          );
+
+          setDashboardView(
+            "platform",
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            "/admin",
+          );
+        }}
+      />
+    );
+  }
+
+
 
   if (adminStudentsOpen) {
     return (
@@ -2147,7 +2281,38 @@ if (
             "/admin/analytics",
           );
         }}
-      />
+              onOpenLiveTestsSchedule={() => {
+          setDashboardView(
+            null,
+          );
+
+          setAdminLiveTestsOpen(
+            true,
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            "/admin/live-tests",
+          );
+        }}
+        onOpenAddGems={() => {
+          setDashboardView(
+            null,
+          );
+
+          setAdminAddGemsOpen(
+            true,
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            "/admin/add-gems",
+          );
+        }}
+
+/>
 
       <button
         type="button"
@@ -2564,7 +2729,23 @@ if (
           }}
 
           onOpenChat={() => {
+            setChatRequestNumber(
+              "",
+            );
+
             setChatOpen(true);
+          }}
+
+          onOpenRequestChat={(requestNumber) => {
+            setChatRequestNumber(
+              requestNumber
+                .trim()
+                .toUpperCase(),
+            );
+
+            setChatOpen(
+              true,
+            );
           }}
 
           onOpenMyShop={(shopCode) => {
@@ -2858,11 +3039,27 @@ if (
 
       {chatOpen && (
         <ChatPanel
-          onClose={() =>
+          initialRequestNumber={
+            chatRequestNumber ||
+            undefined
+          }
+          onClose={() => {
             setChatOpen(
               false,
-            )
-          }
+            );
+
+            setChatRequestNumber(
+              "",
+            );
+
+            try {
+              window.localStorage.removeItem(
+                "gyan_pending_chat_request_v1",
+              );
+            } catch {
+              // Ignore storage cleanup failures.
+            }
+          }}
         />
       )}
 

@@ -4,10 +4,16 @@ import {
   useState,
 } from "react";
 
+import AuthPanel
+  from "./AuthPanel";
+
 import "./ChatPanel.css";
 
 interface ChatPanelProps {
   onClose: () => void;
+
+  initialRequestNumber?:
+    string;
 }
 
 interface ChatThreadSummary {
@@ -45,6 +51,7 @@ interface ThreadResponse {
 
 export default function ChatPanel({
   onClose,
+  initialRequestNumber,
 }: ChatPanelProps) {
   const [threads, setThreads] =
     useState<ChatThreadSummary[]>([]);
@@ -80,6 +87,18 @@ export default function ChatPanel({
   const [error, setError] =
     useState("");
 
+  const [
+    authRequired,
+    setAuthRequired,
+  ] =
+    useState(false);
+
+  const [
+    authPanelOpen,
+    setAuthPanelOpen,
+  ] =
+    useState(false);
+
   const loadThread =
     useCallback(
       async (
@@ -107,6 +126,19 @@ export default function ChatPanel({
               ThreadResponse;
 
           if (
+            response.status ===
+            401
+          ) {
+            setAuthRequired(
+              true,
+            );
+
+            setError("");
+
+            return;
+          }
+
+          if (
             !response.ok ||
             !result.thread
           ) {
@@ -131,6 +163,10 @@ export default function ChatPanel({
 
           setMessages(
             result.messages ?? [],
+          );
+
+          setAuthRequired(
+            false,
           );
 
           setError("");
@@ -170,6 +206,23 @@ export default function ChatPanel({
               error?: string;
             };
 
+          if (
+            response.status ===
+            401
+          ) {
+            setAuthRequired(
+              true,
+            );
+
+            setError("");
+
+            setLoading(
+              false,
+            );
+
+            return;
+          }
+
           if (!response.ok) {
             throw new Error(
               result.error ??
@@ -184,9 +237,25 @@ export default function ChatPanel({
             nextThreads,
           );
 
+          setAuthRequired(
+            false,
+          );
+
           setError("");
 
+          const preferredRequestNumber =
+            initialRequestNumber
+              ?.trim()
+              .toUpperCase() ??
+            "";
+
           if (
+            preferredRequestNumber
+          ) {
+            await loadThread(
+              preferredRequestNumber,
+            );
+          } else if (
             nextThreads.length > 0
           ) {
             await loadThread(
@@ -206,7 +275,7 @@ export default function ChatPanel({
           );
         }
       },
-      [loadThread],
+      [initialRequestNumber, loadThread],
     );
 
   useEffect(
@@ -367,7 +436,45 @@ export default function ChatPanel({
           </div>
         )}
 
-        {loading ? (
+        {authRequired ? (
+          <div
+            className="chat-panel__state"
+          >
+            <strong>
+              Sign in to chat
+            </strong>
+
+            <span>
+              Sign in to chat about this request.
+            </span>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  initialRequestNumber
+                ) {
+                  try {
+                    window.localStorage.setItem(
+                      "gyan_pending_chat_request_v1",
+                      initialRequestNumber
+                        .trim()
+                        .toUpperCase(),
+                    );
+                  } catch {
+                    // Continue even when storage is unavailable.
+                  }
+                }
+
+                setAuthPanelOpen(
+                  true,
+                );
+              }}
+            >
+              Sign in
+            </button>
+          </div>
+        ) : loading ? (
           <div
             className="chat-panel__state"
           >
@@ -556,6 +663,16 @@ export default function ChatPanel({
           </div>
         )}
       </section>
+
+      {authPanelOpen && (
+        <AuthPanel
+          onClose={() =>
+            setAuthPanelOpen(
+              false,
+            )
+          }
+        />
+      )}
     </div>
   );
 }
