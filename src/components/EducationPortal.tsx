@@ -9,6 +9,11 @@ import {
   type EducationCountryConfig,
 } from "../config/education";
 
+import {
+  ADMIN_LOCATION_CHANGED_EVENT,
+  getAdminLocationOverride,
+} from "../location/adminLocation";
+
 import "./EducationPortal.css";
 
 interface LiveTestSummary {
@@ -20,6 +25,7 @@ interface LiveTestSummary {
   durationMinutes: number;
   entryGemCost: number;
   reportGemCost: number;
+  scheduleDate?: string | null;
 }
 
 interface LiveTestsResponse {
@@ -64,6 +70,8 @@ interface EducationPortalProps {
     (
       code: string,
     ) => void;
+  onAdminLiveTests?:
+    () => void;
 
 }
 
@@ -238,9 +246,210 @@ function scheduledStartText(
   }
 }
 
+
+function browserTimezone():
+  string {
+  try {
+    return (
+      Intl.DateTimeFormat()
+        .resolvedOptions()
+        .timeZone ||
+      "UTC"
+    );
+  } catch {
+    return "UTC";
+  }
+}
+
+
+function adminOverrideTimezone():
+  string | null {
+  const override =
+    getAdminLocationOverride();
+
+  if (!override) {
+    return null;
+  }
+
+  const countryCode =
+    override.countryCode
+      ?.trim()
+      .toUpperCase();
+
+  if (
+    countryCode ===
+      "IN"
+  ) {
+    return "Asia/Kolkata";
+  }
+
+  if (
+    countryCode ===
+      "US"
+  ) {
+    const longitude =
+      Number(
+        override.longitude,
+      );
+
+    if (
+      Number.isFinite(
+        longitude,
+      )
+    ) {
+      if (
+        longitude <=
+          -114
+      ) {
+        return "America/Los_Angeles";
+      }
+
+      if (
+        longitude <=
+          -101
+      ) {
+        return "America/Denver";
+      }
+
+      if (
+        longitude <=
+          -86
+      ) {
+        return "America/Chicago";
+      }
+
+      return "America/New_York";
+    }
+  }
+
+  return null;
+}
+
+
+function effectiveViewerTimezone():
+  string {
+  return (
+    adminOverrideTimezone() ??
+    browserTimezone()
+  );
+}
+
+
+function viewerDateKey(
+  timestampMs:
+    number,
+
+  timezone:
+    string,
+): string {
+  try {
+    const parts =
+      new Intl.DateTimeFormat(
+        "en-US",
+        {
+          timeZone:
+            timezone,
+
+          year:
+            "numeric",
+
+          month:
+            "2-digit",
+
+          day:
+            "2-digit",
+        },
+      )
+        .formatToParts(
+          new Date(
+            timestampMs,
+          ),
+        );
+
+    const year =
+      parts.find(
+        (
+          part,
+        ) =>
+          part.type ===
+          "year",
+      )?.value;
+
+    const month =
+      parts.find(
+        (
+          part,
+        ) =>
+          part.type ===
+          "month",
+      )?.value;
+
+    const day =
+      parts.find(
+        (
+          part,
+        ) =>
+          part.type ===
+          "day",
+      )?.value;
+
+    if (
+      year &&
+      month &&
+      day
+    ) {
+      return `${year}-${month}-${day}`;
+    }
+  } catch {
+    // Fall through to UTC below.
+  }
+
+  return new Date(
+    timestampMs,
+  )
+    .toISOString()
+    .slice(
+      0,
+      10,
+    );
+}
+
+
+function isLiveTestTodayForViewer(
+  test:
+    LiveTestSummary,
+
+  nowMs:
+    number,
+
+  timezone:
+    string,
+): boolean {
+  const startMs =
+    parseLiveUtc(
+      test.startsAt,
+    );
+
+  return (
+    Number.isFinite(
+      startMs,
+    ) &&
+    viewerDateKey(
+      startMs,
+      timezone,
+    ) ===
+      viewerDateKey(
+        nowMs,
+        timezone,
+      )
+  );
+}
+
+
 function liveTestDisplayState(
   test: LiveTestSummary,
   nowMs: number,
+  viewerTimezone: string,
 ): {
   open: boolean;
   clickable: boolean;
@@ -263,7 +472,7 @@ function liveTestDisplayState(
           "en-US",
           {
             timeZone:
-              test.scheduleTimezone ||
+              viewerTimezone ||
               "UTC",
             hour:
               "numeric",
@@ -381,8 +590,6 @@ function normalizeProgramCode(
 
 export default function EducationPortal({
   country,
-  adminAuthenticated =
-    false,
   onBack,
   onSelect,
   onMockTests,
@@ -422,6 +629,15 @@ export default function EducationPortal({
     setLiveClockMs,
   ] =
     useState(0);
+
+  const [
+    viewerTimezone,
+    setViewerTimezone,
+  ] =
+    useState(
+      () =>
+        effectiveViewerTimezone(),
+    );
 
   const loading =
     loadedCountry !==
@@ -559,6 +775,37 @@ export default function EducationPortal({
   );
 
 
+  useEffect(
+    () => {
+      const updateTimezone =
+        (): void => {
+          setViewerTimezone(
+            effectiveViewerTimezone(),
+          );
+
+          setLiveClockMs(
+            Date.now(),
+          );
+        };
+
+      updateTimezone();
+
+      window.addEventListener(
+        ADMIN_LOCATION_CHANGED_EVENT,
+        updateTimezone,
+      );
+
+      return () => {
+        window.removeEventListener(
+          ADMIN_LOCATION_CHANGED_EVENT,
+          updateTimezone,
+        );
+      };
+    },
+    [],
+  );
+
+
   const enabledPrograms =
     (
       config?.programs ??
@@ -605,6 +852,74 @@ export default function EducationPortal({
     };
 
 
+  const countryVisibleLiveTests =
+    liveTests
+      .filter(
+        (
+          test,
+        ) => {
+          const program =
+            test.program
+              .trim()
+              .toUpperCase();
+
+          const programVisible =
+            country ===
+              "IN"
+              ? (
+                  program ===
+                    "JEE" ||
+                  program ===
+                    "NEET" ||
+                  program ===
+                    "GRE" ||
+                  program ===
+                    "OLSAT"
+                )
+              : (
+                  program ===
+                    "SAT" ||
+                  program ===
+                    "GRE" ||
+                  program ===
+                    "OLSAT"
+                );
+
+          return (
+            programVisible &&
+            test.state !==
+              "CANCELLED" &&
+            liveClockMs >
+              0 &&
+            isLiveTestTodayForViewer(
+              test,
+              liveClockMs,
+              viewerTimezone,
+            )
+          );
+        },
+      )
+      .sort(
+        (
+          first,
+          second,
+        ) =>
+          parseLiveUtc(
+            first.startsAt,
+          ) -
+          parseLiveUtc(
+            second.startsAt,
+          ),
+      );
+
+
+  const showSatPlaceholder =
+    country ===
+      "US" &&
+    countryVisibleLiveTests.length ===
+      0;
+
+
   return (
     <main
       className="education-portal"
@@ -648,33 +963,11 @@ export default function EducationPortal({
               Advanced
             </h2>
 
-            {adminAuthenticated && (
-              <div
-                className="education-portal__advanced-row"
-              >
-                <strong>
-                  Admin
-                </strong>
-
-                <div
-                  className="education-portal__advanced-actions"
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onLiveTest?.(
-                        "ADMIN101",
-                      )
-                    }
-                    title="Permanent admin-only live test"
-                  >
-                    Test #101
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {liveTests.length > 0 && (
+{(
+              countryVisibleLiveTests.length >
+                0 ||
+              showSatPlaceholder
+            ) && (
               <div
                 className="education-portal__advanced-row"
               >
@@ -685,66 +978,94 @@ export default function EducationPortal({
                 <div
                   className="education-portal__advanced-actions"
                 >
-                  {liveTests.map(
-                    (test) => {
-                      const display =
-                        liveTestDisplayState(
-                          test,
-                          liveClockMs,
-                        );
+                  {
+                    showSatPlaceholder
+                      ? (
+                          <button
+                            type="button"
+                            disabled
+                            title="SAT Live Tests coming soon"
+                            style={{
+                              whiteSpace:
+                                "nowrap",
+                            }}
+                          >
+                            SAT · 7:30p ET
+                          </button>
+                        )
+                      : countryVisibleLiveTests.map(
+                          (
+                            test,
+                          ) => {
+                            const display =
+                              liveTestDisplayState(
+                                test,
+                                liveClockMs,
+                                viewerTimezone,
+                              );
 
-                      return (
-                        <button
-                          type="button"
-                          key={test.code}
-                          disabled={
-                            !display.clickable
-                          }
-                          onClick={() =>
-                            onLiveTest?.(
-                              test.code,
-                            )
-                          }
-                          title={`${test.program} · ${display.text}`}
-                          style={{
-                            background:
-                              display.tone ===
-                                "soon"
-                                ? "#fff2a8"
-                                : display.tone ===
-                                    "open"
-                                  ? "#d9f5df"
-                                  : display.tone ===
-                                      "ended"
-                                    ? "#ffd9d9"
-                                    : undefined,
-                            borderColor:
-                              display.tone ===
-                                "soon"
-                                ? "#e1c44f"
-                                : display.tone ===
-                                    "open"
-                                  ? "#86c993"
-                                  : display.tone ===
-                                      "ended"
-                                    ? "#db9090"
-                                    : undefined,
-                            whiteSpace:
-                              "nowrap",
-                          }}
-                        >
-                          #{test.code}
-                          {" · "}
-                          {test.program}
-                          {
-                            display.shortTime
-                              ? ` · ${display.shortTime}`
-                              : ""
-                          }
-                        </button>
-                      );
-                    },
-                  )}
+                            return (
+                              <button
+                                type="button"
+                                key={
+                                  test.code
+                                }
+                                disabled={
+                                  !display.clickable
+                                }
+                                onClick={() =>
+                                  onLiveTest?.(
+                                    test.code,
+                                  )
+                                }
+                                title={`${test.program} · ${display.text}`}
+                                style={{
+                                  background:
+                                    display.tone ===
+                                      "soon"
+                                      ? "#fff2a8"
+                                      : display.tone ===
+                                          "open"
+                                        ? "#d9f5df"
+                                        : display.tone ===
+                                            "ended"
+                                          ? "#ffd9d9"
+                                          : "#dceeff",
+
+                                  borderColor:
+                                    display.tone ===
+                                      "soon"
+                                      ? "#e1c44f"
+                                      : display.tone ===
+                                          "open"
+                                        ? "#86c993"
+                                        : display.tone ===
+                                            "ended"
+                                          ? "#db9090"
+                                          : "#9fc7ee",
+
+                                  whiteSpace:
+                                    "nowrap",
+                                }}
+                              >
+                                #
+                                {
+                                  test.code
+                                }
+                                {" · "}
+                                {
+                                  test.program
+                                }
+                                {
+                                  display.shortTime
+                                    ? ` · ${display.shortTime}`
+                                    : ""
+                                }
+                              </button>
+                            );
+                          },
+                        )
+                  }
                 </div>
               </div>
             )}
@@ -770,7 +1091,8 @@ export default function EducationPortal({
                           "-",
                         );
 
-                    return (
+
+  return (
                       <div
                         key={
                           `${country}:${programCode}`

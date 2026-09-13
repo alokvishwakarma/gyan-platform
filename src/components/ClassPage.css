@@ -424,3 +424,611 @@
     border-radius: 15px;
   }
 }
+
+.gyan-class {
+  min-height: 100%;
+  padding: 6px 8px 12px;
+  box-sizing: border-box;
+  background: #f7fafb;
+  color: #17345c;
+}
+
+.gyan-class__header {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+}
+
+.gyan-class__header > button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #d9e3e9;
+  border-radius: 9px;
+  background: #fff;
+  color: #17345c;
+  font: inherit;
+  cursor: pointer;
+}
+
+.gyan-class__header > div {
+  grid-column: 2;
+  min-width: 0;
+  text-align: center;
+}
+
+.gyan-class__header strong,
+.gyan-class__header small {
+  display: block;
+}
+
+.gyan-class__header strong {
+  font-size: 0.88rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.gyan-class__header small {
+  margin-top: 1px;
+  font-size: 0.6rem;
+  color: #718390;
+}
+
+.gyan-class__filters {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 6px;
+}
+
+.gyan-class__filters button {
+  min-width: 76px;
+  min-height: 30px;
+  border: 1px solid #ccd9e4;
+  border-radius: 999px;
+  padding: 4px 12px;
+  background: #fff;
+  color: #17345c;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 850;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgb(22 52 92 / 7%);
+}
+
+.gyan-class__filters button:hover,
+.gyan-class__filters button:focus-visible {
+  background: #f6f9fb;
+}
+
+.gyan-class__filters button.is-active {
+  border-color: #df8a49;
+  background: #fff1df;
+  color: #914a17;
+}
+
+.gyan-class__note {
+  margin: 0 0 6px;
+  padding: 5px 7px;
+  border-radius: 8px;
+  background: #eef4f7;
+  color: #526b7b;
+  text-align: center;
+  font-size: 0.62rem;
+  line-height: 1.25;
+}
+
+.gyan-class__state {
+  margin: 18px auto;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #6d7e91;
+}
+
+.gyan-class__table-shell {
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
+  overflow-x: auto;
+  border: 1px solid #dbe4e8;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.gyan-class__table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.72rem;
+}
+
+.gyan-class__table th,
+.gyan-class__table td {
+  width: 25%;
+  padding: 0;
+  border-right: 1px solid #e5ebef;
+  border-bottom: 1px solid #e5ebef;
+  vertical-align: top;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.gyan-class__table th:last-child,
+.gyan-class__table td:last-child {
+  border-right: 0;
+}
+
+.gyan-class__table th {
+  padding: 7px 6px;
+}
+
+.gyan-class__table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #eef4f7;
+  font-weight: 900;
+  color: #17345c;
+}
+
+.gyan-class__table th small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.56rem;
+  font-weight: 750;
+  color: #6e7f8b;
+}
+
+.gyan-class__cell-button {
+  width: 100%;
+  min-height: 58px;
+  padding: 8px 7px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.gyan-class__cell-button:hover,
+.gyan-class__cell-button:focus-visible {
+  background: #f5f9fb;
+}
+
+.gyan-class__cell-button--date {
+  display: grid;
+  gap: 3px;
+}
+
+.gyan-class__cell-button--date strong {
+  font-size: 0.7rem;
+}
+
+.gyan-class__cell-button--date span {
+  font-size: 0.56rem;
+  color: #6d7e89;
+}
+
+.gyan-class__cell-button--date small {
+  width: fit-content;
+  margin-top: 2px;
+  color: #a45118;
+  font-size: 0.54rem;
+  font-weight: 900;
+}
+
+.gyan-class__table tr.is-today td {
+  background: #fff6e9;
+}
+
+.gyan-class__table tbody tr:hover td {
+  background: #fafcfd;
+}
+
+@media (max-width: 720px) {
+  .gyan-class {
+    padding: 4px 6px 10px;
+  }
+
+  .gyan-class__header {
+    margin-bottom: 4px;
+  }
+
+  .gyan-class__header strong {
+    font-size: 0.84rem;
+  }
+
+  .gyan-class__filters {
+    margin-bottom: 4px;
+  }
+
+  .gyan-class__filters button {
+    min-width: 72px;
+    min-height: 28px;
+    padding: 3px 10px;
+    font-size: 0.64rem;
+  }
+
+  .gyan-class__note {
+    margin-bottom: 4px;
+    padding: 4px 6px;
+    font-size: 0.58rem;
+  }
+
+  .gyan-class__table-shell {
+    max-height: calc(100vh - 138px);
+  }
+
+  .gyan-class__table {
+    font-size: 0.64rem;
+  }
+
+  .gyan-class__table th {
+    padding: 6px 4px;
+  }
+
+  .gyan-class__cell-button {
+    min-height: 66px;
+    padding: 7px 5px;
+  }
+
+  .gyan-class__cell-button--date strong {
+    font-size: 0.63rem;
+  }
+
+  .gyan-class__cell-button--date span {
+    font-size: 0.51rem;
+  }
+}
+
+/* Public Class refinements — follows Education UI palette */
+.gyan-class {
+  --gyan-edu-navy: #17345c;
+  --gyan-edu-orange: #df8a49;
+  --gyan-edu-orange-bg: #fff4e9;
+  --gyan-edu-border: #dfe7ee;
+  --gyan-edu-muted: #72839a;
+}
+
+.gyan-class__filter {
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.gyan-class__filter:hover {
+  transform: translateY(-1px);
+}
+
+.gyan-class__filter.is-active {
+  border-color: var(--gyan-edu-orange);
+  background: var(--gyan-edu-orange-bg);
+  color: #8d4817;
+}
+
+.gyan-class__cell--math {
+  --gyan-class-cell-bg: #eef5ff;
+  --gyan-class-cell-ink: #254f83;
+}
+
+.gyan-class__cell--physics {
+  --gyan-class-cell-bg: #fff7e7;
+  --gyan-class-cell-ink: #875916;
+}
+
+.gyan-class__cell--chemistry {
+  --gyan-class-cell-bg: #edf8f2;
+  --gyan-class-cell-ink: #2f6950;
+}
+
+.gyan-class__cell--biology {
+  --gyan-class-cell-bg: #f3f0fb;
+  --gyan-class-cell-ink: #59477e;
+}
+
+.gyan-class__cell--rw {
+  --gyan-class-cell-bg: #f2f6fb;
+  --gyan-class-cell-ink: #425e7b;
+}
+
+.gyan-class__cell--test {
+  --gyan-class-cell-bg: #fff4e9;
+  --gyan-class-cell-ink: #8d4817;
+}
+
+.gyan-class__table thead th.gyan-class__cell--math,
+.gyan-class__table thead th.gyan-class__cell--physics,
+.gyan-class__table thead th.gyan-class__cell--chemistry,
+.gyan-class__table thead th.gyan-class__cell--biology,
+.gyan-class__table thead th.gyan-class__cell--rw,
+.gyan-class__table thead th.gyan-class__cell--test {
+  background: var(--gyan-class-cell-bg);
+  color: var(--gyan-class-cell-ink);
+}
+
+.gyan-class__cell-button.gyan-class__cell--math,
+.gyan-class__cell-button.gyan-class__cell--physics,
+.gyan-class__cell-button.gyan-class__cell--chemistry,
+.gyan-class__cell-button.gyan-class__cell--biology,
+.gyan-class__cell-button.gyan-class__cell--rw {
+  color: var(--gyan-class-cell-ink);
+}
+
+.gyan-class__cell-button--test {
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  color: var(--gyan-class-cell-ink);
+}
+
+.gyan-class__cell-button--test-upcoming {
+  background: #fffaf4;
+}
+
+.gyan-class__cell-button--test-open {
+  background: #eef8f1;
+  color: #276540;
+}
+
+.gyan-class__cell-button--test-over {
+  background: #f5f7f9;
+  color: #65727c;
+}
+
+.gyan-class__test-state {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 3px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  font-size: 0.48rem;
+  font-weight: 900;
+  letter-spacing: 0.035em;
+}
+
+.gyan-class__dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(23, 52, 92, 0.34);
+  backdrop-filter: blur(3px);
+}
+
+.gyan-class__dialog {
+  position: relative;
+  width: min(390px, 100%);
+  border: 1px solid var(--gyan-edu-border);
+  border-radius: 16px;
+  padding: 22px 20px 18px;
+  background: #fff;
+  box-shadow:
+    0 20px 56px rgba(23, 52, 92, 0.18),
+    0 4px 14px rgba(23, 52, 92, 0.08);
+  color: var(--gyan-edu-navy);
+  text-align: center;
+}
+
+.gyan-class__dialog-x {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #66788c;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.gyan-class__dialog-x:hover,
+.gyan-class__dialog-x:focus-visible {
+  background: #f3f6f8;
+}
+
+.gyan-class__dialog-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 7px;
+  border-radius: 14px;
+  background: var(--gyan-edu-orange-bg);
+  font-size: 1.45rem;
+}
+
+.gyan-class__dialog > small {
+  display: block;
+  color: #9a5a2c;
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.gyan-class__dialog h2 {
+  margin: 5px 0 8px;
+  color: var(--gyan-edu-navy);
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.gyan-class__dialog p {
+  margin: 7px 0;
+  color: #536a7d;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.gyan-class__dialog-facts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 11px 0;
+}
+
+.gyan-class__dialog-facts span {
+  padding: 5px 8px;
+  border: 1px solid #dde6ed;
+  border-radius: 999px;
+  background: #f8fbfd;
+  color: #3f5c75;
+  font-size: 0.67rem;
+  font-weight: 800;
+}
+
+.gyan-class__dialog-note {
+  font-size: 0.68rem !important;
+  color: var(--gyan-edu-muted) !important;
+}
+
+.gyan-class__dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.gyan-class__dialog-actions button {
+  min-height: 36px;
+  border: 1px solid #ccd9e4;
+  border-radius: 9px;
+  background: #f8fbfd;
+  color: var(--gyan-edu-navy);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.gyan-class__dialog-actions button:hover,
+.gyan-class__dialog-actions button:focus-visible {
+  background: #f0f5f8;
+}
+
+.gyan-class__dialog-actions .gyan-class__dialog-primary {
+  border-color: var(--gyan-edu-orange);
+  background: var(--gyan-edu-orange-bg);
+  color: #8d4817;
+}
+
+@media (max-width: 520px) {
+  .gyan-class__dialog-backdrop {
+    padding: 12px;
+  }
+
+  .gyan-class__dialog {
+    border-radius: 14px;
+    padding: 20px 15px 15px;
+  }
+
+  .gyan-class__dialog-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .gyan-class__test-state {
+    font-size: 0.44rem;
+  }
+}
+
+/* =========================================================
+   CLASS INTEREST EMAIL CAPTURE
+   Recent refinement: in-GYAN "Request Details" flow
+   ========================================================= */
+
+.gyan-class__interest-field {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+  text-align: left;
+}
+
+.gyan-class__interest-field > span {
+  color: #536a7d;
+  font-size: 0.66rem;
+  font-weight: 850;
+}
+
+.gyan-class__interest-field input {
+  width: 100%;
+  min-height: 38px;
+  box-sizing: border-box;
+  border: 1px solid #ccd9e4;
+  border-radius: 9px;
+  padding: 7px 9px;
+  background: #fff;
+  color: #17345c;
+  font: inherit;
+  font-size: 0.76rem;
+  outline: none;
+}
+
+.gyan-class__interest-field input:focus {
+  border-color: #df8a49;
+  box-shadow: 0 0 0 3px rgba(223, 138, 73, 0.12);
+}
+
+.gyan-class__interest-field input:disabled {
+  opacity: 0.65;
+}
+
+.gyan-class__interest-message {
+  margin-top: 8px;
+  border-radius: 8px;
+  padding: 7px 9px;
+  background: #eef8f1;
+  color: #276540;
+  font-size: 0.69rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.gyan-class__dialog-actions button:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+
+/* =========================================================
+   CLASS POPUPS — 10px BELOW APP HEADER
+   ========================================================= */
+
+.gyan-class__dialog-backdrop {
+  place-items: start center;
+  padding:
+    calc(
+      var(--app-header-height, 60px) +
+      env(safe-area-inset-top) +
+      10px
+    )
+    12px
+    18px;
+}
+
+@media (max-width: 420px) {
+  .gyan-class__dialog-backdrop {
+    padding-top:
+      calc(
+        var(--app-header-height, 60px) +
+        env(safe-area-inset-top) +
+        10px
+      );
+  }
+}
+

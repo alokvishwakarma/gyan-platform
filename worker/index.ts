@@ -165,6 +165,21 @@ import {
 import {
   handleAdminGemsRoute,
 } from "./adminGems";
+import {
+  handlePlatformSettingsRoute,
+} from "./platformSettings";
+
+import {
+  handleLiveTestRestoreRoute,
+} from "./liveTestRestore";
+
+import {
+  handleLiveTestAnswersRoute,
+} from "./liveTestAnswers";
+
+import {
+  handleAdminLiveClassScheduleRoute,
+} from "./adminLiveClassSchedule";
 
 interface RegisterShopRequest {
   code?: unknown;
@@ -1730,6 +1745,19 @@ if (
 ) {
   return educationMockTestsResponse;
 }
+  const platformSettingsResponse =
+    await handlePlatformSettingsRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (
+    platformSettingsResponse
+  ) {
+    return platformSettingsResponse;
+  }
+
 
 const adminGemsResponse =
   await handleAdminGemsRoute(
@@ -1743,6 +1771,46 @@ if (
 ) {
   return adminGemsResponse;
 }
+
+const liveTestRestoreResponse =
+  await handleLiveTestRestoreRoute(
+    request,
+    env,
+    url,
+  );
+
+if (
+  liveTestRestoreResponse
+) {
+  return liveTestRestoreResponse;
+}
+
+const liveTestAnswersResponse =
+  await handleLiveTestAnswersRoute(
+    request,
+    env,
+    url,
+  );
+
+if (
+  liveTestAnswersResponse
+) {
+  return liveTestAnswersResponse;
+}
+
+const adminLiveClassScheduleResponse =
+  await handleAdminLiveClassScheduleRoute(
+    request,
+    env,
+    url,
+  );
+
+if (
+  adminLiveClassScheduleResponse
+) {
+  return adminLiveClassScheduleResponse;
+}
+
   /*
    * ------------------------------------------------
    * Unified GYAN activity

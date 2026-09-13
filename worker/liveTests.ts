@@ -523,15 +523,16 @@ async function gemBalance(
 }
 
 
+
+
 async function listLiveTests(
   env:
     LiveTestsEnv,
 ): Promise<Response> {
   /*
-   * A small window is enough for the Education home:
-   * yesterday through the next eight days.
-   *
-   * This prevents an ever-growing full-table event read.
+   * Return a narrow UTC window around now. The Education UI decides
+   * "today" using the effective viewer timezone (admin override first,
+   * browser/device timezone otherwise).
    */
   const rows =
     await env.gyan_registry
@@ -592,7 +593,7 @@ async function listLiveTests(
           ) >=
             datetime(
               'now',
-              '-1 day'
+              '-2 days'
             )
 
           AND datetime(
@@ -600,7 +601,7 @@ async function listLiveTests(
           ) <
             datetime(
               'now',
-              '+8 days'
+              '+2 days'
             )
 
         GROUP BY
@@ -620,91 +621,101 @@ async function listLiveTests(
 
   return liveJson({
     liveTests:
-      rows.results.map(
-        (
-          row,
-        ) => ({
-          id:
-            Number(
-              row.id,
-            ),
-
-          number:
-            Number(
-              row.series_number,
-            ),
-
-          suffix:
-            row.series_suffix,
-
-          code:
-            row.public_code,
-
-          program:
-            row.program_code,
-
-          startsAt:
-            row.starts_at_utc,
-
-          scheduleTimezone:
-            row.schedule_timezone,
-
-          durationMinutes:
-            Number(
-              row.duration_minutes,
-            ),
-
-          entryGemCost:
-            Number(
-              row.entry_gem_cost,
-            ),
-
-          reportGemCost:
-            Number(
-              row.report_gem_cost,
-            ),
-
-          fractionPercent:
-            Number(
-              row.test_fraction_percent ??
-              10,
-            ),
-
-          eventKind:
-            row.event_kind ??
-            "WEEKDAY",
-
-          scheduleDate:
-            row.source_schedule_date,
-
-          state:
+      rows.results
+        .filter(
+          (
+            row,
+          ) =>
             liveTestState(
               row,
               nowMs,
-            ),
+            ) !==
+              "CANCELLED",
+        )
+        .map(
+          (
+            row,
+          ) => ({
+            id:
+              Number(
+                row.id,
+              ),
 
-          participants:
-            Number(
-              row.total_participants ??
-              0,
-            ),
+            number:
+              Number(
+                row.series_number,
+              ),
 
-          hearts:
-            Number(
-              row.human_participants ??
-              0,
-            ),
+            suffix:
+              row.series_suffix,
 
-          bolts:
-            Number(
-              row.synthetic_participants ??
-              0,
-            ),
-        }),
-      ),
+            code:
+              row.public_code,
+
+            program:
+              row.program_code,
+
+            startsAt:
+              row.starts_at_utc,
+
+            scheduleTimezone:
+              row.schedule_timezone,
+
+            durationMinutes:
+              Number(
+                row.duration_minutes,
+              ),
+
+            entryGemCost:
+              Number(
+                row.entry_gem_cost,
+              ),
+
+            reportGemCost:
+              Number(
+                row.report_gem_cost,
+              ),
+
+            fractionPercent:
+              Number(
+                row.test_fraction_percent ??
+                10,
+              ),
+
+            eventKind:
+              row.event_kind ??
+              "WEEKDAY",
+
+            scheduleDate:
+              row.source_schedule_date,
+
+            state:
+              liveTestState(
+                row,
+                nowMs,
+              ),
+
+            participants:
+              Number(
+                row.total_participants ??
+                0,
+              ),
+
+            hearts:
+              Number(
+                row.human_participants ??
+                0,
+              ),
+
+            bolts:
+              Number(
+                row.synthetic_participants ??
+                0,
+              ),
+          }),
+        ),
   });
 }
-
 
 async function enterLiveTest(
   request:
@@ -1013,9 +1024,6 @@ async function enterLiveTest(
   const transactionReason =
     `LIVE_TEST_ENTRY:${test.public_code}`;
 
-  const entryTransactionKey =
-    `${transactionReason}:${owner.accountId}`;
-
   /*
    * Deduct only when:
    *   1) sufficient Gems exist, and
@@ -1138,7 +1146,7 @@ async function enterLiveTest(
         String(
           owner.accountId,
         ),
-        entryTransactionKey,
+        transactionReason,
       )
       .run();
   } catch (
@@ -1515,12 +1523,6 @@ async function getLiveTestQuestions(
    * but once entered its actual runner receives a normal fixed 18-minute
    * session. Real Live Tests remain synchronized to their event clock.
    */
-  const startMs =
-    isAdminTest(
-      test,
-    )
-      ? entryStartMs
-      : eventWindow.startMs;
 
   const endMs =
     isAdminTest(
@@ -2289,6 +2291,474 @@ async function submitLiveTest(
   });
 }
 
+
+
+
+async function unlockLiveTestQuestions(
+  request:
+    Request,
+
+  env:
+    LiveTestsEnv,
+): Promise<Response> {
+  const questionGemCost =
+    3;
+
+  let body:
+    {
+      code?:
+        unknown;
+    };
+
+  try {
+    body =
+      await request.json() as {
+        code?:
+          unknown;
+      };
+  } catch {
+    return liveJson(
+      {
+        error:
+          "Invalid request body.",
+      },
+      400,
+    );
+  }
+
+  const code =
+    typeof body.code ===
+      "string"
+      ? body.code
+          .trim()
+          .toUpperCase()
+          .replace(
+            /^#/,
+            "",
+          )
+      : "";
+
+  if (!code) {
+    return liveJson(
+      {
+        error:
+          "Live test code is required.",
+      },
+      400,
+    );
+  }
+
+  const owner =
+    await currentGyanOwner(
+      request,
+      env,
+    );
+
+  if (!owner) {
+    return liveJson(
+      {
+        error:
+          "Open your GYAN Card on this device before viewing the Live Test questions.",
+      },
+      401,
+    );
+  }
+
+  const test =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          id,
+          series_number,
+          series_suffix,
+          public_code,
+          program_code,
+          starts_at_utc,
+          schedule_timezone,
+          duration_minutes,
+          entry_gem_cost,
+          report_gem_cost,
+          status,
+          test_fraction_percent,
+          event_kind,
+          source_schedule_date,
+          0 AS total_participants,
+          0 AS human_participants,
+          0 AS synthetic_participants
+        FROM education_live_tests
+        WHERE upper(public_code) = ?
+        LIMIT 1
+        `,
+      )
+      .bind(
+        code,
+      )
+      .first<LiveTestRow>();
+
+  if (!test) {
+    return liveJson(
+      {
+        error:
+          "Live Test not found.",
+      },
+      404,
+    );
+  }
+
+  if (
+    isAdminTest(
+      test,
+    )
+  ) {
+    return liveJson(
+      {
+        error:
+          "Admin Test #101 does not use the paid question-paper route.",
+      },
+      400,
+    );
+  }
+
+  const {
+    endMs,
+  } =
+    effectiveLiveWindow(
+      test,
+    );
+
+  if (
+    !Number.isFinite(
+      endMs,
+    ) ||
+    Date.now() <
+      endMs
+  ) {
+    return liveJson(
+      {
+        error:
+          "Questions become available after the Live Test ends.",
+        availableAt:
+          Number.isFinite(
+            endMs,
+          )
+            ? new Date(
+                endMs,
+              ).toISOString()
+            : null,
+      },
+      409,
+    );
+  }
+
+  /*
+   * A detailed-report unlock is stronger than a question-paper unlock.
+   * If the same GYAN Card already owns the report, never charge another 3 Gems.
+   */
+  const entry =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT report_unlocked_at
+        FROM education_live_entries
+        WHERE
+          live_test_id = ?
+          AND participant_type = 'GYAN'
+          AND participant_key = ?
+        LIMIT 1
+        `,
+      )
+      .bind(
+        test.id,
+        String(
+          owner.accountId,
+        ),
+      )
+      .first<{
+        report_unlocked_at:
+          string | null;
+      }>();
+
+  const questionReason =
+    `LIVE_TEST_QUESTIONS:${test.public_code}`;
+
+  const reportReason =
+    `LIVE_TEST_REPORT:${test.public_code}`;
+
+  const priorLedgerUnlock =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT reason
+        FROM gem_transactions
+        WHERE
+          calendar_access_id = ?
+          AND reason IN (?, ?)
+        LIMIT 1
+        `,
+      )
+      .bind(
+        owner.calendarAccessId,
+        questionReason,
+        reportReason,
+      )
+      .first<{
+        reason:
+          string;
+      }>();
+
+  let alreadyUnlocked =
+    Boolean(
+      entry?.report_unlocked_at,
+    ) ||
+    Boolean(
+      priorLedgerUnlock,
+    );
+
+  let gemCharged =
+    0;
+
+  if (
+    !alreadyUnlocked
+  ) {
+    const charge =
+      await env.gyan_registry
+        .prepare(
+          `
+          INSERT OR IGNORE INTO gem_transactions (
+            calendar_access_id,
+            amount,
+            reason
+          )
+          SELECT
+            ?,
+            ?,
+            ?
+          WHERE
+            (
+              SELECT
+                COALESCE(
+                  SUM(amount),
+                  0
+                )
+              FROM gem_transactions
+              WHERE calendar_access_id = ?
+            ) >= ?
+          `,
+        )
+        .bind(
+          owner.calendarAccessId,
+          -questionGemCost,
+          questionReason,
+          owner.calendarAccessId,
+          questionGemCost,
+        )
+        .run();
+
+    const charged =
+      Number(
+        charge.meta?.changes ??
+        0,
+      ) > 0;
+
+    if (
+      charged
+    ) {
+      gemCharged =
+        questionGemCost;
+    } else {
+      /*
+       * INSERT OR IGNORE can also mean a harmless retry after a prior unlock.
+       * Distinguish that from insufficient Gems.
+       */
+      const priorQuestionCharge =
+        await env.gyan_registry
+          .prepare(
+            `
+            SELECT id
+            FROM gem_transactions
+            WHERE
+              calendar_access_id = ?
+              AND reason = ?
+            LIMIT 1
+            `,
+          )
+          .bind(
+            owner.calendarAccessId,
+            questionReason,
+          )
+          .first<{
+            id:
+              number;
+          }>();
+
+      if (
+        !priorQuestionCharge
+      ) {
+        return liveJson(
+          {
+            error:
+              `You need ${questionGemCost} Gems to view this Live Test question paper.`,
+
+            requiredGems:
+              questionGemCost,
+
+            gemBalance:
+              await gemBalance(
+                env,
+                owner.calendarAccessId,
+              ),
+          },
+          402,
+        );
+      }
+
+      alreadyUnlocked =
+        true;
+    }
+  }
+
+  const rows =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          lq.question_order,
+          lq.section_code,
+          q.id AS question_id,
+          q.difficulty,
+          q.question_text,
+          q.choice_a,
+          q.choice_b,
+          q.choice_c,
+          q.choice_d
+
+        FROM education_live_test_questions lq
+
+        JOIN education_questions q
+          ON q.id =
+             lq.question_id
+
+        WHERE
+          lq.live_test_id = ?
+
+        ORDER BY
+          lq.question_order
+        `,
+      )
+      .bind(
+        test.id,
+      )
+      .all<{
+        question_order:
+          number;
+
+        section_code:
+          string | null;
+
+        question_id:
+          number;
+
+        difficulty:
+          string;
+
+        question_text:
+          string;
+
+        choice_a:
+          string;
+
+        choice_b:
+          string;
+
+        choice_c:
+          string;
+
+        choice_d:
+          string;
+      }>();
+
+  if (
+    rows.results.length ===
+      0
+  ) {
+    return liveJson(
+      {
+        error:
+          "Live Test question paper is not available.",
+      },
+      404,
+    );
+  }
+
+  return liveJson({
+    unlocked:
+      true,
+
+    alreadyUnlocked,
+
+    gemCharged,
+
+    gemBalance:
+      await gemBalance(
+        env,
+        owner.calendarAccessId,
+      ),
+
+    questionGemCost,
+
+    liveTest: {
+      code:
+        test.public_code,
+
+      program:
+        test.program_code,
+
+      questionCount:
+        rows.results.length,
+    },
+
+    questions:
+      rows.results.map(
+        (
+          row,
+        ) => ({
+          questionOrder:
+            Number(
+              row.question_order,
+            ),
+
+          questionId:
+            Number(
+              row.question_id,
+            ),
+
+          section:
+            row.section_code,
+
+          difficulty:
+            row.difficulty,
+
+          questionText:
+            row.question_text,
+
+          choices: {
+            A:
+              row.choice_a,
+
+            B:
+              row.choice_b,
+
+            C:
+              row.choice_c,
+
+            D:
+              row.choice_d,
+          },
+        }),
+      ),
+  });
+}
 
 
 async function unlockLiveTestReport(
@@ -3212,134 +3682,6 @@ async function adminTestStatus(
 }
 
 
-async function liveTestHistory(
-  request:
-    Request,
-
-  env:
-    LiveTestsEnv,
-): Promise<Response> {
-  const owner =
-    await currentGyanOwner(
-      request,
-      env,
-    );
-
-  if (!owner) {
-    return liveJson(
-      {
-        error:
-          "Open your GYAN Card to view Live Test history.",
-      },
-      401,
-    );
-  }
-
-  const rows =
-    await env.gyan_registry
-      .prepare(
-        `
-        SELECT
-          lt.public_code,
-          lt.program_code,
-          lt.starts_at_utc,
-          le.entered_at,
-          le.submitted_at,
-          le.report_unlocked_at,
-          le.attempt_id
-
-        FROM education_live_entries le
-
-        INNER JOIN education_live_tests lt
-          ON lt.id = le.live_test_id
-
-        WHERE
-          le.participant_type = 'GYAN'
-          AND le.participant_key = ?
-          AND lt.event_kind != 'ADMIN_TEST'
-
-        ORDER BY
-          datetime(
-            COALESCE(
-              le.submitted_at,
-              le.entered_at
-            )
-          ) DESC,
-          le.id DESC
-
-        LIMIT 20
-        `,
-      )
-      .bind(
-        String(
-          owner.accountId,
-        ),
-      )
-      .all<{
-        public_code:
-          string;
-
-        program_code:
-          string;
-
-        starts_at_utc:
-          string;
-
-        entered_at:
-          string;
-
-        submitted_at:
-          string | null;
-
-        report_unlocked_at:
-          string | null;
-
-        attempt_id:
-          number | null;
-      }>();
-
-  return liveJson({
-    tests:
-      rows.results.map(
-        (row) => ({
-          code:
-            row.public_code,
-
-          program:
-            row.program_code,
-
-          startsAt:
-            row.starts_at_utc,
-
-          enteredAt:
-            row.entered_at,
-
-          submitted:
-            Boolean(
-              row.submitted_at ||
-              row.attempt_id,
-            ),
-
-          submittedAt:
-            row.submitted_at,
-
-          reportUnlocked:
-            Boolean(
-              row.report_unlocked_at,
-            ),
-
-          attemptId:
-            row.attempt_id == null
-              ? null
-              : Number(
-                  row.attempt_id,
-                ),
-        }),
-      ),
-  });
-}
-
-
 export async function handleLiveTestsRoute(
   request:
     Request,
@@ -3378,18 +3720,6 @@ export async function handleLiveTestsRoute(
     request.method ===
       "GET" &&
     url.pathname ===
-      "/api/education/live-tests/history"
-  ) {
-    return liveTestHistory(
-      request,
-      env,
-    );
-  }
-
-  if (
-    request.method ===
-      "GET" &&
-    url.pathname ===
       "/api/education/live-tests"
   ) {
     return listLiveTests(
@@ -3407,6 +3737,18 @@ export async function handleLiveTestsRoute(
       request,
       env,
       url,
+    );
+  }
+
+  if (
+    request.method ===
+      "POST" &&
+    url.pathname ===
+      "/api/education/live-tests/questions/unlock"
+  ) {
+    return unlockLiveTestQuestions(
+      request,
+      env,
     );
   }
 

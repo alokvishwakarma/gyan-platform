@@ -17,6 +17,7 @@ import LittleLearnersExperience
 
 import LiveTestRunner
   from "./LiveTestRunner";
+import AdminLiveTestSchedule from "./AdminLiveTestSchedule";
 
 import {
   checkPracticeAnswer,
@@ -63,7 +64,8 @@ type Step =
   | "student-card"
   | "little-learners"
   | "mock-tests"
-  | "live-test";
+  | "live-test"
+  | "admin-live-tests";
 
 
 type AnswerState = {
@@ -4854,6 +4856,25 @@ export default function EducationLearningHub({
       </>
     );
   }
+  if (
+    step ===
+      "admin-live-tests"
+  ) {
+    return (
+      <>
+        {educationAccessNotice}
+
+        <AdminLiveTestSchedule
+          onBack={() => {
+            setStep(
+              "portal",
+            );
+          }}
+        />
+      </>
+    );
+  }
+
 
 
   if (
@@ -4877,7 +4898,12 @@ export default function EducationLearningHub({
             onBack
           }
 
-          onLiveTest={(
+                    onAdminLiveTests={() => {
+            setStep(
+              "admin-live-tests",
+            );
+          }}
+onLiveTest={(
             code,
           ) => {
             setLiveTestCode(

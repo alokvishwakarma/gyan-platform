@@ -1,0 +1,27 @@
+diff --git a/worker/liveTests.ts b/worker/liveTests.ts
+--- a/worker/liveTests.ts
++++ b/worker/liveTests.ts
+@@
+   const transactionReason =
+     `LIVE_TEST_ENTRY:${test.public_code}`;
++
++  /*
++   * education_live_entries.entry_gem_transaction_key is globally UNIQUE.
++   *
++   * The Gem ledger reason may stay the same for every participant because
++   * gem_transactions is scoped by calendar_access_id + reason. The durable
++   * Live Test entry key, however, must also include the participant.
++   *
++   * Without this suffix, the first participant in an event claims
++   * LIVE_TEST_ENTRY:<code> and every later INSERT OR IGNORE is discarded.
++   */
++  const entryTransactionKey =
++    `${transactionReason}:${owner.accountId}`;
+@@
+         String(
+           owner.accountId,
+         ),
+-        transactionReason,
++        entryTransactionKey,
+       )
+       .run();

@@ -1,0 +1,2 @@
+SELECT schedule_date, program_code, subject_code, topic_code, topic_name FROM education_live_class_schedule WHERE schedule_date >= '2026-09-10' AND schedule_date <= '2026-09-23' AND active = 1 ORDER BY schedule_date, program_code, sequence_number;
+SELECT schedule_date, program_code, COUNT(*) AS rows FROM education_live_class_schedule WHERE schedule_date >= '2026-09-10' AND schedule_date <= '2026-09-23' AND active = 1 GROUP BY schedule_date, program_code ORDER BY schedule_date, program_code;

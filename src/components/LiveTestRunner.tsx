@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -28,18 +29,6 @@ interface LiveTestSummary {
   durationMinutes: number;
   entryGemCost: number;
   reportGemCost: number;
-
-  participants?:
-    number;
-
-  hearts?:
-    number;
-
-  bolts?:
-    number;
-
-  questionCount?:
-    number;
 }
 
 
@@ -531,6 +520,166 @@ function simulatedActivityCount(
 }
 
 
+function QuestionText({
+  text,
+}: {
+  text:
+    string;
+}) {
+  const textRef =
+    useRef<
+      HTMLParagraphElement |
+      null
+    >(
+      null,
+    );
+
+  const [
+    expanded,
+    setExpanded,
+  ] =
+    useState(
+      false,
+    );
+
+  const [
+    overflowing,
+    setOverflowing,
+  ] =
+    useState(
+      false,
+    );
+
+  useEffect(
+    () => {
+      const element =
+        textRef.current;
+
+      if (
+        !element
+      ) {
+        return;
+      }
+
+      const measure =
+        (): void => {
+          if (
+            expanded
+          ) {
+            return;
+          }
+
+          setOverflowing(
+            element.scrollHeight >
+              element.clientHeight +
+              1,
+          );
+        };
+
+      const frame =
+        window.requestAnimationFrame(
+          measure,
+        );
+
+      window.addEventListener(
+        "resize",
+        measure,
+      );
+
+      return () => {
+        window.cancelAnimationFrame(
+          frame,
+        );
+
+        window.removeEventListener(
+          "resize",
+          measure,
+        );
+      };
+    },
+    [
+      text,
+      expanded,
+    ],
+  );
+
+  useEffect(
+    () => {
+      const frame =
+        window.requestAnimationFrame(
+          () => {
+            setExpanded(
+              false,
+            );
+
+            setOverflowing(
+              false,
+            );
+          },
+        );
+
+      return () =>
+        window.cancelAnimationFrame(
+          frame,
+        );
+    },
+    [
+      text,
+    ],
+  );
+
+  return (
+    <div className="live-test-runner__question-text-wrap">
+      <p
+        ref={
+          textRef
+        }
+        className={[
+          "live-test-runner__question-text",
+          expanded
+            ? "live-test-runner__question-text--expanded"
+            : "",
+        ]
+          .filter(
+            Boolean,
+          )
+          .join(
+            " ",
+          )}
+      >
+        {text}
+      </p>
+
+      {
+        (
+          overflowing ||
+          expanded
+        ) && (
+          <button
+            type="button"
+            className="live-test-runner__question-more"
+            onClick={() =>
+              setExpanded(
+                (
+                  current,
+                ) =>
+                  !current,
+              )
+            }
+          >
+            {
+              expanded
+                ? "Less"
+                : "More"
+            }
+          </button>
+        )
+      }
+    </div>
+  );
+}
+
+
 export default function LiveTestRunner({
   code,
   adminAuthenticated =
@@ -611,6 +760,20 @@ export default function LiveTestRunner({
     useState(15);
 
   const [
+    questionPaper,
+    setQuestionPaper,
+  ] =
+    useState<
+      LiveQuestion[] |
+      null
+    >(
+      null,
+    );
+
+  const questionGemCost =
+    3;
+
+  const [
     liveSummary,
     setLiveSummary,
   ] =
@@ -624,6 +787,46 @@ export default function LiveTestRunner({
     setIntroClockMs,
   ] =
     useState(0);
+
+  const [
+    restoreChecked,
+    setRestoreChecked,
+  ] =
+    useState(false);
+
+  const [
+    currentQuestionIndex,
+    setCurrentQuestionIndex,
+  ] =
+    useState(0);
+
+  const [
+    fiveMinuteWarningShown,
+    setFiveMinuteWarningShown,
+  ] =
+    useState(false);
+
+  const [
+    answerSaveState,
+    setAnswerSaveState,
+  ] =
+    useState<
+      "idle" |
+      "saving" |
+      "saved" |
+      "error"
+    >("idle");
+
+
+  const [
+    liveDialog,
+    setLiveDialog,
+  ] =
+    useState<
+      "five-minute" |
+      "submit" |
+      null
+    >(null);
 
 
   const isAdminTest =
@@ -649,6 +852,442 @@ export default function LiveTestRunner({
         answers,
       ],
     );
+
+
+  const liveProgram =
+    questionsResponse
+      ?.liveTest
+      .program
+      ?.trim()
+      .toUpperCase() ??
+    liveSummary
+      ?.program
+      ?.trim()
+      .toUpperCase() ??
+    "";
+
+  const paletteColumns =
+    liveProgram ===
+      "JEE"
+      ? 5
+      : 7;
+
+  const currentQuestion =
+    questionsResponse
+      ?.questions[
+        currentQuestionIndex
+      ] ??
+    null;
+
+
+  async function loadSavedAnswers():
+    Promise<void> {
+    if (
+      isAdminTest
+    ) {
+      return;
+    }
+
+    try {
+      const response =
+        await fetch(
+          `/api/education/live-tests/answers?code=${encodeURIComponent(
+            code,
+          )}`,
+          {
+            credentials:
+              "include",
+
+            cache:
+              "no-store",
+          },
+        );
+
+      const body =
+        await response.json() as {
+          answers?: {
+            questionId:
+              number;
+
+            selectedChoice:
+              "A" |
+              "B" |
+              "C" |
+              "D";
+          }[];
+
+          error?:
+            string;
+        };
+
+      if (
+        response.status ===
+          404
+      ) {
+        return;
+      }
+
+      if (
+        !response.ok
+      ) {
+        throw new Error(
+          body.error ??
+          "Saved answers could not be restored.",
+        );
+      }
+
+      const restored:
+        Record<
+          number,
+          "A" |
+          "B" |
+          "C" |
+          "D"
+        > = {};
+
+      for (
+        const answer
+        of body.answers ??
+        []
+      ) {
+        restored[
+          Number(
+            answer.questionId,
+          )
+        ] =
+          answer.selectedChoice;
+      }
+
+      setAnswers(
+        restored,
+      );
+    } catch (
+      caught
+    ) {
+      setAnswerSaveState(
+        "error",
+      );
+
+      console.error(
+        "Unable to restore Live Test answers:",
+        caught,
+      );
+    }
+  }
+
+
+  async function saveAnswer(
+    questionId:
+      number,
+
+    selectedChoice:
+      "A" |
+      "B" |
+      "C" |
+      "D",
+  ): Promise<void> {
+    if (
+      isAdminTest
+    ) {
+      setAnswerSaveState(
+        "saved",
+      );
+
+      return;
+    }
+
+    setAnswerSaveState(
+      "saving",
+    );
+
+    try {
+      const response =
+        await fetch(
+          "/api/education/live-tests/answers",
+          {
+            method:
+              "POST",
+
+            credentials:
+              "include",
+
+            headers: {
+              "content-type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                code,
+
+                questionId,
+
+                selectedChoice,
+              }),
+          },
+        );
+
+      const body =
+        await response.json() as {
+          saved?:
+            boolean;
+
+          error?:
+            string;
+        };
+
+      if (
+        !response.ok ||
+        !body.saved
+      ) {
+        throw new Error(
+          body.error ??
+          "Answer could not be saved.",
+        );
+      }
+
+      setAnswerSaveState(
+        "saved",
+      );
+    } catch (
+      caught
+    ) {
+      setAnswerSaveState(
+        "error",
+      );
+
+      console.error(
+        "Unable to save Live Test answer:",
+        caught,
+      );
+    }
+  }
+
+
+  function chooseAnswer(
+    question:
+      LiveQuestion,
+
+    choice:
+      "A" |
+      "B" |
+      "C" |
+      "D",
+  ): void {
+    setAnswers(
+      (
+        current,
+      ) => ({
+        ...current,
+
+        [
+          question
+            .questionId
+        ]:
+          choice,
+      }),
+    );
+
+    void saveAnswer(
+      question.questionId,
+      choice,
+    );
+  }
+
+
+  useEffect(
+    () => {
+      if (
+        isAdminTest
+      ) {
+        return;
+      }
+
+      const controller =
+        new AbortController();
+
+      void fetch(
+        `/api/education/live-tests/restore?code=${encodeURIComponent(
+          code,
+        )}`,
+        {
+          credentials:
+            "include",
+
+          cache:
+            "no-store",
+
+          signal:
+            controller.signal,
+        },
+      )
+        .then(
+          async (
+            response,
+          ) => {
+            const body =
+              await response.json() as {
+                found?:
+                  boolean;
+
+                submitted?:
+                  boolean;
+
+                reportUnlocked?:
+                  boolean;
+
+                reportGemCost?:
+                  number;
+
+                error?:
+                  string;
+              };
+
+            if (
+              response.status ===
+              404
+            ) {
+              return body;
+            }
+
+            if (
+              !response.ok
+            ) {
+              throw new Error(
+                body.error ??
+                "Previous Live Test attempt could not be checked.",
+              );
+            }
+
+            return body;
+          },
+        )
+        .then(
+          async (
+            body,
+          ) => {
+            if (
+              controller.signal.aborted
+            ) {
+              return;
+            }
+
+            setReportGemCost(
+              Number(
+                body.reportGemCost ??
+                15,
+              ),
+            );
+
+            if (
+              body.found &&
+              body.submitted
+            ) {
+              if (
+                body.reportUnlocked
+              ) {
+                const response =
+                  await fetch(
+                    "/api/education/live-tests/report/unlock",
+                    {
+                      method:
+                        "POST",
+
+                      credentials:
+                        "include",
+
+                      headers: {
+                        "content-type":
+                          "application/json",
+                      },
+
+                      body:
+                        JSON.stringify({
+                          code,
+                        }),
+
+                      signal:
+                        controller.signal,
+                    },
+                  );
+
+                const reportBody =
+                  await response.json() as {
+                    result?:
+                      LiveTestResult;
+
+                    error?:
+                      string;
+                  };
+
+                if (
+                  !response.ok ||
+                  !reportBody.result
+                ) {
+                  throw new Error(
+                    reportBody.error ??
+                    "Live Test report could not be reopened.",
+                  );
+                }
+
+                if (
+                  !controller.signal.aborted
+                ) {
+                  setReportResult(
+                    reportBody.result,
+                  );
+                }
+              }
+
+              if (
+                !controller.signal.aborted
+              ) {
+                setSubmitted(
+                  true,
+                );
+              }
+            }
+          },
+        )
+        .catch(
+          (
+            caught,
+          ) => {
+            if (
+              controller.signal.aborted
+            ) {
+              return;
+            }
+
+            setError(
+              caught instanceof
+                Error
+                ? caught.message
+                : "Previous Live Test attempt could not be checked.",
+            );
+          },
+        )
+        .finally(
+          () => {
+            if (
+              !controller.signal.aborted
+            ) {
+              setRestoreChecked(
+                true,
+              );
+            }
+          },
+        );
+
+      return () => {
+        controller.abort();
+      };
+    },
+    [
+      code,
+      isAdminTest,
+    ],
+  );
 
 
   useEffect(
@@ -966,6 +1605,12 @@ export default function LiveTestRunner({
         questionBody,
       );
 
+      setCurrentQuestionIndex(
+        0,
+      );
+
+      await loadSavedAnswers();
+
       setRemainingSeconds(
         secondsUntil(
           questionBody
@@ -1030,6 +1675,80 @@ export default function LiveTestRunner({
     setReportResult(
       body.result,
     );
+  }
+
+
+  async function unlockQuestionPaper():
+    Promise<void> {
+    setLoading(
+      true,
+    );
+
+    setError("");
+
+    try {
+      const response =
+        await fetch(
+          "/api/education/live-tests/questions/unlock",
+          {
+            method:
+              "POST",
+
+            credentials:
+              "include",
+
+            headers: {
+              "content-type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                code,
+              }),
+          },
+        );
+
+      const body =
+        await response.json() as {
+          questions?:
+            LiveQuestion[];
+
+          error?:
+            string;
+        };
+
+      if (
+        !response.ok ||
+        !body.questions
+      ) {
+        throw new Error(
+          body.error ??
+          "Live Test question paper could not be opened.",
+        );
+      }
+
+      setQuestionPaper(
+        body.questions,
+      );
+
+      setCurrentQuestionIndex(
+        0,
+      );
+    } catch (
+      caught
+    ) {
+      setError(
+        caught instanceof
+          Error
+          ? caught.message
+          : "Live Test question paper could not be opened.",
+      );
+    } finally {
+      setLoading(
+        false,
+      );
+    }
   }
 
 
@@ -1109,6 +1828,9 @@ export default function LiveTestRunner({
   async function submitTest(
     automatic =
       false,
+
+    confirmed =
+      false,
   ): Promise<void> {
     if (
       submitted ||
@@ -1120,12 +1842,18 @@ export default function LiveTestRunner({
 
     if (
       !automatic &&
-      !window.confirm(
-        `Submit ${title}? ${answeredCount} of ${questionsResponse.questions.length} answered.`,
-      )
+      !confirmed
     ) {
+      setLiveDialog(
+        "submit",
+      );
+
       return;
     }
+
+    setLiveDialog(
+      null,
+    );
 
     setLoading(
       true,
@@ -1268,6 +1996,22 @@ export default function LiveTestRunner({
 
         if (
           remaining <=
+            300 &&
+          remaining >
+            0 &&
+          !fiveMinuteWarningShown
+        ) {
+          setFiveMinuteWarningShown(
+            true,
+          );
+
+          setLiveDialog(
+            "five-minute",
+          );
+        }
+
+        if (
+          remaining <=
             0
         ) {
           void submitTest(
@@ -1290,20 +2034,313 @@ export default function LiveTestRunner({
         );
       };
     },
+    // submitTest intentionally uses the latest render state;
+    // restarting this timer whenever the function identity changes
+    // would recreate the interval on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       started,
       questionsResponse,
       submitted,
+      fiveMinuteWarningShown,
     ],
   );
 
 
-if (
-  submitted ||
-  reportResult
-) {
+  if (
+    questionPaper
+  ) {
+    const paperQuestion =
+      questionPaper[
+        currentQuestionIndex
+      ] ??
+      questionPaper[0];
+
+    const paperPaletteColumns =
+      liveProgram ===
+        "JEE"
+        ? 5
+        : 7;
+
     return (
-      <main className="live-test-runner">
+      <main className="live-test-runner live-test-runner--screen">
+        <header className="live-test-runner__header">
+          <button
+            type="button"
+            onClick={() =>
+              setQuestionPaper(
+                null,
+              )
+            }
+            aria-label="Back to Live Test"
+          >
+            ←
+          </button>
+
+          <div>
+            <strong className="live-test-runner__desktop-title">
+              👀 Live Test #{code}
+            </strong>
+
+            <small className="live-test-runner__desktop-title">
+              Question Paper · {questionPaper.length} questions
+            </small>
+
+            <strong className="live-test-runner__mobile-title">
+              GYAN · Test #{code} · {questionPaper.length} Qs
+            </strong>
+          </div>
+        </header>
+
+        {
+          error && (
+            <div className="live-test-runner__error">
+              {error}
+            </div>
+          )
+        }
+
+        <section className="live-test-runner__cbt live-test-runner__paper-cbt">
+          <div className="live-test-runner__cbt-main">
+            <div className="live-test-runner__cbt-status">
+              <strong>
+                Question {
+                  currentQuestionIndex +
+                  1
+                } of {
+                  questionPaper.length
+                }
+              </strong>
+
+              <span>
+                Read-only question paper
+              </span>
+            </div>
+
+            {
+              paperQuestion && (
+                <article
+                  key={
+                    paperQuestion.questionId
+                  }
+                  className="live-test-runner__question live-test-runner__question--cbt live-test-runner__paper-question"
+                >
+                  <header>
+                    <strong>
+                      {
+                        paperQuestion.questionOrder
+                      }.
+                    </strong>
+
+                    <span>
+                      {
+                        paperQuestion.section ??
+                        "Question"
+                      }
+                    </span>
+                  </header>
+
+                  <QuestionText
+                    text={
+                      paperQuestion.questionText
+                    }
+                  />
+
+                  <div className="live-test-runner__choices">
+                    {
+                      (
+                        [
+                          "A",
+                          "B",
+                          "C",
+                          "D",
+                        ] as const
+                      ).map(
+                        (
+                          choice,
+                        ) => (
+                          <div
+                            key={
+                              choice
+                            }
+                            className="live-test-runner__choice live-test-runner__paper-choice"
+                          >
+                            <b>
+                              {
+                                choice
+                              }
+                            </b>
+
+                            <span>
+                              {
+                                paperQuestion
+                                  .choices[
+                                  choice
+                                ]
+                              }
+                            </span>
+                          </div>
+                        ),
+                      )
+                    }
+                  </div>
+
+                  <nav className="live-test-runner__question-nav">
+                    <button
+                      type="button"
+                      disabled={
+                        currentQuestionIndex <=
+                        0
+                      }
+                      onClick={() =>
+                        setCurrentQuestionIndex(
+                          (
+                            current,
+                          ) =>
+                            Math.max(
+                              0,
+                              current -
+                              1,
+                            ),
+                        )
+                      }
+                    >
+                      ← Previous
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={
+                        currentQuestionIndex >=
+                        questionPaper.length -
+                        1
+                      }
+                      onClick={() =>
+                        setCurrentQuestionIndex(
+                          (
+                            current,
+                          ) =>
+                            Math.min(
+                              questionPaper.length -
+                              1,
+                              current +
+                              1,
+                            ),
+                        )
+                      }
+                    >
+                      Next →
+                    </button>
+                  </nav>
+                </article>
+              )
+            }
+
+            <small className="live-test-runner__paper-note">
+              Correct answers, score and explanations remain in the detailed 💎{reportGemCost} report.
+            </small>
+          </div>
+
+          <aside
+            className="live-test-runner__palette"
+            aria-label="Question paper palette"
+          >
+            <div className="live-test-runner__palette-title">
+              <strong>
+                Questions
+              </strong>
+
+              <small>
+                {
+                  currentQuestionIndex +
+                  1
+                }/{
+                  questionPaper.length
+                }
+              </small>
+            </div>
+
+            <div
+              className="live-test-runner__palette-grid"
+              style={{
+                gridTemplateColumns:
+                  `repeat(${paperPaletteColumns}, minmax(0, 1fr))`,
+              }}
+            >
+              {
+                questionPaper.map(
+                  (
+                    question,
+                    index,
+                  ) => {
+                    const current =
+                      index ===
+                      currentQuestionIndex;
+
+                    return (
+                      <button
+                        type="button"
+                        key={
+                          question.questionId
+                        }
+                        className={[
+                          "live-test-runner__palette-item",
+                          "live-test-runner__paper-palette-item",
+                          current
+                            ? "live-test-runner__palette-item--current"
+                            : "",
+                        ]
+                          .filter(
+                            Boolean,
+                          )
+                          .join(
+                            " ",
+                          )}
+                        onClick={() =>
+                          setCurrentQuestionIndex(
+                            index,
+                          )
+                        }
+                        aria-label={`Question ${index + 1}${
+                          current
+                            ? ", current"
+                            : ""
+                        }`}
+                      >
+                        {
+                          index +
+                          1
+                        }
+                      </button>
+                    );
+                  },
+                )
+              }
+            </div>
+
+            <button
+              type="button"
+              className="live-test-runner__paper-back"
+              onClick={() =>
+                setQuestionPaper(
+                  null,
+                )
+              }
+            >
+              Back to Live Test
+            </button>
+          </aside>
+        </section>
+      </main>
+    );
+  }
+
+
+  if (
+    submitted
+  ) {
+    return (
+      <main className="live-test-runner live-test-runner--screen">
         <header className="live-test-runner__header">
           <button
             type="button"
@@ -1314,9 +2351,17 @@ if (
             ←
           </button>
 
-          <strong>
+          <strong className="live-test-runner__desktop-title">
             ⚡ {
               title
+            }
+          </strong>
+
+          <strong className="live-test-runner__mobile-title">
+            GYAN · Test #{code} · {
+              reportResult
+                ? "Results"
+                : "Submitted"
             }
           </strong>
         </header>
@@ -1411,9 +2456,11 @@ if (
                             </b>
                           </header>
 
-                          <p>
-                            {question.questionText}
-                          </p>
+                          <QuestionText
+                            text={
+                              question.questionText
+                            }
+                          />
 
                           <div className="live-test-runner__result-answer">
                             <span>
@@ -1471,61 +2518,48 @@ if (
                   } questions answered.
                 </p>
 
-                {
-                  !isAdminTest &&
-                  Number.isFinite(
-                    scheduledEndMs,
-                  ) &&
-                  introClockMs > 0 &&
-                  introClockMs <
-                    scheduledEndMs
-                    ? (
-                        <small>
-                          Report available after the Live Test ends ·{" "}
-                          {clockCountdownText(
-                            scheduledEndMs,
-                            introClockMs,
-                          )} remaining.
-                        </small>
-                      )
-                    : (
-                        <small>
-                          Your detailed report is available for 💎{reportGemCost}.
-                          Opening it charges only once.
-                        </small>
-                      )
-                }
+                <small>
+                  Your detailed report is available for 💎{reportGemCost}.
+                  Opening it charges only once.
+                </small>
 
                 <div className="live-test-runner__done-actions">
                   {
-                    (
-                      isAdminTest ||
-                      !Number.isFinite(
-                        scheduledEndMs,
-                      ) ||
-                      (
-                        introClockMs > 0 &&
-                        introClockMs >=
-                          scheduledEndMs
-                      )
-                    ) && (
+                    !isAdminTest && (
                       <button
                         type="button"
+                        className="live-test-runner__question-paper-button"
                         disabled={
                           loading
                         }
                         onClick={() =>
-                          void unlockReport()
+                          void unlockQuestionPaper()
                         }
                       >
                         {
                           loading
                             ? "Opening…"
-                            : `Open Report · 💎${reportGemCost}`
+                            : `👀 View Questions · 💎${questionGemCost}`
                         }
                       </button>
                     )
                   }
+
+                  <button
+                    type="button"
+                    disabled={
+                      loading
+                    }
+                    onClick={() =>
+                      void unlockReport()
+                    }
+                  >
+                    {
+                      loading
+                        ? "Opening…"
+                        : `Open Report · 💎${reportGemCost}`
+                    }
+                  </button>
 
                   <button
                     type="button"
@@ -1546,7 +2580,7 @@ if (
 
 
   return (
-    <main className="live-test-runner">
+    <main className="live-test-runner live-test-runner--screen">
       <header className="live-test-runner__header">
         <button
           type="button"
@@ -1559,19 +2593,31 @@ if (
         </button>
 
         <div>
-          <strong>
+          <strong className="live-test-runner__desktop-title">
             ⚡ {
               title
             }
           </strong>
 
-          <small>
+          <small className="live-test-runner__desktop-title">
             {
               isAdminTest
                 ? "Martian clock · always open"
                 : "GYAN Live"
             }
           </small>
+
+          <strong className="live-test-runner__mobile-title">
+            {
+              isAdminTest
+                ? "GYAN · Admin Test #101"
+                : `GYAN · Live Test #${code}${
+                    questionsResponse
+                      ? ` · ${questionsResponse.questions.length} Qs`
+                      : ""
+                  }`
+            }
+          </strong>
         </div>
 
         {
@@ -1581,7 +2627,10 @@ if (
                 remainingSeconds <=
                   60
                   ? "live-test-runner__timer live-test-runner__timer--urgent"
-                  : "live-test-runner__timer"
+                  : remainingSeconds <=
+                      300
+                    ? "live-test-runner__timer live-test-runner__timer--warning"
+                    : "live-test-runner__timer"
               }
               aria-label="Time remaining"
             >
@@ -1594,6 +2643,151 @@ if (
           )
         }
       </header>
+
+
+      {
+        liveDialog && (
+          <div
+            className="live-test-runner__dialog-backdrop"
+            role="presentation"
+            onMouseDown={() =>
+              setLiveDialog(
+                null,
+              )
+            }
+          >
+            <section
+              className="live-test-runner__dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="live-test-dialog-title"
+              onMouseDown={(
+                event,
+              ) =>
+                event.stopPropagation()
+              }
+            >
+              <button
+                type="button"
+                className="live-test-runner__dialog-x"
+                aria-label="Close"
+                onClick={() =>
+                  setLiveDialog(
+                    null,
+                  )
+                }
+              >
+                ×
+              </button>
+
+              <small>
+                GYAN LIVE
+              </small>
+
+              <h2
+                id="live-test-dialog-title"
+              >
+                {
+                  liveDialog ===
+                    "five-minute"
+                    ? "⏱ 5 minutes remaining"
+                    : "Submit Test?"
+                }
+              </h2>
+
+              {
+                liveDialog ===
+                  "five-minute"
+                  ? (
+                      <p>
+                        Your answers are being saved automatically.
+                        Please continue with the test.
+                      </p>
+                    )
+                  : (
+                      <p>
+                        {
+                          answeredCount
+                        } of {
+                          questionsResponse
+                            ?.questions
+                            .length ??
+                          0
+                        } answered
+                        {
+                          (
+                            questionsResponse
+                              ?.questions
+                              .length ??
+                            0
+                          ) -
+                            answeredCount >
+                          0
+                            ? ` · ${
+                                (
+                                  questionsResponse
+                                    ?.questions
+                                    .length ??
+                                  0
+                                ) -
+                                answeredCount
+                              } unanswered`
+                            : " · All questions answered"
+                        }.
+                      </p>
+                    )
+              }
+
+              <div className="live-test-runner__dialog-actions">
+                {
+                  liveDialog ===
+                    "five-minute"
+                    ? (
+                        <button
+                          type="button"
+                          className="live-test-runner__dialog-primary"
+                          onClick={() =>
+                            setLiveDialog(
+                              null,
+                            )
+                          }
+                        >
+                          Continue
+                        </button>
+                      )
+                    : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setLiveDialog(
+                                null,
+                              )
+                            }
+                          >
+                            Continue Test
+                          </button>
+
+                          <button
+                            type="button"
+                            className="live-test-runner__dialog-primary"
+                            onClick={() =>
+                              void submitTest(
+                                false,
+                                true,
+                              )
+                            }
+                          >
+                            Submit Test
+                          </button>
+                        </>
+                      )
+                }
+              </div>
+            </section>
+          </div>
+        )
+      }
 
 
       {
@@ -1644,7 +2838,9 @@ if (
                               liveSummary,
                               introClockMs,
                             )
-                      : "Loading synchronized Live Test details…"
+                      : !restoreChecked
+                        ? "Checking your previous Live Test attempt…"
+                        : "Loading synchronized Live Test details…"
                 }
               </p>
 
@@ -1670,12 +2866,7 @@ if (
                 </span>
 
                 <span>
-                  📝 {
-                    isAdminTest
-                      ? 8
-                      : liveSummary?.questionCount ??
-                        "—"
-                  } questions
+                  📝 {isAdminTest ? 8 : "Live"} questions
                 </span>
 
                 <span>
@@ -1688,27 +2879,10 @@ if (
               </div>
 
               {
-                (
-                  (liveSummary?.hearts ?? 0) > 0 ||
-                  simulatedParticipants > 0
-                ) && (
-                  <div className="live-test-runner__participants">
-                    <span
-                      className="live-test-runner__participants-real"
-                      title="Real GYAN participants"
-                    >
-                      ♥{" "}
-                      {(liveSummary?.hearts ?? 0).toLocaleString()}
-                    </span>
-
-                    <span
-                      className="live-test-runner__participants-simulated"
-                      title="Simulated participants"
-                    >
-                      ⚡{" "}
-                      {simulatedParticipants.toLocaleString()} participants
-                    </span>
-                  </div>
+                simulatedParticipants > 0 && (
+                  <small className="live-test-runner__simulation">
+                    🧪 {simulatedParticipants.toLocaleString()} simulated participants
+                  </small>
                 )
               }
 
@@ -1717,19 +2891,11 @@ if (
                 className="live-test-runner__start"
                 disabled={
                   loading ||
-                  (
-                    !isScheduledOver &&
-                    !canStartScheduledTest
-                  )
+                  !canStartScheduledTest
                 }
-                onClick={() => {
-                  if (isScheduledOver) {
-                    void unlockReport();
-                    return;
-                  }
-
-                  void startTest();
-                }}
+                onClick={() =>
+                  void startTest()
+                }
               >
                 {
                   loading
@@ -1739,7 +2905,7 @@ if (
                       : canStartScheduledTest
                         ? `Begin Test · 💎${liveSummary?.entryGemCost ?? 5}`
                         : isScheduledOver
-                          ? "View Results"
+                          ? "Test Ended"
                           : isInLobby
                             ? `Begins in ${clockCountdownText(
                                 scheduledStartMs,
@@ -1753,175 +2919,346 @@ if (
                               : "Loading…"
                 }
               </button>
+
+              {
+                isScheduledOver &&
+                !isAdminTest && (
+                  <div className="live-test-runner__done-actions">
+                    <button
+                      type="button"
+                      className="live-test-runner__question-paper-button"
+                      disabled={
+                        loading
+                      }
+                      onClick={() =>
+                        void unlockQuestionPaper()
+                      }
+                    >
+                      {
+                        loading
+                          ? "Opening…"
+                          : `👀 View Questions · 💎${questionGemCost}`
+                      }
+                    </button>
+                  </div>
+                )
+              }
             </section>
           )
           : (
             <>
-              <div className="live-test-runner__progress">
-                <strong>
-                  {
-                    answeredCount
-                  } / {
-                    questionsResponse
-                      ?.questions
-                      .length ??
-                    0
-                  }
-                </strong>
+              <section className="live-test-runner__cbt">
+                <div className="live-test-runner__cbt-main">
+                  <div className="live-test-runner__cbt-status">
+                    <strong>
+                      Question {
+                        currentQuestionIndex +
+                        1
+                      } of {
+                        questionsResponse
+                          ?.questions
+                          .length ??
+                        0
+                      }
+                    </strong>
 
-                <span>
-                  answered
-                </span>
-
-                {
-                  simulatedParticipants > 0 && (
-                    <span className="live-test-runner__simulation-inline">
-                      ⚡ {simulatedParticipants.toLocaleString()} participants
+                    <span>
+                      {
+                        answeredCount
+                      }/{
+                        questionsResponse
+                          ?.questions
+                          .length ??
+                        0
+                      } answered
                     </span>
-                  )
-                }
-              </div>
 
-              <section className="live-test-runner__questions">
-                {
-                  questionsResponse
-                    ?.questions
-                    .map(
-                      (
-                        question,
-                      ) => (
-                        <article
-                          key={
-                            question
-                              .questionId
-                          }
-                          className="live-test-runner__question"
-                        >
-                          <header>
-                            <strong>
-                              {
-                                question
-                                  .questionOrder
-                              }.
-                            </strong>
+                    <small
+                      className={`live-test-runner__save-state live-test-runner__save-state--${answerSaveState}`}
+                    >
+                      {
+                        answerSaveState ===
+                          "saving"
+                          ? "Saving…"
+                          : answerSaveState ===
+                              "saved"
+                            ? "✓ Saved"
+                            : answerSaveState ===
+                                "error"
+                              ? "⚠ Save retry needed"
+                              : ""
+                      }
+                    </small>
+                  </div>
 
-                            <span>
-                              {
-                                question
-                                  .section ??
-                                "Question"
-                              }
-                            </span>
-                          </header>
-
-                          <p>
+                  {
+                    currentQuestion && (
+                      <article
+                        key={
+                          currentQuestion
+                            .questionId
+                        }
+                        className="live-test-runner__question live-test-runner__question--cbt"
+                      >
+                        <header>
+                          <strong>
                             {
-                              question
-                                .questionText
+                              currentQuestion
+                                .questionOrder
+                            }.
+                          </strong>
+
+                          <span>
+                            {
+                              currentQuestion
+                                .section ??
+                              "Question"
                             }
-                          </p>
+                          </span>
+                        </header>
 
-                          <div className="live-test-runner__choices">
-                            {
+                        <QuestionText
+                          text={
+                            currentQuestion.questionText
+                          }
+                        />
+
+                        <div className="live-test-runner__choices">
+                          {
+                            (
+                              [
+                                "A",
+                                "B",
+                                "C",
+                                "D",
+                              ] as const
+                            ).map(
                               (
-                                [
-                                  "A",
-                                  "B",
-                                  "C",
-                                  "D",
-                                ] as const
-                              ).map(
-                                (
-                                  choice,
-                                ) => {
-                                  const selected =
-                                    answers[
-                                      question
-                                        .questionId
-                                    ] ===
-                                    choice;
+                                choice,
+                              ) => {
+                                const selected =
+                                  answers[
+                                    currentQuestion
+                                      .questionId
+                                  ] ===
+                                  choice;
 
-                                  return (
-                                    <button
-                                      type="button"
-                                      key={
+                                return (
+                                  <button
+                                    type="button"
+                                    key={
+                                      choice
+                                    }
+                                    className={
+                                      selected
+                                        ? "live-test-runner__choice live-test-runner__choice--selected"
+                                        : "live-test-runner__choice"
+                                    }
+                                    onClick={() =>
+                                      chooseAnswer(
+                                        currentQuestion,
+                                        choice,
+                                      )
+                                    }
+                                  >
+                                    <b>
+                                      {
                                         choice
                                       }
-                                      className={
-                                        selected
-                                          ? "live-test-runner__choice live-test-runner__choice--selected"
-                                          : "live-test-runner__choice"
-                                      }
-                                      onClick={() =>
-                                        setAnswers(
-                                          (
-                                            current,
-                                          ) => ({
-                                            ...current,
+                                    </b>
 
-                                            [
-                                              question
-                                                .questionId
-                                            ]:
-                                              choice,
-                                          }),
-                                        )
-                                      }
-                                    >
-                                      <b>
-                                        {
+                                    <span>
+                                      {
+                                        currentQuestion
+                                          .choices[
                                           choice
-                                        }
-                                      </b>
+                                        ]
+                                      }
+                                    </span>
+                                  </button>
+                                );
+                              },
+                            )
+                          }
+                        </div>
 
-                                      <span>
-                                        {
-                                          question
-                                            .choices[
-                                            choice
-                                          ]
-                                        }
-                                      </span>
-                                    </button>
-                                  );
-                                },
+                        <nav className="live-test-runner__question-nav">
+                          <button
+                            type="button"
+                            disabled={
+                              currentQuestionIndex <=
+                              0
+                            }
+                            onClick={() =>
+                              setCurrentQuestionIndex(
+                                (
+                                  current,
+                                ) =>
+                                  Math.max(
+                                    0,
+                                    current -
+                                      1,
+                                  ),
                               )
                             }
-                          </div>
-                        </article>
-                      ),
+                          >
+                            ← Previous
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={
+                              !questionsResponse ||
+                              currentQuestionIndex >=
+                                questionsResponse
+                                  .questions
+                                  .length -
+                                  1
+                            }
+                            onClick={() =>
+                              setCurrentQuestionIndex(
+                                (
+                                  current,
+                                ) =>
+                                  Math.min(
+                                    (
+                                      questionsResponse
+                                        ?.questions
+                                        .length ??
+                                      1
+                                    ) -
+                                      1,
+                                    current +
+                                      1,
+                                  ),
+                              )
+                            }
+                          >
+                            Save & Next →
+                          </button>
+                        </nav>
+                      </article>
                     )
-                }
+                  }
+                </div>
+
+                <aside
+                  className="live-test-runner__palette"
+                  aria-label="Question palette"
+                >
+                  <div className="live-test-runner__palette-title">
+                    <strong>
+                      Questions
+                    </strong>
+
+                    <small>
+                      {
+                        answeredCount
+                      }/{
+                        questionsResponse
+                          ?.questions
+                          .length ??
+                        0
+                      }
+                    </small>
+                  </div>
+
+                  <div
+                    className="live-test-runner__palette-grid"
+                    style={{
+                      gridTemplateColumns:
+                        `repeat(${paletteColumns}, minmax(0, 1fr))`,
+                    }}
+                  >
+                    {
+                      questionsResponse
+                        ?.questions
+                        .map(
+                          (
+                            question,
+                            index,
+                          ) => {
+                            const answered =
+                              Boolean(
+                                answers[
+                                  question
+                                    .questionId
+                                ],
+                              );
+
+                            const current =
+                              index ===
+                              currentQuestionIndex;
+
+                            return (
+                              <button
+                                type="button"
+                                key={
+                                  question
+                                    .questionId
+                                }
+                                className={[
+                                  "live-test-runner__palette-item",
+
+                                  answered
+                                    ? "live-test-runner__palette-item--answered"
+                                    : "live-test-runner__palette-item--unanswered",
+
+                                  current
+                                    ? "live-test-runner__palette-item--current"
+                                    : "",
+                                ]
+                                  .filter(
+                                    Boolean,
+                                  )
+                                  .join(
+                                    " ",
+                                  )}
+                                onClick={() =>
+                                  setCurrentQuestionIndex(
+                                    index,
+                                  )
+                                }
+                                aria-label={`Question ${index + 1}${
+                                  answered
+                                    ? ", answered"
+                                    : ", unanswered"
+                                }${
+                                  current
+                                    ? ", current"
+                                    : ""
+                                }`}
+                              >
+                                {
+                                  index +
+                                  1
+                                }
+                              </button>
+                            );
+                          },
+                        )
+                    }
+                  </div>
+
+                  <button
+                    type="button"
+                    className="live-test-runner__palette-submit"
+                    disabled={
+                      loading
+                    }
+                    onClick={() =>
+                      void submitTest()
+                    }
+                  >
+                    {
+                      loading
+                        ? "Submitting…"
+                        : "✓ Submit"
+                    }
+                  </button>
+                </aside>
               </section>
 
-              <div className="live-test-runner__submit-bar">
-                <span>
-                  {
-                    answeredCount
-                  } / {
-                    questionsResponse
-                      ?.questions
-                      .length ??
-                    0
-                  } answered
-                </span>
-
-                <button
-                  type="button"
-                  disabled={
-                    loading
-                  }
-                  onClick={() =>
-                    void submitTest()
-                  }
-                >
-                  {
-                    loading
-                      ? "Submitting…"
-                      : "Submit Test"
-                  }
-                </button>
-              </div>
             </>
           )
       }

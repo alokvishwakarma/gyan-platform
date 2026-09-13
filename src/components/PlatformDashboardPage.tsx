@@ -15,6 +15,7 @@ interface PlatformDashboardPageProps {
   onOpenEducation: () => void;
   onOpenAddGems?: () => void;
   onOpenLiveTestsSchedule?: () => void;
+  onOpenSettings?: () => void;
 }
 
 
@@ -39,6 +40,7 @@ export default function PlatformDashboardPage({
   onOpenEducation,
   onOpenAddGems,
   onOpenLiveTestsSchedule,
+  onOpenSettings,
 }: PlatformDashboardPageProps) {
   const tiles: AdminTile[] = [
     {
@@ -173,12 +175,15 @@ export default function PlatformDashboardPage({
         onAddShop,
     },
 
-    {
+        {
       icon:
         "⚙️",
 
       title:
         "Settings",
+
+      onClick:
+        onOpenSettings,
     },
   ];
 

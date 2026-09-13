@@ -549,3 +549,737 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.035em;
 }
+
+
+/* Minimal CBT additions */
+
+.live-test-runner__timer--warning {
+  border-color: #e4c66a;
+  background: #fff9dc;
+  color: #7a5b00;
+}
+
+.live-test-runner__cbt {
+  width: min(calc(100% - 18px), 760px);
+  margin: 7px auto 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 176px;
+  gap: 8px;
+  align-items: start;
+}
+
+.live-test-runner__cbt-main {
+  min-width: 0;
+}
+
+.live-test-runner__cbt-status,
+.live-test-runner__palette-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.live-test-runner__cbt-status {
+  min-height: 24px;
+  padding: 3px 7px;
+  border: 1px solid #dde5ec;
+  border-radius: 7px;
+  background: #f8fafc;
+  font-size: 0.52rem;
+}
+
+.live-test-runner__cbt-status strong,
+.live-test-runner__palette-title strong {
+  font-size: 0.6rem;
+}
+
+.live-test-runner__cbt-status > span,
+.live-test-runner__palette-title small,
+.live-test-runner__save-state {
+  color: #687d8f;
+  font-size: 0.49rem;
+}
+
+.live-test-runner__save-state {
+  margin-left: auto;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.live-test-runner__save-state--saved {
+  color: #347144;
+}
+
+.live-test-runner__save-state--error {
+  color: #a33b31;
+}
+
+.live-test-runner__question--cbt {
+  margin-top: 5px;
+  padding: 8px;
+}
+
+.live-test-runner__question--cbt > p {
+  margin: 4px 0 5px;
+  line-height: 1.3;
+}
+
+.live-test-runner__question--cbt .live-test-runner__choices {
+  gap: 2px;
+}
+
+.live-test-runner__question--cbt .live-test-runner__choice {
+  min-height: 27px;
+  padding: 2px 5px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px;
+  border-radius: 6px;
+}
+
+.live-test-runner__question--cbt .live-test-runner__choice b,
+.live-test-runner__question--cbt .live-test-runner__choice--selected b {
+  width: auto;
+  height: auto;
+  display: inline;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.live-test-runner__question--cbt .live-test-runner__choice span {
+  line-height: 1.18;
+}
+
+.live-test-runner__question-nav {
+  margin-top: 5px;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.live-test-runner__question-nav button,
+.live-test-runner__palette-submit {
+  min-height: 28px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 0.55rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.live-test-runner__question-nav button {
+  border: 1px solid #cbd9e5;
+  background: #f8fbfd;
+  color: #29445e;
+}
+
+.live-test-runner__palette {
+  position: sticky;
+  top: 64px;
+  padding: 6px;
+  border: 1px solid #dfe7ee;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.live-test-runner__palette-title {
+  margin-bottom: 5px;
+}
+
+.live-test-runner__palette-grid {
+  display: grid;
+  gap: 3px;
+}
+
+.live-test-runner__palette-item {
+  min-width: 0;
+  height: 23px;
+  padding: 0;
+  border: 1px solid #d7e0e7;
+  border-radius: 5px;
+  background: #f1f4f7;
+  color: #617487;
+  font: inherit;
+  font-size: 0.5rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.live-test-runner__palette-item--answered {
+  border-color: #82bd91;
+  background: #eaf7ed;
+  color: #2f6f3b;
+}
+
+.live-test-runner__palette-item--current {
+  border-color: #2677c9;
+  box-shadow: inset 0 0 0 1px #2677c9;
+}
+
+.live-test-runner__palette-submit {
+  width: 100%;
+  margin-top: 6px;
+  border: 0;
+  background: #1976d2;
+  color: #fff;
+}
+
+@media (max-width: 600px) {
+  .live-test-runner__cbt {
+    width: min(calc(100% - 10px), 620px);
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+
+  .live-test-runner__palette {
+    position: static;
+    order: 2;
+  }
+
+  .live-test-runner__palette-grid {
+    max-width: 340px;
+    margin: 0 auto;
+  }
+
+  .live-test-runner__palette-submit {
+    max-width: 210px;
+    margin: 5px auto 0;
+    display: block;
+  }
+}
+
+@media (max-width: 420px) {
+  .live-test-runner__cbt-status .live-test-runner__save-state {
+    display: none;
+  }
+
+  .live-test-runner__palette-item {
+    height: 21px;
+  }
+}
+
+
+/* Live Test dialog — matches the existing GYAN popup pattern */
+.live-test-runner__dialog-backdrop {
+  position: fixed;
+  inset: 56px 0 0;
+  z-index: 100;
+  display: grid;
+  place-items: start center;
+  padding: 10px 14px 14px;
+  background: rgb(15 23 42 / 34%);
+}
+
+.live-test-runner__dialog {
+  position: relative;
+  width: min(92vw, 360px);
+  padding: 18px 16px 14px;
+  border: 1px solid #dce5ed;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 14px 44px rgb(15 23 42 / 18%);
+  color: #17345c;
+  text-align: center;
+}
+
+.live-test-runner__dialog-x {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #657a8d;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.live-test-runner__dialog > small {
+  display: block;
+  margin-bottom: 4px;
+  color: #788a99;
+  font-size: 0.5rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.live-test-runner__dialog h2 {
+  margin: 2px 28px 7px;
+  color: #17345c;
+  font-size: 0.9rem;
+}
+
+.live-test-runner__dialog p {
+  margin: 0;
+  color: #687b8c;
+  font-size: 0.64rem;
+  line-height: 1.4;
+}
+
+.live-test-runner__dialog-actions {
+  margin-top: 13px;
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+}
+
+.live-test-runner__dialog-actions button {
+  min-height: 32px;
+  padding: 5px 11px;
+  border: 1px solid #d6e0e7;
+  border-radius: 8px;
+  background: #fff;
+  color: #35536f;
+  font: inherit;
+  font-size: 0.6rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.live-test-runner__dialog-actions .live-test-runner__dialog-primary {
+  border-color: #1976d2;
+  background: #1976d2;
+  color: #fff;
+}
+
+@media (max-width: 420px) {
+  .live-test-runner__dialog {
+    width: min(94vw, 340px);
+    padding: 16px 13px 12px;
+  }
+
+  .live-test-runner__dialog-actions {
+    margin-top: 11px;
+  }
+}
+
+/* =========================================================
+   LIVE TEST — VIEW QUESTIONS BUTTON
+   ========================================================= */
+
+.live-test-runner__question-paper-button {
+  min-height: 40px;
+  padding: 7px 15px;
+  border: 1px solid #9fbfe2;
+  border-radius: 10px;
+  background:
+    linear-gradient(
+      180deg,
+      #f7fbff 0%,
+      #edf5ff 100%
+    );
+  color: #245b91;
+  box-shadow:
+    0 2px 7px rgb(48 93 138 / 10%);
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    background 120ms ease;
+}
+
+.live-test-runner__question-paper-button:hover:not(:disabled) {
+  border-color: #6f9fd0;
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #e7f2ff 100%
+    );
+  box-shadow:
+    0 4px 11px rgb(48 93 138 / 15%);
+  transform: translateY(-1px);
+}
+
+.live-test-runner__question-paper-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow:
+    0 2px 6px rgb(48 93 138 / 10%);
+}
+
+.live-test-runner__question-paper-button:focus-visible {
+  outline: 2px solid #75a8da;
+  outline-offset: 2px;
+}
+
+.live-test-runner__question-paper-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+  transform: none;
+}
+
+/* =========================================================
+   UNLOCKED QUESTION PAPER — READ-ONLY CBT / PALETTE VIEW
+   ========================================================= */
+
+.live-test-runner__paper-cbt {
+  margin-bottom: 28px;
+}
+
+.live-test-runner__paper-question {
+  background: #fff;
+}
+
+.live-test-runner__paper-choice {
+  cursor: default;
+  user-select: text;
+}
+
+.live-test-runner__paper-choice:hover {
+  border-color: #dce5ec;
+  background: #fafcfd;
+}
+
+.live-test-runner__paper-note {
+  display: block;
+  margin-top: 7px;
+  color: #718394;
+  font-size: 0.53rem;
+  line-height: 1.4;
+}
+
+.live-test-runner__paper-palette-item {
+  background: #f8fafc;
+  color: #50677d;
+}
+
+.live-test-runner__paper-back {
+  width: 100%;
+  min-height: 28px;
+  margin-top: 6px;
+  padding: 3px 8px;
+  border: 1px solid #cbd9e5;
+  border-radius: 7px;
+  background: #fff;
+  color: #35536f;
+  font: inherit;
+  font-size: 0.55rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.live-test-runner__paper-back:hover {
+  background: #f7fafc;
+}
+
+@media (max-width: 600px) {
+  .live-test-runner__paper-back {
+    max-width: 210px;
+    margin: 6px auto 0;
+    display: block;
+  }
+}
+
+/* =========================================================
+   MOBILE LIVE TEST — SINGLE COMBINED GYAN / TEST HEADER
+   Desktop keeps the normal GYAN AppHeader unchanged.
+   ========================================================= */
+
+.live-test-runner__mobile-title {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  /*
+   * The application shell's global header is hidden only while a
+   * LiveTestRunner screen is present. :has() keeps this CSS-only,
+   * route-local and leaves every desktop/global page unchanged.
+   */
+  body:has(.live-test-runner--screen) .app-header {
+    display: none;
+  }
+
+  body:has(.live-test-runner--screen) .live-test-runner {
+    min-height: 100dvh;
+  }
+
+  .live-test-runner__header {
+    min-height: 44px;
+    padding: 5px 7px;
+    gap: 6px;
+  }
+
+  .live-test-runner__header > button {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+  }
+
+  .live-test-runner__desktop-title {
+    display: none !important;
+  }
+
+  .live-test-runner__mobile-title {
+    min-width: 0;
+    display: block;
+    overflow: hidden;
+    color: #17345c;
+    font-size: 0.68rem;
+    font-weight: 950;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .live-test-runner__timer {
+    min-width: 50px;
+    padding: 5px 6px;
+    font-size: 0.68rem;
+  }
+
+  /*
+   * Use the recovered vertical space for the content rather than
+   * shrinking question text further.
+   */
+  .live-test-runner__question > p {
+    font-size: 0.76rem;
+    line-height: 1.42;
+  }
+
+  .live-test-runner__choice span {
+    font-size: 0.69rem;
+    line-height: 1.32;
+  }
+
+  .live-test-runner__question--cbt > p {
+    line-height: 1.38;
+  }
+
+  .live-test-runner__question--cbt .live-test-runner__choice span {
+    line-height: 1.28;
+  }
+}
+
+/* =========================================================
+   LIVE TEST READABILITY — MOBILE SHELL + FIXED QUESTION ROWS
+   ========================================================= */
+
+/*
+ * The real application header is GyanHeader (.gyan-header), rendered
+ * by GyanShell. Hide it only on mobile while LiveTestRunner is present.
+ * Desktop keeps the normal GYAN header.
+ */
+@media (max-width: 600px) {
+  .gyan-shell:has(.live-test-runner--screen) > .gyan-header {
+    display: none !important;
+  }
+
+  /*
+   * Support both current GyanShell layouts used in the project:
+   * grid-based shell and older fixed-position shell body.
+   */
+  .gyan-shell:has(.live-test-runner--screen) {
+    grid-template-rows:
+      minmax(0, 1fr) !important;
+  }
+
+  .gyan-shell:has(.live-test-runner--screen)
+    > .gyan-shell__body {
+    top: 0 !important;
+    height: 100dvh;
+    padding-top: 0 !important;
+  }
+}
+
+
+/* ---------------------------------------------------------
+   Question text: fixed five-row resting area
+   --------------------------------------------------------- */
+
+.live-test-runner__question-text-wrap {
+  position: relative;
+  margin: 7px 0 9px;
+}
+
+.live-test-runner__question-text {
+  /*
+   * Desktop: increased by another 2px from the latest readable size.
+   * Only question text is enlarged; surrounding UI stays compact.
+   */
+  margin: 0;
+  min-height: calc(4 * 1.42em);
+  max-height: calc(4 * 1.42em);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  color: inherit;
+  font-size: calc(0.70rem + 6px);
+  line-height: 1.42;
+}
+
+.live-test-runner__question-text--expanded {
+  min-height: calc(4 * 1.42em);
+  max-height: none;
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+}
+
+.live-test-runner__question-more {
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1976d2;
+  font: inherit;
+  font-size: 0.58rem;
+  font-weight: 900;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.live-test-runner__question-more:hover {
+  color: #145ea8;
+}
+
+
+/* ---------------------------------------------------------
+   Choice text: desktop +2px more again
+   --------------------------------------------------------- */
+
+.live-test-runner__choice span {
+  font-size: calc(0.62rem + 6px);
+  line-height: 1.32;
+}
+
+/*
+ * Result/review cards inherit the same readable question component.
+ * Keep their normal metadata and explanation sizes unchanged.
+ */
+.live-test-runner__result-question
+  .live-test-runner__question-text-wrap {
+  margin: 7px 0;
+}
+
+
+/* ---------------------------------------------------------
+   Mobile: +1px more again from the current readable mobile sizes
+   --------------------------------------------------------- */
+
+@media (max-width: 600px) {
+  .live-test-runner__question-text {
+    font-size: calc(0.66rem + 3px);
+    line-height: 1.42;
+    min-height: calc(4 * 1.42em);
+    max-height: calc(4 * 1.42em);
+  }
+
+  .live-test-runner__question-text--expanded {
+    min-height: calc(4 * 1.42em);
+    max-height: none;
+  }
+
+  .live-test-runner__choice span {
+    font-size: calc(0.59rem + 3px);
+    line-height: 1.30;
+  }
+
+  .live-test-runner__question--cbt
+    .live-test-runner__choice span {
+    font-size: calc(0.59rem + 3px);
+    line-height: 1.26;
+  }
+
+  .live-test-runner__question-more {
+    font-size: 0.60rem;
+  }
+}
+
+/* =========================================================
+   LIVE TEST — COMPACT CONTROLS / PALETTE
+   ========================================================= */
+
+.live-test-runner__question-nav {
+  margin-top: 3px;
+  gap: 4px;
+}
+
+.live-test-runner__question-nav button {
+  min-height: 24px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.53rem;
+}
+
+/* Tighter palette so Submit remains visible more often. */
+.live-test-runner__palette {
+  padding: 4px;
+}
+
+.live-test-runner__palette-title {
+  margin-bottom: 3px;
+}
+
+.live-test-runner__palette-grid {
+  gap: 2px;
+}
+
+.live-test-runner__palette-item {
+  height: 20px;
+  border-radius: 4px;
+  font-size: 0.48rem;
+}
+
+/* The submit button should stay visually close to the palette. */
+.live-test-runner__palette-submit {
+  min-height: 25px;
+  margin-top: 4px;
+  padding: 2px 7px;
+}
+
+/* Read-only question-paper palette back button follows the compact sizing. */
+.live-test-runner__paper-back {
+  min-height: 25px;
+  margin-top: 4px;
+  padding: 2px 7px;
+}
+
+@media (max-width: 600px) {
+  .live-test-runner__question-nav {
+    margin-top: 2px;
+    gap: 3px;
+  }
+
+  .live-test-runner__question-nav button {
+    min-height: 23px;
+    padding: 1px 6px;
+  }
+
+  .live-test-runner__palette {
+    padding: 3px;
+  }
+
+  .live-test-runner__palette-title {
+    margin-bottom: 2px;
+  }
+
+  .live-test-runner__palette-grid {
+    gap: 2px;
+  }
+
+  .live-test-runner__palette-item {
+    height: 19px;
+  }
+
+  .live-test-runner__palette-submit,
+  .live-test-runner__paper-back {
+    min-height: 24px;
+    margin-top: 3px;
+    padding: 1px 6px;
+  }
+}
+

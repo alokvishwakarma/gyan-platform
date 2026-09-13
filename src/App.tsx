@@ -19,6 +19,8 @@ import AdminStudentsPage from "./components/AdminStudentsPage";
 import AdminNearbySearchesPage
   from "./components/AdminNearbySearchesPage";
 import PlatformDashboardPage from "./components/PlatformDashboardPage";
+import AdminPlatformSettingsPage
+  from "./components/AdminPlatformSettingsPage";
 import AdminAddGemsPage
   from "./components/AdminAddGemsPage";
 import AdminLiveTestSchedule
@@ -845,6 +847,14 @@ export default function App() {
         window.location.pathname ===
         "/admin/add-gems",
     );
+  const [
+    adminPlatformSettingsOpen,
+    setAdminPlatformSettingsOpen,
+  ] = useState(
+    () =>
+      window.location.pathname ===
+        "/admin/settings",
+  );
 
   const [
     adminNearbySearchesOpen,
@@ -1842,6 +1852,30 @@ if (
       />
     );
   }
+  if (
+    adminPlatformSettingsOpen
+  ) {
+    return (
+      <AdminPlatformSettingsPage
+        onBack={() => {
+          setAdminPlatformSettingsOpen(
+            false,
+          );
+
+          setDashboardView(
+            "platform",
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            "/admin",
+          );
+        }}
+      />
+    );
+  }
+
 
   if (
     adminAddGemsOpen
@@ -2312,6 +2346,21 @@ if (
           );
         }}
 
+        onOpenSettings={() => {
+          setDashboardView(
+            null,
+          );
+
+          setAdminPlatformSettingsOpen(
+            true,
+          );
+
+          window.history.pushState(
+            {},
+            "",
+            "/admin/settings",
+          );
+        }}
 />
 
       <button

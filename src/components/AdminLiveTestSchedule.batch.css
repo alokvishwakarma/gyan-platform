@@ -1,0 +1,67 @@
+.admin-live-tests__test-batch-manager {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.8fr) minmax(170px, 1fr) minmax(260px, 2fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(127, 127, 127, 0.22);
+}
+
+.admin-live-tests__test-batch-title {
+  display: flex;
+  flex-direction: column;
+  align-self: center;
+  line-height: 1.15;
+}
+
+.admin-live-tests__test-batch-title small,
+.admin-live-tests__test-batch-manager label span,
+.admin-live-tests__test-batch-summary span {
+  font-size: 0.78rem;
+  opacity: 0.76;
+}
+
+.admin-live-tests__test-batch-manager label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-live-tests__test-batch-manager select,
+.admin-live-tests__test-batch-action {
+  min-height: 34px;
+}
+
+.admin-live-tests__test-batch-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.admin-live-tests__test-batch-action {
+  white-space: nowrap;
+  padding-inline: 14px;
+}
+
+.admin-live-tests__test-batch-message {
+  grid-column: 1 / -1;
+  font-size: 0.84rem;
+}
+
+@media (max-width: 760px) {
+  .admin-live-tests__test-batch-manager {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+  }
+
+  .admin-live-tests__test-batch-title,
+  .admin-live-tests__test-batch-summary,
+  .admin-live-tests__test-batch-message {
+    grid-column: 1 / -1;
+  }
+
+  .admin-live-tests__test-batch-action {
+    grid-column: 1 / -1;
+  }
+}

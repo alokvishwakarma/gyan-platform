@@ -1244,6 +1244,17 @@ export default function PublicHomePage({
   ] =
     useState(false);
 
+  type HeaderGemsVisibility = "HIDDEN" | "EVERYONE" | "ID_EVEN" | "ID_ODD";
+  const [headerGemsVisibility, setHeaderGemsVisibility] = useState<HeaderGemsVisibility>("HIDDEN");
+  const [headerGemBalanceLoaded, setHeaderGemBalanceLoaded] = useState(false);
+
+
+  const [
+    moreGemWaysOpen,
+    setMoreGemWaysOpen,
+  ] =
+    useState(false);
+
 
   const [
     recentGWinks,
@@ -1391,6 +1402,35 @@ export default function PublicHomePage({
 
 
 
+
+  function headerGemsMatch(mode: HeaderGemsVisibility, code: string): boolean {
+    if (!code || mode === "HIDDEN") return false;
+    if (mode === "EVERYONE") return true;
+    const value = Number.parseInt(code.trim().toUpperCase().slice(-1), 36);
+    if (!Number.isFinite(value)) return false;
+    return mode === "ID_EVEN" ? value % 2 === 0 : value % 2 === 1;
+  }
+
+  const showHeaderGems = headerGemsMatch(headerGemsVisibility, canonicalGyanCode || activeEducationGyan?.code || "");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/platform-settings/public", { cache: "no-store", credentials: "include", signal: controller.signal })
+      .then(async response => response.ok ? await response.json() as { headerGemsVisibility?: HeaderGemsVisibility } : null)
+      .then(body => { if (!controller.signal.aborted && body?.headerGemsVisibility) setHeaderGemsVisibility(body.headerGemsVisibility); })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (!showHeaderGems || headerGemBalanceLoaded) return;
+    const controller = new AbortController();
+    void fetch("/api/gyan-identity/gems", { cache: "no-store", credentials: "include", signal: controller.signal })
+      .then(async response => response.ok ? await response.json() as { total?: number } : null)
+      .then(body => { if (!controller.signal.aborted) { if (typeof body?.total === "number") setGemBalance(body.total); setHeaderGemBalanceLoaded(true); } })
+      .catch(() => { if (!controller.signal.aborted) setHeaderGemBalanceLoaded(true); });
+    return () => controller.abort();
+  }, [showHeaderGems, headerGemBalanceLoaded]);
 
   useEffect(
     () => {
@@ -3308,6 +3348,11 @@ export default function PublicHomePage({
                                 *
                               </span>
                             )}
+                            {showHeaderGems && (
+                              <button type="button" className="public-home__header-gems" title="View Gem activity" aria-label={`${headerGemBalanceLoaded ? gemBalance : "Loading"} Gems. View Gem activity.`} onClick={(event) => { event.stopPropagation(); setEducationRatingsCardOpen(false); setGemDialogOpen(true); }}>
+                                <span aria-hidden="true">💎</span><sup>{headerGemBalanceLoaded ? gemBalance : "…"}</sup>
+                              </button>
+                            )}
                           </>
                         )}
                       </>
@@ -4058,7 +4103,7 @@ export default function PublicHomePage({
 
                   <div className="public-home__activity-live-tests">
                     <span className="public-home__activity-live-tests-label">
-                      Live Tests:
+                      Live Test Results:
                     </span>
 
                     <div className="public-home__activity-live-tests-strip">
@@ -4075,11 +4120,43 @@ export default function PublicHomePage({
                                   {
                                     (
                                       liveTestHistoryExpanded
-                                        ? liveTestHistory
-                                        : liveTestHistory.slice(
-                                            0,
-                                            5,
+                                        ? [
+                                            ...liveTestHistory,
+                                          ].sort(
+                                            (
+                                              first,
+                                              second,
+                                            ) =>
+                                              first.code.localeCompare(
+                                                second.code,
+                                                undefined,
+                                                {
+                                                  numeric:
+                                                    true,
+                                                },
+                                              ),
                                           )
+                                        : [
+                                            ...liveTestHistory,
+                                          ]
+                                            .sort(
+                                              (
+                                                first,
+                                                second,
+                                              ) =>
+                                                first.code.localeCompare(
+                                                  second.code,
+                                                  undefined,
+                                                  {
+                                                    numeric:
+                                                      true,
+                                                  },
+                                                ),
+                                            )
+                                            .slice(
+                                              0,
+                                              5,
+                                            )
                                     ).map(
                                       (
                                         test,
@@ -5340,8 +5417,10 @@ export default function PublicHomePage({
           >
             <div
               style={{
+                position:
+                  "relative",
                 padding:
-                  "12px",
+                  "11px 42px 8px",
                 borderBottom:
                   "1px solid #e5e7eb",
                 textAlign:
@@ -5369,6 +5448,37 @@ export default function PublicHomePage({
               >
                 Gem activity
               </small>
+
+              <button
+                type="button"
+                aria-label="Close Gem activity"
+                title="Close"
+                onClick={() =>
+                  setGemDialogOpen(
+                    false,
+                  )
+                }
+                style={{
+                  position: "absolute",
+                  top: "7px",
+                  right: "8px",
+                  width: "28px",
+                  height: "28px",
+                  display: "grid",
+                  placeItems: "center",
+                  padding: 0,
+                  border: "1px solid #d7dee8",
+                  borderRadius: "8px",
+                  background: "#fff",
+                  color: "#475569",
+                  font: "inherit",
+                  fontSize: "1rem",
+                  lineHeight: 1,
+                  cursor: "pointer",
+                }}
+              >
+                ×
+              </button>
             </div>
 
             <div
@@ -5379,18 +5489,91 @@ export default function PublicHomePage({
                   "10px 12px",
               }}
             >
-              <strong
+              <div
                 style={{
-                  display:
-                    "block",
-                  marginBottom:
-                    "6px",
-                  fontSize:
-                    "0.72rem",
+                  padding: "10px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "10px",
+                  background: "#f8fafc",
                 }}
               >
-                Transactions
+                <strong style={{display:"block",marginBottom:"7px",fontSize:"0.74rem"}}>
+                  Earn more Gems
+                </strong>
+
+                <div style={{display:"grid",gap:"6px",fontSize:"0.65rem"}}>
+                  {[
+                    ["👤 Complete your profile", "+2–10 Gems"],
+                    ["👥 Invite a friend", "+20 Gems"],
+                    ["🎓 Test Achievement", "+10 Gems"],
+                    ["🧩 Solve a puzzle", "+2 Gems"],
+                    ["🌐 Create a service / advertisement", "+2 Gems"],
+                  ].map(([label, reward]) => (
+                    <div key={label} style={{display:"grid",gridTemplateColumns:"minmax(0, 1fr) auto",gap:"8px"}}>
+                      <span>
+                        {label}
+                        {label === "🎓 Test Achievement" && (
+                          <small style={{display:"block",color:"#64748b",fontSize:"0.56rem"}}>
+                            100 questions · 90%+ score
+                          </small>
+                        )}
+                      </span>
+                      <strong>{reward}</strong>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMoreGemWaysOpen(
+                      (current) =>
+                        !current,
+                    )
+                  }
+                  aria-expanded={moreGemWaysOpen}
+                  style={{marginTop:"9px",padding:0,border:0,background:"transparent",color:"#475569",font:"inherit",fontSize:"0.62rem",fontWeight:800,textDecoration:"underline",cursor:"pointer"}}
+                >
+                  {moreGemWaysOpen ? "More ways to earn ‹" : "More ways to earn ›"}
+                </button>
+
+                {moreGemWaysOpen && (
+                  <div style={{marginTop:"8px",paddingTop:"8px",borderTop:"1px solid #e2e8f0",display:"grid",gap:"5px",fontSize:"0.63rem"}}>
+                    {[
+                      ["🏪 Create / register a GYAN Shop", "+5 Gems"],
+                      ["⭐ Rate a service", "+1 Gem"],
+                      ["📝 Write a helpful review", "+2 Gems"],
+                      ["📚 Add a learning resource", "+2 Gems"],
+                      ["💡 Suggest a useful service", "+2 Gems"],
+                    ].map(([label, reward]) => (
+                      <div key={label} style={{display:"grid",gridTemplateColumns:"minmax(0, 1fr) auto",gap:"8px"}}>
+                        <span>{label}</span><strong>{reward}</strong>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{marginTop:"10px",paddingTop:"8px",borderTop:"1px solid #e2e8f0",display:"grid",gridTemplateColumns:"minmax(0, 1fr) auto",alignItems:"center",gap:"8px"}}>
+                  <span style={{fontSize:"0.62rem"}}>
+                    ✉️ Need more Gems?
+                    <small style={{display:"block",color:"#64748b",fontSize:"0.55rem"}}>
+                      Contact GYAN admin
+                    </small>
+                  </span>
+                  <a
+                    href="mailto:admin@gyan.cc?subject=GYAN%20Gems"
+                    style={{padding:"5px 8px",border:"1px solid #cbd5e1",borderRadius:"7px",background:"#fff",color:"#334155",fontSize:"0.59rem",fontWeight:800,textDecoration:"none",whiteSpace:"nowrap"}}
+                  >
+                    Contact admin
+                  </a>
+                </div>
+              </div>
+
+              <strong style={{display:"block",margin:"13px 0 5px",fontSize:"0.72rem"}}>
+                Gem activity
               </strong>
+
+
 
               {
                 gemLedgerLoading
@@ -5506,117 +5689,9 @@ export default function PublicHomePage({
                     )
               }
 
-              <div
-                style={{
-                  marginTop:
-                    "13px",
-                  padding:
-                    "10px",
-                  border:
-                    "1px solid #e2e8f0",
-                  borderRadius:
-                    "10px",
-                  background:
-                    "#f8fafc",
-                }}
-              >
-                <strong
-                  style={{
-                    display:
-                      "block",
-                    marginBottom:
-                      "6px",
-                    fontSize:
-                      "0.72rem",
-                  }}
-                >
-                  Earn more Gems
-                </strong>
 
-                <div
-                  style={{
-                    display:
-                      "grid",
-                    gap:
-                      "5px",
-                    fontSize:
-                      "0.66rem",
-                  }}
-                >
-                  <span>
-                    🧩 Solve a puzzle — <strong>5 Gems</strong>
-                  </span>
-
-                  <span>
-                    🎓 Take tests — <strong>1 Gem per question</strong>
-                  </span>
-
-                  <span>
-                    ✉️ Contact GYAN admin for more Gems.
-                  </span>
-                </div>
-
-                <a
-                  href="mailto:admin@gyan.cc?subject=GYAN%20Gems"
-                  style={{
-                    display:
-                      "inline-block",
-                    marginTop:
-                      "7px",
-                    color:
-                      "#334155",
-                    fontSize:
-                      "0.64rem",
-                    fontWeight:
-                      800,
-                  }}
-                >
-                  Contact admin
-                </a>
-              </div>
             </div>
 
-            <div
-              style={{
-                padding:
-                  "8px",
-                borderTop:
-                  "1px solid #e5e7eb",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() =>
-                  setGemDialogOpen(
-                    false,
-                  )
-                }
-                style={{
-                  width:
-                    "100%",
-                  minHeight:
-                    "30px",
-                  border:
-                    "1px solid #cbd5e1",
-                  borderRadius:
-                    "8px",
-                  background:
-                    "#f8fafc",
-                  color:
-                    "#334155",
-                  font:
-                    "inherit",
-                  fontSize:
-                    "0.68rem",
-                  fontWeight:
-                    800,
-                  cursor:
-                    "pointer",
-                }}
-              >
-                Close
-              </button>
-            </div>
           </section>
         </div>
       )}
