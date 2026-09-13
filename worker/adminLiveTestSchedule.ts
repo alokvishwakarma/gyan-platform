@@ -10,8 +10,10 @@ import {
 
 import {
   generateBatch,
+  generateClassBatch,
   listBatchCatalog,
   previewBatch,
+  previewClassBatch,
 } from "./liveTestBatchManager";
 
 
@@ -1508,6 +1510,58 @@ export async function handleAdminLiveTestScheduleRoute(
       return json({ error: error instanceof Error ? error.message : 'Batch preview could not be loaded.' }, 400);
     }
   }
+
+  if (
+    request.method === 'GET' &&
+    url.pathname === '/api/admin/live-tests/batches/classes/preview'
+  ) {
+    const program = (url.searchParams.get('program') ?? '').trim().toUpperCase();
+    const batchCode = (url.searchParams.get('batchCode') ?? '').trim().toUpperCase();
+    try {
+      return json(await previewClassBatch(env, program, batchCode));
+    } catch (error) {
+      return json({
+        error: error instanceof Error
+          ? error.message
+          : 'Class batch preview could not be loaded.',
+      }, 400);
+    }
+  }
+
+  if (
+    request.method === 'POST' &&
+    url.pathname === '/api/admin/live-tests/batches/classes/generate'
+  ) {
+    let body: { program?: unknown; batchCode?: unknown };
+    try {
+      body = await request.json() as typeof body;
+    } catch {
+      return json({ error: 'Invalid JSON body.' }, 400);
+    }
+
+    const program =
+      typeof body.program === 'string'
+        ? body.program.trim().toUpperCase()
+        : '';
+    const batchCode =
+      typeof body.batchCode === 'string'
+        ? body.batchCode.trim().toUpperCase()
+        : '';
+
+    try {
+      return json({
+        ok: true,
+        ...(await generateClassBatch(env, program, batchCode)),
+      });
+    } catch (error) {
+      return json({
+        error: error instanceof Error
+          ? error.message
+          : 'Class batch generation failed.',
+      }, 409);
+    }
+  }
+
 
   if (
     request.method === 'POST' &&

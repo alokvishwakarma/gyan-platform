@@ -32,6 +32,7 @@ type BatchRow = {
   active: number;
 };
 
+
 export type BatchExam = 'JEE' | 'NEET' | 'SAT' | 'GRE' | 'OLSAT';
 
 const SUPPORTED_EXAMS: BatchExam[] = [
@@ -261,6 +262,722 @@ async function rowsForDate(
         program,
       );
 }
+
+
+const CLASS_SUBJECTS: Record<string, string[]> = {
+  JEE: [
+    'MATH',
+    'PHYSICS',
+    'CHEMISTRY',
+  ],
+  NEET: [
+    'PHYSICS',
+    'CHEMISTRY',
+    'BIOLOGY',
+  ],
+  SAT: [
+    'READING_WRITING',
+    'MATH',
+  ],
+};
+
+type ClassTemplateHeaderRow = {
+  template_code: string;
+  program_code: string;
+  label: string;
+  teaching_days: number;
+  active: number;
+};
+
+type ClassTemplateRow = {
+  teaching_day: number;
+  subject_code: string;
+  topic_code: string | null;
+  topic_name: string;
+  class_start_local: string;
+  class_end_local: string;
+  schedule_timezone: string;
+  sequence_number: number;
+};
+
+export type ClassBatchPreview = {
+  program: string;
+  batchCode: string;
+  label: string;
+  startDate: string;
+  endDate: string;
+  configured: boolean;
+  templateCode: string | null;
+  templateLabel: string | null;
+  teachingDays: number;
+  eligibleDays: number;
+  revisionDays: number;
+  scheduledDays: number;
+  completedTeachingDays: number;
+  completedScheduleDays: number;
+  normalizedRows: number;
+  needsNormalization: boolean;
+  subjectCount: number;
+  expectedRows: number;
+  existingRows: number;
+  missingRows: number;
+  blackoutDays: number;
+};
+
+function isWeekday(date: string): boolean {
+  const day = dayOfWeek(date);
+  return day >= 1 && day <= 5;
+}
+
+async function classTemplateHeader(
+  env: LiveTestBatchEnv,
+  program: string,
+): Promise<ClassTemplateHeaderRow | null> {
+  return env.gyan_registry.prepare(`
+    SELECT
+      template_code,
+      program_code,
+      label,
+      teaching_days,
+      active
+    FROM education_live_class_templates
+    WHERE
+      program_code = ?
+      AND active = 1
+    ORDER BY id
+    LIMIT 1
+  `).bind(
+    program,
+  ).first<ClassTemplateHeaderRow>();
+}
+
+async function classTemplateRows(
+  env: LiveTestBatchEnv,
+  templateCode: string,
+): Promise<ClassTemplateRow[]> {
+  const result = await env.gyan_registry.prepare(`
+    SELECT
+      teaching_day,
+      subject_code,
+      topic_code,
+      topic_name,
+      class_start_local,
+      class_end_local,
+      schedule_timezone,
+      sequence_number
+    FROM education_live_class_template_rows
+    WHERE template_code = ?
+    ORDER BY
+      teaching_day,
+      sequence_number,
+      subject_code
+  `).bind(
+    templateCode,
+  ).all<ClassTemplateRow>();
+
+  return result.results;
+}
+
+async function blackoutDates(
+  env: LiveTestBatchEnv,
+  batchCode: string,
+  program: string,
+): Promise<Set<string>> {
+  const result = await env.gyan_registry.prepare(`
+    SELECT blackout_date
+    FROM education_live_class_blackout_dates
+    WHERE
+      batch_code = ?
+      AND (
+        program_code = ?
+        OR program_code = 'ALL'
+      )
+  `).bind(
+    batchCode,
+    program,
+  ).all<{ blackout_date: string }>();
+
+  return new Set(
+    result.results.map(
+      (row) => row.blackout_date,
+    ),
+  );
+}
+
+async function teachingDatesForBatch(
+  env: LiveTestBatchEnv,
+  batch: BatchRow,
+  program: string,
+  teachingDays: number,
+): Promise<{
+  dates: string[];
+  coreDates: string[];
+  eligibleDays: number;
+  revisionDays: number;
+  blackoutDays: number;
+}> {
+  const blackouts = await blackoutDates(
+    env,
+    batch.batch_code,
+    program,
+  );
+
+  const eligible: string[] = [];
+  let blackoutDays = 0;
+
+  for (
+    let date = batch.start_date;
+    date <= batch.end_date;
+    date = addDays(date, 1)
+  ) {
+    if (!isWeekday(date)) {
+      continue;
+    }
+
+    if (blackouts.has(date)) {
+      blackoutDays += 1;
+      continue;
+    }
+
+    eligible.push(date);
+  }
+
+  const safeTeachingDays = Math.max(
+    0,
+    teachingDays,
+  );
+
+  return {
+    dates: eligible,
+    coreDates: eligible.slice(
+      0,
+      safeTeachingDays,
+    ),
+    eligibleDays: eligible.length,
+    revisionDays: Math.max(
+      0,
+      eligible.length - safeTeachingDays,
+    ),
+    blackoutDays,
+  };
+}
+
+export async function previewClassBatch(
+  env: LiveTestBatchEnv,
+  programRaw: string,
+  batchCode: string,
+): Promise<ClassBatchPreview> {
+  const program = programRaw.trim().toUpperCase();
+  const batch = await batchRow(env, batchCode);
+
+  if (!batch) {
+    throw new Error('Live Test batch not found.');
+  }
+
+  const template = await classTemplateHeader(
+    env,
+    program,
+  );
+
+  if (!template || Number(template.active) !== 1) {
+    return {
+      program,
+      batchCode: batch.batch_code,
+      label: batch.label,
+      startDate: batch.start_date,
+      endDate: batch.end_date,
+      configured: false,
+      templateCode: null,
+      templateLabel: null,
+      teachingDays: 0,
+      eligibleDays: 0,
+      revisionDays: 0,
+      scheduledDays: 0,
+      completedTeachingDays: 0,
+      completedScheduleDays: 0,
+      normalizedRows: 0,
+      needsNormalization: false,
+      subjectCount: 0,
+      expectedRows: 0,
+      existingRows: 0,
+      missingRows: 0,
+      blackoutDays: 0,
+    };
+  }
+
+  const rows = await classTemplateRows(
+    env,
+    template.template_code,
+  );
+
+  const teachingDays = Math.max(
+    1,
+    Number(template.teaching_days),
+  );
+
+  const teachingDates = await teachingDatesForBatch(
+    env,
+    batch,
+    program,
+    teachingDays,
+  );
+
+  if (teachingDates.coreDates.length < teachingDays) {
+    throw new Error(
+      `${batch.label} has only ${teachingDates.coreDates.length} eligible teaching dates for the ${teachingDays}-day ${program} template.`,
+    );
+  }
+
+  const rowsByDay = new Map<
+    number,
+    ClassTemplateRow[]
+  >();
+
+  const subjectTemplate = new Map<
+    string,
+    ClassTemplateRow
+  >();
+
+  for (const row of rows) {
+    const day = Number(row.teaching_day);
+    const group = rowsByDay.get(day) ?? [];
+    group.push(row);
+    rowsByDay.set(day, group);
+
+    if (!subjectTemplate.has(row.subject_code)) {
+      subjectTemplate.set(
+        row.subject_code,
+        row,
+      );
+    }
+  }
+
+  const revisionRows = [
+    ...subjectTemplate.values(),
+  ].sort(
+    (a, b) =>
+      Number(a.sequence_number) -
+      Number(b.sequence_number),
+  );
+
+  let expectedRows = 0;
+  let existingRows = 0;
+  let completedTeachingDays = 0;
+  let completedScheduleDays = 0;
+  let normalizedRows = 0;
+
+  for (
+    let index = 0;
+    index < teachingDates.dates.length;
+    index += 1
+  ) {
+    const scheduleDay = index + 1;
+    const date = teachingDates.dates[index];
+    const isCore = scheduleDay <= teachingDays;
+
+    const desiredRows = isCore
+      ? (
+          rowsByDay.get(scheduleDay) ??
+          []
+        )
+      : revisionRows;
+
+    expectedRows += desiredRows.length;
+
+    const existing = await env.gyan_registry.prepare(`
+      SELECT
+        subject_code,
+        batch_code,
+        template_code,
+        teaching_day,
+        class_kind
+      FROM education_live_class_schedule
+      WHERE
+        schedule_date = ?
+        AND program_code = ?
+        AND active = 1
+    `).bind(
+      date,
+      program,
+    ).all<{
+      subject_code: string;
+      batch_code: string | null;
+      template_code: string | null;
+      teaching_day: number | null;
+      class_kind: string | null;
+    }>();
+
+    const existingBySubject = new Map(
+      existing.results.map(
+        (row) => [
+          row.subject_code
+            .trim()
+            .toUpperCase(),
+          row,
+        ],
+      ),
+    );
+
+    let present = 0;
+
+    for (const desiredRow of desiredRows) {
+      const subject =
+        desiredRow.subject_code
+          .trim()
+          .toUpperCase();
+
+      const existingRow =
+        existingBySubject.get(subject);
+
+      if (!existingRow) {
+        continue;
+      }
+
+      present += 1;
+
+      const expectedKind =
+        isCore
+          ? 'CORE'
+          : 'REVISION';
+
+      if (
+        existingRow.batch_code ===
+          batch.batch_code &&
+        existingRow.template_code ===
+          template.template_code &&
+        Number(
+          existingRow.teaching_day,
+        ) === scheduleDay &&
+        existingRow.class_kind ===
+          expectedKind
+      ) {
+        normalizedRows += 1;
+      }
+    }
+
+    existingRows += present;
+
+    if (
+      desiredRows.length > 0 &&
+      present === desiredRows.length
+    ) {
+      completedScheduleDays += 1;
+
+      if (isCore) {
+        completedTeachingDays += 1;
+      }
+    }
+  }
+
+  return {
+    program,
+    batchCode: batch.batch_code,
+    label: batch.label,
+    startDate: batch.start_date,
+    endDate: batch.end_date,
+    configured: rows.length > 0,
+    templateCode: template.template_code,
+    templateLabel: template.label,
+    teachingDays,
+    eligibleDays: teachingDates.eligibleDays,
+    revisionDays: teachingDates.revisionDays,
+    scheduledDays: teachingDates.dates.length,
+    completedTeachingDays,
+    completedScheduleDays,
+    normalizedRows,
+    needsNormalization:
+      normalizedRows < expectedRows,
+    subjectCount:
+      CLASS_SUBJECTS[program]?.length ?? 0,
+    expectedRows,
+    existingRows,
+    missingRows: Math.max(
+      0,
+      expectedRows - existingRows,
+    ),
+    blackoutDays: teachingDates.blackoutDays,
+  };
+}
+
+export async function generateClassBatch(
+  env: LiveTestBatchEnv,
+  programRaw: string,
+  batchCode: string,
+): Promise<{
+  program: string;
+  batchCode: string;
+  templateCode: string;
+  teachingDays: number;
+  revisionDays: number;
+  scheduledDays: number;
+  inserted: number;
+  updatedRevisionRows: number;
+  preserved: number;
+  expectedRows: number;
+  completedTeachingDays: number;
+  completedScheduleDays: number;
+}> {
+  const program = programRaw.trim().toUpperCase();
+
+  if (!CLASS_SUBJECTS[program]) {
+    throw new Error(
+      'Automatic class generation is currently available for JEE, NEET and SAT.',
+    );
+  }
+
+  const batch = await batchRow(
+    env,
+    batchCode,
+  );
+
+  if (!batch) {
+    throw new Error('Live Test batch not found.');
+  }
+
+  const template = await classTemplateHeader(
+    env,
+    program,
+  );
+
+  if (!template || Number(template.active) !== 1) {
+    throw new Error(
+      `${program} does not have an active class template.`,
+    );
+  }
+
+  const teachingDays = Math.max(
+    1,
+    Number(template.teaching_days),
+  );
+
+  const templateRows = await classTemplateRows(
+    env,
+    template.template_code,
+  );
+
+  if (templateRows.length === 0) {
+    throw new Error(
+      `${template.template_code} has no class template rows.`,
+    );
+  }
+
+  const teachingDates = await teachingDatesForBatch(
+    env,
+    batch,
+    program,
+    teachingDays,
+  );
+
+  if (teachingDates.coreDates.length < teachingDays) {
+    throw new Error(
+      `${batch.label} does not have ${teachingDays} eligible weekdays after blackout dates.`,
+    );
+  }
+
+  const rowsByDay = new Map<
+    number,
+    ClassTemplateRow[]
+  >();
+
+  const subjectTemplate = new Map<
+    string,
+    ClassTemplateRow
+  >();
+
+  for (const row of templateRows) {
+    const day = Number(row.teaching_day);
+    const group = rowsByDay.get(day) ?? [];
+    group.push(row);
+    rowsByDay.set(day, group);
+
+    if (!subjectTemplate.has(row.subject_code)) {
+      subjectTemplate.set(
+        row.subject_code,
+        row,
+      );
+    }
+  }
+
+  const revisionRows = [
+    ...subjectTemplate.values(),
+  ].sort(
+    (a, b) =>
+      Number(a.sequence_number) -
+      Number(b.sequence_number),
+  );
+
+  let inserted = 0;
+  let updatedRevisionRows = 0;
+  let preserved = 0;
+
+  for (
+    let index = 0;
+    index < teachingDates.dates.length;
+    index += 1
+  ) {
+    const scheduleDay = index + 1;
+    const scheduleDate = teachingDates.dates[index];
+    const isCore = scheduleDay <= teachingDays;
+    const revisionNumber = Math.max(
+      0,
+      scheduleDay - teachingDays,
+    );
+
+    const desiredRows = isCore
+      ? (
+          rowsByDay.get(scheduleDay) ??
+          []
+        )
+      : revisionRows;
+
+    for (const row of desiredRows) {
+      const existing = await env.gyan_registry.prepare(`
+        SELECT id
+        FROM education_live_class_schedule
+        WHERE
+          schedule_date = ?
+          AND program_code = ?
+          AND subject_code = ?
+          AND active = 1
+        ORDER BY
+          sequence_number,
+          id
+        LIMIT 1
+      `).bind(
+        scheduleDate,
+        program,
+        row.subject_code,
+      ).first<{ id: number }>();
+
+      const classKind = isCore
+        ? 'CORE'
+        : 'REVISION';
+
+      const topicCode = isCore
+        ? row.topic_code
+        : null;
+
+      const topicName = isCore
+        ? row.topic_name
+        : `Revision ${revisionNumber}`;
+
+      if (existing) {
+        if (isCore) {
+          await env.gyan_registry.prepare(`
+            UPDATE education_live_class_schedule
+            SET
+              batch_code = ?,
+              template_code = ?,
+              teaching_day = ?,
+              class_kind = 'CORE',
+              generation_source =
+                COALESCE(
+                  generation_source,
+                  'TEMPLATE'
+                ),
+              updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `).bind(
+            batch.batch_code,
+            template.template_code,
+            scheduleDay,
+            existing.id,
+          ).run();
+
+          preserved += 1;
+        } else {
+          await env.gyan_registry.prepare(`
+            UPDATE education_live_class_schedule
+            SET
+              topic_code = NULL,
+              topic_name = ?,
+              batch_code = ?,
+              template_code = ?,
+              teaching_day = ?,
+              class_kind = 'REVISION',
+              generation_source = 'TEMPLATE',
+              updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `).bind(
+            topicName,
+            batch.batch_code,
+            template.template_code,
+            scheduleDay,
+            existing.id,
+          ).run();
+
+          updatedRevisionRows += 1;
+        }
+
+        continue;
+      }
+
+      await env.gyan_registry.prepare(`
+        INSERT INTO education_live_class_schedule (
+          schedule_date,
+          program_code,
+          subject_code,
+          topic_code,
+          topic_name,
+          class_start_local,
+          class_end_local,
+          schedule_timezone,
+          sequence_number,
+          active,
+          batch_code,
+          template_code,
+          teaching_day,
+          class_kind,
+          generation_source
+        )
+        VALUES (
+          ?, ?, ?, ?, ?, ?, ?, ?, ?, 1,
+          ?, ?, ?, ?, 'TEMPLATE'
+        )
+      `).bind(
+        scheduleDate,
+        program,
+        row.subject_code,
+        topicCode,
+        topicName,
+        row.class_start_local,
+        row.class_end_local,
+        row.schedule_timezone,
+        Number(row.sequence_number),
+        batch.batch_code,
+        template.template_code,
+        scheduleDay,
+        classKind,
+      ).run();
+
+      inserted += 1;
+    }
+  }
+
+  const preview = await previewClassBatch(
+    env,
+    program,
+    batchCode,
+  );
+
+  return {
+    program,
+    batchCode: batch.batch_code,
+    templateCode: template.template_code,
+    teachingDays,
+    revisionDays: preview.revisionDays,
+    scheduledDays: preview.scheduledDays,
+    inserted,
+    updatedRevisionRows,
+    preserved,
+    expectedRows: preview.expectedRows,
+    completedTeachingDays:
+      preview.completedTeachingDays,
+    completedScheduleDays:
+      preview.completedScheduleDays,
+  };
+}
+
 
 async function anchorId(env: LiveTestBatchEnv, program: string): Promise<number> {
   const row = await env.gyan_registry.prepare(`

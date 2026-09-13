@@ -134,10 +134,36 @@ type TestBatchPreview = {
   configured: boolean;
   weekdayTests: number;
   saturdayTests: number;
+  sundayTests: number;
   plannedTests: number;
   missingScheduleDays: number;
   existingAutoTests: number;
   adminTests: number;
+};
+
+
+type ClassBatchPreview = {
+  program: string;
+  batchCode: string;
+  label: string;
+  startDate: string;
+  endDate: string;
+  configured: boolean;
+  templateCode: string | null;
+  templateLabel: string | null;
+  teachingDays: number;
+  eligibleDays: number;
+  revisionDays: number;
+  scheduledDays: number;
+  completedTeachingDays: number;
+  completedScheduleDays: number;
+  normalizedRows: number;
+  needsNormalization: boolean;
+  subjectCount: number;
+  expectedRows: number;
+  existingRows: number;
+  missingRows: number;
+  blackoutDays: number;
 };
 
 
@@ -583,6 +609,22 @@ export default function AdminLiveTestSchedule({
   const [
     testBatchMessage,
     setTestBatchMessage,
+  ] = useState('');
+
+
+  const [
+    classBatchPreview,
+    setClassBatchPreview,
+  ] = useState<ClassBatchPreview | null>(null);
+
+  const [
+    classBatchBusy,
+    setClassBatchBusy,
+  ] = useState(false);
+
+  const [
+    classBatchMessage,
+    setClassBatchMessage,
   ] = useState('');
 
 
@@ -1835,6 +1877,145 @@ export default function AdminLiveTestSchedule({
     );
 
 
+  const loadClassBatchPreview =
+    useCallback(
+      async (
+        program: BatchExam,
+        batchCode: string,
+      ) => {
+        if (
+          !batchCode ||
+          (
+            program !== "JEE" &&
+            program !== "NEET" &&
+            program !== "SAT"
+          )
+        ) {
+          setClassBatchPreview(null);
+          return;
+        }
+
+        const response = await fetch(
+          `/api/admin/live-tests/batches/classes/preview?program=${encodeURIComponent(program)}&batchCode=${encodeURIComponent(batchCode)}`,
+          {
+            credentials: "include",
+            cache: "no-store",
+          },
+        );
+
+        const body = await response.json() as
+          ClassBatchPreview & {
+            error?: string;
+          };
+
+        if (!response.ok) {
+          throw new Error(
+            body.error ??
+            "Class batch preview could not be loaded.",
+          );
+        }
+
+        setClassBatchPreview(body);
+      },
+      [],
+    );
+
+
+  async function runClassBatch(): Promise<void> {
+    if (
+      batchExam !== "JEE" &&
+      batchExam !== "NEET" &&
+      batchExam !== "SAT"
+    ) {
+      return;
+    }
+
+    setClassBatchBusy(true);
+    setClassBatchMessage("");
+
+    try {
+      const response = await fetch(
+        "/api/admin/live-tests/batches/classes/generate",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            program: batchExam,
+            batchCode: selectedTestBatchCode,
+          }),
+        },
+      );
+
+      const body = await response.json() as {
+        inserted?: number;
+        preserved?: number;
+        templateCode?: string;
+        teachingDays?: number;
+        revisionDays?: number;
+        scheduledDays?: number;
+        expectedRows?: number;
+        completedTeachingDays?: number;
+        completedScheduleDays?: number;
+        updatedRevisionRows?: number;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(
+          body.error ??
+          "Class batch generation failed.",
+        );
+      }
+
+      setClassBatchMessage(
+        `✓ ${batchExam} class batch complete · ${body.teachingDays ?? 0} core + ${body.revisionDays ?? 0} revision days · ${body.inserted ?? 0} added · ${body.updatedRevisionRows ?? 0} revision rows normalized · ${body.preserved ?? 0} core rows preserved.`,
+      );
+
+      await loadClassBatchPreview(
+        batchExam,
+        selectedTestBatchCode,
+      );
+
+      const classResponse = await fetch(
+        `/api/admin/live-tests/class-schedule?country=${encodeURIComponent(country)}`,
+        {
+          credentials: "include",
+          cache: "no-store",
+        },
+      );
+
+      const classBody = await classResponse.json() as {
+        classSchedule?: AdminLiveClassItem[];
+        error?: string;
+      };
+
+      if (classResponse.ok) {
+        setClassSchedule(
+          Array.isArray(classBody.classSchedule)
+            ? classBody.classSchedule
+            : [],
+        );
+      }
+
+      await loadTestBatchPreview(
+        batchExam,
+        selectedTestBatchCode,
+      );
+    } catch (error) {
+      setClassBatchMessage(
+        error instanceof Error
+          ? error.message
+          : "Class batch generation failed.",
+      );
+    } finally {
+      setClassBatchBusy(false);
+    }
+  }
+
+
   async function runTestBatch(): Promise<void> {
     if (!testBatchPreview) return;
 
@@ -1952,6 +2133,115 @@ export default function AdminLiveTestSchedule({
       return () => controller.abort();
     },
     [batchExam, selectedTestBatchCode],
+  );
+
+
+  useEffect(
+    () => {
+      const controller =
+        new AbortController();
+
+      if (
+        !selectedTestBatchCode ||
+        (
+          batchExam !== "JEE" &&
+          batchExam !== "NEET" &&
+          batchExam !== "SAT"
+        )
+      ) {
+        return () =>
+          controller.abort();
+      }
+
+      void fetch(
+        `/api/admin/live-tests/batches/classes/preview?program=${encodeURIComponent(
+          batchExam,
+        )}&batchCode=${encodeURIComponent(
+          selectedTestBatchCode,
+        )}`,
+        {
+          credentials:
+            "include",
+
+          cache:
+            "no-store",
+
+          signal:
+            controller.signal,
+        },
+      )
+        .then(
+          async (
+            response,
+          ) => {
+            const body =
+              await response.json() as
+                ClassBatchPreview & {
+                  error?:
+                    string;
+                };
+
+            if (
+              !response.ok
+            ) {
+              throw new Error(
+                body.error ??
+                "Class batch preview could not be loaded.",
+              );
+            }
+
+            return body;
+          },
+        )
+        .then(
+          (
+            body,
+          ) => {
+            if (
+              controller.signal.aborted
+            ) {
+              return;
+            }
+
+            setClassBatchPreview(
+              body,
+            );
+
+            setClassBatchMessage(
+              "",
+            );
+          },
+        )
+        .catch(
+          (
+            error,
+          ) => {
+            if (
+              controller.signal.aborted
+            ) {
+              return;
+            }
+
+            setClassBatchPreview(
+              null,
+            );
+
+            setClassBatchMessage(
+              error instanceof
+                Error
+                ? error.message
+                : "Class batch preview could not be loaded.",
+            );
+          },
+        );
+
+      return () =>
+        controller.abort();
+    },
+    [
+      batchExam,
+      selectedTestBatchCode,
+    ],
   );
 
 
@@ -3993,6 +4283,9 @@ export default function AdminLiveTestSchedule({
                       setTestBatchMessage(
                         "",
                       );
+                      setClassBatchMessage(
+                        "",
+                      );
                     }}
                   >
                     {
@@ -4066,6 +4359,9 @@ export default function AdminLiveTestSchedule({
                       setTestBatchMessage(
                         "",
                       );
+                      setClassBatchMessage(
+                        "",
+                      );
                     }}
                   >
                     {
@@ -4121,6 +4417,8 @@ export default function AdminLiveTestSchedule({
                                       testBatchPreview.weekdayTests
                                     } · Saturday 20%: {
                                       testBatchPreview.saturdayTests
+                                    } · Sunday 50%: {
+                                      testBatchPreview.sundayTests
                                     } · Planned: {
                                       testBatchPreview.plannedTests
                                     }
@@ -4163,6 +4461,103 @@ export default function AdminLiveTestSchedule({
                 }
               </div>
 
+              {
+                (
+                  batchExam === "JEE" ||
+                  batchExam === "NEET" ||
+                  batchExam === "SAT"
+                ) && (
+                  <>
+                    <div className="admin-live-tests__test-batch-dialog-summary">
+                      {
+                        classBatchPreview
+                          ? (
+                              <>
+                                <strong>
+                                  Live Classes · {
+                                    classBatchPreview.completedTeachingDays
+                                  }/{
+                                    classBatchPreview.teachingDays
+                                  } core days · {
+                                    classBatchPreview.revisionDays
+                                  } revision days
+                                </strong>
+
+                                <span>
+                                  {
+                                    classBatchPreview.templateLabel ??
+                                    classBatchPreview.templateCode ??
+                                    "Class template"
+                                  } · Existing: {
+                                    classBatchPreview.existingRows
+                                  }/{
+                                    classBatchPreview.expectedRows
+                                  } class rows · Missing: {
+                                    classBatchPreview.missingRows
+                                  } · Template-normalized: {
+                                    classBatchPreview.normalizedRows
+                                  }/{
+                                    classBatchPreview.expectedRows
+                                  }
+                                </span>
+
+                                <span>
+                                  38 core teaching days are followed by automatic Revision 1, 2, 3… padding through the remaining eligible weekdays. Existing rows can be adopted into the template without deleting them. Weekends and DB blackout dates are skipped.
+                                </span>
+                              </>
+                            )
+                          : (
+                              <span>
+                                Loading class batch preview…
+                              </span>
+                            )
+                      }
+                    </div>
+
+                    <button
+                      type="button"
+                      className="admin-live-tests__batch-copy admin-live-tests__test-batch-generate"
+                      disabled={
+                        classBatchBusy ||
+                        !classBatchPreview ||
+                        !classBatchPreview.configured ||
+                        (
+                          classBatchPreview.missingRows === 0 &&
+                          !classBatchPreview.needsNormalization
+                        )
+                      }
+                      onClick={() =>
+                        void runClassBatch()
+                      }
+                    >
+                      {
+                        classBatchBusy
+                          ? "Working…"
+                          : classBatchPreview &&
+                              classBatchPreview.missingRows === 0 &&
+                              !classBatchPreview.needsNormalization
+                            ? "Class batch complete"
+                            : classBatchPreview &&
+                                classBatchPreview.missingRows === 0 &&
+                                classBatchPreview.needsNormalization
+                              ? "Apply / normalize 38-day template"
+                              : "Generate / complete class batch"
+                      }
+                    </button>
+
+                    {
+                      classBatchMessage && (
+                        <div className="admin-live-tests__batch-message">
+                          {
+                            classBatchMessage
+                          }
+                        </div>
+                      )
+                    }
+                  </>
+                )
+              }
+
               <button
                 type="button"
                 className="admin-live-tests__batch-copy admin-live-tests__test-batch-generate"
@@ -4199,7 +4594,7 @@ export default function AdminLiveTestSchedule({
               }
 
               <small className="admin-live-tests__batch-note">
-                Weekdays use 10%; Saturdays use 20%. Question count and duration scale together. Admin-created tests are preserved when a batch is recreated.
+                Weekdays use 10%; Saturdays use 20%; Sundays use 50%. Question count and duration scale together. Admin-created tests are preserved when a batch is recreated.
               </small>
             </section>
           </div>
