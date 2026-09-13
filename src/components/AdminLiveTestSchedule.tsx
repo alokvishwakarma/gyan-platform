@@ -38,6 +38,8 @@ type AdminLiveTestItem = {
   expectedQuestions: number;
   ready: boolean;
   eventKind?: string | null;
+  createdAt: string;
+  adminModifiedAt: string | null;
 };
 
 
@@ -68,6 +70,12 @@ type AdminLiveClassItem = {
 
   sequenceNumber:
     number;
+
+  createdAt:
+    string;
+
+  adminModifiedAt:
+    string | null;
 };
 
 
@@ -595,6 +603,14 @@ export default function AdminLiveTestSchedule({
     selectedTestBatchCode,
     setSelectedTestBatchCode,
   ] = useState('2026_SEP_OCT');
+
+
+  const [
+    calendarBatchStartDate,
+    setCalendarBatchStartDate,
+  ] = useState<string | null>(
+    null,
+  );
 
   const [
     testBatchPreview,
@@ -1400,7 +1416,62 @@ export default function AdminLiveTestSchedule({
   }
 
 
-  function participantLabel(
+  function parseDatabaseTimestamp(
+  rawValue: string,
+): Date | null {
+  if (!rawValue) {
+    return null;
+  }
+
+  const normalized =
+    /Z$|[+-]\d\d:\d\d$/.test(
+      rawValue,
+    )
+      ? rawValue
+      : `${rawValue.replace(
+          " ",
+          "T",
+        )}Z`;
+
+  const value =
+    new Date(
+      normalized,
+    );
+
+  return Number.isNaN(
+    value.getTime(),
+  )
+    ? null
+    : value;
+}
+
+
+function createdTimeText(
+  rawValue: string,
+): string {
+  const value =
+    parseDatabaseTimestamp(
+      rawValue,
+    );
+
+  if (!value) {
+    return rawValue;
+  }
+
+  return new Intl.DateTimeFormat(
+    undefined,
+    {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    },
+  ).format(
+    value,
+  );
+}
+
+
+function participantLabel(
     participant:
       AdminLiveParticipant,
   ): string {
@@ -1576,6 +1647,7 @@ export default function AdminLiveTestSchedule({
      *   Sep 09 ... Oct 31, then Sep 01 ... Sep 08.
      */
     const reference =
+      calendarBatchStartDate ??
       scheduleDates[0] ??
       fallbackDates[0] ??
       localNowParts(
@@ -1634,6 +1706,12 @@ export default function AdminLiveTestSchedule({
             10,
           ),
       );
+    }
+
+    if (
+      calendarBatchStartDate
+    ) {
+      return allDates;
     }
 
     const today =
@@ -1930,6 +2008,23 @@ export default function AdminLiveTestSchedule({
       return;
     }
 
+    const recreate =
+      Boolean(
+        classBatchPreview &&
+        classBatchPreview.missingRows === 0 &&
+        !classBatchPreview.needsNormalization,
+      );
+
+    if (
+      recreate &&
+      classBatchPreview &&
+      !window.confirm(
+        `Recreate ${batchExam} · ${classBatchPreview.label} classes?\n\nThe template-managed CORE/REVISION class rows for this batch will be deleted and rebuilt from ${classBatchPreview.templateLabel ?? classBatchPreview.templateCode ?? "the active template"}.\n\nHistorical class rows and manual class rows are preserved. Only today/future template-managed rows are rebuilt.`,
+      )
+    ) {
+      return;
+    }
+
     setClassBatchBusy(true);
     setClassBatchMessage("");
 
@@ -1945,6 +2040,7 @@ export default function AdminLiveTestSchedule({
           body: JSON.stringify({
             program: batchExam,
             batchCode: selectedTestBatchCode,
+            recreate,
           }),
         },
       );
@@ -1973,6 +2069,12 @@ export default function AdminLiveTestSchedule({
       setClassBatchMessage(
         `✓ ${batchExam} class batch complete · ${body.teachingDays ?? 0} core + ${body.revisionDays ?? 0} revision days · ${body.inserted ?? 0} added · ${body.updatedRevisionRows ?? 0} revision rows normalized · ${body.preserved ?? 0} core rows preserved.`,
       );
+
+      if (classBatchPreview?.startDate) {
+        setCalendarBatchStartDate(
+          classBatchPreview.startDate,
+        );
+      }
 
       await loadClassBatchPreview(
         batchExam,
@@ -2025,7 +2127,7 @@ export default function AdminLiveTestSchedule({
     if (
       recreate &&
       !window.confirm(
-        `Recreate ${batchExam} · ${testBatchPreview.label}?\n\n${testBatchPreview.existingAutoTests} automatic Live Tests and their frozen questions/results will be deleted and rebuilt using the CURRENT rules.\n\nAdmin-created tests will be preserved.`,
+        `Recreate ${batchExam} · ${testBatchPreview.label}?\n\n${testBatchPreview.existingAutoTests} automatic Live Tests and their frozen questions/results will be deleted and rebuilt using the CURRENT rules.\n\nHistorical automatic tests and admin-created tests will be preserved. Only today/future automatic tests are rebuilt.`,
       )
     ) {
       return;
@@ -2061,6 +2163,13 @@ export default function AdminLiveTestSchedule({
       setTestBatchMessage(
         `✓ ${batchExam} batch complete · ${body.ready ?? 0} ready · ${body.incomplete ?? 0} incomplete · ${body.skipped ?? 0} skipped · ${body.errors ?? 0} errors.`,
       );
+
+      if (testBatchPreview.startDate) {
+        setCalendarBatchStartDate(
+          testBatchPreview.startDate,
+        );
+      }
+
       await loadTestBatchPreview(batchExam, selectedTestBatchCode);
       await load();
     } catch (error) {
@@ -2394,6 +2503,20 @@ export default function AdminLiveTestSchedule({
     item:
       AdminLiveClassItem,
   ): Promise<void> {
+    const today =
+      localNowParts(
+        item.scheduleTimezone,
+      ).date;
+
+    if (
+      item.scheduleDate < today
+    ) {
+      setClassSaveMessage(
+        "Historical classes are protected and cannot be deleted.",
+      );
+      return;
+    }
+
     const confirmed =
       window.confirm(
         `Delete ${item.program} ${item.subject} class on ${item.scheduleDate}?\n\n${item.topicName}\n${item.startLocal}–${item.endLocal}\n\nThis removes the class schedule row. Existing Live Tests are not deleted automatically.`,
@@ -2506,6 +2629,21 @@ export default function AdminLiveTestSchedule({
     test:
       AdminLiveTestItem,
   ): Promise<void> {
+    const today =
+      localNowParts(
+        test.scheduleTimezone,
+      ).date;
+
+    if (
+      test.scheduleDate &&
+      test.scheduleDate < today
+    ) {
+      setMessage(
+        "Historical Live Tests are protected and cannot be deleted.",
+      );
+      return;
+    }
+
     if (
       test.eventKind !==
         "ADMIN_AD_HOC"
@@ -3442,24 +3580,6 @@ export default function AdminLiveTestSchedule({
 
             <button
               type="button"
-              className="admin-live-tests__batch-edit"
-              aria-label="Edit class batch schedule"
-              title="Class batch settings"
-              onClick={() => {
-                setBatchMessage(
-                  "",
-                );
-
-                setBatchDialogOpen(
-                  true,
-                );
-              }}
-            >
-              ✎
-            </button>
-
-            <button
-              type="button"
               className="admin-live-tests__batch-edit admin-live-tests__batch-edit--tests"
               aria-label="Edit Live Test batch"
               title="Live Test batch settings"
@@ -4127,6 +4247,25 @@ export default function AdminLiveTestSchedule({
                 }
               </p>
 
+              {
+                selectedClass.createdAt && (
+                  <small className="admin-live-tests__created-at">
+                    Created: {
+                      createdTimeText(
+                        selectedClass.createdAt,
+                      )
+                    }
+                    {
+                      selectedClass.adminModifiedAt
+                        ? ` · Last Modified: ${createdTimeText(
+                            selectedClass.adminModifiedAt,
+                          )}`
+                        : ""
+                    }
+                  </small>
+                )
+              }
+
               <div className="admin-live-tests__class-time-grid">
                 <label>
                   <span>
@@ -4468,63 +4607,13 @@ export default function AdminLiveTestSchedule({
                   batchExam === "SAT"
                 ) && (
                   <>
-                    <div className="admin-live-tests__test-batch-dialog-summary">
-                      {
-                        classBatchPreview
-                          ? (
-                              <>
-                                <strong>
-                                  Live Classes · {
-                                    classBatchPreview.completedTeachingDays
-                                  }/{
-                                    classBatchPreview.teachingDays
-                                  } core days · {
-                                    classBatchPreview.revisionDays
-                                  } revision days
-                                </strong>
-
-                                <span>
-                                  {
-                                    classBatchPreview.templateLabel ??
-                                    classBatchPreview.templateCode ??
-                                    "Class template"
-                                  } · Existing: {
-                                    classBatchPreview.existingRows
-                                  }/{
-                                    classBatchPreview.expectedRows
-                                  } class rows · Missing: {
-                                    classBatchPreview.missingRows
-                                  } · Template-normalized: {
-                                    classBatchPreview.normalizedRows
-                                  }/{
-                                    classBatchPreview.expectedRows
-                                  }
-                                </span>
-
-                                <span>
-                                  38 core teaching days are followed by automatic Revision 1, 2, 3… padding through the remaining eligible weekdays. Existing rows can be adopted into the template without deleting them. Weekends and DB blackout dates are skipped.
-                                </span>
-                              </>
-                            )
-                          : (
-                              <span>
-                                Loading class batch preview…
-                              </span>
-                            )
-                      }
-                    </div>
-
                     <button
                       type="button"
                       className="admin-live-tests__batch-copy admin-live-tests__test-batch-generate"
                       disabled={
                         classBatchBusy ||
                         !classBatchPreview ||
-                        !classBatchPreview.configured ||
-                        (
-                          classBatchPreview.missingRows === 0 &&
-                          !classBatchPreview.needsNormalization
-                        )
+                        !classBatchPreview.configured
                       }
                       onClick={() =>
                         void runClassBatch()
@@ -4536,7 +4625,7 @@ export default function AdminLiveTestSchedule({
                           : classBatchPreview &&
                               classBatchPreview.missingRows === 0 &&
                               !classBatchPreview.needsNormalization
-                            ? "Class batch complete"
+                            ? "Recreate class batch"
                             : classBatchPreview &&
                                 classBatchPreview.missingRows === 0 &&
                                 classBatchPreview.needsNormalization
@@ -5070,18 +5159,33 @@ export default function AdminLiveTestSchedule({
                     selectedTest.ready
                       ? "Ready"
                       : "Needs attention"
-                  }
-                </strong>
-
-                <small>
-                  {
+                  } ({
                     selectedTest.status
                   } · {
                     selectedTest.frozenQuestions
                   }/{
                     selectedTest.expectedQuestions
-                  } questions
-                </small>
+                  } questions)
+                </strong>
+
+                {
+                  selectedTest.createdAt && (
+                    <small>
+                      Created: {
+                        createdTimeText(
+                          selectedTest.createdAt,
+                        )
+                      }
+                      {
+                        selectedTest.adminModifiedAt
+                          ? ` · Last Modified: ${createdTimeText(
+                              selectedTest.adminModifiedAt,
+                            )}`
+                          : ""
+                      }
+                    </small>
+                  )
+                }
               </div>
 
               {

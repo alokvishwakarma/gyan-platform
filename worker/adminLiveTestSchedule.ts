@@ -108,6 +108,41 @@ function validLocalTime(
 }
 
 
+function dateInTimeZone(
+  value: Date,
+  timeZone: string,
+): string {
+  const parts =
+    new Intl.DateTimeFormat(
+      "en-CA",
+      {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      },
+    )
+      .formatToParts(
+        value,
+      );
+
+  const read =
+    (
+      type:
+        Intl.DateTimeFormatPartTypes,
+    ): string =>
+      parts.find(
+        (
+          part,
+        ) =>
+          part.type === type,
+      )?.value ??
+      "";
+
+  return `${read("year")}-${read("month")}-${read("day")}`;
+}
+
+
 function localClock(
   value:
     Date,
@@ -375,6 +410,8 @@ async function listSchedule(
           lt.visibility_mode,
           lt.status,
           lt.event_kind,
+          lt.created_at,
+          lt.admin_modified_at,
 
           COUNT(
             q.question_id
@@ -421,7 +458,7 @@ async function listSchedule(
           lt.starts_at_utc DESC,
           lt.public_code DESC
 
-        LIMIT 120
+        LIMIT 2000
         `,
       )
       .bind(
@@ -460,6 +497,12 @@ async function listSchedule(
           string;
 
         event_kind:
+          string | null;
+
+        created_at:
+          string;
+
+        admin_modified_at:
           string | null;
 
         frozen_questions:
@@ -649,6 +692,12 @@ async function listSchedule(
 
             eventKind:
               row.event_kind,
+
+            createdAt:
+              row.created_at,
+
+            adminModifiedAt:
+              row.admin_modified_at,
 
             frozenQuestions:
               Number(
@@ -1270,6 +1319,8 @@ async function updateSchedule(
         visibility_mode = ?,
         visible = ?,
         updated_at =
+          CURRENT_TIMESTAMP,
+        admin_modified_at =
           CURRENT_TIMESTAMP
       WHERE id = ?
       `,
@@ -1320,7 +1371,9 @@ async function deleteScheduleTest(
         SELECT
           id,
           public_code,
-          event_kind
+          event_kind,
+          source_schedule_date,
+          schedule_timezone
         FROM education_live_tests
         WHERE public_code = ?
         LIMIT 1
@@ -1338,6 +1391,12 @@ async function deleteScheduleTest(
 
         event_kind:
           string | null;
+
+        source_schedule_date:
+          string | null;
+
+        schedule_timezone:
+          string;
       }>();
 
   if (!current) {
@@ -1358,6 +1417,25 @@ async function deleteScheduleTest(
       {
         error:
           "Only admin-created sample/ad-hoc Live Tests can be deleted here. Recreate automatic tests from Live Test Batch settings.",
+      },
+      409,
+    );
+  }
+
+  const today =
+    dateInTimeZone(
+      new Date(),
+      current.schedule_timezone,
+    );
+
+  if (
+    current.source_schedule_date &&
+    current.source_schedule_date < today
+  ) {
+    return json(
+      {
+        error:
+          "Historical Live Tests are protected and cannot be deleted.",
       },
       409,
     );
@@ -1532,7 +1610,11 @@ export async function handleAdminLiveTestScheduleRoute(
     request.method === 'POST' &&
     url.pathname === '/api/admin/live-tests/batches/classes/generate'
   ) {
-    let body: { program?: unknown; batchCode?: unknown };
+    let body: {
+      program?: unknown;
+      batchCode?: unknown;
+      recreate?: unknown;
+    };
     try {
       body = await request.json() as typeof body;
     } catch {
@@ -1548,10 +1630,18 @@ export async function handleAdminLiveTestScheduleRoute(
         ? body.batchCode.trim().toUpperCase()
         : '';
 
+    const recreate =
+      body.recreate === true;
+
     try {
       return json({
         ok: true,
-        ...(await generateClassBatch(env, program, batchCode)),
+        ...(await generateClassBatch(
+          env,
+          program,
+          batchCode,
+          recreate,
+        )),
       });
     } catch (error) {
       return json({

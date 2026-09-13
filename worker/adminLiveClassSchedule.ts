@@ -98,7 +98,9 @@ async function listClassSchedule(
           class_start_local,
           class_end_local,
           schedule_timezone,
-          sequence_number
+          sequence_number,
+          created_at,
+          admin_modified_at
 
         FROM education_live_class_schedule
 
@@ -147,6 +149,12 @@ async function listClassSchedule(
 
         sequence_number:
           number;
+
+        created_at:
+          string;
+
+        admin_modified_at:
+          string | null;
       }>();
 
   return json({
@@ -184,6 +192,12 @@ async function listClassSchedule(
               Number(
                 row.sequence_number,
               ),
+
+            createdAt:
+              row.created_at,
+
+            adminModifiedAt:
+              row.admin_modified_at,
           };
         },
       ),
@@ -1125,6 +1139,8 @@ async function patchClassSchedule(
           class_start_local = ?,
           class_end_local = ?,
           updated_at =
+            CURRENT_TIMESTAMP,
+          admin_modified_at =
             CURRENT_TIMESTAMP
 
         WHERE
@@ -1169,144 +1185,6 @@ async function patchClassSchedule(
   });
 }
 
-
-
-
-async function deleteClassSchedule(
-  request:
-    Request,
-
-  env:
-    Env,
-): Promise<Response> {
-  let body: {
-    scheduleDate?:
-      unknown;
-
-    program?:
-      unknown;
-
-    subject?:
-      unknown;
-
-    sequenceNumber?:
-      unknown;
-  };
-
-  try {
-    body =
-      await request.json() as typeof body;
-  } catch {
-    return json(
-      {
-        error:
-          "Invalid JSON body.",
-      },
-      400,
-    );
-  }
-
-  const scheduleDate =
-    typeof body.scheduleDate ===
-      "string"
-      ? body.scheduleDate.trim()
-      : "";
-
-  const program =
-    typeof body.program ===
-      "string"
-      ? body.program
-          .trim()
-          .toUpperCase()
-      : "";
-
-  const subject =
-    typeof body.subject ===
-      "string"
-      ? body.subject
-          .trim()
-          .toUpperCase()
-      : "";
-
-  const sequenceNumber =
-    Number(
-      body.sequenceNumber,
-    );
-
-  if (
-    !/^\d{4}-\d{2}-\d{2}$/
-      .test(
-        scheduleDate,
-      ) ||
-    ![
-      "JEE",
-      "NEET",
-      "SAT",
-    ].includes(
-      program,
-    ) ||
-    !subject ||
-    !Number.isInteger(
-      sequenceNumber,
-    ) ||
-    sequenceNumber <
-      1
-  ) {
-    return json(
-      {
-        error:
-          "Valid date, program, subject and sequence number are required.",
-      },
-      400,
-    );
-  }
-
-  const result =
-    await env.gyan_registry
-      .prepare(
-        `
-        DELETE FROM education_live_class_schedule
-        WHERE
-          schedule_date = ?
-          AND program_code = ?
-          AND subject_code = ?
-          AND sequence_number = ?
-        `,
-      )
-      .bind(
-        scheduleDate,
-        program,
-        subject,
-        sequenceNumber,
-      )
-      .run();
-
-  if (
-    Number(
-      result.meta.changes ??
-      0,
-    ) <=
-      0
-  ) {
-    return json(
-      {
-        error:
-          "Class schedule row was not found.",
-      },
-      404,
-    );
-  }
-
-  return json({
-    deleted:
-      true,
-
-    scheduleDate,
-    program,
-    subject,
-    sequenceNumber,
-  });
-}
 
 
 async function createClassSchedule(
@@ -1501,19 +1379,6 @@ export async function handleAdminLiveClassScheduleRoute(
       url,
     );
   }
-
-  if (
-    request.method ===
-      "DELETE" &&
-    url.pathname ===
-      "/api/admin/live-tests/class-schedule"
-  ) {
-    return deleteClassSchedule(
-      request,
-      env,
-    );
-  }
-
 
   if (
     request.method ===
