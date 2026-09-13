@@ -1,10 +1,37 @@
 -- 0160_live_class_revision_padding_and_sat_template.sql
 --
--- REVISED for the current schema:
--- education_live_class_schedule already contains:
---   batch_code, template_code, teaching_day, class_kind, generation_source
--- Therefore this migration intentionally does NOT ALTER TABLE for those columns.
+-- CANONICAL migration for a clean DB after 0159.
+-- Adds the five provenance columns to education_live_class_schedule,
+-- then creates the index, seeds SAT_STANDARD_38, and tags pre-existing
+-- schedule rows as LEGACY.
 --
+-- IMPORTANT:
+-- Do not rerun this migration on a database where these five columns
+-- already exist. It is intended to run exactly once after 0159.
+--
+ALTER TABLE education_live_class_schedule
+  ADD COLUMN batch_code TEXT;
+
+ALTER TABLE education_live_class_schedule
+  ADD COLUMN template_code TEXT;
+
+ALTER TABLE education_live_class_schedule
+  ADD COLUMN teaching_day INTEGER;
+
+ALTER TABLE education_live_class_schedule
+  ADD COLUMN class_kind TEXT
+    CHECK (
+      class_kind IS NULL
+      OR class_kind IN ('CORE','REVISION','MANUAL')
+    );
+
+ALTER TABLE education_live_class_schedule
+  ADD COLUMN generation_source TEXT
+    CHECK (
+      generation_source IS NULL
+      OR generation_source IN ('TEMPLATE','MANUAL','LEGACY')
+    );
+
 CREATE INDEX IF NOT EXISTS idx_live_class_schedule_batch_template
 ON education_live_class_schedule (
   batch_code,
