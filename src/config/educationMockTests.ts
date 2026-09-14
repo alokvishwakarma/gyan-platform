@@ -119,6 +119,13 @@ export type FixedMockScore = {
   }>;
 };
 
+export type FixedMockGuidanceUsage = {
+  questionId: number;
+  kind:
+    | "TIP"
+    | "FIFTY_FIFTY";
+};
+
 async function readJsonOrThrow<
   T,
 >(
@@ -206,6 +213,8 @@ export async function scoreFixedMockTest(
     elapsedSeconds?: number;
     saveCount?: number;
     reviewQuestionIds?: number[];
+    guidanceUsage?:
+      FixedMockGuidanceUsage[];
   },
 ): Promise<FixedMockScore> {
   const response =
@@ -270,6 +279,10 @@ export async function scoreFixedMockTest(
 
             reviewQuestionIds:
               options.reviewQuestionIds ??
+              [],
+
+            guidanceUsage:
+              options.guidanceUsage ??
               [],
           }),
       },

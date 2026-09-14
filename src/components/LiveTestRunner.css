@@ -1283,3 +1283,702 @@
   }
 }
 
+/* GYAN Guided Help */
+.live-test-runner__guidance {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.live-test-runner__guidance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-test-runner__guidance-actions button {
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.live-test-runner__guidance-actions button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.live-test-runner__guidance-actions small {
+  opacity: 0.72;
+}
+
+.live-test-runner__guidance-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid rgba(127, 127, 127, 0.28);
+  border-radius: 12px;
+  background: rgba(127, 127, 127, 0.06);
+}
+
+.live-test-runner__choice--eliminated,
+.live-test-runner__choice--eliminated:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+/* Compact Guided Help — append to LiveTestRunner.css */
+
+.live-test-runner__question-status-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.live-test-runner__question-count {
+  font-size: 0.98rem;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.live-test-runner__guidance-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.live-test-runner__guidance-mini-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 27px;
+  height: 27px;
+  padding: 0 6px;
+  border: 1px solid rgba(37, 99, 235, 0.24);
+  border-radius: 8px;
+  background: rgba(239, 246, 255, 0.88);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.live-test-runner__guidance-mini-button:first-child {
+  width: 27px;
+  padding: 0;
+  font-size: 0.8rem;
+}
+
+.live-test-runner__guidance-mini-button--fifty {
+  min-width: 43px;
+  font-size: 0.64rem;
+  letter-spacing: -0.02em;
+}
+
+.live-test-runner__guidance-mini-button sup {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 16px;
+  padding: 1px 3px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.18);
+  font-size: 0.48rem;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.live-test-runner__guidance-mini-button--unlocked {
+  border-color: rgba(22, 163, 74, 0.3);
+  background: rgba(240, 253, 244, 0.92);
+}
+
+.live-test-runner__guidance-mini-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.live-test-runner__choice--eliminated,
+.live-test-runner__choice--eliminated:disabled {
+  opacity: 0.44;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.live-test-runner__guidance-toast-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1700;
+  display: grid;
+  place-items: start center;
+  padding: 72px 14px 14px;
+  background: rgba(15, 23, 42, 0.16);
+  backdrop-filter: blur(1.5px);
+}
+
+.live-test-runner__guidance-toast {
+  position: relative;
+  width: min(92vw, 520px);
+  padding: 16px 18px;
+  border: 1px solid rgba(245, 158, 11, 0.34);
+  border-radius: 16px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 251, 235, 0.98),
+      rgba(255, 255, 255, 0.99)
+    );
+  box-shadow:
+    0 18px 55px rgba(15, 23, 42, 0.2),
+    0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.live-test-runner__guidance-toast-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-right: 28px;
+}
+
+.live-test-runner__guidance-toast-title > span:first-child {
+  font-size: 1.15rem;
+}
+
+.live-test-runner__guidance-toast-title strong {
+  font-size: 1rem;
+}
+
+.live-test-runner__guidance-toast p {
+  margin: 10px 0 0;
+  font-size: 0.94rem;
+  line-height: 1.48;
+}
+
+.live-test-runner__guidance-toast-close {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.live-test-runner__guidance-toast-fifty {
+  display: inline-grid;
+  place-items: center;
+  min-width: 42px;
+  height: 25px;
+  padding: 0 6px;
+  border-radius: 7px;
+  background: rgba(239, 246, 255, 0.95);
+  font-size: 0.7rem !important;
+  font-weight: 900;
+}
+
+.live-test-runner__guidance-toast-eliminations {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.live-test-runner__guidance-toast-eliminations > div {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.live-test-runner__guidance-toast-eliminations b {
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .live-test-runner__question-count {
+    font-size: 0.92rem;
+  }
+
+  .live-test-runner__guidance-mini-button {
+    height: 25px;
+  }
+
+  .live-test-runner__guidance-mini-button:first-child {
+    width: 25px;
+    min-width: 25px;
+  }
+
+  .live-test-runner__guidance-mini-button--fifty {
+    min-width: 40px;
+  }
+
+  .live-test-runner__guidance-toast-backdrop {
+    padding-top: 58px;
+  }
+}
+
+/* GYAN compact Tip + 50/50 controls — append to LiveTestRunner.css */
+
+.live-test-runner__question-status-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.live-test-runner__question-count {
+  font-size: 0.98rem;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.live-test-runner__guidance-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+
+.live-test-runner__guidance-mini-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 27px;
+  min-width: 27px;
+  padding: 0 7px;
+  border: 1px solid rgba(37, 99, 235, 0.24);
+  border-radius: 8px;
+  background: rgba(239, 246, 255, 0.88);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.live-test-runner__guidance-mini-button:first-child {
+  padding: 0 7px;
+}
+
+.live-test-runner__guidance-mini-button--fifty {
+  min-width: 82px;
+  letter-spacing: -0.01em;
+}
+
+.live-test-runner__guidance-mini-button sup {
+  position: static;
+  min-width: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 0.64rem;
+  line-height: 1;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+.live-test-runner__guidance-mini-button--unlocked {
+  border-color: rgba(22, 163, 74, 0.3);
+  background: rgba(240, 253, 244, 0.92);
+}
+
+.live-test-runner__guidance-mini-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/*
+ * One rectangle, internally divided 50/50:
+ * green = choices remaining
+ * brown = choices eliminated
+ */
+.live-test-runner__fifty-rect-icon {
+  display: inline-block;
+  width: 22px;
+  height: 13px;
+  flex: 0 0 22px;
+  border: 1px solid #887665;
+  border-radius: 3px;
+  background:
+    linear-gradient(
+      to right,
+      #579667 0%,
+      #579667 50%,
+      #9a7558 50%,
+      #9a7558 100%
+    );
+  box-sizing: border-box;
+}
+
+.live-test-runner__fifty-rect-icon--toast {
+  width: 28px;
+  height: 16px;
+  flex-basis: 28px;
+  border-radius: 4px;
+}
+
+.live-test-runner__choice--eliminated,
+.live-test-runner__choice--eliminated:disabled {
+  opacity: 0.44;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.live-test-runner__guidance-toast-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1700;
+  display: grid;
+  place-items: start center;
+  padding: 72px 14px 14px;
+  background: rgba(15, 23, 42, 0.16);
+  backdrop-filter: blur(1.5px);
+}
+
+.live-test-runner__guidance-toast {
+  position: relative;
+  width: min(92vw, 520px);
+  padding: 16px 18px;
+  border: 1px solid rgba(245, 158, 11, 0.34);
+  border-radius: 16px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 251, 235, 0.98),
+      rgba(255, 255, 255, 0.99)
+    );
+  box-shadow:
+    0 18px 55px rgba(15, 23, 42, 0.2),
+    0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.live-test-runner__guidance-toast-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-right: 28px;
+}
+
+.live-test-runner__guidance-toast-title > span:first-child:not(.live-test-runner__fifty-rect-icon) {
+  font-size: 1.15rem;
+}
+
+.live-test-runner__guidance-toast-title strong {
+  font-size: 1rem;
+}
+
+.live-test-runner__guidance-toast p {
+  margin: 10px 0 0;
+  font-size: 0.94rem;
+  line-height: 1.48;
+}
+
+.live-test-runner__guidance-toast-close {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.live-test-runner__guidance-toast-eliminations {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.live-test-runner__guidance-toast-eliminations > div {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.live-test-runner__guidance-toast-eliminations b {
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .live-test-runner__question-count {
+    font-size: 0.92rem;
+  }
+
+  .live-test-runner__guidance-mini-button {
+    height: 25px;
+    padding-inline: 6px;
+  }
+
+  .live-test-runner__guidance-mini-button--fifty {
+    min-width: 78px;
+  }
+
+  .live-test-runner__fifty-rect-icon {
+    width: 20px;
+    height: 12px;
+    flex-basis: 20px;
+  }
+
+  .live-test-runner__guidance-toast-backdrop {
+    padding-top: 58px;
+  }
+}
+
+/* GYAN compact Tip + 50/50 controls — revised for readability */
+
+.live-test-runner__question-status-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.live-test-runner__question-count {
+  font-size: 0.98rem;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.live-test-runner__guidance-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+
+.live-test-runner__guidance-mini-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 27px;
+  padding: 0 7px;
+  border: 1px solid rgba(37, 99, 235, 0.28);
+  border-radius: 8px;
+  background: rgba(239, 246, 255, 0.95);
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.live-test-runner__guidance-mini-button:first-child {
+  min-width: 73px;
+}
+
+.live-test-runner__guidance-mini-button--fifty {
+  min-width: 104px;
+  letter-spacing: -0.01em;
+}
+
+.live-test-runner__guidance-gem {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.live-test-runner__guidance-mini-button--unlocked {
+  border-color: rgba(22, 163, 74, 0.34);
+  background: rgba(240, 253, 244, 0.96);
+}
+
+.live-test-runner__guidance-mini-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/*
+ * One rectangle, internally divided 50/50.
+ * Stronger contrast:
+ * dark green = choices remaining
+ * warm light brown = choices eliminated
+ */
+.live-test-runner__fifty-rect-icon {
+  display: inline-block;
+  width: 22px;
+  height: 13px;
+  flex: 0 0 22px;
+  border: 1px solid #6b5b4d;
+  border-radius: 3px;
+  background:
+    linear-gradient(
+      to right,
+      #2f7d4a 0%,
+      #2f7d4a 50%,
+      #c79a6b 50%,
+      #c79a6b 100%
+    );
+  box-sizing: border-box;
+}
+
+.live-test-runner__fifty-rect-icon--toast {
+  width: 30px;
+  height: 17px;
+  flex-basis: 30px;
+  border-radius: 4px;
+}
+
+.live-test-runner__choice--eliminated,
+.live-test-runner__choice--eliminated:disabled {
+  opacity: 0.44;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.live-test-runner__guidance-toast-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1700;
+  display: grid;
+  place-items: start center;
+  padding: 72px 14px 14px;
+  background: rgba(15, 23, 42, 0.16);
+  backdrop-filter: blur(1.5px);
+}
+
+.live-test-runner__guidance-toast {
+  position: relative;
+  width: min(92vw, 520px);
+  padding: 16px 18px;
+  border: 1px solid rgba(245, 158, 11, 0.34);
+  border-radius: 16px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 251, 235, 0.98),
+      rgba(255, 255, 255, 0.99)
+    );
+  box-shadow:
+    0 18px 55px rgba(15, 23, 42, 0.2),
+    0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.live-test-runner__guidance-toast-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-right: 28px;
+}
+
+.live-test-runner__guidance-toast-title > span:first-child:not(.live-test-runner__fifty-rect-icon) {
+  font-size: 1.15rem;
+}
+
+.live-test-runner__guidance-toast-title strong {
+  font-size: 1rem;
+}
+
+.live-test-runner__guidance-toast p {
+  margin: 10px 0 0;
+  font-size: 0.94rem;
+  line-height: 1.48;
+}
+
+.live-test-runner__guidance-toast-close {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.live-test-runner__guidance-toast-eliminations {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.live-test-runner__guidance-toast-eliminations > div {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.live-test-runner__guidance-toast-eliminations b {
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .live-test-runner__question-count {
+    font-size: 0.92rem;
+  }
+
+  .live-test-runner__guidance-mini {
+    gap: 4px;
+  }
+
+  .live-test-runner__guidance-mini-button {
+    height: 25px;
+    padding-inline: 6px;
+    font-size: 0.64rem;
+  }
+
+  .live-test-runner__guidance-mini-button:first-child {
+    min-width: 68px;
+  }
+
+  .live-test-runner__guidance-mini-button--fifty {
+    min-width: 98px;
+  }
+
+  .live-test-runner__guidance-gem {
+    font-size: 0.61rem;
+  }
+
+  .live-test-runner__fifty-rect-icon {
+    width: 20px;
+    height: 12px;
+    flex-basis: 20px;
+  }
+
+  .live-test-runner__guidance-toast-backdrop {
+    padding-top: 58px;
+  }
+}

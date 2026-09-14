@@ -1,4 +1,8 @@
 import {
+  handleShoppingCartCatalogRoute,
+} from "./shoppingCartCatalog";
+
+import {
   getAdminSession,
 } from "./adminAuth";
 
@@ -487,6 +491,77 @@ async function currentGyanOwner(
 }
 
 
+async function shoppingCartLiveEntitlement(
+  env:
+    LiveTestsEnv,
+
+  accountId:
+    number,
+
+  publicCode:
+    string,
+): Promise<{
+  test: boolean;
+  results: boolean;
+  aiTips: boolean;
+}> {
+  try {
+    const row =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT
+            access_test,
+            access_results,
+            access_ai_tips
+          FROM education_shopping_cart_entitlements
+          WHERE
+            gyan_account_id = ?
+            AND item_type = 'LIVE'
+            AND upper(item_code) = upper(?)
+          LIMIT 1
+          `,
+        )
+        .bind(
+          accountId,
+          publicCode,
+        )
+        .first<{
+          access_test: number;
+          access_results: number;
+          access_ai_tips: number;
+        }>();
+
+    return {
+      test:
+        Boolean(
+          row?.access_test,
+        ),
+      results:
+        Boolean(
+          row?.access_results,
+        ),
+      aiTips:
+        Boolean(
+          row?.access_ai_tips,
+        ),
+    };
+  } catch {
+    /*
+     * Backward-compatible while migration 0163 is not present.
+     */
+    return {
+      test:
+        false,
+      results:
+        false,
+      aiTips:
+        false,
+    };
+  }
+}
+
+
 async function gemBalance(
   env:
     LiveTestsEnv,
@@ -523,16 +598,105 @@ async function gemBalance(
 }
 
 
+function localIsoDate(
+  timeZone:
+    string,
+
+  nowMs:
+    number,
+): string {
+  try {
+    const parts =
+      new Intl.DateTimeFormat(
+        "en-US",
+        {
+          timeZone:
+            timeZone ||
+            "UTC",
+
+          year:
+            "numeric",
+
+          month:
+            "2-digit",
+
+          day:
+            "2-digit",
+        },
+      ).formatToParts(
+        new Date(
+          nowMs,
+        ),
+      );
+
+    const year =
+      parts.find(
+        (
+          part,
+        ) =>
+          part.type ===
+          "year",
+      )?.value;
+
+    const month =
+      parts.find(
+        (
+          part,
+        ) =>
+          part.type ===
+          "month",
+      )?.value;
+
+    const day =
+      parts.find(
+        (
+          part,
+        ) =>
+          part.type ===
+          "day",
+      )?.value;
+
+    if (
+      year &&
+      month &&
+      day
+    ) {
+      return `${year}-${month}-${day}`;
+    }
+  } catch {
+    // Fall through to UTC below.
+  }
+
+  return new Date(
+    nowMs,
+  )
+    .toISOString()
+    .slice(
+      0,
+      10,
+    );
+}
 
 
 async function listLiveTests(
   env:
     LiveTestsEnv,
+
+  url:
+    URL,
 ): Promise<Response> {
   /*
-   * Return a narrow UTC window around now. The Education UI decides
-   * "today" using the effective viewer timezone (admin override first,
-   * browser/device timezone otherwise).
+   * Education home shows today's Live Tests.
+   *
+   * JEE / NEET remain anchored to Asia/Kolkata.
+   *
+   * SAT is selected using the viewer timezone supplied by the browser.
+   * This is necessary because the U.S. spans multiple timezones:
+   * a test can still belong to "today" in California after New York
+   * has crossed midnight.
+   *
+   * Ended tests stay visible for the rest of the viewer's local day so
+   * learners can open the historical test and purchase question access.
    */
   const rows =
     await env.gyan_registry
@@ -593,7 +757,7 @@ async function listLiveTests(
           ) >=
             datetime(
               'now',
-              '-2 days'
+              '-1 day'
             )
 
           AND datetime(
@@ -619,101 +783,189 @@ async function listLiveTests(
   const nowMs =
     Date.now();
 
+  const requestedTimezone =
+    (
+      url.searchParams.get(
+        "timezone",
+      ) ??
+      ""
+    ).trim();
+
+  const viewerTimezone =
+    (() => {
+      if (
+        !requestedTimezone
+      ) {
+        return "America/Los_Angeles";
+      }
+
+      try {
+        new Intl.DateTimeFormat(
+          "en-US",
+          {
+            timeZone:
+              requestedTimezone,
+          },
+        ).format(
+          new Date(
+            nowMs,
+          ),
+        );
+
+        return requestedTimezone;
+      } catch {
+        return "America/Los_Angeles";
+      }
+    })();
+
+  const todayPending =
+    rows.results.filter(
+      (
+        row,
+      ) => {
+        const state =
+          liveTestState(
+            row,
+            nowMs,
+          );
+
+        if (
+          state ===
+            "CANCELLED"
+        ) {
+          return false;
+        }
+
+        if (
+          row.program_code ===
+            "SAT"
+        ) {
+          const startMs =
+            parseUtcTimestamp(
+              row.starts_at_utc,
+            );
+
+          return (
+            Number.isFinite(
+              startMs,
+            ) &&
+            localIsoDate(
+              viewerTimezone,
+              startMs,
+            ) ===
+              localIsoDate(
+                viewerTimezone,
+                nowMs,
+              )
+          );
+        }
+
+        const indiaTimezone =
+          "Asia/Kolkata";
+
+        const scheduleDate =
+          row.source_schedule_date ??
+          localIsoDate(
+            indiaTimezone,
+            parseUtcTimestamp(
+              row.starts_at_utc,
+            ),
+          );
+
+        return (
+          scheduleDate ===
+            localIsoDate(
+              indiaTimezone,
+              nowMs,
+            )
+        );
+      },
+    );
+
   return liveJson({
     liveTests:
-      rows.results
-        .filter(
-          (
-            row,
-          ) =>
+      todayPending.map(
+        (
+          row,
+        ) => ({
+          id:
+            Number(
+              row.id,
+            ),
+
+          number:
+            Number(
+              row.series_number,
+            ),
+
+          suffix:
+            row.series_suffix,
+
+          code:
+            row.public_code,
+
+          program:
+            row.program_code,
+
+          startsAt:
+            row.starts_at_utc,
+
+          scheduleTimezone:
+            row.schedule_timezone,
+
+          durationMinutes:
+            Number(
+              row.duration_minutes,
+            ),
+
+          entryGemCost:
+            Number(
+              row.entry_gem_cost,
+            ),
+
+          reportGemCost:
+            Number(
+              row.report_gem_cost,
+            ),
+
+          fractionPercent:
+            Number(
+              row.test_fraction_percent ??
+              10,
+            ),
+
+          eventKind:
+            row.event_kind ??
+            "WEEKDAY",
+
+          scheduleDate:
+            row.source_schedule_date,
+
+          state:
             liveTestState(
               row,
               nowMs,
-            ) !==
-              "CANCELLED",
-        )
-        .map(
-          (
-            row,
-          ) => ({
-            id:
-              Number(
-                row.id,
-              ),
+            ),
 
-            number:
-              Number(
-                row.series_number,
-              ),
+          participants:
+            Number(
+              row.total_participants ??
+              0,
+            ),
 
-            suffix:
-              row.series_suffix,
+          hearts:
+            Number(
+              row.human_participants ??
+              0,
+            ),
 
-            code:
-              row.public_code,
-
-            program:
-              row.program_code,
-
-            startsAt:
-              row.starts_at_utc,
-
-            scheduleTimezone:
-              row.schedule_timezone,
-
-            durationMinutes:
-              Number(
-                row.duration_minutes,
-              ),
-
-            entryGemCost:
-              Number(
-                row.entry_gem_cost,
-              ),
-
-            reportGemCost:
-              Number(
-                row.report_gem_cost,
-              ),
-
-            fractionPercent:
-              Number(
-                row.test_fraction_percent ??
-                10,
-              ),
-
-            eventKind:
-              row.event_kind ??
-              "WEEKDAY",
-
-            scheduleDate:
-              row.source_schedule_date,
-
-            state:
-              liveTestState(
-                row,
-                nowMs,
-              ),
-
-            participants:
-              Number(
-                row.total_participants ??
-                0,
-              ),
-
-            hearts:
-              Number(
-                row.human_participants ??
-                0,
-              ),
-
-            bolts:
-              Number(
-                row.synthetic_participants ??
-                0,
-              ),
-          }),
-        ),
+          bolts:
+            Number(
+              row.synthetic_participants ??
+              0,
+            ),
+        }),
+      ),
   });
 }
 
@@ -1021,105 +1273,116 @@ async function enterLiveTest(
       ),
     );
 
+  const purchasedAccess =
+    await shoppingCartLiveEntitlement(
+      env,
+      owner.accountId,
+      test.public_code,
+    );
+
   const transactionReason =
     `LIVE_TEST_ENTRY:${test.public_code}`;
 
+  const entryTransactionKey =
+    `${transactionReason}:${owner.accountId}`;
+
   /*
-   * Deduct only when:
-   *   1) sufficient Gems exist, and
-   *   2) this exact event has not already charged this GYAN Card.
-   *
-   * gem_transactions already has:
-   *   UNIQUE(calendar_access_id, reason)
-   *
-   * so a double-click cannot create two charges.
+   * ShoppingCart Test access is prepaid access.
+   * Otherwise retain the existing idempotent Live Test Gem charge.
    */
-  const charge =
-    await env.gyan_registry
-      .prepare(
-        `
-        INSERT OR IGNORE INTO gem_transactions (
-          calendar_access_id,
-          amount,
-          reason
-        )
+  let charged =
+    false;
 
-        SELECT
-          ?,
-          ?,
-          ?
-
-        WHERE
-          (
-            SELECT
-              COALESCE(
-                SUM(amount),
-                0
-              )
-            FROM gem_transactions
-            WHERE
-              calendar_access_id = ?
-          ) >= ?
-        `,
-      )
-      .bind(
-        owner.calendarAccessId,
-        -entryCost,
-        transactionReason,
-        owner.calendarAccessId,
-        entryCost,
-      )
-      .run();
-
-  const charged =
-    Number(
-      charge.meta?.changes ??
-      0,
-    ) > 0;
-
-  if (!charged) {
-    /*
-     * Distinguish a harmless retry from insufficient Gems.
-     */
-    const priorCharge =
+  if (
+    !purchasedAccess.test
+  ) {
+    const charge =
       await env.gyan_registry
         .prepare(
           `
-          SELECT id
-          FROM gem_transactions
+          INSERT OR IGNORE INTO gem_transactions (
+            calendar_access_id,
+            amount,
+            reason
+          )
+
+          SELECT
+            ?,
+            ?,
+            ?
+
           WHERE
-            calendar_access_id = ?
-            AND reason = ?
-          LIMIT 1
+            (
+              SELECT
+                COALESCE(
+                  SUM(amount),
+                  0
+                )
+              FROM gem_transactions
+              WHERE
+                calendar_access_id = ?
+            ) >= ?
           `,
         )
         .bind(
           owner.calendarAccessId,
+          -entryCost,
           transactionReason,
+          owner.calendarAccessId,
+          entryCost,
         )
-        .first<{
-          id:
-            number;
-        }>();
+        .run();
 
-    if (!priorCharge) {
-      return liveJson(
-        {
-          error:
-            `You need ${entryCost} Gems to enter this Live Test.`,
+    charged =
+      Number(
+        charge.meta?.changes ??
+        0,
+      ) > 0;
 
-          requiredGems:
-            entryCost,
+    if (!charged) {
+      /*
+       * Distinguish a harmless retry from insufficient Gems.
+       */
+      const priorCharge =
+        await env.gyan_registry
+          .prepare(
+            `
+            SELECT id
+            FROM gem_transactions
+            WHERE
+              calendar_access_id = ?
+              AND reason = ?
+            LIMIT 1
+            `,
+          )
+          .bind(
+            owner.calendarAccessId,
+            transactionReason,
+          )
+          .first<{
+            id:
+              number;
+          }>();
 
-          gemBalance:
-            await gemBalance(
-              env,
-              owner.calendarAccessId,
-            ),
-        },
+      if (!priorCharge) {
+        return liveJson(
+          {
+            error:
+              `You need ${entryCost} Gems to enter this Live Test.`,
 
-        402,
-      );
+            requiredGems:
+              entryCost,
+
+            gemBalance:
+              await gemBalance(
+                env,
+                owner.calendarAccessId,
+              ),
+          },
+
+          402,
+        );
+      }
     }
   }
 
@@ -1146,7 +1409,7 @@ async function enterLiveTest(
         String(
           owner.accountId,
         ),
-        transactionReason,
+        entryTransactionKey,
       )
       .run();
   } catch (
@@ -2507,7 +2770,16 @@ async function unlockLiveTestQuestions(
           string;
       }>();
 
+  const purchasedAccess =
+    await shoppingCartLiveEntitlement(
+      env,
+      owner.accountId,
+      test.public_code,
+    );
+
   let alreadyUnlocked =
+    purchasedAccess.test ||
+    purchasedAccess.results ||
     Boolean(
       entry?.report_unlocked_at,
     ) ||
@@ -2983,6 +3255,13 @@ async function unlockLiveTestReport(
       ),
     );
 
+  const purchasedAccess =
+    await shoppingCartLiveEntitlement(
+      env,
+      owner.accountId,
+      test.public_code,
+    );
+
   let gemCharged =
     0;
 
@@ -2993,6 +3272,7 @@ async function unlockLiveTestReport(
       `LIVE_TEST_REPORT:${test.public_code}`;
 
     if (
+      !purchasedAccess.results &&
       reportCost > 0
     ) {
       const charge =
@@ -3692,6 +3972,17 @@ export async function handleLiveTestsRoute(
   url:
     URL,
 ): Promise<Response | null> {
+  const shoppingCartCatalogResponse =
+    await handleShoppingCartCatalogRoute(
+      request,
+      env,
+      url,
+    );
+
+  if (shoppingCartCatalogResponse) {
+    return shoppingCartCatalogResponse;
+  }
+
   if (
     request.method ===
       "GET" &&
@@ -3724,6 +4015,7 @@ export async function handleLiveTestsRoute(
   ) {
     return listLiveTests(
       env,
+      url,
     );
   }
 

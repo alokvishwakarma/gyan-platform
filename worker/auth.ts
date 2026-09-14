@@ -738,9 +738,16 @@ export async function handlePublicAuthRoute(
     );
 
     const response =
-      Response.redirect(
-        successUrl.toString(),
-        302,
+      new Response(
+        null,
+        {
+          status: 302,
+
+          headers: {
+            Location:
+              successUrl.toString(),
+          },
+        },
       );
 
     response.headers.append(

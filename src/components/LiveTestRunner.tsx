@@ -5,6 +5,14 @@ import {
   useState,
 } from "react";
 
+import ShoppingCartBuilder from "./ShoppingCartBuilder";
+
+import {
+  loadQuestionGuidance,
+  unlockQuestionGuidance,
+  type GuidanceState,
+} from "../config/educationGuidance";
+
 import "./LiveTestRunner.css";
 
 
@@ -736,6 +744,37 @@ export default function LiveTestRunner({
     >({});
 
   const [
+    guidanceByQuestion,
+    setGuidanceByQuestion,
+  ] =
+    useState<
+      Record<
+        number,
+        GuidanceState
+      >
+    >({});
+
+  const [
+    guidanceLoading,
+    setGuidanceLoading,
+  ] =
+    useState<
+      "TIP" |
+      "FIFTY_FIFTY" |
+      null
+    >(null);
+
+  const [
+    guidanceNotice,
+    setGuidanceNotice,
+  ] =
+    useState<
+      "TIP" |
+      "FIFTY_FIFTY" |
+      null
+    >(null);
+
+  const [
     remainingSeconds,
     setRemainingSeconds,
   ] =
@@ -829,6 +868,13 @@ export default function LiveTestRunner({
     >(null);
 
 
+  const [
+    testAccessOpen,
+    setTestAccessOpen,
+  ] =
+    useState(false);
+
+
   const isAdminTest =
     code
       .trim()
@@ -878,6 +924,171 @@ export default function LiveTestRunner({
         currentQuestionIndex
       ] ??
     null;
+
+  const liveContextId =
+    questionsResponse
+      ?.liveTest
+      .entryId ??
+    null;
+
+  const currentGuidance =
+    currentQuestion
+      ? guidanceByQuestion[
+          currentQuestion
+            .questionId
+        ] ??
+        null
+      : null;
+
+  const eliminatedChoices =
+    new Set(
+      currentGuidance
+        ?.eliminatedChoices
+        ?.map(
+          (
+            item,
+          ) =>
+            item.choice,
+        ) ??
+      [],
+    );
+
+
+  async function ensureGuidance(
+    question:
+      LiveQuestion,
+  ): Promise<void> {
+    if (
+      isAdminTest ||
+      !liveContextId ||
+      guidanceByQuestion[
+        question.questionId
+      ]
+    ) {
+      return;
+    }
+
+    try {
+      const next =
+        await loadQuestionGuidance(
+          question.questionId,
+          "LIVE",
+          liveContextId,
+        );
+
+      setGuidanceByQuestion(
+        (
+          current,
+        ) => ({
+          ...current,
+          [
+            question.questionId
+          ]:
+            next,
+        }),
+      );
+    } catch (
+      caught
+    ) {
+      console.error(
+        "Unable to load question guidance:",
+        caught,
+      );
+    }
+  }
+
+
+  async function unlockGuidance(
+    question:
+      LiveQuestion,
+    kind:
+      "TIP" |
+      "FIFTY_FIFTY",
+  ): Promise<void> {
+    if (
+      isAdminTest ||
+      !liveContextId ||
+      guidanceLoading
+    ) {
+      return;
+    }
+
+    setGuidanceLoading(
+      kind,
+    );
+
+    setError("");
+
+    try {
+      const next =
+        await unlockQuestionGuidance(
+          question.questionId,
+          kind,
+          "LIVE",
+          liveContextId,
+        );
+
+      setGuidanceByQuestion(
+        (
+          current,
+        ) => ({
+          ...current,
+          [
+            question.questionId
+          ]:
+            next,
+        }),
+      );
+
+      setGuidanceNotice(
+        kind,
+      );
+
+      if (
+        kind ===
+          "FIFTY_FIFTY" &&
+        next.eliminatedChoices
+          .some(
+            (
+              item,
+            ) =>
+              answers[
+                question.questionId
+              ] ===
+              item.choice,
+          )
+      ) {
+        setAnswers(
+          (
+            current,
+          ) => {
+            const copy = {
+              ...current,
+            };
+
+            delete copy[
+              question.questionId
+            ];
+
+            return copy;
+          },
+        );
+      }
+    } catch (
+      caught
+    ) {
+      setError(
+        caught instanceof
+          Error
+          ? caught.message
+          : "Guided help could not be opened.",
+      );
+    } finally {
+      setGuidanceLoading(
+        null,
+      );
+    }
+  }
 
 
   async function loadSavedAnswers():
@@ -1062,6 +1273,36 @@ export default function LiveTestRunner({
       );
     }
   }
+
+
+  useEffect(
+    () => {
+      setGuidanceNotice(
+        null,
+      );
+
+      if (
+        !started ||
+        submitted ||
+        !currentQuestion
+      ) {
+        return;
+      }
+
+      void ensureGuidance(
+        currentQuestion,
+      );
+    },
+    // ensureGuidance reads current state; rerunning on navigation is enough.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      started,
+      submitted,
+      currentQuestion
+        ?.questionId,
+      liveContextId,
+    ],
+  );
 
 
   function chooseAnswer(
@@ -2646,6 +2887,77 @@ export default function LiveTestRunner({
 
 
       {
+        testAccessOpen && (
+          <div
+            role="presentation"
+            onMouseDown={() =>
+              setTestAccessOpen(
+                false,
+              )
+            }
+            style={{
+              position:
+                "fixed",
+              inset:
+                0,
+              zIndex:
+                1500,
+              display:
+                "grid",
+              placeItems:
+                "start center",
+              padding:
+                "58px 12px 12px",
+              background:
+                "rgba(15, 23, 42, 0.42)",
+            }}
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-label="Test Access"
+              onMouseDown={(
+                event,
+              ) =>
+                event.stopPropagation()
+              }
+              style={{
+                width:
+                  "min(100%, 780px)",
+                maxHeight:
+                  "calc(100vh - 70px)",
+                overflowY:
+                  "auto",
+                borderRadius:
+                  "14px",
+                background:
+                  "#fff",
+                boxShadow:
+                  "0 20px 50px rgba(15,23,42,0.25)",
+              }}
+            >
+              <ShoppingCartBuilder
+                initialProgram={
+                  liveSummary
+                    ?.program ??
+                  ""
+                }
+                initialLiveTestCode={
+                  code
+                }
+                onClose={() =>
+                  setTestAccessOpen(
+                    false,
+                  )
+                }
+              />
+            </section>
+          </div>
+        )
+      }
+
+
+      {
         liveDialog && (
           <div
             className="live-test-runner__dialog-backdrop"
@@ -2784,6 +3096,123 @@ export default function LiveTestRunner({
                       )
                 }
               </div>
+            </section>
+          </div>
+        )
+      }
+
+
+      {
+        guidanceNotice &&
+        currentGuidance &&
+        currentQuestion && (
+          <div
+            className="live-test-runner__guidance-toast-backdrop"
+            role="presentation"
+            onMouseDown={() =>
+              setGuidanceNotice(
+                null,
+              )
+            }
+          >
+            <section
+              className="live-test-runner__guidance-toast"
+              role="dialog"
+              aria-modal="true"
+              aria-label={
+                guidanceNotice ===
+                  "TIP"
+                  ? "GYAN Tip"
+                  : "50/50 explanation"
+              }
+              onMouseDown={(
+                event,
+              ) =>
+                event.stopPropagation()
+              }
+            >
+              <button
+                type="button"
+                className="live-test-runner__guidance-toast-close"
+                aria-label="Close"
+                onClick={() =>
+                  setGuidanceNotice(
+                    null,
+                  )
+                }
+              >
+                ×
+              </button>
+
+              {
+                guidanceNotice ===
+                  "TIP"
+                  ? (
+                    <>
+                      <div className="live-test-runner__guidance-toast-title">
+                        <span aria-hidden="true">
+                          💡
+                        </span>
+
+                        <strong>
+                          GYAN Tip
+                        </strong>
+                      </div>
+
+                      <p>
+                        {
+                          currentGuidance
+                            .tipText ??
+                          "Tip unlocked."
+                        }
+                      </p>
+                    </>
+                  )
+                  : (
+                    <>
+                      <div className="live-test-runner__guidance-toast-title">
+                        <span
+                          className="live-test-runner__fifty-rect-icon live-test-runner__fifty-rect-icon--toast"
+                          aria-hidden="true"
+                        />
+
+                        <strong>
+                          Two choices eliminated
+                        </strong>
+                      </div>
+
+                      <div className="live-test-runner__guidance-toast-eliminations">
+                        {
+                          currentGuidance
+                            .eliminatedChoices
+                            .map(
+                              (
+                                item,
+                              ) => (
+                                <div
+                                  key={
+                                    item.choice
+                                  }
+                                >
+                                  <b>
+                                    ✕ {
+                                      item.choice
+                                    }
+                                  </b>
+
+                                  <span>
+                                    {
+                                      item.reason
+                                    }
+                                  </span>
+                                </div>
+                              ),
+                            )
+                        }
+                      </div>
+                    </>
+                  )
+              }
             </section>
           </div>
         )
@@ -2943,6 +3372,50 @@ export default function LiveTestRunner({
                   </div>
                 )
               }
+
+              {
+                !isAdminTest && (
+                  <div
+                    style={{
+                      width:
+                        "100%",
+                      marginTop:
+                        "10px",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTestAccessOpen(
+                          true,
+                        )
+                      }
+                      style={{
+                        padding:
+                          "4px 2px",
+                        border:
+                          0,
+                        background:
+                          "transparent",
+                        color:
+                          "#475569",
+                        font:
+                          "inherit",
+                        fontSize:
+                          "0.8rem",
+                        fontWeight:
+                          700,
+                        textDecoration:
+                          "underline",
+                        cursor:
+                          "pointer",
+                      }}
+                    >
+                      View test access options
+                    </button>
+                  </div>
+                )
+              }
             </section>
           )
           : (
@@ -2950,17 +3423,207 @@ export default function LiveTestRunner({
               <section className="live-test-runner__cbt">
                 <div className="live-test-runner__cbt-main">
                   <div className="live-test-runner__cbt-status">
-                    <strong>
-                      Question {
-                        currentQuestionIndex +
-                        1
-                      } of {
-                        questionsResponse
-                          ?.questions
-                          .length ??
-                        0
+                    <div className="live-test-runner__question-status-left">
+                      <strong className="live-test-runner__question-count">
+                        Question {
+                          currentQuestionIndex +
+                          1
+                        } of {
+                          questionsResponse
+                            ?.questions
+                            .length ??
+                          0
+                        }
+                      </strong>
+
+                      {
+                        !isAdminTest &&
+                        currentQuestion &&
+                        currentGuidance &&
+                        !currentGuidance
+                          .challengeMode && (
+                          <div className="live-test-runner__guidance-mini">
+                            {
+                              currentGuidance
+                                .tipAvailable && (
+                                <button
+                                  type="button"
+                                  className={[
+                                    "live-test-runner__guidance-mini-button",
+                                    currentGuidance
+                                      .tipUnlocked
+                                      ? "live-test-runner__guidance-mini-button--unlocked"
+                                      : "",
+                                  ]
+                                    .filter(
+                                      Boolean,
+                                    )
+                                    .join(
+                                      " ",
+                                    )}
+                                  disabled={
+                                    guidanceLoading !==
+                                    null
+                                  }
+                                  title={
+                                    currentGuidance
+                                      .tipUnlocked
+                                      ? "Show Tip"
+                                      : `Unlock Tip${
+                                          currentGuidance
+                                            .tipGemCost >
+                                          0
+                                            ? ` · 💎${currentGuidance.tipGemCost}`
+                                            : ""
+                                        }`
+                                  }
+                                  aria-label={
+                                    currentGuidance
+                                      .tipUnlocked
+                                      ? "Show Tip"
+                                      : `Unlock Tip${
+                                          currentGuidance
+                                            .tipGemCost >
+                                          0
+                                            ? ` for ${currentGuidance.tipGemCost} Gem`
+                                            : ""
+                                        }`
+                                  }
+                                  onClick={() => {
+                                    if (
+                                      currentGuidance
+                                        .tipUnlocked
+                                    ) {
+                                      setGuidanceNotice(
+                                        "TIP",
+                                      );
+                                    } else {
+                                      void unlockGuidance(
+                                        currentQuestion,
+                                        "TIP",
+                                      );
+                                    }
+                                  }}
+                                >
+                                  <span aria-hidden="true">
+                                    💡
+                                  </span>
+
+                                  <span>
+                                    Tip
+                                  </span>
+
+                                  {
+                                    !currentGuidance
+                                      .tipUnlocked &&
+                                    currentGuidance
+                                      .tipGemCost >
+                                      0 && (
+                                      <span className="live-test-runner__guidance-gem">
+                                        💎{
+                                          currentGuidance
+                                            .tipGemCost
+                                        }
+                                      </span>
+                                    )
+                                  }
+                                </button>
+                              )
+                            }
+
+                            {
+                              currentGuidance
+                                .fiftyFiftyAvailable && (
+                                <button
+                                  type="button"
+                                  className={[
+                                    "live-test-runner__guidance-mini-button",
+                                    "live-test-runner__guidance-mini-button--fifty",
+                                    currentGuidance
+                                      .fiftyFiftyUnlocked
+                                      ? "live-test-runner__guidance-mini-button--unlocked"
+                                      : "",
+                                  ]
+                                    .filter(
+                                      Boolean,
+                                    )
+                                    .join(
+                                      " ",
+                                    )}
+                                  disabled={
+                                    guidanceLoading !==
+                                    null
+                                  }
+                                  title={
+                                    currentGuidance
+                                      .fiftyFiftyUnlocked
+                                      ? "Show 50/50 explanation"
+                                      : `Use 50/50${
+                                          currentGuidance
+                                            .fiftyFiftyGemCost >
+                                          0
+                                            ? ` · 💎${currentGuidance.fiftyFiftyGemCost}`
+                                            : ""
+                                        }`
+                                  }
+                                  aria-label={
+                                    currentGuidance
+                                      .fiftyFiftyUnlocked
+                                      ? "Show 50/50 explanation"
+                                      : `Use 50/50${
+                                          currentGuidance
+                                            .fiftyFiftyGemCost >
+                                          0
+                                            ? ` for ${currentGuidance.fiftyFiftyGemCost} Gem`
+                                            : ""
+                                        }`
+                                  }
+                                  onClick={() => {
+                                    if (
+                                      currentGuidance
+                                        .fiftyFiftyUnlocked
+                                    ) {
+                                      setGuidanceNotice(
+                                        "FIFTY_FIFTY",
+                                      );
+                                    } else {
+                                      void unlockGuidance(
+                                        currentQuestion,
+                                        "FIFTY_FIFTY",
+                                      );
+                                    }
+                                  }}
+                                >
+                                  <span
+                                    className="live-test-runner__fifty-rect-icon"
+                                    aria-hidden="true"
+                                  />
+
+                                  <span>
+                                    50/50
+                                  </span>
+
+                                  {
+                                    !currentGuidance
+                                      .fiftyFiftyUnlocked &&
+                                    currentGuidance
+                                      .fiftyFiftyGemCost >
+                                      0 && (
+                                      <span className="live-test-runner__guidance-gem">
+                                        💎{
+                                          currentGuidance
+                                            .fiftyFiftyGemCost
+                                        }
+                                      </span>
+                                    )
+                                  }
+                                </button>
+                              )
+                            }
+                          </div>
+                        )
                       }
-                    </strong>
+                    </div>
 
                     <span>
                       {
@@ -3043,17 +3706,36 @@ export default function LiveTestRunner({
                                   ] ===
                                   choice;
 
+                                const eliminated =
+                                  eliminatedChoices
+                                    .has(
+                                      choice,
+                                    );
+
                                 return (
                                   <button
                                     type="button"
                                     key={
                                       choice
                                     }
-                                    className={
-                                      selected
-                                        ? "live-test-runner__choice live-test-runner__choice--selected"
-                                        : "live-test-runner__choice"
+                                    disabled={
+                                      eliminated
                                     }
+                                    className={[
+                                      "live-test-runner__choice",
+                                      selected
+                                        ? "live-test-runner__choice--selected"
+                                        : "",
+                                      eliminated
+                                        ? "live-test-runner__choice--eliminated"
+                                        : "",
+                                    ]
+                                      .filter(
+                                        Boolean,
+                                      )
+                                      .join(
+                                        " ",
+                                      )}
                                     onClick={() =>
                                       chooseAnswer(
                                         currentQuestion,

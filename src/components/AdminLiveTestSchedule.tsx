@@ -452,6 +452,119 @@ export default function AdminLiveTestSchedule({
   onBack,
 }: AdminLiveTestScheduleProps) {
   const [
+    browserTimezone,
+  ] =
+    useState(
+      () => {
+        try {
+          return (
+            Intl.DateTimeFormat()
+              .resolvedOptions()
+              .timeZone ||
+            "America/Los_Angeles"
+          );
+        } catch {
+          return "America/Los_Angeles";
+        }
+      },
+    );
+
+  const ADMIN_CALENDAR_TIMEZONE_KEY =
+    "gyan_admin_calendar_timezone_v1";
+
+  const [
+    adminTimezone,
+    setAdminTimezone,
+  ] =
+    useState(
+      () => {
+        try {
+          const saved =
+            window.localStorage.getItem(
+              ADMIN_CALENDAR_TIMEZONE_KEY,
+            );
+
+          if (
+            saved &&
+            (
+              saved.startsWith(
+                "America/",
+              ) ||
+              saved ===
+                "Asia/Kolkata"
+            )
+          ) {
+            return saved;
+          }
+        } catch {
+          // Fall back to the browser timezone.
+        }
+
+        return browserTimezone;
+      },
+    );
+
+
+  function saveAdminTimezone(
+    timezone:
+      string,
+  ): void {
+    setAdminTimezone(
+      timezone,
+    );
+
+    try {
+      window.localStorage.setItem(
+        ADMIN_CALENDAR_TIMEZONE_KEY,
+        timezone,
+      );
+    } catch {
+      // localStorage may be unavailable.
+    }
+  }
+
+
+  function locationLabelForTimezone(
+    timezone:
+      string,
+  ): string {
+    const known:
+      Record<
+        string,
+        string
+      > = {
+        "America/Los_Angeles":
+          "Riverside, CA",
+        "America/New_York":
+          "New York, NY",
+        "America/Chicago":
+          "Chicago, IL",
+        "America/Denver":
+          "Denver, CO",
+        "America/Phoenix":
+          "Phoenix, AZ",
+        "Asia/Kolkata":
+          "India",
+        "Asia/Calcutta":
+          "India",
+      };
+
+    return (
+      known[
+        timezone
+      ] ??
+      timezone
+        .split("/")
+        .pop()
+        ?.replaceAll(
+          "_",
+          " ",
+        ) ??
+      "Local"
+    );
+  }
+
+  const [
     country,
     setCountry,
   ] =
@@ -459,7 +572,13 @@ export default function AdminLiveTestSchedule({
       "IN" |
       "US"
     >(
-      "IN",
+      () =>
+        browserTimezone ===
+          "Asia/Kolkata" ||
+        browserTimezone ===
+          "Asia/Calcutta"
+          ? "IN"
+          : "US",
     );
 
   const [
@@ -1461,6 +1580,9 @@ function createdTimeText(
   return new Intl.DateTimeFormat(
     undefined,
     {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
       hour: "numeric",
       minute: "2-digit",
       timeZoneName: "short",
@@ -2216,6 +2338,61 @@ function participantLabel(
 
   useEffect(
     () => {
+      if (
+        calendarBatchStartDate ||
+        testBatches.length ===
+          0
+      ) {
+        return;
+      }
+
+      const today =
+        localNowParts(
+          countryTimezone(),
+        ).date;
+
+      const current =
+        testBatches.find(
+          (
+            batch,
+          ) =>
+            batch.active ===
+              1 &&
+            batch.start_date <=
+              today &&
+            batch.end_date >=
+              today,
+        ) ??
+        testBatches.find(
+          (
+            batch,
+          ) =>
+            batch.active ===
+            1,
+        );
+
+      if (current) {
+        setCalendarBatchStartDate(
+          current.start_date,
+        );
+
+        setSelectedTestBatchCode(
+          current.batch_code,
+        );
+      }
+    },
+    [
+      calendarBatchStartDate,
+      testBatches,
+      country,
+      adminTimezone,
+      browserTimezone,
+    ],
+  );
+
+
+  useEffect(
+    () => {
       const controller = new AbortController();
       if (!selectedTestBatchCode) return () => controller.abort();
       void fetch(
@@ -2887,14 +3064,19 @@ function participantLabel(
     width:
       string;
   } {
+    const displayed =
+      displayClassTimes(
+        item,
+      );
+
     const start =
       minutesFromClock(
-        item.startLocal,
+        displayed.start,
       );
 
     const end =
       minutesFromClock(
-        item.endLocal,
+        displayed.end,
       );
 
     return rangeTimelinePosition(
@@ -2952,28 +3134,343 @@ function participantLabel(
 
   function countryTimezone():
     string {
-    const preferred =
-      policies.find(
-        (
-          policy,
-        ) =>
-          policy.country ===
-            country &&
-          visiblePrograms.includes(
-            policy.program,
-          ),
+    if (
+      country ===
+      "IN"
+    ) {
+      return "Asia/Kolkata";
+    }
+
+    if (
+      adminTimezone.startsWith(
+        "America/",
+      )
+    ) {
+      return adminTimezone;
+    }
+
+    if (
+      browserTimezone.startsWith(
+        "America/",
+      )
+    ) {
+      return browserTimezone;
+    }
+
+    return "America/Los_Angeles";
+  }
+
+
+  function timezoneShortName(
+    timezone:
+      string,
+  ): string {
+    try {
+      const part =
+        new Intl.DateTimeFormat(
+          "en-US",
+          {
+            timeZone:
+              timezone,
+            timeZoneName:
+              "short",
+          },
+        )
+          .formatToParts(
+            new Date(
+              nowMs,
+            ),
+          )
+          .find(
+            (
+              item,
+            ) =>
+              item.type ===
+              "timeZoneName",
+          );
+
+      return (
+        part?.value ??
+        timezone
+      );
+    } catch {
+      return timezone;
+    }
+  }
+
+
+  function scheduleLocationLabel():
+    string {
+    if (
+      country ===
+      "IN"
+    ) {
+      return "India";
+    }
+
+    return locationLabelForTimezone(
+      countryTimezone(),
+    );
+  }
+
+
+  function localDateTimeToUtcMs(
+    date:
+      string,
+
+    time:
+      string,
+
+    timezone:
+      string,
+  ): number | null {
+    const dateMatch =
+      /^(\d{4})-(\d{2})-(\d{2})$/
+        .exec(
+          date,
+        );
+
+    const timeMatch =
+      /^(\d{1,2}):(\d{2})$/
+        .exec(
+          time,
+        );
+
+    if (
+      !dateMatch ||
+      !timeMatch
+    ) {
+      return null;
+    }
+
+    const desired =
+      Date.UTC(
+        Number(
+          dateMatch[1],
+        ),
+        Number(
+          dateMatch[2],
+        ) - 1,
+        Number(
+          dateMatch[3],
+        ),
+        Number(
+          timeMatch[1],
+        ),
+        Number(
+          timeMatch[2],
+        ),
+        0,
       );
 
-    return (
-      preferred
-        ?.scheduleTimezone ||
-      (
-        country ===
-          "IN"
-          ? "Asia/Kolkata"
-          : "America/Los_Angeles"
+    let guess =
+      desired;
+
+    const formatter =
+      new Intl.DateTimeFormat(
+        "en-CA",
+        {
+          timeZone:
+            timezone,
+          year:
+            "numeric",
+          month:
+            "2-digit",
+          day:
+            "2-digit",
+          hour:
+            "2-digit",
+          minute:
+            "2-digit",
+          second:
+            "2-digit",
+          hourCycle:
+            "h23",
+        },
+      );
+
+    for (
+      let pass = 0;
+      pass < 3;
+      pass += 1
+    ) {
+      const parts =
+        formatter.formatToParts(
+          new Date(
+            guess,
+          ),
+        );
+
+      const read =
+        (
+          type:
+            Intl.DateTimeFormatPartTypes,
+        ): number =>
+          Number(
+            parts.find(
+              (
+                item,
+              ) =>
+                item.type ===
+                type,
+            )?.value ??
+            0,
+          );
+
+      const represented =
+        Date.UTC(
+          read(
+            "year",
+          ),
+          read(
+            "month",
+          ) - 1,
+          read(
+            "day",
+          ),
+          read(
+            "hour",
+          ),
+          read(
+            "minute",
+          ),
+          read(
+            "second",
+          ),
+        );
+
+      const correction =
+        desired -
+        represented;
+
+      if (
+        Math.abs(
+          correction,
+        ) <
+        1000
+      ) {
+        break;
+      }
+
+      guess +=
+        correction;
+    }
+
+    return guess;
+  }
+
+
+  function clockInTimezone(
+    utcMs:
+      number,
+
+    timezone:
+      string,
+  ): string {
+    if (
+      !Number.isFinite(
+        utcMs,
       )
+    ) {
+      return "";
+    }
+
+    return new Intl.DateTimeFormat(
+      "en-US",
+      {
+        timeZone:
+          timezone,
+        hour:
+          "2-digit",
+        minute:
+          "2-digit",
+        hourCycle:
+          "h23",
+      },
+    ).format(
+      new Date(
+        utcMs,
+      ),
     );
+  }
+
+
+  function displayClassTimes(
+    item:
+      AdminLiveClassItem,
+  ): {
+    start:
+      string;
+    end:
+      string;
+  } {
+    const targetTimezone =
+      countryTimezone();
+
+    const startUtc =
+      localDateTimeToUtcMs(
+        item.scheduleDate,
+        item.startLocal,
+        item.scheduleTimezone,
+      );
+
+    const endUtc =
+      localDateTimeToUtcMs(
+        item.scheduleDate,
+        item.endLocal,
+        item.scheduleTimezone,
+      );
+
+    return {
+      start:
+        startUtc ===
+          null
+          ? item.startLocal
+          : clockInTimezone(
+              startUtc,
+              targetTimezone,
+            ),
+
+      end:
+        endUtc ===
+          null
+          ? item.endLocal
+          : clockInTimezone(
+              endUtc,
+              targetTimezone,
+            ),
+    };
+  }
+
+
+  function displayTestTime(
+    test:
+      AdminLiveTestItem,
+  ): string {
+    const normalized =
+      /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/
+        .test(
+          test.startsAtUtc,
+        )
+        ? `${test.startsAtUtc.replace(
+            " ",
+            "T",
+          )}Z`
+        : test.startsAtUtc;
+
+    const utcMs =
+      Date.parse(
+        normalized,
+      );
+
+    return Number.isFinite(
+      utcMs,
+    )
+      ? clockInTimezone(
+          utcMs,
+          countryTimezone(),
+        )
+      : test.localTime;
   }
 
 
@@ -3400,6 +3897,80 @@ function participantLabel(
   }
 
 
+  function batchButtonLabel(
+    batch:
+      TestBatchDefinition,
+  ): string {
+    const start =
+      new Date(
+        `${batch.start_date}T12:00:00Z`,
+      );
+
+    const end =
+      new Date(
+        `${batch.end_date}T12:00:00Z`,
+      );
+
+    const month =
+      (
+        value:
+          Date,
+      ): string =>
+        new Intl.DateTimeFormat(
+          "en-US",
+          {
+            month:
+              "short",
+          },
+        ).format(
+          value,
+        );
+
+    return `${month(
+      start,
+    )} ${start.getUTCFullYear()} – ${month(
+      end,
+    )} ${end.getUTCFullYear()}`;
+  }
+
+
+  const calendarBatchOptions =
+    testBatches
+      .filter(
+        (
+          batch,
+        ) =>
+          batch.active ===
+          1,
+      )
+      .slice(
+        0,
+        2,
+      );
+
+
+  function selectCalendarBatch(
+    batch:
+      TestBatchDefinition,
+  ): void {
+    setSelectedTestBatchCode(
+      batch.batch_code,
+    );
+
+    setCalendarBatchStartDate(
+      batch.start_date,
+    );
+
+    setTestBatchMessage(
+      "",
+    );
+
+    setClassBatchMessage(
+      "",
+    );
+  }
+
+
   function batchTitle():
     string {
     const range =
@@ -3455,7 +4026,9 @@ function participantLabel(
     const match =
       /^(\d{2}):(\d{2})$/
         .exec(
-          test.localTime,
+          displayTestTime(
+            test,
+          ),
         );
 
     const start =
@@ -3571,12 +4144,65 @@ function participantLabel(
         </button>
 
         <div className="admin-live-tests__batch-heading">
-          <div>
-            <strong>
-              {
-                batchTitle()
-              }
-            </strong>
+          <div
+            style={{
+              display:
+                "flex",
+              gap:
+                "6px",
+              flexWrap:
+                "wrap",
+              alignItems:
+                "center",
+            }}
+          >
+            {
+              calendarBatchOptions.map(
+                (
+                  batch,
+                ) => (
+                  <button
+                    key={
+                      batch.batch_code
+                    }
+                    type="button"
+                    onClick={() =>
+                      selectCalendarBatch(
+                        batch,
+                      )
+                    }
+                    style={{
+                      padding:
+                        "3px 7px",
+                      border:
+                        calendarBatchStartDate ===
+                          batch.start_date
+                          ? "1px solid #38bdf8"
+                          : "1px solid #bae6fd",
+                      borderRadius:
+                        "7px",
+                      background:
+                        "#e0f2fe",
+                      fontSize:
+                        "0.68rem",
+                      fontWeight:
+                        calendarBatchStartDate ===
+                          batch.start_date
+                          ? 800
+                          : 600,
+                      cursor:
+                        "pointer",
+                    }}
+                  >
+                    {
+                      batchButtonLabel(
+                        batch,
+                      )
+                    }
+                  </button>
+                ),
+              )
+            }
 
             <button
               type="button"
@@ -3600,6 +4226,12 @@ function participantLabel(
           <small>
             Schedule · {
               country
+            } ({
+              scheduleLocationLabel()
+            }) {
+              timezoneShortName(
+                countryTimezone(),
+              )
             }
           </small>
         </div>
@@ -3661,11 +4293,21 @@ function participantLabel(
 
         {
           country ===
-            "IN" && (
-            <span className="admin-live-tests__schedule-note">
-              JEE classes 3:30–5:00 · Test 9:15 PM · NEET classes 3:30–5:30 · Test 8:30 PM IST
-            </span>
-          )
+            "IN"
+            ? (
+                <span className="admin-live-tests__schedule-note">
+                  JEE classes 3:30–5:00 · Test 9:15 PM · NEET classes 3:30–5:30 · Test 8:30 PM IST
+                </span>
+              )
+            : (
+                <span className="admin-live-tests__schedule-note">
+                  Times shown in {
+                    timezoneShortName(
+                      countryTimezone(),
+                    )
+                  }
+                </span>
+              )
         }
       </div>
 
@@ -3916,8 +4558,20 @@ function participantLabel(
                                                       item,
                                                     )
                                                   }
-                                                  title={`${program} · ${item.subject} · ${item.topicName} · ${item.startLocal}–${item.endLocal} IST`}
-                                                  aria-label={`${program} ${item.subject}: ${item.topicName}, ${item.startLocal} to ${item.endLocal} IST`}
+                                                  title={`${program} · ${item.subject} · ${item.topicName} · ${displayClassTimes(
+                                                    item,
+                                                  ).start}–${displayClassTimes(
+                                                    item,
+                                                  ).end} ${timezoneShortName(
+                                                    countryTimezone(),
+                                                  )}`}
+                                                  aria-label={`${program} ${item.subject}: ${item.topicName}, ${displayClassTimes(
+                                                    item,
+                                                  ).start} to ${displayClassTimes(
+                                                    item,
+                                                  ).end} ${timezoneShortName(
+                                                    countryTimezone(),
+                                                  )}`}
                                                   onClick={() =>
                                                     openClassEditor(
                                                       item,
@@ -3961,8 +4615,16 @@ function participantLabel(
                                                     test,
                                                   )
                                                 }
-                                                title={`${test.code} · ${test.localTime} · ${test.durationMinutes} min · ${test.frozenQuestions}/${test.expectedQuestions} questions · ${test.status}`}
-                                                aria-label={`${program} Live Test ${test.code}, ${test.localTime}, ${test.durationMinutes} minutes`}
+                                                title={`${test.code} · ${displayTestTime(
+                                                  test,
+                                                )} ${timezoneShortName(
+                                                  countryTimezone(),
+                                                )} · ${test.durationMinutes} min · ${test.frozenQuestions}/${test.expectedQuestions} questions · ${test.status}`}
+                                                aria-label={`${program} Live Test ${test.code}, ${displayTestTime(
+                                                  test,
+                                                )} ${timezoneShortName(
+                                                  countryTimezone(),
+                                                )}, ${test.durationMinutes} minutes`}
                                                 onClick={() =>
                                                   setSelectedCode(
                                                     test.code,
@@ -4890,16 +5552,82 @@ function participantLabel(
                       setSelectedCode(
                         null,
                       );
-
-                      setCountryPickerOpen(
-                        false,
-                      );
                     }}
                   >
                     US
                   </button>
                 </div>
               </div>
+
+              {
+                country ===
+                  "US" && (
+                  <label
+                    style={{
+                      display:
+                        "grid",
+                      gap:
+                        "5px",
+                      marginTop:
+                        "10px",
+                    }}
+                  >
+                    <span>
+                      Location
+                    </span>
+
+                    <select
+                      value={
+                        countryTimezone()
+                      }
+                      onChange={(
+                        event,
+                      ) => {
+                        saveAdminTimezone(
+                          event.target
+                            .value,
+                        );
+
+                        setSelectedCode(
+                          null,
+                        );
+                      }}
+                    >
+                      <option value="America/Los_Angeles">
+                        Riverside, CA · Pacific
+                      </option>
+                      <option value="America/Denver">
+                        Denver, CO · Mountain
+                      </option>
+                      <option value="America/Chicago">
+                        Chicago, IL · Central
+                      </option>
+                      <option value="America/New_York">
+                        New York, NY · Eastern
+                      </option>
+                      <option value="America/Phoenix">
+                        Phoenix, AZ
+                      </option>
+                    </select>
+                  </label>
+                )
+              }
+
+              <button
+                type="button"
+                className="admin-live-tests__class-save"
+                style={{
+                  marginTop:
+                    "10px",
+                }}
+                onClick={() =>
+                  setCountryPickerOpen(
+                    false,
+                  )
+                }
+              >
+                Done
+              </button>
             </section>
           </div>
         )

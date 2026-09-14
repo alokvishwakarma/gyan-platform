@@ -780,6 +780,7 @@ async function scoreFixedTest(
     elapsedSeconds?: unknown;
     saveCount?: unknown;
     reviewQuestionIds?: unknown;
+    guidanceUsage?: unknown;
   };
 
   try {
@@ -887,6 +888,81 @@ async function scoreFixedTest(
             )
         : [],
     );
+
+  const guidanceUsage =
+    Array.isArray(
+      body.guidanceUsage,
+    )
+      ? body.guidanceUsage
+          .map(
+            (
+              item,
+            ) => {
+              if (
+                !item ||
+                typeof item !==
+                  "object"
+              ) {
+                return null;
+              }
+
+              const value =
+                item as {
+                  questionId?:
+                    unknown;
+                  kind?:
+                    unknown;
+                };
+
+              const questionId =
+                Number(
+                  value.questionId,
+                );
+
+              const kind =
+                typeof value.kind ===
+                  "string"
+                  ? value.kind
+                      .trim()
+                      .toUpperCase()
+                  : "";
+
+              if (
+                !Number.isInteger(
+                  questionId,
+                ) ||
+                questionId <= 0 ||
+                (
+                  kind !== "TIP" &&
+                  kind !==
+                    "FIFTY_FIFTY"
+                )
+              ) {
+                return null;
+              }
+
+              return {
+                questionId,
+                kind:
+                  kind as
+                    | "TIP"
+                    | "FIFTY_FIFTY",
+              };
+            },
+          )
+          .filter(
+            (
+              value,
+            ): value is {
+              questionId:
+                number;
+              kind:
+                | "TIP"
+                | "FIFTY_FIFTY";
+            } =>
+              value !== null,
+          )
+      : [];
 
   if (
     !program ||
@@ -1573,6 +1649,59 @@ async function scoreFixedTest(
         if (statements.length) {
           await env.gyan_registry.batch(
             statements,
+          );
+        }
+
+        const validQuestionIds =
+          new Set(
+            questions.map(
+              (
+                question,
+              ) =>
+                Number(
+                  question.questionId,
+                ),
+            ),
+          );
+
+        const guidanceStatements =
+          guidanceUsage
+            .filter(
+              (
+                usage,
+              ) =>
+                validQuestionIds.has(
+                  usage.questionId,
+                ),
+            )
+            .map(
+              (
+                usage,
+              ) =>
+                env.gyan_registry
+                  .prepare(
+                    `
+                    INSERT OR IGNORE INTO education_ai_tip_attempt_usage (
+                      question_id,
+                      mock_attempt_id,
+                      live_attempt_id,
+                      assistance_type
+                    )
+                    VALUES (?, ?, NULL, ?)
+                    `,
+                  )
+                  .bind(
+                    usage.questionId,
+                    attemptId,
+                    usage.kind,
+                  ),
+            );
+
+        if (
+          guidanceStatements.length
+        ) {
+          await env.gyan_registry.batch(
+            guidanceStatements,
           );
         }
 

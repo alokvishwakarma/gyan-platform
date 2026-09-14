@@ -2808,3 +2808,60 @@
   }
 }
 
+.admin-platform-settings__setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid #e5e7eb;
+}
+
+.admin-platform-settings__setting-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.admin-platform-settings__setting-label strong {
+  font-size: 0.9rem;
+}
+
+.admin-platform-settings__setting-label small {
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.admin-platform-settings__setting-row select,
+.admin-platform-settings__gem-input input {
+  min-height: 34px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.admin-platform-settings__setting-row select {
+  width: 130px;
+  padding: 0 8px;
+}
+
+.admin-platform-settings__gem-input {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.admin-platform-settings__gem-input span {
+  font-size: 0.85rem;
+}
+
+.admin-platform-settings__gem-input input {
+  width: 76px;
+  padding: 0 8px;
+  text-align: right;
+}
+

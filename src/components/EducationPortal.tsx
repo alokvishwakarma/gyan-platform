@@ -190,17 +190,55 @@ function relativeStartText(
 }
 
 function shortTimezoneLabel(
-  timezone: string,
+  timezone:
+    string,
+
+  atMs =
+    Date.now(),
 ): string {
-  if (timezone === "Asia/Kolkata") {
+  if (
+    timezone ===
+      "Asia/Kolkata"
+  ) {
     return "IST";
   }
 
-  return timezone;
+  try {
+    return (
+      new Intl.DateTimeFormat(
+        "en-US",
+        {
+          timeZone:
+            timezone,
+          timeZoneName:
+            "short",
+        },
+      )
+        .formatToParts(
+          new Date(
+            atMs,
+          ),
+        )
+        .find(
+          (
+            part,
+          ) =>
+            part.type ===
+            "timeZoneName",
+        )?.value ??
+      timezone
+    );
+  } catch {
+    return timezone;
+  }
 }
 
 function scheduledStartText(
-  test: LiveTestSummary,
+  test:
+    LiveTestSummary,
+
+  viewerTimezone:
+    string,
 ): string {
   const startMs =
     parseLiveUtc(
@@ -217,6 +255,7 @@ function scheduledStartText(
         "en-US",
         {
           timeZone:
+            viewerTimezone ||
             test.scheduleTimezone ||
             "UTC",
           hour:
@@ -229,7 +268,9 @@ function scheduledStartText(
       );
 
     return `${formatted} ${shortTimezoneLabel(
-      test.scheduleTimezone,
+      viewerTimezone ||
+        test.scheduleTimezone,
+      startMs,
     )}`;
   } catch {
     return new Date(
@@ -468,33 +509,41 @@ function liveTestDisplayState(
 
   const shortTime =
     Number.isFinite(startMs)
-      ? new Intl.DateTimeFormat(
-          "en-US",
-          {
-            timeZone:
-              viewerTimezone ||
-              "UTC",
-            hour:
-              "numeric",
-            minute:
-              "2-digit",
-          },
-        )
-          .format(
-            new Date(startMs),
+      ? `${
+          new Intl.DateTimeFormat(
+            "en-US",
+            {
+              timeZone:
+                viewerTimezone ||
+                "UTC",
+              hour:
+                "numeric",
+              minute:
+                "2-digit",
+            },
           )
-          .replace(
-            ":00",
-            "",
-          )
-          .replace(
-            " AM",
-            "a",
-          )
-          .replace(
-            " PM",
-            "p",
-          )
+            .format(
+              new Date(
+                startMs,
+              ),
+            )
+            .replace(
+              ":00",
+              "",
+            )
+            .replace(
+              " AM",
+              "a",
+            )
+            .replace(
+              " PM",
+              "p",
+            )
+        } ${shortTimezoneLabel(
+          viewerTimezone ||
+            test.scheduleTimezone,
+          startMs,
+        )}`
       : "--";
 
   if (
@@ -545,7 +594,10 @@ function liveTestDisplayState(
           ? "soon"
           : "default",
       shortTime,
-      text: `${scheduledStartText(test)} · ${relativeStartText(
+      text: `${scheduledStartText(
+        test,
+        viewerTimezone,
+      )} · ${relativeStartText(
         startMs,
         nowMs,
       )}`,
@@ -698,7 +750,9 @@ export default function EducationPortal({
         true;
 
       void fetch(
-        "/api/education/live-tests",
+        `/api/education/live-tests?timezone=${encodeURIComponent(
+          viewerTimezone,
+        )}`,
         {
           credentials:
             "include",
@@ -744,7 +798,9 @@ export default function EducationPortal({
           false;
       };
     },
-    [],
+    [
+      viewerTimezone,
+    ],
   );
 
 
@@ -913,13 +969,6 @@ export default function EducationPortal({
       );
 
 
-  const showSatPlaceholder =
-    country ===
-      "US" &&
-    countryVisibleLiveTests.length ===
-      0;
-
-
   return (
     <main
       className="education-portal"
@@ -963,11 +1012,9 @@ export default function EducationPortal({
               Advanced
             </h2>
 
-{(
+{
               countryVisibleLiveTests.length >
-                0 ||
-              showSatPlaceholder
-            ) && (
+                0 && (
               <div
                 className="education-portal__advanced-row"
               >
@@ -979,24 +1026,10 @@ export default function EducationPortal({
                   className="education-portal__advanced-actions"
                 >
                   {
-                    showSatPlaceholder
-                      ? (
-                          <button
-                            type="button"
-                            disabled
-                            title="SAT Live Tests coming soon"
-                            style={{
-                              whiteSpace:
-                                "nowrap",
-                            }}
-                          >
-                            SAT · 7:30p ET
-                          </button>
-                        )
-                      : countryVisibleLiveTests.map(
-                          (
-                            test,
-                          ) => {
+                    countryVisibleLiveTests.map(
+                      (
+                        test,
+                      ) => {
                             const display =
                               liveTestDisplayState(
                                 test,

@@ -2,6 +2,9 @@ import {
   currentUser,
 } from "./auth";
 
+import {
+  getWelcomeGems,
+} from "./platformSettings";
 
 export interface CalendarAccessEnv {
   gyan_registry:
@@ -787,8 +790,6 @@ export interface UnifiedGyanGoodieBundle {
   goodies: SafetyResourceRecord[];
 }
 
-const UNIFIED_GYAN_WELCOME_GEMS =
-  25;
 
 const UNIFIED_GYAN_RESOURCE_TYPES:
   SafetyResourceType[] = [
@@ -887,6 +888,8 @@ async function ensureOneSafetyResource(
 async function createUnifiedBridgeRecord(
   env:
     CalendarAccessEnv,
+  welcomeGems:
+    number,
 ): Promise<number> {
   for (
     let attempt = 0;
@@ -928,7 +931,7 @@ async function createUnifiedBridgeRecord(
             slug,
             internalName,
             internalAccessCode,
-            UNIFIED_GYAN_WELCOME_GEMS,
+            welcomeGems,
           )
           .first<{
             id: number;
@@ -969,6 +972,11 @@ export async function ensureUnifiedGyanGoodies(
   origin:
     string,
 ): Promise<UnifiedGyanGoodieBundle> {
+  const welcomeGems =
+    await getWelcomeGems(
+      env,
+    );
+
   let link =
     await env.gyan_registry
       .prepare(
@@ -991,6 +999,7 @@ export async function ensureUnifiedGyanGoodies(
     const calendarAccessId =
       await createUnifiedBridgeRecord(
         env,
+        welcomeGems,
       );
 
     await env.gyan_registry
@@ -1039,7 +1048,7 @@ export async function ensureUnifiedGyanGoodies(
     )
     .bind(
       link.calendar_access_id,
-      UNIFIED_GYAN_WELCOME_GEMS,
+      welcomeGems,
     )
     .run();
 
@@ -1082,8 +1091,7 @@ export async function ensureUnifiedGyanGoodies(
     );
 
   return {
-    welcomeGems:
-      UNIFIED_GYAN_WELCOME_GEMS,
+    welcomeGems,
 
     goodies:
       rows.results.map(

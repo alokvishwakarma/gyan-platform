@@ -181,6 +181,10 @@ import {
   handleAdminLiveClassScheduleRoute,
 } from "./adminLiveClassSchedule";
 
+import {
+  handleEducationGuidanceRoute,
+} from "./educationGuidance";
+
 interface RegisterShopRequest {
   code?: unknown;
   name?: unknown;
@@ -977,6 +981,16 @@ if (adminStudentsResponse) {
     return adminAuthResponse;
   }
 
+  const educationGuidanceResponse =
+  await handleEducationGuidanceRoute(
+    request,
+    env,
+    url,
+  );
+
+if (educationGuidanceResponse) {
+  return educationGuidanceResponse;
+}
 
   /*
    * ------------------------------------------------

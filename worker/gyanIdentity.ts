@@ -2,6 +2,10 @@ import {
   ensureUnifiedGyanGoodies,
 } from "./calendarAccess";
 
+import {
+  currentUser,
+} from "./auth";
+
 interface GyanIdentityEnv {
   gyan_registry: D1Database;
   RESEND_API_KEY?: string;
@@ -2866,6 +2870,164 @@ export async function handleGyanIdentityRoute(
       request,
       "gyan_anon",
     );
+
+  /*
+   * Authenticated cross-device recovery.
+   *
+   * A verified magic-link session may reclaim an existing registered
+   * GYAN account by email before we fall back to the browser's
+   * anonymous gyan_anon ownership.
+   *
+   * This intentionally runs before the existing-cookie shortcut:
+   * a new computer may already have created a temporary anonymous
+   * GYAN before the user completes email sign-in.
+   */
+  const authenticatedUser =
+    await currentUser(
+      request,
+      env,
+    );
+
+  if (authenticatedUser) {
+    const recoveredAccount =
+      await env.gyan_registry
+        .prepare(
+          `
+          SELECT
+            id,
+            code,
+            display_name,
+            access_code,
+            email,
+            registered
+          FROM gyan_accounts
+          WHERE
+            LOWER(email) =
+              LOWER(?)
+            AND registered = 1
+          ORDER BY id ASC
+          LIMIT 1
+          `,
+        )
+        .bind(
+          authenticatedUser.email,
+        )
+        .first<{
+          id: number;
+          code: string;
+          display_name: string;
+          access_code: string | null;
+          email: string | null;
+          registered: number;
+        }>();
+
+    if (recoveredAccount) {
+      /*
+       * If this browser already owns the recovered account, keep its
+       * existing gyan_anon secret instead of creating another session.
+       */
+      if (existingSecret) {
+        const existingSecretHash =
+          await identitySha256(
+            existingSecret,
+          );
+
+        const existingBrowserSession =
+          await env.gyan_registry
+            .prepare(
+              `
+              SELECT account_id
+              FROM gyan_browser_sessions
+              WHERE secret_hash = ?
+              LIMIT 1
+              `,
+            )
+            .bind(
+              existingSecretHash,
+            )
+            .first<{
+              account_id: number;
+            }>();
+
+        if (
+          existingBrowserSession?.account_id ===
+            recoveredAccount.id
+        ) {
+          await env.gyan_registry
+            .prepare(
+              `
+              UPDATE gyan_browser_sessions
+              SET last_seen_at =
+                CURRENT_TIMESTAMP
+              WHERE secret_hash = ?
+              `,
+            )
+            .bind(
+              existingSecretHash,
+            )
+            .run();
+
+          return identityJson({
+            identity:
+              await publicGyanIdentity(
+                env,
+                recoveredAccount,
+                url.origin,
+              ),
+          });
+        }
+      }
+
+      /*
+       * This is a new browser (or a browser currently holding a
+       * temporary anonymous GYAN). Give it a fresh ownership secret
+       * pointing to the already-registered account.
+       *
+       * Existing browser sessions on other devices remain valid.
+       */
+      const recoveredSecret =
+        identityRandomSecret();
+
+      const recoveredSecretHash =
+        await identitySha256(
+          recoveredSecret,
+        );
+
+      await env.gyan_registry
+        .prepare(
+          `
+          INSERT INTO gyan_browser_sessions (
+            account_id,
+            secret_hash
+          )
+          VALUES (?, ?)
+          `,
+        )
+        .bind(
+          recoveredAccount.id,
+          recoveredSecretHash,
+        )
+        .run();
+
+      return identityJson(
+        {
+          identity:
+            await publicGyanIdentity(
+              env,
+              recoveredAccount,
+              url.origin,
+            ),
+        },
+        200,
+        {
+          "set-cookie":
+            `gyan_anon=${encodeURIComponent(
+              recoveredSecret,
+            )}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000`,
+        },
+      );
+    }
+  }
 
   if (existingSecret) {
     const secretHash =
