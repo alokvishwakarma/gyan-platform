@@ -17,6 +17,9 @@ import LittleLearnersExperience
 
 import LiveTestRunner
   from "./LiveTestRunner";
+
+import LiveTestResultsPanel
+  from "./LiveTestResultsPanel";
 import AdminLiveTestSchedule from "./AdminLiveTestSchedule";
 
 import {
@@ -6859,6 +6862,34 @@ onLiveTest={(
                     }
                   </section>
 
+              )
+            }
+
+            {
+              !programReportLoading &&
+              grade?.type ===
+                "program" && (
+                <LiveTestResultsPanel
+                  mode="program"
+                  program={
+                    grade.programCode ??
+                    grade.code.replace(
+                      /^PROGRAM_/,
+                      "",
+                    )
+                  }
+                  onView={(
+                    code,
+                  ) => {
+                    setLiveTestCode(
+                      code,
+                    );
+
+                    setStep(
+                      "live-test",
+                    );
+                  }}
+                />
               )
             }
 

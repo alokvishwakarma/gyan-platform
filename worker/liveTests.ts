@@ -3962,6 +3962,288 @@ async function adminTestStatus(
 }
 
 
+
+async function liveTestResults(
+  request:
+    Request,
+
+  env:
+    LiveTestsEnv,
+): Promise<Response> {
+  const owner =
+    await currentGyanOwner(
+      request,
+      env,
+    );
+
+  if (!owner) {
+    return liveJson(
+      {
+        error:
+          "Open your GYAN Card on this device to view Live Test results.",
+      },
+      401,
+    );
+  }
+
+  const rows =
+    await env.gyan_registry
+      .prepare(
+        `
+        SELECT
+          a.id AS attempt_id,
+          lt.id AS live_test_id,
+          lt.public_code,
+          lt.program_code,
+          lt.starts_at_utc,
+          COALESCE(
+            lt.source_schedule_date,
+            substr(
+              lt.starts_at_utc,
+              1,
+              10
+            )
+          ) AS result_date,
+          a.question_count,
+          a.answered_count,
+          a.correct_count,
+          a.incorrect_count,
+          a.unanswered_count,
+          a.submitted_at,
+
+          CASE
+            WHEN le.report_unlocked_at IS NULL
+            THEN 0
+            ELSE 1
+          END AS report_unlocked,
+
+          (
+            SELECT COUNT(*)
+            FROM education_guidance_unlocks gu
+            WHERE
+              gu.gyan_account_id = ?
+              AND gu.context_type = 'LIVE'
+              AND gu.context_id = lt.id
+              AND gu.assistance_type = 'TIP'
+          ) AS tips_used,
+
+          (
+            SELECT COUNT(*)
+            FROM education_guidance_unlocks gu
+            WHERE
+              gu.gyan_account_id = ?
+              AND gu.context_type = 'LIVE'
+              AND gu.context_id = lt.id
+              AND gu.assistance_type = 'FIFTY_FIFTY'
+          ) AS fifty_fifty_used,
+
+          (
+            SELECT COUNT(*)
+            FROM education_live_attempt_answers aa
+            WHERE
+              aa.attempt_id = a.id
+              AND aa.is_correct = 1
+              AND NOT EXISTS (
+                SELECT 1
+                FROM education_guidance_unlocks gu
+                WHERE
+                  gu.gyan_account_id = ?
+                  AND gu.context_type = 'LIVE'
+                  AND gu.context_id = lt.id
+                  AND gu.question_id = aa.question_id
+                  AND gu.assistance_type IN (
+                    'TIP',
+                    'FIFTY_FIFTY'
+                  )
+              )
+          ) AS unaided_correct
+
+        FROM education_live_attempts a
+
+        JOIN education_live_tests lt
+          ON lt.id =
+             a.live_test_id
+
+        LEFT JOIN education_live_entries le
+          ON le.id =
+             a.live_entry_id
+
+        WHERE
+          a.participant_type = 'GYAN'
+          AND a.participant_key = ?
+          AND a.submitted_at IS NOT NULL
+          AND COALESCE(
+            lt.event_kind,
+            'WEEKDAY'
+          ) <> 'ADMIN_TEST'
+
+        ORDER BY
+          datetime(
+            a.submitted_at
+          ) DESC,
+          a.id DESC
+
+        LIMIT 100
+        `,
+      )
+      .bind(
+        owner.accountId,
+        owner.accountId,
+        owner.accountId,
+        String(
+          owner.accountId,
+        ),
+      )
+      .all<{
+        attempt_id:
+          number;
+
+        live_test_id:
+          number;
+
+        public_code:
+          string;
+
+        program_code:
+          string;
+
+        starts_at_utc:
+          string;
+
+        result_date:
+          string;
+
+        question_count:
+          number;
+
+        answered_count:
+          number;
+
+        correct_count:
+          number;
+
+        incorrect_count:
+          number;
+
+        unanswered_count:
+          number;
+
+        submitted_at:
+          string;
+
+        report_unlocked:
+          number;
+
+        tips_used:
+          number;
+
+        fifty_fifty_used:
+          number;
+
+        unaided_correct:
+          number;
+      }>();
+
+  return liveJson({
+    results:
+      rows.results.map(
+        (
+          row,
+        ) => {
+          const questionCount =
+            Number(
+              row.question_count,
+            );
+
+          const correctCount =
+            Number(
+              row.correct_count,
+            );
+
+          return {
+            attemptId:
+              Number(
+                row.attempt_id,
+              ),
+
+            liveTestId:
+              Number(
+                row.live_test_id,
+              ),
+
+            code:
+              row.public_code,
+
+            program:
+              row.program_code,
+
+            date:
+              row.result_date,
+
+            startsAt:
+              row.starts_at_utc,
+
+            submittedAt:
+              row.submitted_at,
+
+            questionCount,
+
+            answeredCount:
+              Number(
+                row.answered_count,
+              ),
+
+            correctCount,
+
+            incorrectCount:
+              Number(
+                row.incorrect_count,
+              ),
+
+            unansweredCount:
+              Number(
+                row.unanswered_count,
+              ),
+
+            scorePercent:
+              questionCount >
+                0
+                ? Math.round(
+                    correctCount *
+                      100 /
+                      questionCount,
+                  )
+                : 0,
+
+            tipsUsed:
+              Number(
+                row.tips_used ??
+                0,
+              ),
+
+            fiftyFiftyUsed:
+              Number(
+                row.fifty_fifty_used ??
+                0,
+              ),
+
+            unaidedCorrect:
+              Number(
+                row.unaided_correct ??
+                0,
+              ),
+
+            reportUnlocked:
+              Number(
+                row.report_unlocked,
+              ) === 1,
+          };
+        },
+      ),
+  });
+}
+
+
 export async function handleLiveTestsRoute(
   request:
     Request,
@@ -4002,6 +4284,18 @@ export async function handleLiveTestsRoute(
       "/api/admin/live-tests/test-101"
   ) {
     return adminTestStatus(
+      request,
+      env,
+    );
+  }
+
+  if (
+    request.method ===
+      "GET" &&
+    url.pathname ===
+      "/api/education/live-tests/results"
+  ) {
+    return liveTestResults(
       request,
       env,
     );

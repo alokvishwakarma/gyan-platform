@@ -14,6 +14,9 @@ import {
   getAdminLocationOverride,
 } from "../location/adminLocation";
 
+import LiveTestResultsPanel
+  from "./LiveTestResultsPanel";
+
 import "./EducationPortal.css";
 
 interface LiveTestSummary {
@@ -539,11 +542,7 @@ function liveTestDisplayState(
               " PM",
               "p",
             )
-        } ${shortTimezoneLabel(
-          viewerTimezone ||
-            test.scheduleTimezone,
-          startMs,
-        )}`
+        }`
       : "--";
 
   if (
@@ -681,6 +680,14 @@ export default function EducationPortal({
     setLiveClockMs,
   ] =
     useState(0);
+
+  const [
+    liveResultsOpen,
+    setLiveResultsOpen,
+  ] =
+    useState(
+      false,
+    );
 
   const [
     viewerTimezone,
@@ -1025,6 +1032,25 @@ export default function EducationPortal({
                 <div
                   className="education-portal__advanced-actions"
                 >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLiveResultsOpen(
+                        true,
+                      )
+                    }
+                    title="All Live Test results"
+                    aria-label="All Live Test results"
+                    style={{
+                      minWidth:
+                        "34px",
+                      paddingInline:
+                        "8px",
+                    }}
+                  >
+                    📊
+                  </button>
+
                   {
                     countryVisibleLiveTests.map(
                       (
@@ -1329,6 +1355,30 @@ export default function EducationPortal({
           </section>
         )
       }
+      {
+        liveResultsOpen && (
+          <LiveTestResultsPanel
+            mode="dialog"
+            onClose={() =>
+              setLiveResultsOpen(
+                false,
+              )
+            }
+            onView={(
+              code,
+            ) => {
+              setLiveResultsOpen(
+                false,
+              );
+
+              onLiveTest?.(
+                code,
+              );
+            }}
+          />
+        )
+      }
+
     </main>
   );
 }

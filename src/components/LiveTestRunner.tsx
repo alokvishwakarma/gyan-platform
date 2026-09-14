@@ -8,8 +8,11 @@ import {
 import ShoppingCartBuilder from "./ShoppingCartBuilder";
 
 import {
+  GuidanceInsufficientGemsError,
   loadQuestionGuidance,
+  requestMoreGems,
   unlockQuestionGuidance,
+  type GuidanceKind,
   type GuidanceState,
 } from "../config/educationGuidance";
 
@@ -775,6 +778,24 @@ export default function LiveTestRunner({
     >(null);
 
   const [
+    gemRequestDialog,
+    setGemRequestDialog,
+  ] =
+    useState<{
+      questionId: number;
+      kind:
+        GuidanceKind;
+      requiredGems: number;
+      gemBalance: number;
+      email: string;
+      sent: boolean;
+      sending: boolean;
+      error: string;
+    } | null>(
+      null,
+    );
+
+  const [
     remainingSeconds,
     setRemainingSeconds,
   ] =
@@ -1077,15 +1098,148 @@ export default function LiveTestRunner({
     } catch (
       caught
     ) {
-      setError(
+      if (
         caught instanceof
-          Error
-          ? caught.message
-          : "Guided help could not be opened.",
-      );
+          GuidanceInsufficientGemsError
+      ) {
+        setError("");
+
+        setGemRequestDialog({
+          questionId:
+            question.questionId,
+          kind,
+          requiredGems:
+            caught.requiredGems,
+          gemBalance:
+            caught.gemBalance,
+          email:
+            caught.contactEmail,
+          sent:
+            false,
+          sending:
+            false,
+          error:
+            "",
+        });
+      } else {
+        setError(
+          caught instanceof
+            Error
+            ? caught.message
+            : "Guided help could not be opened.",
+        );
+      }
     } finally {
       setGuidanceLoading(
         null,
+      );
+    }
+  }
+
+
+  async function sendGemRequest():
+    Promise<void> {
+    if (
+      !gemRequestDialog ||
+      !liveContextId ||
+      gemRequestDialog.sending ||
+      gemRequestDialog.sent
+    ) {
+      return;
+    }
+
+    const email =
+      gemRequestDialog.email
+        .trim()
+        .toLowerCase();
+
+    if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        .test(email)
+    ) {
+      setGemRequestDialog(
+        (
+          current,
+        ) =>
+          current
+            ? {
+                ...current,
+                error:
+                  "Enter a valid email address.",
+              }
+            : current,
+      );
+
+      return;
+    }
+
+    setGemRequestDialog(
+      (
+        current,
+      ) =>
+        current
+          ? {
+              ...current,
+              email,
+              sending:
+                true,
+              error:
+                "",
+            }
+          : current,
+    );
+
+    try {
+      await requestMoreGems({
+        email,
+        questionId:
+          gemRequestDialog
+            .questionId,
+        kind:
+          gemRequestDialog
+            .kind,
+        contextType:
+          "LIVE",
+        contextId:
+          liveContextId,
+      });
+
+      setGemRequestDialog(
+        (
+          current,
+        ) =>
+          current
+            ? {
+                ...current,
+                email,
+                sending:
+                  false,
+                sent:
+                  true,
+                error:
+                  "",
+              }
+            : current,
+      );
+    } catch (
+      caught
+    ) {
+      setGemRequestDialog(
+        (
+          current,
+        ) =>
+          current
+            ? {
+                ...current,
+                sending:
+                  false,
+                error:
+                  caught instanceof
+                    Error
+                    ? caught.message
+                    : "Gem request could not be sent.",
+              }
+            : current,
       );
     }
   }
@@ -3096,6 +3250,186 @@ export default function LiveTestRunner({
                       )
                 }
               </div>
+            </section>
+          </div>
+        )
+      }
+
+
+      {
+        gemRequestDialog && (
+          <div
+            className="live-test-runner__guidance-toast-backdrop"
+            role="presentation"
+          >
+            <section
+              className="live-test-runner__guidance-toast live-test-runner__gem-request-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-label="More Gems needed"
+            >
+              <button
+                type="button"
+                className="live-test-runner__guidance-toast-close"
+                aria-label="Close"
+                disabled={
+                  gemRequestDialog.sending
+                }
+                onClick={() =>
+                  setGemRequestDialog(
+                    null,
+                  )
+                }
+              >
+                ×
+              </button>
+
+              {
+                gemRequestDialog.sent
+                  ? (
+                    <>
+                      <div className="live-test-runner__guidance-toast-title">
+                        <span
+                          aria-hidden="true"
+                        >
+                          ✓
+                        </span>
+
+                        <strong>
+                          Request sent
+                        </strong>
+                      </div>
+
+                      <p className="live-test-runner__gem-request-note">
+                        Request sent · You may continue the test.
+                      </p>
+
+                      <div className="live-test-runner__gem-request-actions">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setGemRequestDialog(
+                              null,
+                            )
+                          }
+                        >
+                          Continue
+                        </button>
+                      </div>
+                    </>
+                  )
+                  : (
+                    <>
+                      <div className="live-test-runner__guidance-toast-title">
+                        <span
+                          aria-hidden="true"
+                        >
+                          💎
+                        </span>
+
+                        <strong>
+                          Insufficient Gems
+                        </strong>
+                      </div>
+
+                      <p className="live-test-runner__gem-request-balance">
+                        {
+                          gemRequestDialog.kind ===
+                            "TIP"
+                            ? "Tip"
+                            : "50/50"
+                        } needs 💎{
+                          gemRequestDialog.requiredGems
+                        } · Balance 💎{
+                          gemRequestDialog.gemBalance
+                        }
+                      </p>
+
+                      <p className="live-test-runner__gem-request-note">
+                        Test access remains active.
+                      </p>
+
+                      <label className="live-test-runner__gem-request-email">
+                        <span>
+                          Email
+                        </span>
+
+                        <input
+                          type="email"
+                          autoComplete="email"
+                          value={
+                            gemRequestDialog.email
+                          }
+                          disabled={
+                            gemRequestDialog.sending
+                          }
+                          placeholder="student@example.com"
+                          onChange={(
+                            event,
+                          ) =>
+                            setGemRequestDialog(
+                              (
+                                current,
+                              ) =>
+                                current
+                                  ? {
+                                      ...current,
+                                      email:
+                                        event.target.value,
+                                      error:
+                                        "",
+                                    }
+                                  : current,
+                            )
+                          }
+                        />
+                      </label>
+
+                      {
+                        gemRequestDialog.error && (
+                          <div className="live-test-runner__gem-request-error">
+                            {
+                              gemRequestDialog.error
+                            }
+                          </div>
+                        )
+                      }
+
+                      <div className="live-test-runner__gem-request-actions">
+                        <button
+                          type="button"
+                          disabled={
+                            gemRequestDialog.sending
+                          }
+                          onClick={() =>
+                            setGemRequestDialog(
+                              null,
+                            )
+                          }
+                        >
+                          Continue
+                        </button>
+
+                        <button
+                          type="button"
+                          className="live-test-runner__gem-request-primary"
+                          disabled={
+                            gemRequestDialog.sending
+                          }
+                          onClick={() =>
+                            void sendGemRequest()
+                          }
+                        >
+                          {
+                            gemRequestDialog.sending
+                              ? "Sending…"
+                              : "Contact Admin"
+                          }
+                        </button>
+                      </div>
+                    </>
+                  )
+              }
             </section>
           </div>
         )

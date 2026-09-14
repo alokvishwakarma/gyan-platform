@@ -1,5 +1,6 @@
 type Env = {
   gyan_registry: D1Database;
+  RESEND_API_KEY?: string;
 };
 
 type AssistanceType =
@@ -13,6 +14,8 @@ type ContextType =
 type Owner = {
   accountId: number;
   calendarAccessId: number;
+  gyanCode: string;
+  email: string | null;
 };
 
 type Context = {
@@ -117,11 +120,15 @@ async function currentOwner(
         `
         SELECT
           gbs.account_id,
-          gacl.calendar_access_id
+          gacl.calendar_access_id,
+          ga.code AS gyan_code,
+          ga.email
         FROM gyan_browser_sessions gbs
         JOIN gyan_account_calendar_links gacl
           ON gacl.gyan_account_id =
              gbs.account_id
+        JOIN gyan_accounts ga
+          ON ga.id = gbs.account_id
         WHERE gbs.secret_hash = ?
         LIMIT 1
         `,
@@ -130,6 +137,8 @@ async function currentOwner(
       .first<{
         account_id: number;
         calendar_access_id: number;
+        gyan_code: string;
+        email: string | null;
       }>();
 
   return row
@@ -140,6 +149,16 @@ async function currentOwner(
           Number(
             row.calendar_access_id,
           ),
+        gyanCode:
+          String(
+            row.gyan_code,
+          ),
+        email:
+          row.email
+            ? String(
+                row.email,
+              )
+            : null,
       }
     : null;
 }
@@ -531,6 +550,116 @@ function payload(
   };
 }
 
+
+function normalizeEmail(
+  value: unknown,
+): string {
+  return typeof value === "string"
+    ? value
+        .trim()
+        .toLowerCase()
+    : "";
+}
+
+function validEmail(
+  value: string,
+): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    .test(value);
+}
+
+async function sendGemRequestEmail(
+  env: Env,
+  details: {
+    email: string;
+    gyanCode: string;
+    contextType: ContextType;
+    contextId: number;
+    questionId: number;
+    assistance:
+      AssistanceType;
+    gemBalance: number;
+  },
+): Promise<void> {
+  if (!env.RESEND_API_KEY) {
+    throw new Error(
+      "Email delivery is not configured.",
+    );
+  }
+
+  const helpLabel =
+    details.assistance === "TIP"
+      ? "Tip"
+      : "50/50";
+
+  const subject =
+    `GYAN Gem Request · ${details.gyanCode} · ${helpLabel}`;
+
+  const text =
+    [
+      "GYAN Gem Request",
+      "",
+      `GYAN ID: ${details.gyanCode}`,
+      `Student email: ${details.email}`,
+      `Context: ${details.contextType} ${details.contextId}`,
+      `Question ID: ${details.questionId}`,
+      `Help requested: ${helpLabel}`,
+      `Current Gem balance: ${details.gemBalance}`,
+      "",
+      "The student can continue the already-paid test while this request is reviewed.",
+    ].join(
+      "\n",
+    );
+
+  const response =
+    await fetch(
+      "https://api.resend.com/emails",
+      {
+        method:
+          "POST",
+
+        headers: {
+          Authorization:
+            `Bearer ${env.RESEND_API_KEY}`,
+
+          "Content-Type":
+            "application/json",
+        },
+
+        body:
+          JSON.stringify({
+            from:
+              "GYAN Admin <admin@gyan.cc>",
+
+            to: [
+              "admin@gyan.cc",
+            ],
+
+            reply_to:
+              details.email,
+
+            subject,
+            text,
+          }),
+      },
+    );
+
+  if (!response.ok) {
+    const detail =
+      await response.text();
+
+    console.error(
+      "GYAN Gem request email failed:",
+      response.status,
+      detail,
+    );
+
+    throw new Error(
+      "Gem request could not be sent.",
+    );
+  }
+}
+
 export async function handleEducationGuidanceRoute(
   request: Request,
   env: Env,
@@ -544,7 +673,15 @@ export async function handleEducationGuidanceRoute(
     url.pathname ===
       "/api/education/guidance/unlock";
 
-  if (!route && !unlockRoute) {
+  const gemRequestRoute =
+    url.pathname ===
+      "/api/education/guidance/gem-request";
+
+  if (
+    !route &&
+    !unlockRoute &&
+    !gemRequestRoute
+  ) {
     return null;
   }
 
@@ -938,8 +1075,16 @@ export async function handleEducationGuidanceRoute(
         {
           error:
             `This help needs 💎${cost}. Your balance is 💎${balanceBefore}.`,
+          code:
+            "INSUFFICIENT_GEMS",
+          requiredGems:
+            cost,
           gemBalance:
             balanceBefore,
+          contactEmail:
+            owner.email ?? "",
+          assistanceType:
+            assistance,
         },
         402,
       );
@@ -1080,6 +1225,150 @@ export async function handleEducationGuidanceRoute(
       ),
     );
   }
+
+  if (
+    gemRequestRoute &&
+    request.method === "POST"
+  ) {
+    let body: {
+      email?: unknown;
+      questionId?: unknown;
+      kind?: unknown;
+      contextType?: unknown;
+      contextId?: unknown;
+    };
+
+    try {
+      body =
+        await request.json() as
+          typeof body;
+    } catch {
+      return json(
+        {
+          error:
+            "Invalid request body.",
+        },
+        400,
+      );
+    }
+
+    const email =
+      normalizeEmail(
+        body.email,
+      );
+
+    const questionId =
+      Number(
+        body.questionId,
+      );
+
+    const assistance =
+      normalizeAssistance(
+        body.kind,
+      );
+
+    const contextType =
+      normalizeContextType(
+        body.contextType,
+      );
+
+    const contextId =
+      Number(
+        body.contextId,
+      );
+
+    if (!validEmail(email)) {
+      return json(
+        {
+          error:
+            "Enter a valid email address.",
+        },
+        400,
+      );
+    }
+
+    if (
+      !Number.isInteger(
+        questionId,
+      ) ||
+      questionId <= 0 ||
+      !assistance ||
+      !contextType ||
+      !Number.isInteger(
+        contextId,
+      ) ||
+      contextId <= 0
+    ) {
+      return json(
+        {
+          error:
+            "Invalid Gem request.",
+        },
+        400,
+      );
+    }
+
+    const context =
+      await resolveContext(
+        env,
+        contextType,
+        contextId,
+        questionId,
+      );
+
+    if (!context) {
+      return json(
+        {
+          error:
+            "This test question could not be verified.",
+        },
+        404,
+      );
+    }
+
+    const balance =
+      await gemBalance(
+        env,
+        owner.calendarAccessId,
+      );
+
+    try {
+      await sendGemRequestEmail(
+        env,
+        {
+          email,
+          gyanCode:
+            owner.gyanCode,
+          contextType,
+          contextId:
+            context.id,
+          questionId,
+          assistance,
+          gemBalance:
+            balance,
+        },
+      );
+    } catch (
+      caught
+    ) {
+      return json(
+        {
+          error:
+            caught instanceof Error
+              ? caught.message
+              : "Gem request could not be sent.",
+        },
+        502,
+      );
+    }
+
+    return json({
+      sent:
+        true,
+      email,
+    });
+  }
+
 
   return json(
     {

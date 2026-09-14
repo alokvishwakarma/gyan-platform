@@ -1982,3 +1982,225 @@
     padding-top: 58px;
   }
 }
+
+/* Gem request dialog — append after existing guidance CSS */
+
+.live-test-runner__gem-request-dialog {
+  border-color: rgba(59, 130, 246, 0.28);
+}
+
+.live-test-runner__gem-request-balance {
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
+.live-test-runner__gem-request-email {
+  display: grid;
+  gap: 5px;
+  margin-top: 14px;
+}
+
+.live-test-runner__gem-request-email > span {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.live-test-runner__gem-request-email input {
+  width: 100%;
+  min-height: 38px;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid rgba(100, 116, 139, 0.38);
+  border-radius: 9px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+
+.live-test-runner__gem-request-email input:focus {
+  outline: 2px solid rgba(37, 99, 235, 0.2);
+  border-color: rgba(37, 99, 235, 0.58);
+}
+
+.live-test-runner__gem-request-error {
+  margin-top: 8px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: rgba(254, 226, 226, 0.72);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.live-test-runner__gem-request-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.live-test-runner__gem-request-actions button {
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+  border-radius: 9px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.live-test-runner__gem-request-actions button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.live-test-runner__gem-request-actions .live-test-runner__gem-request-primary {
+  border-color: rgba(37, 99, 235, 0.55);
+  background: #2563eb;
+  color: #fff;
+}
+
+@media (max-width: 520px) {
+  .live-test-runner__gem-request-actions {
+    justify-content: stretch;
+  }
+
+  .live-test-runner__gem-request-actions button {
+    flex: 1 1 0;
+  }
+}
+
+/* Compact insufficient-Gems dialog — replace previous gem-request CSS block */
+
+.live-test-runner__gem-request-dialog {
+  width: min(88vw, 390px);
+  padding: 12px 14px 13px;
+  border-color: rgba(100, 116, 139, 0.28);
+  border-radius: 12px;
+}
+
+.live-test-runner__gem-request-dialog .live-test-runner__guidance-toast-title {
+  gap: 6px;
+  padding-right: 24px;
+}
+
+.live-test-runner__gem-request-dialog .live-test-runner__guidance-toast-title > span {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.live-test-runner__gem-request-dialog .live-test-runner__guidance-toast-title strong {
+  font-size: 0.88rem;
+  line-height: 1.15;
+}
+
+.live-test-runner__gem-request-dialog .live-test-runner__guidance-toast-close {
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  font-size: 0.95rem;
+}
+
+.live-test-runner__gem-request-dialog p {
+  margin-top: 7px;
+  font-size: 0.76rem;
+  line-height: 1.32;
+}
+
+.live-test-runner__gem-request-balance {
+  margin-bottom: 0;
+  font-weight: 800;
+}
+
+.live-test-runner__gem-request-note {
+  margin-top: 3px !important;
+  color: rgba(51, 65, 85, 0.86);
+}
+
+.live-test-runner__gem-request-email {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.live-test-runner__gem-request-email > span {
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.live-test-runner__gem-request-email input {
+  width: 100%;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid rgba(100, 116, 139, 0.34);
+  border-radius: 7px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-size: 0.76rem;
+}
+
+.live-test-runner__gem-request-email input:focus {
+  outline: 2px solid rgba(37, 99, 235, 0.16);
+  border-color: rgba(37, 99, 235, 0.5);
+}
+
+.live-test-runner__gem-request-error {
+  margin-top: 6px;
+  padding: 5px 7px;
+  border-radius: 6px;
+  background: rgba(254, 226, 226, 0.66);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.live-test-runner__gem-request-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.live-test-runner__gem-request-actions button {
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid rgba(100, 116, 139, 0.28);
+  border-radius: 7px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.live-test-runner__gem-request-actions button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.live-test-runner__gem-request-actions .live-test-runner__gem-request-primary {
+  border-color: rgba(37, 99, 235, 0.45);
+  background: #2563eb;
+  color: #fff;
+}
+
+@media (max-width: 520px) {
+  .live-test-runner__gem-request-dialog {
+    width: min(92vw, 360px);
+    padding: 11px 12px 12px;
+  }
+
+  .live-test-runner__gem-request-actions {
+    justify-content: flex-end;
+  }
+
+  .live-test-runner__gem-request-actions button {
+    flex: 0 0 auto;
+  }
+}
+
